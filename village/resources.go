@@ -1,6 +1,5 @@
 package village
 
-
 // Production provides information on transformation per cycle.
 type Production struct {
 	Requires map[string]int
@@ -11,7 +10,7 @@ type Production struct {
 // This represents somewhat a business or process that requires a
 // number of resources and in turn provides other resources.
 //
-// Example: 
+// Example:
 // A bakery requires water, flour, fire-wood, and one worker to produce bread.
 func NewProduction() *Production {
 	return &Production{

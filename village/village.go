@@ -15,16 +15,16 @@ type Settlement struct {
 }
 
 // NewSettlement returns a new settlement with the given BuildingPool.
-func NewSettlement(p *BuildingPool) *Settlement{
+func NewSettlement(p *BuildingPool) *Settlement {
 	return &Settlement{
 		BuildingPool: p,
-		Production: NewProduction(),
+		Production:   NewProduction(),
 	}
 }
 
-// AddBuilding adds the given building to the settlement and updates the 
+// AddBuilding adds the given building to the settlement and updates the
 // totals for each resource ID.
-func (s *Settlement) AddBuilding(b *Building){
+func (s *Settlement) AddBuilding(b *Building) {
 	s.Buildings = append(s.Buildings, b)
 	s.Update()
 }
@@ -48,7 +48,7 @@ func (s *Settlement) Solve() {
 	var changed bool
 
 	// Attempt to stabelize the local economy.
-	for i:=0;i<maxAttempts;i++{
+	for i := 0; i < maxAttempts; i++ {
 		req := s.GetMissing()
 		if len(req) == 0 {
 			break
@@ -74,6 +74,6 @@ func (s *Settlement) Solve() {
 			break
 		}
 
-		changed=false
+		changed = false
 	}
 }

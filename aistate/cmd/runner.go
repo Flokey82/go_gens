@@ -5,7 +5,6 @@ import (
 	"log"
 )
 
-
 func main() {
 	// Set up a new state machine.
 	s := aistate.New()
@@ -63,7 +62,7 @@ type State struct {
 }
 
 func NewState(t aistate.StateType) *State {
-	return &State{t:t}
+	return &State{t: t}
 }
 
 func (s *State) Type() aistate.StateType {

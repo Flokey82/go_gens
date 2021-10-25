@@ -76,10 +76,10 @@ type StateType int
 
 // State defines an interface for a current state.
 type State interface {
-	Type() StateType // Returns the ID of the current state
+	Type() StateType   // Returns the ID of the current state
 	Tick(delta uint64) // Advances the state and provides the 'delta' time elapsed.
-	OnEnter() // Hooks executed when transitioning to this state
-	OnExit() // Hooks executed when transitioning from this state
+	OnEnter()          // Hooks executed when transitioning to this state
+	OnExit()           // Hooks executed when transitioning from this state
 }
 
 // Transition represents a transition to a specific state.

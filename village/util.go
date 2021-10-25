@@ -11,7 +11,7 @@ package village
 //
 // b["itemA"] = 2
 // b["itemC"] = 10
-// 
+//
 // Result:
 // res["itemB"] == 1
 func compMaps(a, b map[string]int) map[string]int {
@@ -27,7 +27,7 @@ func compMaps(a, b map[string]int) map[string]int {
 // addToMap adds the map 'add' to 'a'.
 func addToMap(a, add map[string]int) map[string]int {
 	for key, val := range add {
-			a[key] += val
+		a[key] += val
 	}
 	return a
 }

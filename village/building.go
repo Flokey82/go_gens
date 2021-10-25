@@ -1,14 +1,13 @@
 package village
 
-
 // Building represents an instance of BuildingType.
-type Building struct{
+type Building struct {
 	*BuildingType
 }
 
 // BuildingType represents a class of building requiring and/or providing
 // specific resources.
-type BuildingType struct{
+type BuildingType struct {
 	Name string
 	*Production
 }
@@ -16,18 +15,18 @@ type BuildingType struct{
 // NewBuildingType returns a new building type with the given name.
 func NewBuildingType(name string) *BuildingType {
 	return &BuildingType{
-		Name: name,
+		Name:       name,
 		Production: NewProduction(),
 	}
 }
 
 // String implements the stringer function for this building type.
-func (bt *BuildingType) String()string{
+func (bt *BuildingType) String() string {
 	return bt.Name
 }
 
 // NewBuilding returns a new building instance of this type.
-func (bt *BuildingType) NewBuilding() *Building{
+func (bt *BuildingType) NewBuilding() *Building {
 	return &Building{
 		BuildingType: bt,
 	}
@@ -35,7 +34,7 @@ func (bt *BuildingType) NewBuilding() *Building{
 
 // BuildingPool represents all known / registered building types.
 type BuildingPool struct {
-	Types []*BuildingType
+	Types    []*BuildingType
 	Provides map[string][]*BuildingType
 	Requires map[string][]*BuildingType
 }
@@ -49,7 +48,7 @@ func NewBuildingPool() *BuildingPool {
 }
 
 // FindType returns the given building type from the pool.
-func (bp *BuildingPool) FindType(name string) *BuildingType{
+func (bp *BuildingPool) FindType(name string) *BuildingType {
 	for _, bt := range bp.Types {
 		if bt.Name == name {
 			return bt
@@ -70,13 +69,12 @@ func (bp *BuildingPool) AddType(b *BuildingType) {
 func (bp *BuildingPool) Update() {
 	bp.Provides = make(map[string][]*BuildingType)
 	bp.Requires = make(map[string][]*BuildingType)
-	for _, b := range bp.Types{
-		for key:= range b.GetExcess() {
+	for _, b := range bp.Types {
+		for key := range b.GetExcess() {
 			bp.Provides[key] = append(bp.Provides[key], b)
 		}
-		for key:= range b.GetMissing() {
+		for key := range b.GetMissing() {
 			bp.Requires[key] = append(bp.Requires[key], b)
 		}
 	}
 }
-
