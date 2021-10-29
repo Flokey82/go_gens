@@ -1,6 +1,8 @@
 # Simple State Machine
 This package implements a very naive state machine in go. It's not the greatest thing ever, but if you think that you might be able to contribute some elegant fixes... be my guest. :)
 
+This implementation was inspired by Jason Weimann's excellent [Unity Bots with State Machines - Extensible State Machine / FSM](https://www.youtube.com/watch?v=V75hgcsCGOM) video on YouTube.
+
 ## Principle
 You instantiate a new state machines and declare all the different states you might need. Then you set up the transitions and the conditons under which a transition triggers.
 
