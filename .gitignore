@@ -2,3 +2,4 @@
 .DS_Store
 village/cmd/runner
 aistate/cmd/runner
+aiplanner/cmd/runner

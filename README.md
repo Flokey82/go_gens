@@ -6,3 +6,7 @@ This package attempts to generate a stable, self sustaining economy given some i
 
 ## Simple State Machine
 This package provides a very basic/minimalistic state machine implemented in Go. It is neither efficient nor fast, but a start if you want to experiment with very, very, veeeery simple AI :) Feel free to fork and/or improve!
+
+## Simple GOAP-ish (?) Planner (WIP)
+This package provides maybe a GOAP implementation. It does stuff with actions and plans and whatnot.
+DO NOT USE YET!
