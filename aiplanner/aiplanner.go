@@ -45,7 +45,7 @@ func (a *Planner) ValidatePlan(currentPlan Plan) bool {
 }
 
 // validatePlan plays through the given plan and checks if it is still valid.
-func (a *Planner) validatePlan(currentPlan Plan, world WorldState) bool {
+func (a *Planner) validatePlan(currentPlan Plan, world WorldFork) bool {
 	var err error
 	for _, action := range currentPlan {
 		if !action.CanRunIf(*a, world) {
@@ -72,7 +72,7 @@ func (a *Planner) GetPlans(currentPlan Plan) []Plan {
 	return a.getPlans(currentPlan, a.WorldState.Fork())
 }
 
-func (a *Planner) getPlans(currentPlan Plan, world WorldState) []Plan {
+func (a *Planner) getPlans(currentPlan Plan, world WorldFork) []Plan {
 	var results []Plan
 	for _, action := range a.possibleActions(world) {
 		newPlan := append(currentPlan, action)

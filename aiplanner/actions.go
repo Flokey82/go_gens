@@ -12,7 +12,7 @@ type Action interface {
 	String() string
 	Cost() int
 	CanRunIf(Planner, WorldState) bool
-	Simulate(p Planner, worldState WorldState) (WorldState, error)
+	Simulate(p Planner, worldState WorldFork) (WorldFork, error)
 }
 
 // ensure DefaultAction implements Action
@@ -54,7 +54,7 @@ func (a *DefaultAction) CanRunIf(agent Planner, world WorldState) bool {
 }
 
 // Simulate runs the action and returns a new hypothetical world state.
-func (a *DefaultAction) Simulate(agent Planner, worldState WorldState) (WorldState, error) {
+func (a *DefaultAction) Simulate(agent Planner, worldState WorldFork) (WorldFork, error) {
 	if !a.CanRunIf(agent, worldState) {
 		return nil, ErrActionInvalid
 	}

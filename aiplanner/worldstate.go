@@ -3,15 +3,24 @@ package aiplanner
 // WorldState provides an interface for querying and modifying the world state.
 type WorldState interface {
 	Get(key string) bool
-	Set(key string, val bool)
-	Fork() WorldState
-	Update(otherState PlannerState)
+	Fork() WorldFork
 	Contains(otherState PlannerState) bool
+}
+
+// WorldFork provides an interface for querying and modifying a forked version of the actual world state.
+type WorldFork interface {
+	WorldState
+	Set(key string, val bool)
+	Update(otherState PlannerState)
 }
 
 // realWorld can be a fancy querying tool based on game mechanics and whatnot.
 type realWorld map[string]bool
 
+// Get queries the given key and returns a boolean value for it.
+// TODO: This should allow for more complex queries depending on the actor that is planning.
+// ... for example: If I want to know if "enemyVisible" to ensure line of sight, I need to know
+// who is asking that question so I can determine if actor 'a' can see his enemy/target actor 'b' etc.
 func (w *realWorld) Get(key string) bool {
 	return (*w)[key]
 }
@@ -22,13 +31,15 @@ func (w *realWorld) Set(key string, val bool) {
 	(*w)[key] = val
 }
 
-func (w *realWorld) Fork() WorldState {
+// Fork returns a modifiable WorldState that can reflect a hypothetical future world state.
+func (w *realWorld) Fork() WorldFork {
 	return &modWorld{
 		rw:   w,
 		mods: make(map[string]bool),
 	}
 }
 
+// Contains returns true if the real world state satisfies the 'otherState' state.
 func (w *realWorld) Contains(otherState PlannerState) bool {
 	for key, value := range otherState {
 		ourValue, ok := (*w)[key]
@@ -45,6 +56,9 @@ type modWorld struct {
 	mods map[string]bool // mods contains modifications to the world state
 }
 
+// Get returns the value set for the given key.
+// NOTE: Returns a hypothetical value if set previously during a simulated action,
+// otherwise it will try to get the actual value from the "real world".
 func (w *modWorld) Get(key string) bool {
 	if v, ok := w.mods[key]; ok {
 		return v
@@ -57,10 +71,12 @@ func (w *modWorld) Get(key string) bool {
 	return w.rw.Get(key)
 }
 
+// Set the given key to the given value without modifying the actual world state.
 func (w *modWorld) Set(key string, val bool) {
 	w.mods[key] = val
 }
 
+// Contains returns true if the hypothetical world state satisfies the 'otherState' state.
 func (w *modWorld) Contains(otherState PlannerState) bool {
 	for key, value := range otherState {
 		if ourValue, ok := w.mods[key]; ok {
@@ -80,7 +96,8 @@ func (w *modWorld) Update(otherState PlannerState) {
 	}
 }
 
-func (w *modWorld) Fork() WorldState {
+// Fork returns an independent, modifiable copy of this hypothetical future world state.
+func (w *modWorld) Fork() WorldFork {
 	nw := &modWorld{
 		rw:   w.rw,
 		mods: make(map[string]bool),
@@ -91,38 +108,8 @@ func (w *modWorld) Fork() WorldState {
 	return nw
 }
 
+// PlannerState is a sad leftover type that needs to be looked at.
 type PlannerState map[string]bool
-
-func (s *PlannerState) Contains(otherState PlannerState) bool {
-	for key, value := range otherState {
-		ourValue, ok := (*s)[key]
-		if !ok || value != ourValue {
-			return false
-		}
-	}
-	return true
-}
-
-func (s *PlannerState) Diff(otherState PlannerState) (newState PlannerState, hasDiff bool) {
-	newState = make(PlannerState)
-	for key, value := range otherState {
-		ourValue, ok := (*s)[key]
-		if !ok || value != ourValue {
-			hasDiff = false
-			newState[key] = value
-		}
-	}
-	if hasDiff {
-		return newState, hasDiff
-	}
-	return nil, false
-}
-
-func (s *PlannerState) Update(otherState PlannerState) {
-	for key, value := range otherState {
-		(*s)[key] = value
-	}
-}
 
 func (s *PlannerState) Set(key string, value bool) {
 	(*s)[key] = value
