@@ -5,7 +5,7 @@ This package implements the simplest approach for generating a somewhat stable a
 
 You instantiate a new BuildingPool, which will provide all available building types and add a number of types to it.
 
-Then, you create a new settlement and give it a number of buildings you'd like to seed the economy with. After calling Resolve(), the settlement should have a number of additional buildings needed to sustain itself... If there are still missing resources that the known building types cannot provide, these will have to be imported from another settlement.
+Then, you create a new settlement and give it a number of buildings you'd like to seed the economy with. After calling Solve(), the settlement should have a number of additional buildings needed to sustain itself... If there are still missing resources that the known building types cannot provide, these will have to be imported from another settlement.
 
 ## Example
 
