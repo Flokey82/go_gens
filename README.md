@@ -12,4 +12,7 @@ This package provides a very basic/minimalistic state machine implemented in Go.
 ## aiplanner: Simple GOAP-ish (?) Planner (WIP)
 This package provides maybe a GOAP implementation. It does stuff with actions and plans and whatnot.
 
+## aitree: Simple Behavior Tree (WIP)
+This package provides something that is barely a working behavior tree. Still work in progress!
+
 DO NOT USE YET!

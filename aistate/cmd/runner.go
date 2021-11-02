@@ -15,7 +15,7 @@ func main() {
 	sCollectRes := NewState(StateTypeCollectResource)
 	sFlee := NewState(StateTypeFlee)
 
-	a.s.AddAnyTransition(sFlee, func() bool {
+	s.AddAnyTransition(sFlee, func() bool {
 		// Check if there are predators around.
 		return false
 	})
