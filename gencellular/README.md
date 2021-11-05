@@ -11,4 +11,4 @@ I'll write something here some day when this is done.
 Proper documentation whenever this is finished.
 
 ## Cells!
-![alt text](https://github.com/Flokey82/go_gens/raw/master/gencellular/images/rgb.gif "Cells!")
+![alt text](https://raw.githubusercontent.com/Flokey82/go_gens/master/gencellular/images/rgb.gif "Cells!")
