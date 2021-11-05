@@ -1,4 +1,4 @@
-package village
+package genvillage
 
 // Building represents an instance of BuildingType.
 type Building struct {

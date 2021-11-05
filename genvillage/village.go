@@ -1,7 +1,7 @@
-// Package village provides a very simple generator which attempts to generate a
+// Package genvillage provides a very simple generator which attempts to generate a
 // self-sustaining settlement economy given a number of buildings that consume and/or produce
 // a number of resources.
-package village
+package genvillage
 
 import (
 	"math/rand"

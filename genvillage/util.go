@@ -1,4 +1,4 @@
-package village
+package genvillage
 
 // compMaps returns the count of keys in 'a' missing or exceeding
 // their counterpart in 'b' (but not the other way round).

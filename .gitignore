@@ -3,3 +3,4 @@
 village/cmd/runner
 aistate/cmd/runner
 aiplanner/cmd/runner
+genvillage/cmd/runner

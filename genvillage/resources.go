@@ -1,4 +1,4 @@
-package village
+package genvillage
 
 // Production provides information on transformation per cycle.
 type Production struct {
