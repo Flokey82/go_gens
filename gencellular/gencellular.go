@@ -21,6 +21,14 @@ func SeedDefault(cells [][]bool, w, h int) {
 	}
 }
 
+// EvalFunc is the type of function used to evaluate the state of a cell in the next generation.
+type EvalFunc func(currState bool, numNeighbors int) bool
+
+// EvalDefault is the default evaluation function used to evaluate the state of a cell in the next generation.
+func EvalDefault(currState bool, numNeighbors int) bool {
+	return (currState && numNeighbors == 2) || numNeighbors == 3
+}
+
 // Culture was a very smart way to call whatever holds the cells.
 type Culture struct {
 	Cells      [2][][]bool       // Cell buffers.
@@ -28,6 +36,7 @@ type Culture struct {
 	Width      int               // Number of cells over y.
 	Generation int               // Number of ticks.
 	Init       SeedFunc          // Function used to initialize the culture.
+	Eval       EvalFunc          // Function used to evaluate the state of a cell in the next generation.
 	images     []*image.Paletted // Generated frame used to construct the GIF.
 	palette    []color.Color     // Default color palette.
 	delays     []int             // Delay for each individual frame (0 for now).
@@ -35,15 +44,16 @@ type Culture struct {
 
 // New returns a new cell culture with the given height and width.
 func New(height, width int) *Culture {
-	return NewCustom(height, width, SeedDefault)
+	return NewCustom(height, width, SeedDefault, EvalDefault)
 }
 
-// NewCustom allows for a custom seed init function.
-func NewCustom(height, width int, f SeedFunc) *Culture {
+// NewCustom allows for a custom seed init and state eval function.
+func NewCustom(height, width int, sf SeedFunc, ef EvalFunc) *Culture {
 	c := &Culture{
 		Height: height,
 		Width:  width,
-		Init:   f,
+		Init:   sf,
+		Eval:   ef,
 		palette: []color.Color{
 			color.RGBA{0x00, 0x00, 0x00, 0xff}, color.RGBA{0x00, 0x00, 0xff, 0xff},
 			color.RGBA{0x00, 0xff, 0x00, 0xff}, color.RGBA{0x00, 0xff, 0xff, 0xff},
@@ -80,12 +90,7 @@ func (c *Culture) Tick() {
 	next := c.Cells[(c.Generation+1)%2]
 	for x := 0; x < c.Width; x++ {
 		for y := 0; y < c.Height; y++ {
-			neighbors := c.countNeighbours(current, x, y)
-			if current[x][y] {
-				next[x][y] = neighbors == 2 || neighbors == 3
-			} else {
-				next[x][y] = neighbors == 3
-			}
+			next[x][y] = c.Eval(current[x][y], c.countNeighbours(current, x, y))
 		}
 	}
 	c.storeGifFrame(current)

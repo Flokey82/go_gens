@@ -5,3 +5,4 @@ aistate/cmd/runner
 aiplanner/cmd/runner
 genvillage/cmd/runner
 gencellular/cmd/runner
+gencellular/cmd/cmd
