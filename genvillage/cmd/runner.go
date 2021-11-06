@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/Flokey82/go_gens/village"
+	"github.com/Flokey82/go_gens/genvillage"
 	"log"
 )
 
@@ -16,18 +16,18 @@ const (
 func main() {
 	// Create a new building pool and register the known
 	// building types.
-	p := village.NewBuildingPool()
-	bFishery := village.NewBuildingType("fishery")
+	p := genvillage.NewBuildingPool()
+	bFishery := genvillage.NewBuildingType("fishery")
 	bFishery.Requires[resWorker] = 2
 	bFishery.Provides[resFish] = 10
 	p.AddType(bFishery)
 
-	bHousing := village.NewBuildingType("housing")
+	bHousing := genvillage.NewBuildingType("housing")
 	bHousing.Requires[resBread] = 4
 	bHousing.Provides[resWorker] = 4
 	p.AddType(bHousing)
 
-	bFarm := village.NewBuildingType("farm")
+	bFarm := genvillage.NewBuildingType("farm")
 	bFarm.Requires[resWorker] = 1
 	bFarm.Provides[resGrain] = 10
 	// FIXME: A farm usually doubles as housing, but we don't check
@@ -36,13 +36,13 @@ func main() {
 	// bFarm.Provides[resWorker] = 1
 	p.AddType(bFarm)
 
-	bMill := village.NewBuildingType("mill")
+	bMill := genvillage.NewBuildingType("mill")
 	bMill.Requires[resGrain] = 10
 	bMill.Requires[resWorker] = 1
 	bMill.Provides[resFlour] = 10
 	p.AddType(bMill)
 
-	bBakery := village.NewBuildingType("bakery")
+	bBakery := genvillage.NewBuildingType("bakery")
 	bBakery.Requires[resFlour] = 2
 	bBakery.Requires[resWorker] = 1
 	bBakery.Provides[resBread] = 8
@@ -50,7 +50,7 @@ func main() {
 
 	// Create a new settlement and add the fishery to seed
 	// the economy.
-	v := village.NewSettlement(p)
+	v := genvillage.NewSettlement(p)
 	v.AddBuilding(bFishery.NewBuilding())
 
 	// Resolve all resource dependencies if possible.
