@@ -13,4 +13,4 @@ This package provides functionality to generate 2D maps using procedural methods
   * Erosion
 
 ## Map!
-![alt text](https://raw.githubusercontent.com/Flokey82/go_gens/master/genmap2d/images/rgb.gif "Map!")
+![alt text](https://raw.githubusercontent.com/Flokey82/go_gens/master/genmap2d/images/rgb.png "Map!")
