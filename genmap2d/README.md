@@ -5,10 +5,13 @@ This package provides functionality to generate 2D maps using procedural methods
 * Reproducible using seeds
 * Village placement
 * Terrain / biome types differentiated by color
+* Heightmap
+  * Noise based
+
+### TODO
 * Rivers, lakes
 * Resources
 * Heightmap
-  * Noise based
   * Primitive based
   * Erosion
 
