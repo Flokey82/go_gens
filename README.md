@@ -23,3 +23,8 @@ This package provides maybe a GOAP implementation. It does stuff with actions an
 
 ### aitree: Simple Behavior Tree (WIP)
 This package provides something that is barely a working behavior tree. Still work in progress!
+
+## Game Components
+
+### gameloop: Simple Game Loop
+This is a very, very basic game loop... nothing fancy about it.
