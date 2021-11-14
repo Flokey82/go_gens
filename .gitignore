@@ -7,3 +7,4 @@ genvillage/cmd/runner
 gencellular/cmd/runner
 gencellular/cmd/cmd
 genmap2d/cmd/runner
+genfloortxt/cmd/runner
