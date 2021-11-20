@@ -8,3 +8,5 @@ gencellular/cmd/runner
 gencellular/cmd/cmd
 genmap2d/cmd/runner
 genfloortxt/cmd/runner
+aifiver/cmd/runner.exe
+aifiver/cmd/runner
