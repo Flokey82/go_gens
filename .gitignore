@@ -10,3 +10,4 @@ genmap2d/cmd/runner
 genfloortxt/cmd/runner
 aifiver/cmd/runner.exe
 aifiver/cmd/runner
+gamecs/cmd/runner
