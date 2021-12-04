@@ -14,8 +14,16 @@ func main() {
 	sMoveToRes := NewState(StateTypeMoveToResource)
 	sCollectRes := NewState(StateTypeCollectResource)
 	sFlee := NewState(StateTypeFlee)
+	sFight := NewState(StateTypeFight)
 
-	s.AddAnyTransition(sFlee, func() bool {
+	aggressive := true
+
+	s.AddAnySelector(func() aistate.State {
+		if aggressive {
+			return sFight
+		}
+		return sFlee
+	}, func() bool {
 		// Check if there are predators around.
 		return false
 	})
@@ -54,6 +62,7 @@ const (
 	StateTypeMoveToResource  aistate.StateType = 1
 	StateTypeCollectResource aistate.StateType = 2
 	StateTypeFlee            aistate.StateType = 3
+	StateTypeFight           aistate.StateType = 4
 )
 
 // State is a fake implementation of a generic state.
