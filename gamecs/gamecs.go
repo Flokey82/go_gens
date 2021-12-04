@@ -76,6 +76,7 @@ func (w *World) ExportGif(path string) error {
 type Character struct {
 	w *World
 	CMovable
+	CStatus
 	*CAi
 }
 
@@ -88,6 +89,10 @@ func (w *World) NewChar() *Character {
 				Y: float64(rand.Intn(w.Width)),
 			},
 		},
+		CStatus: CStatus{
+			Health:     100,
+			Exhaustion: 0,
+		},
 		CAi: newCAi(w),
 	}
 	w.Add(c)
@@ -95,6 +100,7 @@ func (w *World) NewChar() *Character {
 }
 
 func (c *Character) Update(delta float64) {
-	c.CAi.Update(&c.CMovable, delta)
+	c.CAi.Update(&c.CMovable, &c.CStatus, delta)
 	c.CMovable.Update(delta)
+	c.CStatus.Update(delta)
 }
