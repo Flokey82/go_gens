@@ -1,26 +1,30 @@
 package gamecs
 
 type CAi struct {
-	CAiPerception
+	*CAiPerception
 	*CAiScheduler
 	CAiPath
+
+	w *World
 }
 
-func newCAi() *CAi {
+func newCAi(w *World) *CAi {
 	c := &CAi{
-		CAiScheduler: newCAiScheduler(),
+		CAiPerception: newCAiPerception(w),
+		CAiScheduler:  newCAiScheduler(),
+		w:             w,
 	}
 
-	c.CAiScheduler.init(&c.CAiPath, &c.CAiPerception)
+	c.CAiScheduler.init(&c.CAiPath, c.CAiPerception)
 	return c
 }
 
-func (c *CAi) Update(w *World, m *CMovable, delta float64) {
+func (c *CAi) Update(m *CMovable, delta float64) {
 	// Update perception.
-	c.CAiPerception.Update(w, m, delta)
+	c.CAiPerception.Update(m, delta)
 
 	// Re-evaluate current plans, tasks, or states.
-	c.CAiScheduler.Update(m, &c.CAiPath, &c.CAiPerception, delta)
+	c.CAiScheduler.Update(m, &c.CAiPath, c.CAiPerception, delta)
 
 	// Update any path charted.
 	c.CAiPath.Update(m, delta)

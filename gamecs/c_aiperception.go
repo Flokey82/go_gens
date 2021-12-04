@@ -9,11 +9,18 @@ const perceptionDist = 4.0
 
 type CAiPerception struct {
 	Entities []*Character
+	w        *World
 }
 
-func (c *CAiPerception) Update(w *World, m *CMovable, delta float64) {
+func newCAiPerception(w *World) *CAiPerception {
+	return &CAiPerception{
+		w: w,
+	}
+}
+
+func (c *CAiPerception) Update(m *CMovable, delta float64) {
 	c.Entities = nil
-	for _, ce := range w.c {
+	for _, ce := range c.w.c {
 		if &ce.CMovable == m {
 			continue
 		}

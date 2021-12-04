@@ -65,7 +65,7 @@ func (s *StateFlee) Tick(delta uint64) {
 func (s *StateFlee) OnEnter() {
 	log.Printf("entering state %d", s.Type())
 	s.ap.running = true
-	s.ap.SetTarget(vectors.RandomVec2(64.0))
+	s.ap.SetTarget(vectors.RandomVec2(128.0))
 	log.Println(fmt.Sprintf("fleeing to Target %.2f, %.2f", s.ap.Target.X, s.ap.Target.Y))
 }
 
@@ -93,7 +93,7 @@ func (s *StateFind) Tick(delta uint64) {
 	if s.ap.active {
 		return
 	}
-	s.ap.SetTarget(vectors.RandomVec2(64.0)) // Random point within 18 meters.
+	s.ap.SetTarget(vectors.RandomVec2(128.0)) // Random point within 18 meters.
 	log.Println(fmt.Sprintf("new Target %.2f, %.2f", s.ap.Target.X, s.ap.Target.Y))
 }
 

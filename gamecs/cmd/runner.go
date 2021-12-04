@@ -9,8 +9,11 @@ import (
 
 func main() {
 	w := gamecs.New()
-	w.NewChar()
-	w.NewChar()
+
+	// Add a number of characters.
+	for i := 0; i < 10; i++ {
+		w.NewChar()
+	}
 
 	gl := gameloop.New(200*time.Millisecond, w.Update)
 	gl.Start()

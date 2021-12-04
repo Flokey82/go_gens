@@ -26,8 +26,8 @@ func New() *World {
 			color.RGBA{0xff, 0x00, 0x00, 0xff}, color.RGBA{0xff, 0x00, 0xff, 0xff},
 			color.RGBA{0xff, 0xff, 0x00, 0xff}, color.RGBA{0xff, 0xff, 0xff, 0xff},
 		},
-		Width:  64,
-		Height: 64,
+		Width:  128,
+		Height: 128,
 	}
 }
 
@@ -49,6 +49,12 @@ func (w *World) storeGifFrame() {
 	for _, c := range w.c {
 		img.Set(int(c.Pos.X), int(c.Pos.Y), color.RGBA{0xFF, 0x00, 0x00, 255})
 		img.Set(int(c.Target.X), int(c.Target.Y), color.RGBA{0x00, 0xFF, 0x00, 255})
+		if c.Waypoints == nil {
+			continue
+		}
+		for _, wp := range c.Waypoints[c.WaypointCurrent:] {
+			img.Set(int(wp.X), int(wp.Y), color.RGBA{0xFF, 0xFF, 0x00, 255})
+		}
 	}
 }
 
@@ -82,13 +88,13 @@ func (w *World) NewChar() *Character {
 				Y: float64(rand.Intn(w.Width)),
 			},
 		},
-		CAi: newCAi(),
+		CAi: newCAi(w),
 	}
 	w.Add(c)
 	return c
 }
 
 func (c *Character) Update(delta float64) {
-	c.CAi.Update(c.w, &c.CMovable, delta)
+	c.CAi.Update(&c.CMovable, delta)
 	c.CMovable.Update(delta)
 }
