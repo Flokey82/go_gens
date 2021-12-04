@@ -30,6 +30,7 @@ func (c *CAiPath) resetWaypoints() {
 // planWaypoints plans a number of waypoints for reaching the current target.
 func (c *CAiPath) planWaypoints(m *CMovable) {
 	// This implementation is poop.
+	// TODO: Replace with A* or similar stuff.
 	curWay := m.Pos
 	for calcDist(curWay, c.Target) > 5.0 {
 		dir := calcNormVec(curWay, c.Target)
