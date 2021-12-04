@@ -23,23 +23,22 @@ func newCAiScheduler() *CAiScheduler {
 }
 
 func (c *CAiScheduler) init(ap *CAiPath, ape *CAiPerception, as *CAiState) {
+	// Set up the two states we decide on if we are being threatened.
+	sFlee := NewStateFlee(ap, ape)
+	sAttack := NewStateAttack(ap, ape)
+
+	// Allow the transition to return one of multiple different transitions.
+	c.AddAnySelector(func() aistate.State {
+		if time.Now().Unix()%2 != 0 {
+			return sFlee
+		}
+		return sAttack
+	}, func() bool {
+		// Check if there are predators around.
+		return as.states[sThreatened]
+	})
+
 	sFind := NewStateFind(ap, ape)
-
-	// TODO: Allow the transition to return one of multiple different transitions.
-	if time.Now().Unix()%2 != 0 {
-		sFlee := NewStateFlee(ap, ape)
-		c.AddAnyTransition(sFlee, func() bool {
-			// Check if there are predators around.
-			return as.states[sThreatened]
-		})
-	} else {
-		sAttack := NewStateAttack(ap, ape)
-		c.AddAnyTransition(sAttack, func() bool {
-			// Check if there are predators around.
-			return as.states[sThreatened]
-		})
-	}
-
 	c.AddAnyTransition(sFind, func() bool {
 		// Check if there are predators around.
 		return !as.states[sThreatened]
