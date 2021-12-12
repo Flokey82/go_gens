@@ -5,8 +5,6 @@ type CAi struct {
 	*CAiScheduler
 	*CAiState
 	CAiPath
-
-	w *World
 }
 
 func newCAi(w *World) *CAi {
@@ -14,7 +12,6 @@ func newCAi(w *World) *CAi {
 		CAiPerception: newCAiPerception(w),
 		CAiScheduler:  newCAiScheduler(),
 		CAiState:      newCAiState(),
-		w:             w,
 	}
 
 	c.CAiScheduler.init(&c.CAiPath, c.CAiPerception, c.CAiState)

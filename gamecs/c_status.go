@@ -6,6 +6,13 @@ type CStatus struct {
 	Hunger     float64
 }
 
+func newCStatus() *CStatus {
+	return &CStatus{
+		Health:     100,
+		Exhaustion: 0,
+	}
+}
+
 const hungerRate = 1.0
 
 func (c *CStatus) Update(delta float64) {

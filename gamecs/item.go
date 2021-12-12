@@ -15,3 +15,17 @@ type ItemType struct {
 	Tags       []string       // Food, Weapon
 	Properties map[string]int // Price, weight, damage, ...
 }
+
+func newItemType(name string) *ItemType {
+	return &ItemType{
+		Name:       name,
+		Properties: make(map[string]int),
+	}
+}
+
+func (i *ItemType) New(pos vectors.Vec2) *Item {
+	return &Item{
+		ItemType: i,
+		Pos:      pos,
+	}
+}

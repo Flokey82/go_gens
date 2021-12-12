@@ -8,25 +8,34 @@ import (
 const perceptionDist = 4.0
 
 type CAiPerception struct {
-	Entities []*Character
+	Entities []*Agent
+	Items    []*Item
 	w        *World
+	maxDist  float64
 }
 
 func newCAiPerception(w *World) *CAiPerception {
 	return &CAiPerception{
-		w: w,
+		w:       w,
+		maxDist: perceptionDist,
 	}
 }
 
 func (c *CAiPerception) Update(m *CMovable, delta float64) {
+	// Update perceived agents.
 	c.Entities = nil
 	for _, ce := range c.w.c {
-		if &ce.CMovable == m {
-			continue
-		}
-		if calcDist(ce.CMovable.Pos, m.Pos) < perceptionDist {
+		if ce.CMovable != m && calcDist(ce.CMovable.Pos, m.Pos) < c.maxDist {
 			c.Entities = append(c.Entities, ce)
 		}
 	}
-	log.Println(fmt.Sprintf("saw %d Entities", len(c.Entities)))
+
+	// Update perceived items.
+	c.Items = nil
+	for _, it := range c.w.items {
+		if calcDist(it.Pos, m.Pos) < c.maxDist {
+			c.Items = append(c.Items, it)
+		}
+	}
+	log.Println(fmt.Sprintf("saw %d Entities, %d Items", len(c.Entities), len(c.Items)))
 }

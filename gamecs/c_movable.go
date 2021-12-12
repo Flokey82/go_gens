@@ -12,6 +12,12 @@ type CMovable struct {
 	Speed vectors.Vec2
 }
 
+func newCMovable(pos vectors.Vec2) *CMovable {
+	return &CMovable{
+		Pos: pos,
+	}
+}
+
 func (c *CMovable) Update(delta float64) {
 	c.Pos.AddToThis(c.Speed)
 	log.Println(fmt.Sprintf("moved to %.2f, %.2f", c.Pos.X, c.Pos.Y))
