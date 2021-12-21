@@ -74,6 +74,9 @@ func (w *World) storeGifFrame() {
 		}
 	}
 	for _, c := range w.items {
+		if c.Location != LocWorld {
+			continue
+		}
 		img.Set(int(c.Pos.X), int(c.Pos.Y), color.RGBA{0xff, 0x00, 0xff, 255})
 	}
 }

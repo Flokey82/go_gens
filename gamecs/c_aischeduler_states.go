@@ -16,12 +16,11 @@ const (
 
 // StateFlee
 type StateFlee struct {
-	ap  *CAiPath
-	ape *CAiPerception
+	ai *CAi
 }
 
-func NewStateFlee(ap *CAiPath, ape *CAiPerception) *StateFlee {
-	return &StateFlee{ap: ap, ape: ape}
+func NewStateFlee(ai *CAi) *StateFlee {
+	return &StateFlee{ai: ai}
 }
 
 func (s *StateFlee) Type() aistate.StateType {
@@ -38,26 +37,25 @@ func (s *StateFlee) Tick(delta uint64) {
 
 func (s *StateFlee) OnEnter() {
 	log.Printf("entering state %d", s.Type())
-	s.ap.running = true // Run away!
+	s.ai.CAiPath.running = true // Run away!
 	// Select a random point to run towards.
 	// Ideally we'd choose target location that would lead us away from the threat.
-	s.ap.SetTarget(vectors.RandomVec2(128.0))
-	log.Println(fmt.Sprintf("fleeing to Target %.2f, %.2f", s.ap.Target.X, s.ap.Target.Y))
+	s.ai.SetTarget(vectors.RandomVec2(128.0))
+	log.Println(fmt.Sprintf("fleeing to Target %.2f, %.2f", s.ai.CAiPath.Target.X, s.ai.CAiPath.Target.Y))
 }
 
 func (s *StateFlee) OnExit() {
 	log.Printf("leaving state %d", s.Type())
-	s.ap.running = false // We're safe, no need to run anymore.
+	s.ai.CAiPath.running = false // We're safe, no need to run anymore.
 }
 
 // StateFind
 type StateFind struct {
-	ap  *CAiPath
-	ape *CAiPerception
+	ai *CAi
 }
 
-func NewStateFind(ap *CAiPath, ape *CAiPerception) *StateFind {
-	return &StateFind{ap: ap, ape: ape}
+func NewStateFind(ai *CAi) *StateFind {
+	return &StateFind{ai: ai}
 }
 
 func (s *StateFind) Type() aistate.StateType {
@@ -66,14 +64,14 @@ func (s *StateFind) Type() aistate.StateType {
 
 func (s *StateFind) Tick(delta uint64) {
 	// Move towards resource, pick up item, etc ...
-	if s.ap.active {
+	if s.ai.CAiPath.active {
 		return
 	}
 	// Select a random point within 128 meters.
 	// It would make sense to do something more sensible... looking for resources
 	// or whatever.
-	s.ap.SetTarget(vectors.RandomVec2(128.0))
-	log.Println(fmt.Sprintf("new Target %.2f, %.2f", s.ap.Target.X, s.ap.Target.Y))
+	s.ai.SetTarget(vectors.RandomVec2(128.0))
+	log.Println(fmt.Sprintf("new Target %.2f, %.2f", s.ai.Target.X, s.ai.Target.Y))
 }
 
 func (s *StateFind) OnEnter() {
@@ -86,90 +84,115 @@ func (s *StateFind) OnExit() {
 
 // StateAttack
 type StateAttack struct {
-	ap  *CAiPath
-	ape *CAiPerception
+	ai     *CAi
+	target *Agent
 }
 
-func NewStateAttack(ap *CAiPath, ape *CAiPerception) *StateAttack {
-	return &StateAttack{ap: ap, ape: ape}
+func NewStateAttack(ai *CAi) *StateAttack {
+	return &StateAttack{ai: ai}
 }
 
 func (s *StateAttack) Type() aistate.StateType {
 	return StateTypeAttack
 }
 
+func (s *StateAttack) findTarget() {
+	if s.target != nil && s.ai.CanSeeEntity(s.target) {
+		s.ai.SetTarget(s.target.Pos)
+		return
+	}
+	// Set our target we move to to the current position of the first entity that we have perceived.
+	// (NOT the closest, the first)
+	// Ideally we would choose our target based on distance, threat level, etc.
+	s.target = s.ai.Entities[0]
+	s.ai.SetTarget(s.target.Pos)
+	s.ai.running = true // Run to intercept.
+}
+
+func (s *StateAttack) giveUpTarget() {
+	s.target = nil
+	// TODO: Unset aipath target.
+	s.ai.running = false // No need to run anymore.
+}
+
 func (s *StateAttack) Tick(delta uint64) {
-	if len(s.ape.Entities) == 0 || s.ap.active {
+	if len(s.ai.CAiPerception.Entities) == 0 {
 		return
 	}
 
 	// TODO: Add behavior tree or something...
 	// - chase target
 	// - if reached, attack target
+	s.findTarget()
 
-	// For now we just set the target point we move to to the current
-	// position of the first entity that we percieved (NOT the closest, the first).
-	s.ap.SetTarget(s.ape.Entities[0].Pos)
-	log.Println(fmt.Sprintf("chasing Target %.2f, %.2f", s.ap.Target.X, s.ap.Target.Y))
+	log.Println(fmt.Sprintf("chasing Target %.2f, %.2f", s.ai.CAiPath.Target.X, s.ai.CAiPath.Target.Y))
 }
 
 func (s *StateAttack) OnEnter() {
 	log.Printf("entering state %d", s.Type())
-	if len(s.ape.Entities) == 0 {
-		return // There is nothing to attack?!
-	}
-	// Set our target we move to to the current position of the first entity that we have perceived.
-	// (NOT the closest, the first)
-	// Ideally we would choose our target based on distance, threat level, etc.
-	s.ap.SetTarget(s.ape.Entities[0].Pos)
-	s.ap.running = true // Run to intercept.
+	s.findTarget()
 }
 
 func (s *StateAttack) OnExit() {
 	log.Printf("leaving state %d", s.Type())
-	s.ap.running = false // No need to run anymore.
+	s.giveUpTarget()
 }
 
 // StateMunch
 type StateMunch struct {
-	ap  *CAiPath
-	ape *CAiPerception
-	as  *CAiState
+	ai *CAi
+	it *Item
 }
 
-func NewStateMunch(ap *CAiPath, ape *CAiPerception, as *CAiState) *StateMunch {
-	return &StateMunch{ap: ap, ape: ape, as: as}
+func NewStateMunch(ai *CAi) *StateMunch {
+	return &StateMunch{ai: ai}
 }
 
 func (s *StateMunch) Type() aistate.StateType {
 	return StateTypeMunch
 }
 
-func (s *StateMunch) Tick(delta uint64) {
-	if len(s.ape.Items) == 0 || s.ap.active {
-		if !s.ap.active {
-			s.ap.SetTarget(vectors.RandomVec2(128.0))
+func (s *StateMunch) findItem() {
+	if len(s.ai.CAiPerception.Items) == 0 {
+		// There is nothing to eat.
+		// Select a random point within 128 meters.
+		if !s.ai.CAiPath.active {
+			s.ai.SetTarget(vectors.RandomVec2(128.0))
 		}
 		return
 	}
+	// Move towards an item.
+	s.it = s.ai.CAiPerception.Items[0]
+	s.ai.SetTarget(s.it.Pos)
+}
 
-	s.as.Eat()
+func (s *StateMunch) consumeItem() {
+	s.it.Location = LocInventory
+	s.ai.CAiState.Eat()
 	// TODO: Message that we're munching, so we'd need to reset hunger.
-	log.Println(fmt.Sprintf("ate %.2f, %.2f", s.ap.Target.X, s.ap.Target.Y))
+	log.Println(fmt.Sprintf("ate %.2f, %.2f", s.ai.Target.X, s.ai.Target.Y))
+	s.giveUpItem()
+}
+
+func (s *StateMunch) giveUpItem() {
+	s.it = nil
+}
+
+func (s *StateMunch) Tick(delta uint64) {
+	if s.it == nil || !s.ai.CanSee(s.it) {
+		s.findItem()
+		return
+	}
+
+	s.consumeItem()
 }
 
 func (s *StateMunch) OnEnter() {
 	log.Printf("entering state %d", s.Type())
-	if len(s.ape.Items) == 0 {
-		// There is nothing to eat.
-		// Select a random point within 128 meters.
-		s.ap.SetTarget(vectors.RandomVec2(128.0))
-		return
-	}
-	// Move towards an item.
-	s.ap.SetTarget(s.ape.Items[0].Pos)
+	s.findItem()
 }
 
 func (s *StateMunch) OnExit() {
 	log.Printf("leaving state %d", s.Type())
+	s.giveUpItem()
 }

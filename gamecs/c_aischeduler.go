@@ -7,10 +7,6 @@ import (
 
 type CAiScheduler struct {
 	*aistate.StateMachine
-
-	as  *CAiState
-	ap  *CAiPath
-	ape *CAiPerception
 }
 
 func newCAiScheduler() *CAiScheduler {
@@ -19,10 +15,12 @@ func newCAiScheduler() *CAiScheduler {
 	}
 }
 
-func (c *CAiScheduler) init(ap *CAiPath, ape *CAiPerception, as *CAiState) {
+func (c *CAiScheduler) init(ai *CAi) {
+	as := ai.CAiState
+
 	// Set up the two states we decide on if we are being threatened.
-	sFlee := NewStateFlee(ap, ape)
-	sAttack := NewStateAttack(ap, ape)
+	sFlee := NewStateFlee(ai)
+	sAttack := NewStateAttack(ai)
 
 	// Allow the transition to return one of multiple different transitions.
 	c.AddAnySelector(func() aistate.State {
@@ -38,7 +36,7 @@ func (c *CAiScheduler) init(ap *CAiPath, ape *CAiPerception, as *CAiState) {
 	})
 
 	// This is the default state in which we determine a random point as target.
-	sFind := NewStateFind(ap, ape)
+	sFind := NewStateFind(ai)
 	c.AddAnyTransition(sFind, func() bool {
 		// Check if there are predators around... if none are around
 		// we can go and find a new random spot to move towards.
@@ -46,7 +44,7 @@ func (c *CAiScheduler) init(ap *CAiPath, ape *CAiPerception, as *CAiState) {
 	})
 
 	// If we get hungry....
-	sMunch := NewStateMunch(ap, ape, as)
+	sMunch := NewStateMunch(ai)
 	c.AddAnyTransition(sMunch, func() bool {
 		// Check if there are predators around and if we're hungry.
 		return !as.states[sThreatened] && as.states[sHungry]
@@ -54,12 +52,8 @@ func (c *CAiScheduler) init(ap *CAiPath, ape *CAiPerception, as *CAiState) {
 
 	// Set our initial state.
 	c.SetState(sFind)
-
-	c.as = as
-	c.ap = ap
-	c.ape = ape
 }
 
-func (c *CAiScheduler) Update(m *CMovable, delta float64) {
+func (c *CAiScheduler) Update(delta float64) {
 	c.Tick(uint64(delta * 100))
 }

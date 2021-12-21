@@ -3,8 +3,7 @@ package gamecs
 type CAiState struct {
 	ape    *CAiPerception
 	states map[string]bool
-
-	eat bool // This is a temp hack to work around the lack of event/command/message system
+	eat    bool // This is a temp hack to work around the lack of event/command/message system
 }
 
 func newCAiState() *CAiState {
@@ -13,16 +12,16 @@ func newCAiState() *CAiState {
 	}
 }
 
-func (c *CAiState) init(ape *CAiPerception) {
-	c.ape = ape
+func (c *CAiState) init(ai *CAi) {
+	c.ape = ai.CAiPerception
 }
 
-func (c *CAiState) Update(m *CMovable, s *CStatus, delta float64) {
+func (c *CAiState) Update(s *CStatus, delta float64) {
 	if c.eat {
 		s.Hunger = 0
 		c.eat = false
 	}
-	c.states[sExhausted] = s.Exhaustion > 100
+	c.states[sExhausted] = s.Exhaustion > 20
 	c.states[sThreatened] = len(c.ape.Entities) > 0
 	c.states[sHungry] = s.Hunger > 10
 }
@@ -34,6 +33,9 @@ func (c *CAiState) Eat() {
 
 const (
 	sThreatened = "threatened"
-	sHungry     = "hungry"
 	sExhausted  = "exhausted"
+	sHungry     = "hungry"
+	sIdle       = "idle"
+	// sTired
+	// sThirsty
 )

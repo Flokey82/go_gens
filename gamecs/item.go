@@ -4,10 +4,20 @@ import (
 	"github.com/Flokey82/go_gens/vectors"
 )
 
+type ItemLocation int
+
+const (
+	LocWorld ItemLocation = iota
+	LocContainer
+	LocInventory
+)
+
 type Item struct {
-	Pos vectors.Vec2
+	Location ItemLocation
+	Pos      vectors.Vec2
 	*ItemType
 	// Owned bool
+	// TODO: Carryable? Maybe weight determines if one can carry it in one hand, two hands, an animal with its beak?
 }
 
 type ItemType struct {

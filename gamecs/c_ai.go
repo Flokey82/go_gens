@@ -13,9 +13,8 @@ func newCAi(w *World) *CAi {
 		CAiScheduler:  newCAiScheduler(),
 		CAiState:      newCAiState(),
 	}
-
-	c.CAiScheduler.init(&c.CAiPath, c.CAiPerception, c.CAiState)
-	c.CAiState.init(c.CAiPerception)
+	c.CAiScheduler.init(c)
+	c.CAiState.init(c)
 	return c
 }
 
@@ -24,10 +23,10 @@ func (c *CAi) Update(m *CMovable, s *CStatus, delta float64) {
 	c.CAiPerception.Update(m, delta)
 
 	// Update states.
-	c.CAiState.Update(m, s, delta)
+	c.CAiState.Update(s, delta)
 
 	// Re-evaluate current plans, tasks, or states.
-	c.CAiScheduler.Update(m, delta)
+	c.CAiScheduler.Update(delta)
 
 	// Update any path charted.
 	c.CAiPath.Update(m, delta)
