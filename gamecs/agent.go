@@ -20,7 +20,7 @@ func (w *World) NewChar() *Agent {
 }
 
 func newAgent(w *World) *Agent {
-	return &Agent{
+	a := &Agent{
 		id: w.mgr.NextID(),
 		CMovable: newCMovable(vectors.Vec2{
 			X: float64(rand.Intn(w.Height)),
@@ -29,6 +29,11 @@ func newAgent(w *World) *Agent {
 		CStatus: newCStatus(),
 		CAi:     newCAi(w),
 	}
+	a.SetLocation("home", vectors.Vec2{
+		X: float64(rand.Intn(w.Height)),
+		Y: float64(rand.Intn(w.Width)),
+	})
+	return a
 }
 
 func (c *Agent) ID() int {

@@ -23,7 +23,7 @@ func (c *CStatus) GetCStatus() *CStatus {
 
 const (
 	hungerRate     = 1.0
-	exhaustionRate = 0.2
+	exhaustionRate = 0.8
 )
 
 func (c *CStatus) Update(delta float64) {

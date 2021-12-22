@@ -9,7 +9,10 @@ import (
 
 const StateTypeMunch aistate.StateType = 3
 
-// StateMunch
+// StateMunch will be active if the agent is hungry.
+// In this state an agent will wander around until they find a food source.
+// The agent will approach the food source and 'pick it up', which will reset
+// their hunger and remove the food source from the world map.
 type StateMunch struct {
 	ai  *CAi
 	ait *aitree.Tree

@@ -4,6 +4,7 @@ type CAi struct {
 	*CAiPerception
 	*CAiScheduler
 	*CAiState
+	*CAiMemory
 	CAiPath
 }
 
@@ -12,9 +13,11 @@ func newCAi(w *World) *CAi {
 		CAiPerception: newCAiPerception(w),
 		CAiScheduler:  newCAiScheduler(),
 		CAiState:      newCAiState(),
+		CAiMemory:     newCAiMemory(),
 	}
 	c.CAiScheduler.init(c)
 	c.CAiState.init(c)
+	c.CAiMemory.init(c)
 	return c
 }
 

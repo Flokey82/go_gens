@@ -36,19 +36,25 @@ func (c *CAiScheduler) init(ai *CAi) {
 		return as.states[sThreatened]
 	})
 
+	// If we get hungry....
+	sMunch := NewStateMunch(ai)
+	c.AddAnyTransition(sMunch, func() bool {
+		// Check if there are predators around and if we're hungry.
+		return as.states[sHungry]
+	})
+
+	// If we get sleepy....
+	sRest := NewStateRest(ai)
+	c.AddAnyTransition(sRest, func() bool {
+		return as.states[sExhausted]
+	})
+
 	// This is the default state in which we determine a random point as target.
 	sFind := NewStateFind(ai)
 	c.AddAnyTransition(sFind, func() bool {
 		// Check if there are predators around... if none are around
 		// we can go and find a new random spot to move towards.
 		return !as.states[sThreatened] && !as.states[sHungry]
-	})
-
-	// If we get hungry....
-	sMunch := NewStateMunch(ai)
-	c.AddAnyTransition(sMunch, func() bool {
-		// Check if there are predators around and if we're hungry.
-		return !as.states[sThreatened] && as.states[sHungry]
 	})
 
 	// Set our initial state.
