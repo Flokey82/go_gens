@@ -16,6 +16,7 @@ func newCAiScheduler() *CAiScheduler {
 }
 
 func (c *CAiScheduler) init(ai *CAi) {
+	// TODO: Move registration to state implementation?
 	as := ai.CAiState
 
 	// Set up the two states we decide on if we are being threatened.
