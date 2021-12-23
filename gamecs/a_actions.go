@@ -67,16 +67,42 @@ func (l *ActionMoveTo) Tick() aitree.State {
 	return aitree.StateRunning
 }
 
-type ActionConsumeItem struct {
+type ActionPickUpItem struct {
 	ai       *CAi
-	FailFunc func() bool
 	ItemFunc func() *Item
 }
 
-func newActionConsumeItem(ai *CAi, ff func() bool, f func() *Item) *ActionConsumeItem {
+func newActionPickUpItem(ai *CAi, f func() *Item) *ActionPickUpItem {
+	return &ActionPickUpItem{
+		ai:       ai,
+		ItemFunc: f,
+	}
+}
+
+func (l *ActionPickUpItem) Tick() aitree.State {
+	log.Println("ActionPickUpItem")
+
+	it := l.ItemFunc()
+	if !l.ai.CanSee(it) {
+		return aitree.StateFailure // We must be too far away
+	}
+	a := l.ai.w.mgr.GetEntityFromID(l.ai.id)
+	if !a.CInventory.Add(it) {
+		return aitree.StateFailure
+	}
+	// TODO: Message that we're munching, so we'd need to reset hunger.
+	log.Println(fmt.Sprintf("ate %.2f, %.2f", l.ai.Target.X, l.ai.Target.Y))
+	return aitree.StateSuccess
+}
+
+type ActionConsumeItem struct {
+	ai       *CAi
+	ItemFunc func() *Item
+}
+
+func newActionConsumeItem(ai *CAi, f func() *Item) *ActionConsumeItem {
 	return &ActionConsumeItem{
 		ai:       ai,
-		FailFunc: ff,
 		ItemFunc: f,
 	}
 }
@@ -85,14 +111,33 @@ func (l *ActionConsumeItem) Tick() aitree.State {
 	log.Println("ActionConsumeItem")
 
 	it := l.ItemFunc()
-	if it == nil || !l.ai.CanSee(it) {
+	if it == nil {
 		return aitree.StateFailure
 	}
-
-	it.Location = LocInventory
-	l.ai.CAiState.Eat()
+	l.ai.w.mgr.RemoveItem(it)
+	l.ai.CAiStatus.Eat()
 	// TODO: Message that we're munching, so we'd need to reset hunger.
 	log.Println(fmt.Sprintf("ate %.2f, %.2f", l.ai.Target.X, l.ai.Target.Y))
 
 	return aitree.StateSuccess
+}
+
+type ActionIsTrue struct {
+	ai   *CAi
+	Eval func() bool
+}
+
+func newActionIsTrue(ai *CAi, ef func() bool) *ActionIsTrue {
+	return &ActionIsTrue{
+		ai:   ai,
+		Eval: ef,
+	}
+}
+
+func (l *ActionIsTrue) Tick() aitree.State {
+	log.Println("ActionIsTrue")
+	if l.Eval() {
+		return aitree.StateSuccess
+	}
+	return aitree.StateFailure
 }

@@ -24,6 +24,19 @@ func (m *Manager) RegisterItem(it *Item) {
 	m.items = append(m.items, it)
 }
 
+func (m *Manager) RemoveItem(it *Item) {
+	delete(m.itemsByID, it.ID())
+	for i, in := range m.items {
+		if in == it {
+			m.items = append(m.items[:i], m.items[i+1:]...)
+			if it.Location != LocWorld {
+				m.GetEntityFromID(it.LocationID).CInventory.RemoveID(it.id)
+			}
+			return
+		}
+	}
+}
+
 func (m *Manager) Entities() []*Agent {
 	return m.entities
 }

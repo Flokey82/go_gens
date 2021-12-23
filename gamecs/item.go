@@ -13,9 +13,10 @@ const (
 )
 
 type Item struct {
-	id       int
-	Location ItemLocation
-	Pos      vectors.Vec2
+	id         int
+	Location   ItemLocation
+	LocationID int
+	Pos        vectors.Vec2
 	*ItemType
 	// Owned bool
 	// TODO: Carryable? Maybe weight determines if one can carry it in one hand, two hands, an animal with its beak?

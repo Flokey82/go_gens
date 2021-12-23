@@ -17,8 +17,8 @@ func newCAiScheduler() *CAiScheduler {
 
 func (c *CAiScheduler) init(ai *CAi) {
 	// Set up the two states we decide on if we are being threatened.
-	sFlee := NewStateFlee(ai)
-	sAttack := NewStateAttack(ai)
+	sFlee := NewStateFlee(ai)     // Flee from predator
+	sAttack := NewStateAttack(ai) // Attack
 
 	// Allow the transition to return one of multiple different transitions.
 	c.AddAnySelector(func() aistate.State {
@@ -29,29 +29,31 @@ func (c *CAiScheduler) init(ai *CAi) {
 		}
 		return sAttack
 	}, func() bool {
-		// Check if there are predators around.
-		return ai.CAiState.states[sThreatened]
+		return ai.CAiStatus.states[sThreatened]
 	})
 
 	// If we get hungry....
-	sMunch := NewStateMunch(ai)
-	c.AddAnyTransition(sMunch, func() bool {
-		// Check if there are predators around and if we're hungry.
-		return ai.CAiState.states[sHungry]
+	sFind := NewStateFindFood(ai) // Find food
+	sMunch := NewStateEatFood(ai) // Eat food
+	c.AddAnySelector(func() aistate.State {
+		if ai.CAiStatus.HasFood() {
+			return sMunch // If we have food, we can go munch.
+		}
+		return sFind // ... otherwise we have to find food first.
+	}, func() bool {
+		return ai.CAiStatus.states[sHungry]
 	})
 
 	// If we get sleepy....
 	sRest := NewStateRest(ai)
 	c.AddAnyTransition(sRest, func() bool {
-		return ai.CAiState.states[sExhausted]
+		return ai.CAiStatus.states[sExhausted]
 	})
 
-	// This is the default state in which we determine a random point as target.
-	sFind := NewStateFind(ai)
 	c.AddAnyTransition(sFind, func() bool {
 		// Check if there are predators around... if none are around
 		// we can go and find a new random spot to move towards.
-		return !ai.CAiState.states[sThreatened] && !ai.CAiState.states[sHungry]
+		return !ai.CAiStatus.states[sThreatened] && !ai.CAiStatus.states[sHungry]
 	})
 
 	// Set our initial state.

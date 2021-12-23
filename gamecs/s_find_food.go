@@ -7,28 +7,30 @@ import (
 	"log"
 )
 
-const StateTypeMunch aistate.StateType = 3
+const StateTypeFind aistate.StateType = 0
 
-// StateMunch will be active if the agent is hungry.
+// StateFind is active when an agent is hungry and we don't have any food.
 // In this state an agent will wander around until they find a food source.
 // The agent will approach the food source and 'pick it up', which will reset
 // their hunger and remove the food source from the world map.
-type StateMunch struct {
+
+type StateFindFood struct {
 	ai  *CAi
 	ait *aitree.Tree
 	it  *Item
 }
 
-func NewStateMunch(ai *CAi) *StateMunch {
-	s := &StateMunch{
+func NewStateFindFood(ai *CAi) *StateFindFood {
+	s := &StateFindFood{
 		ai:  ai,
 		ait: aitree.New(),
 	}
 
-	fci := aitree.NewSequence("find and consume item")
+	// TODO: When inventory is full, head home!
+	fci := aitree.NewSequence("find and pick up item")
 	s.ait.Root = fci
 	aw := newActionWander(ai, func() bool {
-		if s.hasItem() {
+		if s.foundItem() {
 			return true
 		}
 		if len(s.ai.CAiPerception.Items) > 0 {
@@ -44,35 +46,35 @@ func NewStateMunch(ai *CAi) *StateMunch {
 	})
 	fci.Append(am)
 
-	ac := newActionConsumeItem(ai, s.needItem, func() *Item {
+	ac := newActionPickUpItem(ai, func() *Item {
 		return s.it
 	})
 	fci.Append(ac)
 	return s
 }
-
-func (s *StateMunch) needItem() bool {
-	return !s.hasItem()
+func (s *StateFindFood) needItem() bool {
+	return !s.foundItem()
 }
 
-func (s *StateMunch) hasItem() bool {
+func (s *StateFindFood) foundItem() bool {
 	return s.it != nil && s.ai.CanSee(s.it)
 }
 
-func (s *StateMunch) Type() aistate.StateType {
-	return StateTypeMunch
+func (s *StateFindFood) Type() aistate.StateType {
+	return StateTypeFind
 }
 
-func (s *StateMunch) Tick(delta uint64) {
+func (s *StateFindFood) Tick(delta uint64) {
 	if s.ait.Tick() == aitree.StateFailure {
-		log.Println("Munch failed!!")
+		log.Println("Find failed!!")
 	}
 }
 
-func (s *StateMunch) OnEnter() {
+func (s *StateFindFood) OnEnter() {
 	log.Printf("entering state %d", s.Type())
 }
 
-func (s *StateMunch) OnExit() {
+func (s *StateFindFood) OnExit() {
 	log.Printf("leaving state %d", s.Type())
+	// TODO: Reset tree.
 }

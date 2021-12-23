@@ -6,7 +6,7 @@ type CAi struct {
 
 	*CAiPerception
 	*CAiScheduler
-	*CAiState
+	*CAiStatus
 	*CAiMemory
 	*CAiPath
 }
@@ -17,13 +17,13 @@ func newCAi(w *World, id int) *CAi {
 		w:             w,
 		CAiPerception: newCAiPerception(),
 		CAiScheduler:  newCAiScheduler(),
-		CAiState:      newCAiState(),
+		CAiStatus:     newCAiStatus(),
 		CAiMemory:     newCAiMemory(),
 		CAiPath:       newCAiPath(),
 	}
 	c.CAiPerception.init(c)
 	c.CAiScheduler.init(c)
-	c.CAiState.init(c)
+	c.CAiStatus.init(c)
 	c.CAiMemory.init(c)
 	c.CAiPath.init(c)
 	return c
@@ -34,7 +34,7 @@ func (c *CAi) Update(m *CMovable, s *CStatus, delta float64) {
 	c.CAiPerception.Update(m, delta)
 
 	// Update states.
-	c.CAiState.Update(s, delta)
+	c.CAiStatus.Update(s, delta)
 
 	// Re-evaluate current plans, tasks, or states.
 	c.CAiScheduler.Update(delta)

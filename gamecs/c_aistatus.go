@@ -2,7 +2,7 @@ package gamecs
 
 import "log"
 
-type CAiState struct {
+type CAiStatus struct {
 	ai     *CAi
 	ape    *CAiPerception
 	states map[string]bool
@@ -10,18 +10,18 @@ type CAiState struct {
 	sleep  bool
 }
 
-func newCAiState() *CAiState {
-	return &CAiState{
+func newCAiStatus() *CAiStatus {
+	return &CAiStatus{
 		states: make(map[string]bool),
 	}
 }
 
-func (c *CAiState) init(ai *CAi) {
+func (c *CAiStatus) init(ai *CAi) {
 	c.ai = ai
 	c.ape = ai.CAiPerception
 }
 
-func (c *CAiState) Update(s *CStatus, delta float64) {
+func (c *CAiStatus) Update(s *CStatus, delta float64) {
 	if c.eat {
 		s.Hunger = 0
 		c.eat = false
@@ -35,13 +35,18 @@ func (c *CAiState) Update(s *CStatus, delta float64) {
 	c.states[sHungry] = s.Hunger > 10
 }
 
-func (c *CAiState) Eat() {
+func (c *CAiStatus) HasFood() bool {
+	a := c.ai.w.mgr.GetEntityFromID(c.ai.id)
+	return a.CInventory.Find("food") != nil
+}
+
+func (c *CAiStatus) Eat() {
 	log.Println("Eat!")
 	// This is a hack to reset hunger.
 	c.eat = true
 }
 
-func (c *CAiState) Sleep() {
+func (c *CAiStatus) Sleep() {
 	log.Println("Sleep!")
 	// This is a hack to reset exhaustion.
 	c.sleep = true

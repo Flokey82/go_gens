@@ -9,6 +9,7 @@ type Agent struct {
 	id int
 	*CMovable
 	*CStatus
+	*CInventory
 	*CAi
 }
 
@@ -26,12 +27,13 @@ func newAgent(w *World) *Agent {
 			X: float64(rand.Intn(w.Height)),
 			Y: float64(rand.Intn(w.Width)),
 		}),
-		CStatus: newCStatus(),
-		CAi:     newCAi(w, id),
+		CStatus:    newCStatus(),
+		CInventory: newCInventory(w, id),
+		CAi:        newCAi(w, id),
 	}
 	a.SetLocation("home", vectors.Vec2{
-		X: float64(rand.Intn(w.Height)),
-		Y: float64(rand.Intn(w.Width)),
+		X: float64(rand.Intn(w.Height / 2)),
+		Y: float64(rand.Intn(w.Width / 2)),
 	})
 	return a
 }
