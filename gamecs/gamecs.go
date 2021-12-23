@@ -10,14 +10,12 @@ import (
 )
 
 type World struct {
-	c       []*Agent
-	items   []*Item
 	images  []*image.Paletted // Generated frame used to construct the GIF.
 	palette []color.Color     // Default color palette.
 	delays  []int             // Delay for each individual frame (0 for now).
 	Width   int
 	Height  int
-	mgr     *AgentMgr
+	mgr     *Manager
 }
 
 func New() *World {
@@ -31,7 +29,7 @@ func New() *World {
 		Width:  128,
 		Height: 128,
 	}
-	w.mgr = newAgentMgr()
+	w.mgr = newManager()
 	w.placeFood()
 	return w
 }
@@ -40,16 +38,11 @@ func (w *World) placeFood() {
 	itFood := newItemType("goulash")
 	itFood.Tags = append(itFood.Tags, "food")
 	for i := 0; i < 100; i++ {
-		w.items = append(w.items, itFood.New(vectors.Vec2{
+		w.mgr.RegisterItem(itFood.New(w, vectors.Vec2{
 			X: float64(rand.Intn(w.Height)),
 			Y: float64(rand.Intn(w.Width)),
 		}))
 	}
-}
-
-func (w *World) Add(c *Agent) {
-	w.c = append(w.c, c)
-	w.mgr.RegisterEntity(c)
 }
 
 func (w *World) Update(delta float64) {
@@ -73,7 +66,7 @@ func (w *World) storeGifFrame() {
 			img.Set(int(wp.X), int(wp.Y), color.RGBA{0xFF, 0xFF, 0x00, 255})
 		}
 	}
-	for _, c := range w.items {
+	for _, c := range w.mgr.items {
 		if c.Location != LocWorld {
 			continue
 		}

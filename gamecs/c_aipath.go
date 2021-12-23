@@ -12,12 +12,21 @@ const (
 
 // CAiPath is a path planning component.
 type CAiPath struct {
+	ai              *CAi
 	Waypoints       []vectors.Vec2 // Current list of waypoints.
 	WaypointCurrent int            // Current index in the waypoints array.
 	Target          vectors.Vec2   // Our current target.
 	active          bool           // We are actively moving towards a target.
 	running         bool           // We move at running speed.
 	planned         bool           // We have currently waypoints planned.
+}
+
+func newCAiPath() *CAiPath {
+	return new(CAiPath)
+}
+
+func (c *CAiPath) init(ai *CAi) {
+	c.ai = ai
 }
 
 // resetWaypoints resets all waypoints that we have planned.

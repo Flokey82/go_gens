@@ -13,11 +13,16 @@ const (
 )
 
 type Item struct {
+	id       int
 	Location ItemLocation
 	Pos      vectors.Vec2
 	*ItemType
 	// Owned bool
 	// TODO: Carryable? Maybe weight determines if one can carry it in one hand, two hands, an animal with its beak?
+}
+
+func (it *Item) ID() int {
+	return it.id
 }
 
 type ItemType struct {
@@ -33,9 +38,10 @@ func newItemType(name string) *ItemType {
 	}
 }
 
-func (i *ItemType) New(pos vectors.Vec2) *Item {
+func (i *ItemType) New(w *World, pos vectors.Vec2) *Item {
 	return &Item{
 		ItemType: i,
 		Pos:      pos,
+		id:       w.mgr.NextID(),
 	}
 }

@@ -6,28 +6,28 @@ import (
 )
 
 type Agent struct {
+	id int
 	*CMovable
 	*CStatus
 	*CAi
-
-	id int
 }
 
 func (w *World) NewChar() *Agent {
 	c := newAgent(w)
-	w.Add(c)
+	w.mgr.RegisterEntity(c)
 	return c
 }
 
 func newAgent(w *World) *Agent {
+	id := w.mgr.NextID()
 	a := &Agent{
-		id: w.mgr.NextID(),
+		id: id,
 		CMovable: newCMovable(vectors.Vec2{
 			X: float64(rand.Intn(w.Height)),
 			Y: float64(rand.Intn(w.Width)),
 		}),
 		CStatus: newCStatus(),
-		CAi:     newCAi(w),
+		CAi:     newCAi(w, id),
 	}
 	a.SetLocation("home", vectors.Vec2{
 		X: float64(rand.Intn(w.Height)),

@@ -1,23 +1,31 @@
 package gamecs
 
 type CAi struct {
+	id int
+	w  *World
+
 	*CAiPerception
 	*CAiScheduler
 	*CAiState
 	*CAiMemory
-	CAiPath
+	*CAiPath
 }
 
-func newCAi(w *World) *CAi {
+func newCAi(w *World, id int) *CAi {
 	c := &CAi{
-		CAiPerception: newCAiPerception(w),
+		id:            id,
+		w:             w,
+		CAiPerception: newCAiPerception(),
 		CAiScheduler:  newCAiScheduler(),
 		CAiState:      newCAiState(),
 		CAiMemory:     newCAiMemory(),
+		CAiPath:       newCAiPath(),
 	}
+	c.CAiPerception.init(c)
 	c.CAiScheduler.init(c)
 	c.CAiState.init(c)
 	c.CAiMemory.init(c)
+	c.CAiPath.init(c)
 	return c
 }
 

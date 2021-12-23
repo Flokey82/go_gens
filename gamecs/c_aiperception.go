@@ -8,17 +8,22 @@ import (
 const perceptionDist = 4.0
 
 type CAiPerception struct {
+	ai       *CAi
+	w        *World
 	Entities []*Agent
 	Items    []*Item
-	w        *World
 	maxDist  float64
 }
 
-func newCAiPerception(w *World) *CAiPerception {
+func newCAiPerception() *CAiPerception {
 	return &CAiPerception{
-		w:       w,
 		maxDist: perceptionDist,
 	}
+}
+
+func (c *CAiPerception) init(ai *CAi) {
+	c.ai = ai
+	c.w = ai.w
 }
 
 func (c *CAiPerception) CanSeeEntity(it *Agent) bool {
@@ -42,7 +47,7 @@ func (c *CAiPerception) CanSee(it *Item) bool {
 func (c *CAiPerception) Update(m *CMovable, delta float64) {
 	// Update perceived agents.
 	c.Entities = nil
-	for _, ce := range c.w.c {
+	for _, ce := range c.w.mgr.Entities() {
 		if ce.CMovable != m && calcDist(ce.CMovable.Pos, m.Pos) < c.maxDist {
 			c.Entities = append(c.Entities, ce)
 		}
@@ -50,7 +55,7 @@ func (c *CAiPerception) Update(m *CMovable, delta float64) {
 
 	// Update perceived items.
 	c.Items = nil
-	for _, it := range c.w.items {
+	for _, it := range c.w.mgr.Items() {
 		if it.Location == LocWorld && calcDist(it.Pos, m.Pos) < c.maxDist {
 			c.Items = append(c.Items, it)
 		}

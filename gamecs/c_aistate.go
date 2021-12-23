@@ -3,6 +3,7 @@ package gamecs
 import "log"
 
 type CAiState struct {
+	ai     *CAi
 	ape    *CAiPerception
 	states map[string]bool
 	eat    bool // This is a temp hack to work around the lack of event/command/message system
@@ -16,6 +17,7 @@ func newCAiState() *CAiState {
 }
 
 func (c *CAiState) init(ai *CAi) {
+	c.ai = ai
 	c.ape = ai.CAiPerception
 }
 
