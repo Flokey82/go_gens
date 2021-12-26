@@ -11,15 +11,16 @@ type CInventory struct {
 	id int
 }
 
-func newCInventory(w *World, id int) *CInventory {
+func newCInventory(w *World, id, size int) *CInventory {
 	return &CInventory{
-		w:  w,
-		id: id,
+		w:    w,
+		id:   id,
+		Size: size,
 	}
 }
 
 func (in *CInventory) IsFull() bool {
-	return false
+	return len(in.Slots) >= in.Size
 }
 
 // Add item to inventory... return success.
@@ -32,6 +33,16 @@ func (in *CInventory) Add(it *Item) bool {
 	it.LocationID = in.id
 	in.Slots = append(in.Slots, it)
 	return true
+}
+
+// Has itemType in inventory... return success.
+func (in *CInventory) Has(itt *ItemType) bool {
+	for _, it := range in.Slots {
+		if it.ItemType == itt {
+			return true
+		}
+	}
+	return false
 }
 
 // Equip item from inventory... return success.
@@ -78,6 +89,17 @@ func (in *CInventory) RemoveID(id int) bool {
 		}
 	}
 	return false
+}
+
+func (in *CInventory) TransferAll(to *CInventory) bool {
+	for len(in.Slots) > 0 {
+		it := in.Slots[0]
+		if !to.Add(it) { // Out of storage?
+			return false
+		}
+		in.RemoveID(it.id)
+	}
+	return true
 }
 
 type BodySlot int

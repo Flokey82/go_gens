@@ -32,11 +32,14 @@ func (c *CAiStatus) Update(s *CStatus, delta float64) {
 	}
 	c.states[sExhausted] = s.Exhaustion > 10
 	c.states[sThreatened] = len(c.ape.Entities) > 0
-	c.states[sHungry] = s.Hunger > 10
+	c.states[sHungry] = s.Hunger > 20
 }
 
 func (c *CAiStatus) HasFood() bool {
 	a := c.ai.w.mgr.GetEntityFromID(c.ai.id)
+	if a.CInventory.Find("food") != nil {
+		log.Println(a.CInventory.Find("food"))
+	}
 	return a.CInventory.Find("food") != nil
 }
 

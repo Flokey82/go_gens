@@ -1,9 +1,5 @@
 package gamecs
 
-type iCStatus interface {
-	GetCStatus() *CStatus
-}
-
 type CStatus struct {
 	Health     int
 	Exhaustion float64
@@ -17,13 +13,9 @@ func newCStatus() *CStatus {
 	}
 }
 
-func (c *CStatus) GetCStatus() *CStatus {
-	return c
-}
-
 const (
-	hungerRate     = 1.0
-	exhaustionRate = 0.8
+	hungerRate     = 0.5
+	exhaustionRate = 0.4
 )
 
 func (c *CStatus) Update(delta float64) {

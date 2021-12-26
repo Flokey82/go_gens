@@ -3,6 +3,7 @@ package gamecs
 import (
 	"fmt"
 	"log"
+	"sort"
 )
 
 const perceptionDist = 4.0
@@ -52,6 +53,9 @@ func (c *CAiPerception) Update(m *CMovable, delta float64) {
 			c.Entities = append(c.Entities, ce)
 		}
 	}
+	sort.Slice(c.Entities, func(i, j int) bool {
+		return calcDist(c.Entities[i].Pos, m.Pos) < calcDist(c.Entities[j].Pos, m.Pos)
+	})
 
 	// Update perceived items.
 	c.Items = nil
@@ -60,5 +64,8 @@ func (c *CAiPerception) Update(m *CMovable, delta float64) {
 			c.Items = append(c.Items, it)
 		}
 	}
+	sort.Slice(c.Items, func(i, j int) bool {
+		return calcDist(c.Items[i].Pos, m.Pos) < calcDist(c.Items[j].Pos, m.Pos)
+	})
 	log.Println(fmt.Sprintf("saw %d Entities, %d Items", len(c.Entities), len(c.Items)))
 }

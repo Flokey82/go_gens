@@ -36,7 +36,7 @@ func (s *StateRest) OnEnter() {
 	// TODO: Recall home location.
 	// - Set navigation target
 	// - On arrival: rest, reset exhaustion
-	loc := s.ai.GetLocation("home")
+	loc := s.ai.GetPosition("home")
 	s.ai.SetTarget(loc)
 }
 

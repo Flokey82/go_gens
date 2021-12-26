@@ -32,6 +32,12 @@ func (c *CAiScheduler) init(ai *CAi) {
 		return ai.CAiStatus.states[sThreatened]
 	})
 
+	// Empty our inventory if it is full.
+	sStore := NewStateStoreFood(ai)
+	c.AddAnyTransition(sStore, func() bool {
+		return ai.w.mgr.GetEntityFromID(ai.id).CInventory.IsFull()
+	})
+
 	// If we get hungry....
 	sFind := NewStateFindFood(ai) // Find food
 	sMunch := NewStateEatFood(ai) // Eat food
@@ -50,11 +56,10 @@ func (c *CAiScheduler) init(ai *CAi) {
 		return ai.CAiStatus.states[sExhausted]
 	})
 
-	c.AddAnyTransition(sFind, func() bool {
-		// Check if there are predators around... if none are around
-		// we can go and find a new random spot to move towards.
-		return !ai.CAiStatus.states[sThreatened] && !ai.CAiStatus.states[sHungry]
-	})
+	//c.AddAnyTransition(sFind, func() bool {
+	//	// Always make sure we have food.
+	//	return !ai.CAiStatus.HasFood()
+	//})
 
 	// Set our initial state.
 	c.SetState(sFind)

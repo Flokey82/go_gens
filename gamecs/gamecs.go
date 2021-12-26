@@ -1,10 +1,12 @@
 package gamecs
 
 import (
+	"fmt"
 	"github.com/Flokey82/go_gens/vectors"
 	"image"
 	"image/color"
 	"image/gif"
+	"log"
 	"math/rand"
 	"os"
 )
@@ -35,9 +37,8 @@ func New() *World {
 }
 
 func (w *World) placeFood() {
-	itFood := newItemType("goulash")
-	itFood.Tags = append(itFood.Tags, "food")
-	for i := 0; i < 100; i++ {
+	itFood := NewItemType("goulash", "food")
+	for i := 0; i < 200; i++ {
 		w.mgr.RegisterItem(itFood.New(w, vectors.Vec2{
 			X: float64(rand.Intn(w.Height)),
 			Y: float64(rand.Intn(w.Width)),
@@ -56,6 +57,8 @@ func (w *World) storeGifFrame() {
 	img := image.NewPaletted(image.Rect(0, 0, w.Width, w.Height), w.palette)
 	w.images = append(w.images, img)
 	w.delays = append(w.delays, 0)
+
+	// Draw all entities and their paths.
 	for _, c := range w.mgr.Entities() {
 		img.Set(int(c.Pos.X), int(c.Pos.Y), color.RGBA{0xFF, 0x00, 0x00, 255})
 		img.Set(int(c.Target.X), int(c.Target.Y), color.RGBA{0x00, 0xFF, 0x00, 255})
@@ -66,16 +69,29 @@ func (w *World) storeGifFrame() {
 			img.Set(int(wp.X), int(wp.Y), color.RGBA{0xFF, 0xFF, 0x00, 255})
 		}
 	}
+
+	// Draw all items that are visible.
 	for _, c := range w.mgr.items {
 		if c.Location != LocWorld {
 			continue
 		}
 		img.Set(int(c.Pos.X), int(c.Pos.Y), color.RGBA{0xff, 0x00, 0xff, 255})
 	}
+
+	// Draw all locations / homes.
+	for _, loc := range w.mgr.locations {
+		img.Set(int(loc.Pos.X), int(loc.Pos.Y), color.RGBA{0x00, 0x00, 0xff, 255})
+	}
 }
 
 // Export all frames to a GIF under the given path.
 func (w *World) ExportGif(path string) error {
+	for _, loc := range w.mgr.locations {
+		log.Println(fmt.Sprintf("loc %d in storage", len(loc.CInventory.Slots)))
+	}
+	for _, loc := range w.mgr.entities {
+		log.Println(fmt.Sprintf("age %d in storage", len(loc.CInventory.Slots)))
+	}
 	f, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE, 0600)
 	if err != nil {
 		return err

@@ -1,18 +1,32 @@
 package gamecs
 
+import "log"
+
 type Manager struct {
-	entitiesByID map[int]*Agent
-	entities     []*Agent
-	itemsByID    map[int]*Item
-	items        []*Item
-	nextID       int
+	entitiesByID  map[int]*Agent
+	entities      []*Agent
+	itemsByID     map[int]*Item
+	items         []*Item
+	locationsByID map[int]*Location
+	locations     []*Location
+	nextID        int
 }
 
 func newManager() *Manager {
 	return &Manager{
-		entitiesByID: make(map[int]*Agent),
-		itemsByID:    make(map[int]*Item),
+		entitiesByID:  make(map[int]*Agent),
+		itemsByID:     make(map[int]*Item),
+		locationsByID: make(map[int]*Location),
 	}
+}
+
+func (m *Manager) Locations() []*Location {
+	return m.locations
+}
+
+func (m *Manager) RegisterLocation(loc *Location) {
+	m.locationsByID[loc.ID()] = loc
+	m.locations = append(m.locations, loc)
 }
 
 func (m *Manager) Items() []*Item {
@@ -31,6 +45,8 @@ func (m *Manager) RemoveItem(it *Item) {
 			m.items = append(m.items[:i], m.items[i+1:]...)
 			if it.Location != LocWorld {
 				m.GetEntityFromID(it.LocationID).CInventory.RemoveID(it.id)
+			} else {
+				log.Println("removed world item!!!!")
 			}
 			return
 		}

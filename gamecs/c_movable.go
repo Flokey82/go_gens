@@ -6,10 +6,6 @@ import (
 	"log"
 )
 
-type iCMovable interface {
-	GetCMovable() *CMovable
-}
-
 // CMovable is a movable component.
 type CMovable struct {
 	Pos   vectors.Vec2
@@ -20,10 +16,6 @@ func newCMovable(pos vectors.Vec2) *CMovable {
 	return &CMovable{
 		Pos: pos,
 	}
-}
-
-func (c *CMovable) GetCMovable() *CMovable {
-	return c
 }
 
 func (c *CMovable) Update(delta float64) {

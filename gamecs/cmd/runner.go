@@ -10,8 +10,22 @@ import (
 func main() {
 	w := gamecs.New()
 
+	itGrain := gamecs.NewItemType("grain", "grain")
+	itBread := gamecs.NewItemType("bread", "food")
+	itBread.Requires = []*gamecs.ItemType{itGrain}
+	pBaker := gamecs.NewProfessionType("baker")
+	pBaker.CanCraft = []*gamecs.ItemType{itBread}
+	pFarmer := gamecs.NewProfessionType("farmer")
+	pFarmer.CanCraft = []*gamecs.ItemType{itGrain}
+
+	a1 := w.NewChar()
+	a1.SetProfession(w, pBaker)
+
+	a2 := w.NewChar()
+	a2.SetProfession(w, pFarmer)
+
 	// Add a number of characters.
-	for i := 0; i < 10; i++ {
+	for i := 0; i < 5; i++ {
 		w.NewChar()
 	}
 

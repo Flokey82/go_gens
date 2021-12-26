@@ -13,13 +13,11 @@ const (
 )
 
 type Item struct {
-	id         int
-	Location   ItemLocation
-	LocationID int
-	Pos        vectors.Vec2
-	*ItemType
-	// Owned bool
-	// TODO: Carryable? Maybe weight determines if one can carry it in one hand, two hands, an animal with its beak?
+	id         int          // ID of the item
+	Location   ItemLocation // Type of location (world, inventory, ...)
+	LocationID int          // ID of the entity if in inventory
+	Pos        vectors.Vec2 // World position if in world
+	*ItemType               // Base information
 }
 
 func (it *Item) ID() int {
@@ -30,12 +28,14 @@ type ItemType struct {
 	Name       string
 	Tags       []string       // Food, Weapon
 	Properties map[string]int // Price, weight, damage, ...
+	Requires   []*ItemType    // Requires items to craft
 }
 
-func newItemType(name string) *ItemType {
+func NewItemType(name string, tags ...string) *ItemType {
 	return &ItemType{
 		Name:       name,
 		Properties: make(map[string]int),
+		Tags:       tags,
 	}
 }
 

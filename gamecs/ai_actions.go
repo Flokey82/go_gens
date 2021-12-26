@@ -91,7 +91,7 @@ func (l *ActionPickUpItem) Tick() aitree.State {
 		return aitree.StateFailure
 	}
 	// TODO: Message that we're munching, so we'd need to reset hunger.
-	log.Println(fmt.Sprintf("ate %.2f, %.2f", l.ai.Target.X, l.ai.Target.Y))
+	log.Println(fmt.Sprintf("picked up %.2f, %.2f", l.ai.Target.X, l.ai.Target.Y))
 	return aitree.StateSuccess
 }
 
@@ -118,6 +118,32 @@ func (l *ActionConsumeItem) Tick() aitree.State {
 	l.ai.CAiStatus.Eat()
 	// TODO: Message that we're munching, so we'd need to reset hunger.
 	log.Println(fmt.Sprintf("ate %.2f, %.2f", l.ai.Target.X, l.ai.Target.Y))
+
+	return aitree.StateSuccess
+}
+
+type ActionTransferItems struct {
+	ai         *CAi
+	TargetFunc func() *CInventory
+}
+
+func newActionTransferItems(ai *CAi, f func() *CInventory) *ActionTransferItems {
+	return &ActionTransferItems{
+		ai:         ai,
+		TargetFunc: f,
+	}
+}
+
+func (l *ActionTransferItems) Tick() aitree.State {
+	log.Println("ActionTransferItems")
+
+	it := l.TargetFunc()
+	if it == nil {
+		return aitree.StateFailure
+	}
+	if !l.ai.w.mgr.GetEntityFromID(l.ai.id).CInventory.TransferAll(it) {
+		return aitree.StateFailure
+	}
 
 	return aitree.StateSuccess
 }
