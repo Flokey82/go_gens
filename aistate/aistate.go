@@ -4,7 +4,6 @@ package aistate
 // StateMachine implements a simple state machine.
 type StateMachine struct {
 	Current            State
-	Default            State
 	transitions        map[StateType][]*Transition
 	currentTransitions []*Transition
 	anyTransitions     []*Transition
@@ -34,8 +33,6 @@ func (s *StateMachine) SetState(state State) {
 func (s *StateMachine) Tick(delta uint64) {
 	if t := s.GetTransition(); t != nil {
 		s.SetState(t.to())
-	} else if s.Default != nil {
-		s.SetState(s.Default)
 	}
 	if s.Current != nil {
 		s.Current.Tick(delta)
