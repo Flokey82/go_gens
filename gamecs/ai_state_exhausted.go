@@ -1,6 +1,7 @@
 package gamecs
 
 import (
+	"fmt"
 	"github.com/Flokey82/go_gens/aistate"
 	"log"
 )
