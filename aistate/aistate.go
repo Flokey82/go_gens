@@ -4,6 +4,7 @@ package aistate
 // StateMachine implements a simple state machine.
 type StateMachine struct {
 	Current            State
+	Previous           State
 	transitions        map[StateType][]*Transition
 	currentTransitions []*Transition
 	anyTransitions     []*Transition
@@ -24,9 +25,15 @@ func (s *StateMachine) SetState(state State) {
 	if s.Current != nil {
 		s.Current.OnExit()
 	}
+	s.Previous = s.Current
 	s.Current = state
 	s.currentTransitions = s.transitions[state.Type()]
 	s.Current.OnEnter()
+}
+
+// RevertToPreviousState sets the current state of the state machine to its previous state.
+func (s *StateMachine) RevertToPreviousState() {
+	s.SetState(s.Previous)
 }
 
 // Tick advances the state machine by 'delta' (time elapsed since last tick).
