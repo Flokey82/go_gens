@@ -24,6 +24,10 @@ func (c *CStatus) Update(delta float64) {
 	c.Exhaustion += exhaustionRate * delta
 }
 
+func (c *CStatus) Dead() bool {
+	return c.Health <= 0
+}
+
 type State struct {
 	Name  string
 	Value float64

@@ -1,6 +1,7 @@
 package gamecs
 
 import (
+	"fmt"
 	"github.com/Flokey82/go_gens/aistate"
 	"github.com/Flokey82/go_gens/aitree"
 	"github.com/Flokey82/go_gens/vectors"
@@ -67,7 +68,7 @@ func (s *StateFindFood) Type() aistate.StateType {
 func (s *StateFindFood) Tick(delta uint64) {
 	if s.ait.Tick() == aitree.StateFailure {
 		s.it = nil
-		log.Println("Find failed!!")
+		log.Println(fmt.Sprintf("%d: Find failed!!", s.ai.id))
 	}
 }
 
@@ -107,8 +108,7 @@ func (s *StateEatFood) Type() aistate.StateType {
 
 func (s *StateEatFood) Tick(delta uint64) {
 	if s.ait.Tick() == aitree.StateFailure {
-		log.Println("Munch failed!!")
-		log.Println(s.ai.id)
+		log.Println(fmt.Sprintf("%d: Munch failed!!", s.ai.id))
 	}
 }
 
@@ -153,7 +153,7 @@ func (s *StateStoreFood) Type() aistate.StateType {
 
 func (s *StateStoreFood) Tick(delta uint64) {
 	if s.ait.Tick() == aitree.StateFailure {
-		log.Println("Store failed!!")
+		log.Println(fmt.Sprintf("%d: Store failed!!", s.ai.id))
 	}
 }
 

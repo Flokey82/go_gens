@@ -2,7 +2,7 @@ package gamecs
 
 import (
 	"github.com/Flokey82/go_gens/aistate"
-	"time"
+	"log"
 )
 
 type CAiScheduler struct {
@@ -24,10 +24,10 @@ func (c *CAiScheduler) init(ai *CAi) {
 	c.AddAnySelector(func() aistate.State {
 		// Randomly switch between attacking and fleeing.
 		// Ultimately we want to decide based on personality or our chances to win.
-		if time.Now().Unix()%2 != 0 {
-			return sFlee
+		if ai.Conflict() && !ai.CAiStatus.states[sInjured] {
+			return sAttack
 		}
-		return sAttack
+		return sFlee
 	}, func() bool {
 		return ai.CAiStatus.states[sThreatened]
 	})
@@ -67,4 +67,29 @@ func (c *CAiScheduler) init(ai *CAi) {
 
 func (c *CAiScheduler) Update(delta float64) {
 	c.Tick(uint64(delta * 100))
+}
+
+const StateTypeIdle aistate.StateType = 7
+
+type StateIdle struct {
+	ai *CAi
+}
+
+func NewStateIdle(ai *CAi) *StateIdle {
+	return &StateIdle{ai: ai}
+}
+
+func (s *StateIdle) Type() aistate.StateType {
+	return StateTypeIdle
+}
+
+func (s *StateIdle) Tick(delta uint64) {
+}
+
+func (s *StateIdle) OnEnter() {
+	log.Printf("entering state %d", s.Type())
+}
+
+func (s *StateIdle) OnExit() {
+	log.Printf("leaving state %d", s.Type())
 }

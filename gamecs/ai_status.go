@@ -24,15 +24,19 @@ func (c *CAiStatus) init(ai *CAi) {
 func (c *CAiStatus) Update(s *CStatus, delta float64) {
 	if c.eat {
 		s.Hunger = 0
+		s.Health += 20
 		c.eat = false
 	}
 	if c.sleep {
 		s.Exhaustion = 0
+		s.Health += 20
 		c.sleep = false
 	}
 	c.states[sExhausted] = s.Exhaustion > 10
 	c.states[sThreatened] = len(c.ape.Entities) > 0
+	// c.states[sInteracting] = len(c.ape.Entities) > 0
 	c.states[sHungry] = s.Hunger > 20
+	c.states[sInjured] = s.Health <= 20
 }
 
 func (c *CAiStatus) HasFood() bool {
@@ -60,6 +64,8 @@ const (
 	sExhausted  = "exhausted"
 	sHungry     = "hungry"
 	sIdle       = "idle"
+	sInjured    = "injured"
+	// sInteracting = "interacting"
 	// sTired
 	// sThirsty
 )

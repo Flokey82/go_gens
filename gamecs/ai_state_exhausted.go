@@ -27,7 +27,7 @@ func (s *StateRest) Tick(delta uint64) {
 	if s.ai.CAiPath.active {
 		return
 	}
-	log.Println("arrived home!")
+	log.Println(fmt.Sprintf("%d: arrived home!!", s.ai.id))
 	s.ai.Sleep()
 }
 
@@ -36,8 +36,7 @@ func (s *StateRest) OnEnter() {
 	// TODO: Recall home location.
 	// - Set navigation target
 	// - On arrival: rest, reset exhaustion
-	loc := s.ai.GetPosition("home")
-	s.ai.SetTarget(loc)
+	s.ai.SetTarget(s.ai.GetPosition("home"))
 }
 
 func (s *StateRest) OnExit() {

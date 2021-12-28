@@ -7,6 +7,7 @@ import (
 
 type Agent struct {
 	id int
+	w  *World
 	*CMovable
 	*CStatus
 	*CInventory
@@ -37,6 +38,7 @@ func newAgent(w *World) *Agent {
 		CStatus:    newCStatus(),
 		CInventory: newCInventory(w, id, 3),
 		CAi:        newCAi(w, id),
+		w:          w,
 	}
 	return a
 }

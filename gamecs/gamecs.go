@@ -48,6 +48,10 @@ func (w *World) placeFood() {
 
 func (w *World) Update(delta float64) {
 	for _, c := range w.mgr.Entities() {
+		if c.Dead() {
+			w.mgr.RemoveEntity(c)
+			continue
+		}
 		c.Update(delta)
 	}
 	w.storeGifFrame()

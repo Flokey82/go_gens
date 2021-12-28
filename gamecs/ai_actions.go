@@ -20,7 +20,7 @@ func newActionWander(ai *CAi, f func() bool) *ActionWander {
 }
 
 func (l *ActionWander) Tick() aitree.State {
-	log.Println("ActionWander")
+	log.Println(fmt.Sprintf("%d: ActionWander", l.ai.id))
 	if l.EndCondition() {
 		return aitree.StateSuccess
 	}
@@ -49,7 +49,7 @@ func newActionMoveTo(ai *CAi, ff func() bool, f func() vectors.Vec2) *ActionMove
 }
 
 func (l *ActionMoveTo) Tick() aitree.State {
-	log.Println("ActionMoveTo")
+	log.Println(fmt.Sprintf("%d: ActionMoveTo", l.ai.id))
 	if l.FailFunc() {
 		return aitree.StateFailure
 	}
@@ -80,7 +80,7 @@ func newActionPickUpItem(ai *CAi, f func() *Item) *ActionPickUpItem {
 }
 
 func (l *ActionPickUpItem) Tick() aitree.State {
-	log.Println("ActionPickUpItem")
+	log.Println(fmt.Sprintf("%d: ActionPickUpItem", l.ai.id))
 
 	it := l.ItemFunc()
 	if !l.ai.CanSee(it) {
@@ -91,7 +91,7 @@ func (l *ActionPickUpItem) Tick() aitree.State {
 		return aitree.StateFailure
 	}
 	// TODO: Message that we're munching, so we'd need to reset hunger.
-	log.Println(fmt.Sprintf("picked up %.2f, %.2f", l.ai.Target.X, l.ai.Target.Y))
+	log.Println(fmt.Sprintf("%d: picked up %.2f, %.2f", l.ai.id, l.ai.Target.X, l.ai.Target.Y))
 	return aitree.StateSuccess
 }
 
@@ -108,7 +108,7 @@ func newActionConsumeItem(ai *CAi, f func() *Item) *ActionConsumeItem {
 }
 
 func (l *ActionConsumeItem) Tick() aitree.State {
-	log.Println("ActionConsumeItem")
+	log.Println(fmt.Sprintf("%d: ActionConsumeItem", l.ai.id))
 
 	it := l.ItemFunc()
 	if it == nil {
@@ -135,7 +135,7 @@ func newActionTransferItems(ai *CAi, f func() *CInventory) *ActionTransferItems 
 }
 
 func (l *ActionTransferItems) Tick() aitree.State {
-	log.Println("ActionTransferItems")
+	log.Println(fmt.Sprintf("%d: ActionTransferItems", l.ai.id))
 
 	it := l.TargetFunc()
 	if it == nil {
@@ -161,8 +161,40 @@ func newActionIsTrue(ai *CAi, ef func() bool) *ActionIsTrue {
 }
 
 func (l *ActionIsTrue) Tick() aitree.State {
-	log.Println("ActionIsTrue")
+	log.Println(fmt.Sprintf("%d: ActionIsTrue", l.ai.id))
 	if l.Eval() {
+		return aitree.StateSuccess
+	}
+	return aitree.StateFailure
+}
+
+type ActionAttack struct {
+	ai         *CAi
+	TargetFunc func() *Agent
+}
+
+func newActionAttack(ai *CAi, f func() *Agent) *ActionAttack {
+	return &ActionAttack{
+		ai:         ai,
+		TargetFunc: f,
+	}
+}
+
+func (l *ActionAttack) Tick() aitree.State {
+	log.Println(fmt.Sprintf("%d: ActionAttack", l.ai.id))
+
+	it := l.TargetFunc()
+	if it == nil {
+		return aitree.StateFailure
+	}
+	if it.Dead() {
+		return aitree.StateSuccess
+	}
+
+	// TODO: Move this to an action.
+	if calcDist(it.Pos, l.ai.w.mgr.GetEntityFromID(l.ai.id).Pos) < 0.2 {
+		it.Health -= 10
+		log.Println(fmt.Sprintf("%d: Hit %d for 10 damage (%d health remaining)", l.ai.id, it.id, it.Health))
 		return aitree.StateSuccess
 	}
 	return aitree.StateFailure

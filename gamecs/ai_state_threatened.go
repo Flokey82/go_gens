@@ -3,6 +3,7 @@ package gamecs
 import (
 	"fmt"
 	"github.com/Flokey82/go_gens/aistate"
+	"github.com/Flokey82/go_gens/aitree"
 	"github.com/Flokey82/go_gens/vectors"
 	"log"
 )
@@ -49,28 +50,57 @@ const StateTypeAttack aistate.StateType = 2
 // StateAttack
 type StateAttack struct {
 	ai     *CAi
+	ait    *aitree.Tree
 	target *Agent
 }
 
 func NewStateAttack(ai *CAi) *StateAttack {
-	return &StateAttack{ai: ai}
+	s := &StateAttack{
+		ai:  ai,
+		ait: aitree.New(),
+	}
+
+	fci := aitree.NewSequence("chase and eliminate threat")
+	s.ait.Root = fci
+	am := newActionMoveTo(ai, s.needTarget, func() vectors.Vec2 {
+		return s.target.Pos
+	})
+	fci.Append(am)
+
+	at := newActionAttack(ai, func() *Agent {
+		return s.target
+	})
+	fci.Append(at)
+	return s
 }
 
 func (s *StateAttack) Type() aistate.StateType {
 	return StateTypeAttack
 }
+func (s *StateAttack) needTarget() bool {
+	return !s.foundTarget()
+}
+
+func (s *StateAttack) foundTarget() bool {
+	return s.target != nil && s.ai.CanSeeEntity(s.target)
+}
 
 func (s *StateAttack) findTarget() {
-	if s.target != nil && s.ai.CanSeeEntity(s.target) {
-		s.ai.SetTarget(s.target.Pos)
+	if s.foundTarget() {
+		if s.target.Dead() {
+			s.giveUpTarget()
+		}
 		return
 	}
 	// Set our target we move to to the current position of the first entity that we have perceived.
 	// (NOT the closest, the first)
 	// Ideally we would choose our target based on distance, threat level, etc.
-	s.target = s.ai.Entities[0]
-	s.ai.SetTarget(s.target.Pos)
-	s.ai.running = true // Run to intercept.
+	if len(s.ai.Entities) > 0 {
+		s.target = s.ai.Entities[0]
+		s.ai.running = true // Run to intercept.
+	} else {
+		s.giveUpTarget()
+	}
 }
 
 func (s *StateAttack) giveUpTarget() {
@@ -80,16 +110,12 @@ func (s *StateAttack) giveUpTarget() {
 }
 
 func (s *StateAttack) Tick(delta uint64) {
-	if len(s.ai.CAiPerception.Entities) == 0 {
-		return
+	if s.ait.Tick() == aitree.StateFailure {
+		log.Println(fmt.Sprintf("%d: StateAttack failed!!", s.ai.id))
 	}
-
-	// TODO: Add behavior tree or something...
-	// - chase target
-	// - if reached, attack target
-	s.findTarget()
-
-	log.Println(fmt.Sprintf("chasing Target %.2f, %.2f", s.ai.CAiPath.Target.X, s.ai.CAiPath.Target.Y))
+	if s.target != nil {
+		log.Println(fmt.Sprintf("chasing Target %.2f, %.2f", s.ai.CAiPath.Target.X, s.ai.CAiPath.Target.Y))
+	}
 }
 
 func (s *StateAttack) OnEnter() {
