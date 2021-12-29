@@ -193,9 +193,9 @@ func (l *ActionAttack) Tick() aitree.State {
 
 	// TODO: Move this to an action.
 	if calcDist(it.Pos, l.ai.w.mgr.GetEntityFromID(l.ai.id).Pos) < 0.2 {
-		it.Health -= 10
+		it.Injure(10, l.ai.id)
 		log.Println(fmt.Sprintf("%d: Hit %d for 10 damage (%d health remaining)", l.ai.id, it.id, it.Health))
-		return aitree.StateSuccess
+		return aitree.StateRunning
 	}
 	return aitree.StateFailure
 }

@@ -46,6 +46,7 @@ func (c *CAiPerception) CanSee(it *Item) bool {
 }
 
 func (c *CAiPerception) Update(m *CMovable, delta float64) {
+	// TODO: Send notifications on newly spotted entities and items and those we lost sight of.
 	// Update perceived agents.
 	c.Entities = nil
 	for _, ce := range c.w.mgr.Entities() {

@@ -7,7 +7,6 @@ type CAiStatus struct {
 	ape    *CAiPerception
 	states map[string]bool
 	eat    bool // This is a temp hack to work around the lack of event/command/message system
-	sleep  bool
 }
 
 func newCAiStatus() *CAiStatus {
@@ -24,13 +23,7 @@ func (c *CAiStatus) init(ai *CAi) {
 func (c *CAiStatus) Update(s *CStatus, delta float64) {
 	if c.eat {
 		s.Hunger = 0
-		s.Health += 20
 		c.eat = false
-	}
-	if c.sleep {
-		s.Exhaustion = 0
-		s.Health += 20
-		c.sleep = false
 	}
 	c.states[sExhausted] = s.Exhaustion > 10
 	c.states[sThreatened] = len(c.ape.Entities) > 0
@@ -55,8 +48,7 @@ func (c *CAiStatus) Eat() {
 
 func (c *CAiStatus) Sleep() {
 	log.Println("Sleep!")
-	// This is a hack to reset exhaustion.
-	c.sleep = true
+	c.ai.w.mgr.GetEntityFromID(c.ai.id).Sleep()
 }
 
 const (

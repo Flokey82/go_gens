@@ -1,7 +1,9 @@
 package gamecs
 
 import (
+	"fmt"
 	"github.com/Flokey82/go_gens/vectors"
+	"log"
 	"math/rand"
 )
 
@@ -56,4 +58,12 @@ func (c *Agent) Update(delta float64) {
 	c.CAi.Update(c.CMovable, c.CStatus, delta)
 	c.CMovable.Update(delta)
 	c.CStatus.Update(delta)
+}
+
+func (c *Agent) Injure(amount, srcID int) {
+	// TODO: Should this be messaging?
+	c.Health -= amount
+
+	// TODO: Change opinion of related tags / terms / individuals.
+	log.Println(fmt.Sprintf("%d: remember %d caused %d damage", c.id, srcID, amount))
 }
