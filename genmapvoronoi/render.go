@@ -40,7 +40,7 @@ func drawMap(r *Terrain) {
 func visualizeHeight(svg *svgo.SVG, r *Terrain, width, height int) {
 	h := r.h
 	//h = erosionRate3(r.bd,h)
-	//h = getFlux3(r.bd, h)
+	//h = getFlux(h)
 	//h = calcWind(r.bd)
 	log.Println(h.Values)
 	min, max := h.MinMax()

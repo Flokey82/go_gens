@@ -1,8 +1,14 @@
 package vmesh
 
+import (
+	"bufio"
+	"fmt"
+	"os"
+)
+
 type Heightmap struct {
 	*Mesh
-	Values        []float64 // elevation data
+	Values []float64 // elevation data
 	//pool     []float64 // water pool data
 	//downhill []int     // map of vertex index to next-lower vertex. WARNING THIS IS NOT NOT AUTO UPDATED.
 }
@@ -13,9 +19,30 @@ func (h *Heightmap) Len() int {
 
 func NewHeightmap(m *Mesh) *Heightmap {
 	return &Heightmap{
-		Mesh: m,
-		Values:    make([]float64, len(m.Vertices)),
+		Mesh:   m,
+		Values: make([]float64, len(m.Vertices)),
 	}
+}
+
+// ExportOBJ returns a Wavefront OBJ file representing the heightmap.
+func (h *Heightmap) ExportOBJ(path string) error {
+	tr, err := h.Triangulate()
+	if err != nil {
+		return err
+	}
+	f, err := os.Create(path)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	w := bufio.NewWriter(f)
+	for i, p := range tr.Points {
+		w.WriteString(fmt.Sprintf("v %f %f %f \n", p.X, h.Values[i]*0.2, p.Y)) //
+	}
+	for i := 0; i < len(tr.Triangles); i += 3 {
+		w.WriteString(fmt.Sprintf("f %d %d %d \n", tr.Triangles[i]+1, tr.Triangles[i+1]+1, tr.Triangles[i+2]+1))
+	}
+	return nil
 }
 
 func (h *Heightmap) Add(hms ...*Heightmap) {
@@ -66,7 +93,7 @@ func (h *Heightmap) TriSlope(i int) [2]float64 {
 	}
 }
 
-		/*
+/*
 func (h *Heightmap) Slope(i int) float64 {
 	s := h.TriSlope(i)
 	return math.Sqrt(s[0]*s[0] + s[1]*s[1])
@@ -84,7 +111,7 @@ func (h *Heightmap) Slopes() *Heightmap {
 
 const (
 	VertexOutOfBounds = -2
-	VertexSink = -1
+	VertexSink        = -1
 )
 
 func (h *Heightmap) Downhill() []int {

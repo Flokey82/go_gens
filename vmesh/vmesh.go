@@ -1,6 +1,7 @@
 package vmesh
 
 import (
+	"github.com/fogleman/delaunay"
 	"github.com/pzsz/voronoi"
 	"github.com/pzsz/voronoi/utils"
 	"math"
@@ -39,6 +40,14 @@ type Mesh struct {
 	VertexTris  map[int][]*voronoi.Cell // Vertex index to bordering cells (triangles)
 	Edges       []Edge                  // Edges in voronoi diagram
 	Extent      *Extent
+}
+
+func (m *Mesh) Triangulate() (*delaunay.Triangulation, error) {
+	var pts []delaunay.Point
+	for _, p := range m.Vertices {
+		pts = append(pts, delaunay.Point{X: p.X, Y: p.Y})
+	}
+	return delaunay.Triangulate(pts)
 }
 
 func (m *Mesh) Distance(i, j int) float64 {
