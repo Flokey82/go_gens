@@ -45,9 +45,10 @@ func (w *World) erode(cycles, drops int) {
 			if track[i] > 0 {
 				w.waterpath[i] = lrateInv*w.waterpath[i] + lrate
 			} else {
-				w.waterpath[i] = 0.0 // 0.5 * lrateInv * w.waterpath[i]
+				w.waterpath[i] = 0.25 * lrateInv * w.waterpath[i]
 			}
 		}
+		w.storeGifFrame(w.heightmap[:], w.waterpath[:], w.waterpool[:])
 	}
 }
 
