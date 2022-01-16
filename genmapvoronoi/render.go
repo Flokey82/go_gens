@@ -11,9 +11,10 @@ import (
 	svgo "github.com/ajstarks/svgo"
 )
 
-func drawMap(r *Terrain) {
+// ExportSVG exports the terrain as SVG to the given path.
+func (r *Terrain) ExportSVG(path string) {
 	params := r.params
-	f, err := os.Create("test.svg")
+	f, err := os.Create(path)
 	if err != nil {
 		log.Fatal(err)
 	}

@@ -67,7 +67,7 @@ func DoMap() {
 	}
 	r.genTerrain()
 	r.regenMapFeatures()
-	drawMap(r)
+	r.ExportSVG("test.svg")
 
 	if err := r.h.ExportOBJ("tmp.obj"); err != nil {
 		panic(err)
