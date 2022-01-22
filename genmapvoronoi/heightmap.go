@@ -5,6 +5,8 @@ import (
 	"github.com/pzsz/voronoi"
 	"math"
 	"math/rand"
+
+	opensimplex "github.com/ojrac/opensimplex-go"
 )
 
 // Mesh-based heightmap generation helpers.
@@ -36,6 +38,94 @@ func MeshMountains(m *vmesh.Mesh, n int, r float64) *vmesh.Heightmap {
 	for i := 0; i < n; i++ {
 		mounts = append(mounts, voronoi.Vertex{m.Extent.Width * (rand.Float64() - 0.5), m.Extent.Height * (rand.Float64() - 0.5)})
 	}
+	newvals := vmesh.NewHeightmap(m)
+	for i := 0; i < len(m.Vertices); i++ {
+		p := m.Vertices[i]
+		for j := 0; j < n; j++ {
+			m := mounts[j]
+			newvals.Values[i] += math.Pow(math.Exp(-((p.X-m.X)*(p.X-m.X)+(p.Y-m.Y)*(p.Y-m.Y))/(2*r*r)), 2)
+		}
+	}
+	return newvals
+}
+
+func MeshNoise(m *vmesh.Mesh, slope float64) *vmesh.Heightmap {
+	perlin := opensimplex.New(12345)
+
+	mult := 15.0
+	pow := 1.0
+	return m.MapF(func(v voronoi.Vertex) float64 {
+		x := v.X * mult
+		y := v.Y * mult
+		e := 1 * math.Abs(perlin.Eval2(x, y))
+		e += 0.5 * math.Abs(perlin.Eval2(x*2, y*2))
+		e += 0.25 * perlin.Eval2(x*4, y*4)
+		e /= (1 + 0.5 + 0.25)
+		return math.Pow(e, pow)
+	})
+}
+
+func MeshRidges(m *vmesh.Mesh, direction [2]float64) *vmesh.Heightmap {
+	newvals := vmesh.NewHeightmap(m)
+	start := rand.Intn(len(newvals.Values))
+
+	childRidgeDist := 5
+	childRidgeChanceFraction := 16 // one in n
+	childRidgeHeightFactor := 0.8
+	childRidgeLifespanFactor := 0.5
+	randomWalkChanceFraction := 2
+	defaultRidgeLifespan := 400
+	defaultRidgeHeight := 2.0
+
+	var drawRidge func(start, lifespan int, maxHeight float64)
+	drawRidge = func(start, lifespan int, maxHeight float64) {
+		// TODO: With increasing lifespan sine height.
+		var length int
+		end := [2]float64{m.Vertices[start].X + direction[0], m.Vertices[start].Y + direction[1]}
+		for i := start; length < lifespan; length++ {
+
+			newvals.Values[i] = maxHeight * float64(rand.Intn(10)) / 10
+			for _, nb := range newvals.Neighbours(i) {
+				if distPoints(m.Vertices[nb].X, m.Vertices[nb].Y, end[0], end[1]) < distPoints(m.Vertices[i].X, m.Vertices[i].Y, end[0], end[1]) {
+					i = nb
+				}
+				if rand.Intn(randomWalkChanceFraction) == 0 {
+					break
+				}
+				if rand.Intn(childRidgeChanceFraction) == 0 {
+					br := i
+					for p := 0; p < childRidgeDist; p++ {
+						for _, nb := range newvals.Neighbours(br) {
+							if distPoints(m.Vertices[br].X, m.Vertices[br].Y, m.Vertices[i].X, m.Vertices[i].Y) < distPoints(m.Vertices[i].X, m.Vertices[i].Y, m.Vertices[nb].X, m.Vertices[nb].Y) {
+								br = nb
+							}
+						}
+					}
+					drawRidge(br, int(float64(lifespan)*childRidgeLifespanFactor), maxHeight*childRidgeHeightFactor)
+				}
+			}
+		}
+	}
+	drawRidge(start, defaultRidgeLifespan, defaultRidgeHeight)
+	return newvals
+}
+
+func distPoints(x1, y1, x2, y2 float64) float64 {
+	dx := x2 - x1
+	dy := y2 - y1
+	return math.Sqrt(dx*dx + dy*dy)
+}
+
+func MeshHills(m *vmesh.Mesh, n int, r float64) *vmesh.Heightmap {
+	var mounts []voronoi.Vertex
+	for i := 0; i < n; i++ {
+		op := voronoi.Vertex{m.Extent.Width * (rand.Float64() - 0.5), m.Extent.Height * (rand.Float64() - 0.5)}
+		nh := rand.Intn(4) + 1
+		for j := 0; j < nh; j++ {
+			mounts = append(mounts, voronoi.Vertex{op.X + (rand.Float64()-0.5)*r, op.Y + (rand.Float64()-0.5)*r})
+		}
+	}
+	r = r / 20
 	newvals := vmesh.NewHeightmap(m)
 	for i := 0; i < len(m.Vertices); i++ {
 		p := m.Vertices[i]
