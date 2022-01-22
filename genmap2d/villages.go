@@ -1,7 +1,6 @@
 package genmap2d
 
 import (
-	"log"
 	"math"
 	"sort"
 )
