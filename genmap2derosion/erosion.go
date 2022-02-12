@@ -101,6 +101,10 @@ func NewWorld() *World {
 	if err := w.ExportGif("anim.gif"); err != nil {
 		panic(err)
 	}
+
+	if err := w.ExportOBJ("tmp.obj"); err != nil {
+		panic(err)
+	}
 	return w
 }
 

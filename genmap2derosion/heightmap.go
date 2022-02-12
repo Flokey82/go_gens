@@ -1,11 +1,45 @@
 package genmap2derosion
 
 import (
+	"bufio"
+	"fmt"
 	"github.com/Flokey82/go_gens/vectors"
+	"log"
 	"math"
+	"os"
 
 	opensimplex "github.com/ojrac/opensimplex-go"
 )
+
+func (w *World) ExportOBJ(path string) error {
+	f, err := os.Create(path)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	wr := bufio.NewWriter(f)
+	defer wr.Flush()
+
+	// Write the vertex index.
+	for i, h := range w.heightmap {
+		x := float64(i/int(w.dim.Y)) / float64(w.dim.Y)
+		y := float64(i%int(w.dim.Y)) / float64(w.dim.Y)
+		wr.WriteString(fmt.Sprintf("v %f %f %f \n", x, h, y))
+	}
+
+	// Write the triangles.
+	for x := 0; x < int(w.dim.X)-1; x++ {
+		for y := 0; y < int(w.dim.Y-1); y++ {
+			i1 := x*int(w.dim.Y) + y
+			i2 := i1 + 1
+			i3 := i2 + int(w.dim.Y)
+			i4 := i1 + int(w.dim.Y)
+			wr.WriteString(fmt.Sprintf("f %d %d %d \n", i1+1, i2+1, i3+1))
+			wr.WriteString(fmt.Sprintf("f %d %d %d \n", i4+1, i1+1, i3+1))
+		}
+	}
+	return nil
+}
 
 // Generate initial heightmap.
 func (w *World) generate() {
