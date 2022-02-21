@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"fmt"
 	"github.com/Flokey82/go_gens/vectors"
-	"log"
 	"math"
 	"os"
 
@@ -155,7 +154,7 @@ func getMinMax(hm []float64) (float64, float64) {
 }
 
 func (w *World) getMinMax() (float64, float64) {
-	return getMinMax(w.heightmap[:])
+	return getMinMax(w.heightmap)
 }
 
 func normalizeHeight(hm []float64) {
@@ -166,11 +165,11 @@ func normalizeHeight(hm []float64) {
 }
 
 func (w *World) normalizeHeight() {
-	normalizeHeight(w.heightmap[:])
+	normalizeHeight(w.heightmap)
 }
 
 func (w *World) peakyHeight() {
-	peakyHeight(w.heightmap[:])
+	peakyHeight(w.heightmap)
 
 	// Normalize
 	w.normalizeHeight()
@@ -181,7 +180,7 @@ func peakyHeight(hm []float64) {
 	}
 }
 func (w *World) relaxHeight() {
-	hm := relaxHeight(w.heightmap[:], int(w.dim.Y))
+	hm := relaxHeight(w.heightmap, int(w.dim.Y))
 	normalizeHeight(hm)
 	for i, h := range hm {
 		w.heightmap[i] = h

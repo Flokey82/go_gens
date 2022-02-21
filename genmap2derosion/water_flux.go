@@ -50,7 +50,7 @@ func (w *World) getRawFlux() []float64 {
 			}
 		}
 	}
-	w.fluxwaterpool = [worldsize * worldsize]float64{}
+	w.fluxwaterpool = make([]float64, len(w.heightmap))
 
 	dim := w.dim
 	for _, idx := range sinks {

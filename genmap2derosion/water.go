@@ -3,8 +3,9 @@ package genmap2derosion
 import (
 	"fmt"
 	"github.com/Flokey82/go_gens/vectors"
-	//"log"
+	"log"
 	"math"
+	"time"
 )
 
 // Hydraulic erosion
@@ -14,6 +15,10 @@ func (w *World) erode(cycles, drops int) {
 		w.waterdrains[i] = -1
 	}
 
+	lrate := float64(0.01)
+	lrateInv := (1.0 - lrate)
+
+	now := time.Now()
 	// Do a series of iterations!
 	for i := 0; i < cycles; i++ {
 		fmt.Println(fmt.Sprintf("Erode... (Cycle %d/%d)", i, cycles))
@@ -23,8 +28,8 @@ func (w *World) erode(cycles, drops int) {
 		for j := 0; j < drops; j++ {
 			// Spawn New Particle
 			drop := NewDrop(vectors.NewVec2(
-				float64((w.r.Int())%int(w.dim.X)), // Random X pos.
-				float64((w.r.Int())%int(w.dim.Y)), // Random Y pos.
+				float64(w.r.Intn(int(w.dim.X))), // Random X pos.
+				float64(w.r.Intn(int(w.dim.Y))), // Random Y pos.
 			), w.fdim)
 
 			spill := 5
@@ -39,17 +44,67 @@ func (w *World) erode(cycles, drops int) {
 		}
 
 		// Update Path
-		lrate := float64(0.01)
-		lrateInv := (1.0 - lrate)
-		for i := 0; i < len(track); i++ {
-			if track[i] > 0 {
+		for i, t := range track {
+			if t > 0 {
 				w.waterpath[i] = lrateInv*w.waterpath[i] + lrate
 			} else {
 				w.waterpath[i] = 0.25 * lrateInv * w.waterpath[i]
 			}
 		}
-		w.storeGifFrame(w.heightmap[:], w.waterpath[:], w.waterpool[:])
+		w.storeGifFrame(w.heightmap, w.waterpath, w.waterpool)
 	}
+	log.Println(time.Since(now))
+}
+
+func (w *World) erodeRain(cycles int, rmap []float64) {
+	// Reset drains.
+	for i := range w.waterdrains {
+		w.waterdrains[i] = -1
+	}
+
+	lrate := float64(0.01)
+	lrateInv := (1.0 - lrate)
+
+	now := time.Now()
+	// Do a series of iterations!
+	for i := 0; i < cycles; i++ {
+		fmt.Println(fmt.Sprintf("Erode... (Cycle %d/%d)", i, cycles))
+
+		// Track the Movement of all Particles
+		track := make([]int, w.dim.X*w.dim.Y)
+		for j := 0; j < len(rmap); j++ {
+			if rmap[j] <= minVol {
+				continue
+			}
+			// Spawn New Particle
+			drop := NewDrop(vectors.NewVec2(
+				float64(int64(j)/w.dim.Y), // Random X pos.
+				float64(int64(j)%w.dim.Y), // Random Y pos.
+			), w.fdim)
+			drop.volume = rmap[j]
+
+			spill := 5
+			for drop.volume > minVol && spill != 0 {
+				drop.descend(w, track)
+
+				if drop.volume > minVol {
+					drop.flood(w)
+				}
+				spill--
+			}
+		}
+
+		// Update Path
+		for i, t := range track {
+			if t > 0 {
+				w.waterpath[i] = lrateInv*w.waterpath[i] + lrate
+			} else {
+				w.waterpath[i] = 0.25 * lrateInv * w.waterpath[i]
+			}
+		}
+		w.storeGifFrame(w.heightmap, w.waterpath, w.waterpool)
+	}
+	log.Println(time.Since(now))
 }
 
 type Drop struct {
@@ -63,21 +118,20 @@ type Drop struct {
 
 // NewDrop returns a new particle at the given position.
 func NewDrop(pos, dim vectors.Vec2) Drop {
-	var d Drop
-	d.init()
-	d.pos = pos
-	d.index = int64(pos.X*dim.Y + pos.Y)
-	return d
+	return Drop{
+		volume: 1.0, // This will vary in time
+		pos:    pos,
+		index:  int64(pos.X*dim.Y + pos.Y),
+	}
 }
 
 // NewDropWithVolume returns a new particle at the given position with the given volume.
 func NewDropWithVolume(p, dim vectors.Vec2, v float64) Drop {
-	var d Drop
-	d.init()
-	d.pos = p
-	d.index = int64(p.X*dim.X + p.X)
-	d.volume = v
-	return d
+	return Drop{
+		pos:    p,
+		index:  int64(p.X*dim.X + p.X),
+		volume: v,
+	}
 }
 
 const (
@@ -91,21 +145,14 @@ const (
 	volumeFactor   = 100.0 // "Water Deposition Rate"
 )
 
-func (d *Drop) init() {
-	d.speed = vectors.NewVec2(0.0, 0.0)
-	d.volume = 1.0   // This will vary in time
-	d.sediment = 0.0 // Sediment concentration
-}
-
 func (d *Drop) descend(w *World, track []int) {
 	dim := w.dim
-	var ipos vectors.IVec2
-
+	var acc vectors.Vec2
+	var ind, nind int64
+	var effR, effD, effF, muAcc float64
 	for d.volume > minVol {
 		// Initial Position
-		ipos.X = int64(d.pos.X)
-		ipos.Y = int64(d.pos.Y)
-		ind := ipos.X*dim.Y + ipos.Y
+		ind = int64(d.pos.X)*dim.Y + int64(d.pos.Y)
 
 		// Add to Path
 		track[ind]++
@@ -117,25 +164,25 @@ func (d *Drop) descend(w *World, track []int) {
 		// effT := d.depositionRate * math.Max(0.0, 1.0-w.sedimentToughness[ind])
 
 		// Higher plant density means less erosion.
-		effD := depositionRate // * math.Max(0.0, 1.0-w.plantdensity[ind])
+		effD = depositionRate // * math.Max(0.0, 1.0-w.plantdensity[ind])
 
 		// Lower Friction, Lower Evaporation in Streams
 		// makes particles prefer established streams -> "curvy".
-		effF := friction * (1.0 - 0.5*w.waterpath[ind])
-		effR := evapRate * (1.0 - 0.2*w.waterpath[ind])
+		effF = friction * (1.0 - 0.5*w.waterpath[ind])
+		effR = evapRate * (1.0 - 0.2*w.waterpath[ind])
 
 		// Newtonian Mechanics
-		muAcc := 1 / (d.volume * density)
-		acc := vectors.NewVec2(n.X*muAcc, n.Z*muAcc)
+		muAcc = 1 / (d.volume * density)
+		acc = vectors.NewVec2(n.X*muAcc, n.Z*muAcc)
 		d.speed.AddToThis(acc.Mul(dt))
 		d.pos.AddToThis(d.speed.Mul(dt))
 		d.speed.MulWithThis(1.0 - dt*effF)
 
 		// New Position
-		nind := int64(d.pos.X)*dim.Y + int64(d.pos.Y)
+		nind = int64(d.pos.X)*dim.Y + int64(d.pos.Y)
 
 		// Out-Of-Bounds
-		if nind >= int64(len(w.waterpool)) || nind < 0 || d.pos.X < 0 || d.pos.Y < 0 || int64(d.pos.X) >= int64(dim.X) || int64(d.pos.Y) >= int64(dim.Y) {
+		if nind >= int64(len(w.waterpool)) || nind < 0 {
 			//fmt.Println(fmt.Sprintf("break %f %f", d.pos.x, d.pos.y))
 			d.volume = 0.0
 			break
@@ -150,9 +197,10 @@ func (d *Drop) descend(w *World, track []int) {
 		// Mass-Transfer (in MASS)
 		c_eq := math.Max(0.0, d.speed.Len()*(w.heightmap[ind]-w.heightmap[nind])) // ind?
 		cdiff := c_eq - d.sediment
-		d.sediment += dt * cdiff * effD                  // * effT
-		w.heightmap[ind] -= d.volume * dt * cdiff * effD // * effT
-		w.sediment[ind] -= d.volume * dt * cdiff * effD  // * effT
+		bla := dt * cdiff * effD
+		d.sediment += bla                  // * effT
+		w.heightmap[ind] -= d.volume * bla // * effT
+		w.sediment[ind] -= d.volume * bla  // * effT
 
 		// Evaporate (Mass Conservative)
 		d.sediment /= (1.0 - dt*effR)
@@ -178,26 +226,21 @@ func (d *Drop) flood(w *World) {
 	var drainfound bool
 	var fill func(i int64)
 	fill = func(i int64) {
-
-		// Out of Bounds
-		if i < 0 || i >= size {
-			return
-		}
-
-		// Position has been tried
-		if tried[i] {
+		// Out of Bounds or position has been tried.
+		if i < 0 || i >= size || tried[i] {
 			return
 		}
 		tried[i] = true
 
 		// Wall / Boundary
-		if plane < w.heightmap[i]+w.waterpool[i] {
+		currHeight := w.heightmap[i] + w.waterpool[i]
+		if plane < currHeight {
 			return
 		}
 
 		// Drainage Point
-		if initialplane > w.heightmap[i]+w.waterpool[i] {
-			if !drainfound || w.waterpool[i]+w.heightmap[i] < w.waterpool[drain]+w.heightmap[drain] {
+		if initialplane > currHeight {
+			if !drainfound || currHeight < w.waterpool[drain]+w.heightmap[drain] {
 				// No Drain yet or lower drain.
 				drain = int(i)
 			}
@@ -220,7 +263,7 @@ func (d *Drop) flood(w *World) {
 
 	// Iterate
 	for d.volume > minVol && fail != 0 {
-		set = make([]int64, 0, 1024)
+		set = set[:0]
 		for i := range tried {
 			tried[i] = false
 		}
@@ -232,9 +275,9 @@ func (d *Drop) flood(w *World) {
 
 		// Drainage Point
 		if drainfound {
-
 			// Set the Drop Position and Evaporate
-			d.pos = vectors.NewVec2(float64(int64(drain)/dim.Y), float64(int64(drain)%dim.Y))
+			d.pos.X = float64(int64(drain) / dim.Y)
+			d.pos.Y = float64(int64(drain) % dim.Y)
 
 			// Set the New Waterlevel (Slowly)
 			plane = (1.0-drainage)*initialplane + drainage*(w.heightmap[drain]+w.waterpool[drain])
@@ -256,7 +299,7 @@ func (d *Drop) flood(w *World) {
 		// Get Volume under Plane
 		// So we sum up the difference between plane and (height[s]+pool[s]) which
 		// gives up the total missing volume required for a full flood.
-		totalVol := float64(0.0)
+		var totalVol float64
 		for _, s := range set {
 			totalVol += volumeFactor * (plane - (w.heightmap[s] + w.waterpool[s]))
 		}
