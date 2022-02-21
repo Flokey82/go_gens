@@ -1,68 +1,33 @@
 package genmapvoronoi
 
 import (
+	"github.com/Flokey82/go_gens/genheightmap"
 	"github.com/Flokey82/go_gens/vmesh"
 	"github.com/pzsz/voronoi"
 	"math"
 	"math/rand"
-
-	opensimplex "github.com/ojrac/opensimplex-go"
 )
 
 // Mesh-based heightmap generation helpers.
 
 func MeshSlope(m *vmesh.Mesh, direction [2]float64) *vmesh.Heightmap {
-	return m.MapF(func(x voronoi.Vertex) float64 {
-		return x.X*direction[0] + x.Y*direction[1]
-	})
+	return m.ApplyGen(genheightmap.GenSlope(direction))
 }
 
 func MeshCone(m *vmesh.Mesh, slope float64) *vmesh.Heightmap {
-	return m.MapF(func(x voronoi.Vertex) float64 {
-		return math.Pow(x.X*x.X+x.Y*x.Y, 0.5) * slope
-	})
+	return m.ApplyGen(genheightmap.GenCone(slope))
 }
 
 func MeshVolCone(m *vmesh.Mesh, slope float64) *vmesh.Heightmap {
-	return m.MapF(func(x voronoi.Vertex) float64 {
-		dist := math.Pow(x.X*x.X+x.Y*x.Y, 0.5)
-		if dist < 0.1 {
-			return -4 * dist * slope
-		}
-		return dist * slope
-	})
+	return m.ApplyGen(genheightmap.GenVolCone(slope))
 }
 
 func MeshMountains(m *vmesh.Mesh, n int, r float64) *vmesh.Heightmap {
-	var mounts []voronoi.Vertex
-	for i := 0; i < n; i++ {
-		mounts = append(mounts, voronoi.Vertex{m.Extent.Width * (rand.Float64() - 0.5), m.Extent.Height * (rand.Float64() - 0.5)})
-	}
-	newvals := vmesh.NewHeightmap(m)
-	for i := 0; i < len(m.Vertices); i++ {
-		p := m.Vertices[i]
-		for j := 0; j < n; j++ {
-			m := mounts[j]
-			newvals.Values[i] += math.Pow(math.Exp(-((p.X-m.X)*(p.X-m.X)+(p.Y-m.Y)*(p.Y-m.Y))/(2*r*r)), 2)
-		}
-	}
-	return newvals
+	return m.ApplyGen(genheightmap.GenMountains(m.Extent.Width, m.Extent.Height, n, r))
 }
 
 func MeshNoise(m *vmesh.Mesh, slope float64) *vmesh.Heightmap {
-	perlin := opensimplex.New(12345)
-
-	mult := 15.0
-	pow := 1.0
-	return m.MapF(func(v voronoi.Vertex) float64 {
-		x := v.X * mult
-		y := v.Y * mult
-		e := 1 * math.Abs(perlin.Eval2(x, y))
-		e += 0.5 * math.Abs(perlin.Eval2(x*2, y*2))
-		e += 0.25 * perlin.Eval2(x*4, y*4)
-		e /= (1 + 0.5 + 0.25)
-		return math.Pow(e, pow)
-	})
+	return m.ApplyGen(genheightmap.GenNoise(123456, slope))
 }
 
 func MeshRidges(m *vmesh.Mesh, direction [2]float64) *vmesh.Heightmap {

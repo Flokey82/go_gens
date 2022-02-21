@@ -3,11 +3,10 @@ package genmap2derosion
 import (
 	"bufio"
 	"fmt"
+	"github.com/Flokey82/go_gens/genheightmap"
 	"github.com/Flokey82/go_gens/vectors"
 	"math"
 	"os"
-
-	opensimplex "github.com/ojrac/opensimplex-go"
 )
 
 func (w *World) ExportOBJ(path string) error {
@@ -51,84 +50,27 @@ func (w *World) generate() {
 }
 
 func (w *World) addNoise(amount float64) {
-	// Initialize Heightmap
-	perlin := opensimplex.New(w.seed)
-
-	// Mountainy:
-	// perlin.SetOctaveCount(8)
-	// perlin.SetFrequency(1.0)
-	// perlin.SetPersistence(0.5)
-	// fmb := &fractalBrownianMotionOptions{8, 1.0, 0.5}//{octaves, lacunarity, gain}
-
-	var e float64
-	mult := 15.0
-	pow := 1.0
-
-	hm := make([]float64, w.dim.X*w.dim.Y)
-	for i := int64(0); i < w.dim.X*w.dim.Y; i++ {
-		x := (float64(i) / float64(w.dim.Y)) * (float64(1.0) / float64(w.dim.X)) * mult
-		y := float64(int64(i)%int64(w.dim.Y)) * (float64(1.0) / float64(w.dim.Y)) * mult
-		e = 1 * perlin.Eval2(x, y)
-		e += 0.5 * perlin.Eval2(x*2, y*2)
-		e += 0.25 * perlin.Eval2(x*4, y*4)
-		e /= (1 + 0.5 + 0.25)
-		hm[i] += math.Pow(e, pow)
-	}
-	normalizeHeight(hm)
-	for i, h := range hm {
-		w.heightmap[i] += h * amount
-	}
-
-	// Normalize
-	w.normalizeHeight()
+	w.ApplyGen(genheightmap.GenNoise(w.seed, amount))
 }
 
 func (w *World) addMountains(n int, r float64) {
-	var mounts [][2]float64
-	for i := 0; i < n; i++ {
-		mounts = append(mounts, [2]float64{float64(w.dim.X) * w.r.Float64(), float64(w.dim.Y) * w.r.Float64()})
-	}
-	hm := make([]float64, w.dim.X*w.dim.Y)
-
-	for i := int64(0); i < w.dim.X*w.dim.Y; i++ {
-		x := float64(i / w.dim.Y)
-		y := float64(i % w.dim.Y)
-		for j := 0; j < n; j++ {
-			m := mounts[j]
-			hm[i] += math.Pow(math.Exp(-((x-m[0])*(x-m[0])+(y-m[1])*(y-m[1]))/(2*r*r)), 2)
-		}
-	}
-	normalizeHeight(hm)
-	for i, h := range hm {
-		w.heightmap[i] += h
-	}
-
-	// Normalize
-	w.normalizeHeight()
+	w.ApplyGen(genheightmap.GenMountains(float64(w.dim.X), float64(w.dim.Y), n, r))
 }
 
 func (w *World) addCone(slope float64) {
-	hm := make([]float64, w.dim.X*w.dim.Y)
-	for i := int64(0); i < w.dim.X*w.dim.Y; i++ {
-		x := float64(i/w.dim.Y) - float64(w.dim.X/2)
-		y := float64(i%w.dim.Y) - float64(w.dim.Y/2)
-		hm[i] += math.Pow(x*x+y*y, 0.5) * slope
-	}
-	normalizeHeight(hm)
-	for i, h := range hm {
-		w.heightmap[i] += h
-	}
-
-	// Normalize
-	w.normalizeHeight()
+	w.ApplyGen(genheightmap.GenCone(slope))
 }
 
 func (w *World) addSlope(direction vectors.Vec2) {
+	w.ApplyGen(genheightmap.GenSlope([2]float64{direction.X, direction.Y}))
+}
+
+func (w *World) ApplyGen(f genheightmap.GenFunc) {
 	hm := make([]float64, w.dim.X*w.dim.Y)
 	for i := int64(0); i < w.dim.X*w.dim.Y; i++ {
 		x := float64(i / w.dim.Y)
 		y := float64(i % w.dim.Y)
-		hm[i] += x*direction.X + y*direction.Y
+		hm[i] = f(x, y)
 	}
 	normalizeHeight(hm)
 	for i, h := range hm {

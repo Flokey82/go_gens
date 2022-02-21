@@ -1,6 +1,7 @@
 package vmesh
 
 import (
+	"github.com/Flokey82/go_gens/genheightmap"
 	"github.com/fogleman/delaunay"
 	"github.com/pzsz/voronoi"
 	"github.com/pzsz/voronoi/utils"
@@ -76,6 +77,14 @@ func (m *Mesh) MapF(f func(v voronoi.Vertex) float64) *Heightmap {
 	h := NewHeightmap(m)
 	for i := range m.Vertices {
 		h.Values[i] = f(m.Vertices[i])
+	}
+	return h
+}
+
+func (m *Mesh) ApplyGen(f genheightmap.GenFunc) *Heightmap {
+	h := NewHeightmap(m)
+	for i := range m.Vertices {
+		h.Values[i] = f(m.Vertices[i].X, m.Vertices[i].Y)
 	}
 	return h
 }
