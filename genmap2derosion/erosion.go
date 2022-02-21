@@ -4,6 +4,7 @@ package genmap2derosion
 
 import (
 	"fmt"
+	"github.com/Flokey82/go_gens/genheightmap"
 	"github.com/Flokey82/go_gens/vectors"
 	"image"
 	"image/color"
@@ -126,7 +127,7 @@ func (w *World) storeGifFrame(h, waterPath, waterPool []float64) {
 	img := image.NewPaletted(image.Rect(0, 0, width, height), w.palette)
 	w.images = append(w.images, img)
 	w.delays = append(w.delays, 0)
-	min, max := getMinMax(h)
+	min, max := genheightmap.MinMax(h)
 	for y := 0; y < height; y++ {
 		for x := 0; x < width; x++ {
 			i := int64(x)*int64(w.dim.Y) + int64(y)
@@ -159,7 +160,7 @@ func (w *World) export(name string, h []float64) {
 
 	// Create a colored image of the given width and height.
 	img := image.NewNRGBA(image.Rect(0, 0, width, height))
-	min, max := getMinMax(h)
+	min, max := genheightmap.MinMax(h)
 	for y := 0; y < height; y++ {
 		for x := 0; x < width; x++ {
 			i := int64(x)*int64(w.dim.Y) + int64(y)
@@ -195,7 +196,7 @@ func (w *World) exportCombined(name string, heightMap, waterPath, waterPool []fl
 
 	// Create a colored image of the given width and height.
 	img := image.NewNRGBA(image.Rect(0, 0, width, height))
-	min, max := getMinMax(heightMap)
+	min, max := genheightmap.MinMax(heightMap)
 	for y := 0; y < height; y++ {
 		for x := 0; x < width; x++ {
 			i := int64(x)*int64(w.dim.Y) + int64(y)
