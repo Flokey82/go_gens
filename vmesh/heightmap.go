@@ -3,6 +3,7 @@ package vmesh
 import (
 	"bufio"
 	"fmt"
+	"github.com/Flokey82/go_gens/genheightmap"
 	"os"
 )
 
@@ -55,17 +56,7 @@ func (h *Heightmap) Add(hms ...*Heightmap) {
 }
 
 func (h *Heightmap) MinMax() (min, max float64) {
-	min = h.Values[0]
-	max = h.Values[0]
-	for _, v := range h.Values {
-		if v > max {
-			max = v
-		}
-		if v < min {
-			min = v
-		}
-	}
-	return min, max
+	return genheightmap.MinMax(h.Values)
 }
 
 func (h *Heightmap) TriSlope(i int) [2]float64 {

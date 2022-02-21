@@ -81,26 +81,12 @@ func (w *World) ApplyGen(f genheightmap.GenFunc) {
 	w.normalizeHeight()
 }
 
-func getMinMax(hm []float64) (float64, float64) {
-	var min, max float64
-	for _, h := range hm {
-		if h > max {
-			max = h
-		}
-
-		if h < min {
-			min = h
-		}
-	}
-	return min, max
-}
-
 func (w *World) getMinMax() (float64, float64) {
-	return getMinMax(w.heightmap)
+	return genheightmap.MinMax(w.heightmap)
 }
 
 func normalizeHeight(hm []float64) {
-	min, max := getMinMax(hm)
+	min, max := genheightmap.MinMax(hm)
 	for i := 0; i < len(hm); i++ {
 		hm[i] = (hm[i] - min) / (max - min)
 	}

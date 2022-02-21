@@ -74,3 +74,21 @@ func CalcMean(nums []float64) float64 {
 	}
 	return total / float64(len(nums))
 }
+
+func MinMax(hm []float64) (float64, float64) {
+	if len(hm) == 0 {
+		return 0, 0
+	}
+	min := hm[0]
+	max := hm[0]
+	for _, h := range hm {
+		if h > max {
+			max = h
+		}
+
+		if h < min {
+			min = h
+		}
+	}
+	return min, max
+}
