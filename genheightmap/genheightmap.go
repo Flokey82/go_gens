@@ -66,3 +66,11 @@ func GenNoise(seed int64, slope float64) GenFunc {
 		return math.Pow(e, pow)
 	}
 }
+
+func CalcMean(nums []float64) float64 {
+	total := 0.0
+	for _, v := range nums {
+		total += v
+	}
+	return total / float64(len(nums))
+}

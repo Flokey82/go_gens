@@ -116,7 +116,7 @@ func HeightRelax(h *vmesh.Heightmap) *vmesh.Heightmap {
 		for _, j := range nbs {
 			heights = append(heights, h.Values[j])
 		}
-		newh.Values[i] = CalcMean(heights) //d3.mean(nbs.map(function (j) {return h[j]}));
+		newh.Values[i] = genheightmap.CalcMean(heights) //d3.mean(nbs.map(function (j) {return h[j]}));
 	}
 	return newh
 }
@@ -231,14 +231,6 @@ func HeightFillSinks(h *vmesh.Heightmap) *vmesh.Heightmap { //, epsilon float64
 			return newh
 		}
 	}
-}
-
-func CalcMean(nums []float64) float64 {
-	total := 0.0
-	for _, v := range nums {
-		total += v
-	}
-	return total / float64(len(nums))
 }
 
 func isInList(l []*voronoi.Cell, c *voronoi.Cell) bool {

@@ -138,20 +138,12 @@ func relaxHeight(hm []float64, dimY int) []float64 {
 		for _, nb := range getNeighbors(i, hm, dimY) {
 			vals = append(vals, hm[nb])
 		}
-		return CalcMean(vals)
+		return genheightmap.CalcMean(vals)
 	}
 	for i := 0; i < len(hm); i++ {
 		nh[i] = getMeanNeighbor(i)
 	}
 	return nh
-}
-
-func CalcMean(nums []float64) float64 {
-	total := 0.0
-	for _, v := range nums {
-		total += v
-	}
-	return total / float64(len(nums))
 }
 
 func getNeighbors(i int, hm []float64, dimY int) []int {
