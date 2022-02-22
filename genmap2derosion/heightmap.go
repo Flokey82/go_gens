@@ -62,7 +62,7 @@ func (w *World) addCone(slope float64) {
 }
 
 func (w *World) addSlope(direction vectors.Vec2) {
-	w.ApplyGen(genheightmap.GenSlope([2]float64{direction.X, direction.Y}))
+	w.ApplyGen(genheightmap.GenSlope(direction))
 }
 
 func (w *World) ApplyGen(f genheightmap.GenFunc) {
@@ -102,11 +102,13 @@ func (w *World) peakyHeight() {
 	// Normalize
 	w.normalizeHeight()
 }
+
 func peakyHeight(hm []float64) {
 	for i := 0; i < len(hm); i++ {
 		hm[i] = math.Sqrt(hm[i])
 	}
 }
+
 func (w *World) relaxHeight() {
 	hm := relaxHeight(w.heightmap, int(w.dim.Y))
 	normalizeHeight(hm)
@@ -117,6 +119,7 @@ func (w *World) relaxHeight() {
 	// Normalize
 	w.normalizeHeight()
 }
+
 func relaxHeight(hm []float64, dimY int) []float64 {
 	nh := make([]float64, len(hm))
 	getMeanNeighbor := func(i int) float64 {

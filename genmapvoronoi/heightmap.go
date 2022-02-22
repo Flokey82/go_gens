@@ -2,6 +2,7 @@ package genmapvoronoi
 
 import (
 	"github.com/Flokey82/go_gens/genheightmap"
+	"github.com/Flokey82/go_gens/vectors"
 	"github.com/Flokey82/go_gens/vmesh"
 	"github.com/pzsz/voronoi"
 	"math"
@@ -10,7 +11,7 @@ import (
 
 // Mesh-based heightmap generation helpers.
 
-func MeshSlope(m *vmesh.Mesh, direction [2]float64) *vmesh.Heightmap {
+func MeshSlope(m *vmesh.Mesh, direction vectors.Vec2) *vmesh.Heightmap {
 	return m.ApplyGen(genheightmap.GenSlope(direction))
 }
 
@@ -30,7 +31,7 @@ func MeshNoise(m *vmesh.Mesh, slope float64) *vmesh.Heightmap {
 	return m.ApplyGen(genheightmap.GenNoise(123456, slope))
 }
 
-func MeshRidges(m *vmesh.Mesh, direction [2]float64) *vmesh.Heightmap {
+func MeshRidges(m *vmesh.Mesh, direction vectors.Vec2) *vmesh.Heightmap {
 	newvals := vmesh.NewHeightmap(m)
 	start := rand.Intn(len(newvals.Values))
 
@@ -46,12 +47,15 @@ func MeshRidges(m *vmesh.Mesh, direction [2]float64) *vmesh.Heightmap {
 	drawRidge = func(start, lifespan int, maxHeight float64) {
 		// TODO: With increasing lifespan sine height.
 		var length int
-		end := [2]float64{m.Vertices[start].X + direction[0], m.Vertices[start].Y + direction[1]}
+		end := vectors.Vec2{
+			X: m.Vertices[start].X + direction.X,
+			Y: m.Vertices[start].Y + direction.Y,
+		}
 		for i := start; length < lifespan; length++ {
 
 			newvals.Values[i] = maxHeight * float64(rand.Intn(10)) / 10
 			for _, nb := range newvals.Neighbours(i) {
-				if distPoints(m.Vertices[nb].X, m.Vertices[nb].Y, end[0], end[1]) < distPoints(m.Vertices[i].X, m.Vertices[i].Y, end[0], end[1]) {
+				if distPoints(m.Vertices[nb].X, m.Vertices[nb].Y, end.X, end.Y) < distPoints(m.Vertices[i].X, m.Vertices[i].Y, end[0], end[1]) {
 					i = nb
 				}
 				if rand.Intn(randomWalkChanceFraction) == 0 {
@@ -253,29 +257,4 @@ func isInIntList(l []int, c int) bool {
 
 func runif(lo, hi float64) float64 {
 	return lo + rand.Float64()*(hi-lo)
-}
-
-func normalizeVec2(vec [2]float64) [2]float64 {
-	var dest [2]float64
-	x := vec[0]
-	y := vec[1]
-	length := (x * x) + (y * y)
-	if length > 0 {
-		length = 1.0 / math.Sqrt(length)
-		dest[0] = vec[0] * length
-		dest[1] = vec[1] * length
-	}
-	return dest
-}
-
-func randomVector2(scale float64) [2]float64 {
-	return [2]float64{scale * rand.Float64(), scale * rand.Float64()}
-}
-
-func crossVector2(v1, v2 [2]float64) float64 {
-	return v1[0]*v2[1] - v1[1]*v2[0]
-}
-
-func lenVector2(v [2]float64) float64 {
-	return float64(math.Hypot(v[0], v[1]))
 }

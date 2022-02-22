@@ -1,6 +1,7 @@
 package genheightmap
 
 import (
+	"github.com/Flokey82/go_gens/vectors"
 	"math"
 	"math/rand"
 
@@ -14,9 +15,9 @@ type Terrain interface {
 
 type GenFunc func(x, y float64) float64
 
-func GenSlope(direction [2]float64) GenFunc {
+func GenSlope(direction vectors.Vec2) GenFunc {
 	return func(x, y float64) float64 {
-		return x*direction[0] + y*direction[1]
+		return x*direction.X + y*direction.Y
 	}
 }
 

@@ -2,6 +2,7 @@
 package genmapvoronoi
 
 import (
+	"github.com/Flokey82/go_gens/vectors"
 	"github.com/Flokey82/go_gens/vmesh"
 	"github.com/pzsz/voronoi"
 	//"log"
@@ -100,7 +101,7 @@ func (r *Terrain) genTerrain() {
 
 	r.h = vmesh.NewHeightmap(r.mesh)
 	r.h.Add(
-		MeshSlope(r.mesh, randomVector2(4)),
+		MeshSlope(r.mesh, vectors.RandomVec2(4)),
 		MeshVolCone(r.mesh, -1),
 		//MeshCone(r.mesh, mesh, runif(-1, -1)),
 		MeshMountains(r.mesh, 50, 0.05),
