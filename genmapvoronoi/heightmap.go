@@ -55,7 +55,7 @@ func MeshRidges(m *vmesh.Mesh, direction vectors.Vec2) *vmesh.Heightmap {
 
 			newvals.Values[i] = maxHeight * float64(rand.Intn(10)) / 10
 			for _, nb := range newvals.Neighbours(i) {
-				if distPoints(m.Vertices[nb].X, m.Vertices[nb].Y, end.X, end.Y) < distPoints(m.Vertices[i].X, m.Vertices[i].Y, end[0], end[1]) {
+				if distPoints(m.Vertices[nb].X, m.Vertices[nb].Y, end.X, end.Y) < distPoints(m.Vertices[i].X, m.Vertices[i].Y, end.X, end.Y) {
 					i = nb
 				}
 				if rand.Intn(randomWalkChanceFraction) == 0 {
