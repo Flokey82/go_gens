@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"github.com/Flokey82/go_gens/genheightmap"
 	"github.com/Flokey82/go_gens/vectors"
-	"math"
 	"os"
 )
 
@@ -124,7 +123,7 @@ func (w *World) relaxHeight() {
 
 func relaxHeight(hm []float64, dimY int) []float64 {
 	nh := make([]float64, len(hm))
-	f := heightmap.ModRelax(func(idx int) []int {
+	f := genheightmap.ModRelax(func(idx int) []int {
 		return getNeighbors(idx, hm, dimY)
 	}, func(idx int) float64 {
 		return hm[idx]

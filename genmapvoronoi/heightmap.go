@@ -110,11 +110,11 @@ func MeshHills(m *vmesh.Mesh, n int, r float64) *vmesh.Heightmap {
 
 func HeightRelax(h *vmesh.Heightmap) *vmesh.Heightmap {
 	newh := vmesh.NewHeightmap(h.Mesh)
-	f := heightmap.ModRelax(h.Neighbours, func(idx int) float64 {
+	f := genheightmap.ModRelax(h.Neighbours, func(idx int) float64 {
 		return h.Values[idx]
 	})
 	for i, v := range h.Values {
-		newh.Values[i] = f(i, val) //d3.mean(nbs.map(function (j) {return h[j]}));
+		newh.Values[i] = f(i, v) //d3.mean(nbs.map(function (j) {return h[j]}));
 	}
 	return newh
 }
