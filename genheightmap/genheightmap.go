@@ -38,6 +38,7 @@ func GenVolCone(slope float64) GenFunc {
 }
 
 func GenMountains(maxX, maxY float64, n int, r float64) GenFunc {
+	rand.Seed(1234)
 	var mounts [][2]float64
 	for i := 0; i < n; i++ {
 		mounts = append(mounts, [2]float64{maxX * (rand.Float64() - 0.5), maxY * (rand.Float64() - 0.5)})

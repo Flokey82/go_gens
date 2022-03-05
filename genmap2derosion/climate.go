@@ -12,6 +12,7 @@ func (w *World) generateClimate() *World2 {
 	now := time.Now()
 	w2 := newWorld2(w.dim.X, w.dim.Y, w.seed)
 	w2.generate(w.heightmap)
+	w.export("b_image_terrain.png", w2.terrain.heightmap)
 
 	for i := 0; i < 365; i++ {
 		log.Println(i)

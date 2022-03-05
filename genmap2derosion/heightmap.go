@@ -21,7 +21,7 @@ func (w *World) ExportOBJ(path string) error {
 	for i, h := range w.heightmap {
 		x := float64(i/int(w.dim.Y)) / float64(w.dim.Y)
 		y := float64(i%int(w.dim.Y)) / float64(w.dim.Y)
-		wr.WriteString(fmt.Sprintf("v %f %f %f \n", x, h, y))
+		wr.WriteString(fmt.Sprintf("v %f %f %f \n", x, h*0.2, y))
 	}
 
 	// Write the triangles.
@@ -40,12 +40,15 @@ func (w *World) ExportOBJ(path string) error {
 
 // Generate initial heightmap.
 func (w *World) generate() {
-	w.addCone(1.0)
-	w.addNoise(0.5)
-	w.addMountains(20, 40.0)
-	w.addSlope(vectors.RandomVec2(1.0))
-	// w.peakyHeight()
-	// w.relaxHeight()
+	w.addSlope(vectors.RandomVec2(4))
+	w.addVolCone(-1.0)
+	// w.addNoise(0.5)
+	w.addMountains(50, 0.05)
+	for i := 0; i < 10; i++ {
+		w.relaxHeight()
+	}
+	w.peakyHeight()
+	w.normalizeHeight()
 }
 
 func (w *World) addNoise(amount float64) {
@@ -53,11 +56,15 @@ func (w *World) addNoise(amount float64) {
 }
 
 func (w *World) addMountains(n int, r float64) {
-	w.ApplyGen(genheightmap.GenMountains(float64(w.dim.X), float64(w.dim.Y), n, r))
+	w.ApplyGen(genheightmap.GenMountains(1, 1, n, r)) // float64(w.dim.X), float64(w.dim.Y)
 }
 
 func (w *World) addCone(slope float64) {
 	w.ApplyGen(genheightmap.GenCone(slope))
+}
+
+func (w *World) addVolCone(slope float64) {
+	w.ApplyGen(genheightmap.GenVolCone(slope))
 }
 
 func (w *World) addSlope(direction vectors.Vec2) {
@@ -67,8 +74,8 @@ func (w *World) addSlope(direction vectors.Vec2) {
 func (w *World) ApplyGen(f genheightmap.GenFunc) {
 	hm := make([]float64, w.dim.X*w.dim.Y)
 	for i := int64(0); i < w.dim.X*w.dim.Y; i++ {
-		x := float64(i / w.dim.Y)
-		y := float64(i % w.dim.Y)
+		x := (float64(i/w.dim.Y) / float64(w.dim.X)) - 0.5
+		y := (float64(i%w.dim.Y) / float64(w.dim.Y)) - 0.5
 		hm[i] = f(x, y)
 	}
 	normalizeHeight(hm)
@@ -100,18 +107,22 @@ func (w *World) normalizeHeight() {
 }
 
 func (w *World) peakyHeight() {
-	peakyHeight(w.heightmap)
+	ApplyModify(genheightmap.ModPeaky(), w.heightmap)
 
 	// Normalize
 	w.normalizeHeight()
 }
 
-func peakyHeight(hm []float64) {
-	ApplyModify(genheightmap.ModPeaky(), hm)
-}
-
 func (w *World) relaxHeight() {
-	hm := relaxHeight(w.heightmap, int(w.dim.Y))
+	hm := make([]float64, len(w.heightmap))
+	f := genheightmap.ModRelax(func(idx int) []int {
+		return getNeighbors(idx, w.heightmap, int(w.dim.Y))
+	}, func(idx int) float64 {
+		return w.heightmap[idx]
+	})
+	for i, h := range w.heightmap {
+		hm[i] = f(i, h)
+	}
 	normalizeHeight(hm)
 	for i, h := range hm {
 		w.heightmap[i] = h
@@ -119,19 +130,6 @@ func (w *World) relaxHeight() {
 
 	// Normalize
 	w.normalizeHeight()
-}
-
-func relaxHeight(hm []float64, dimY int) []float64 {
-	nh := make([]float64, len(hm))
-	f := genheightmap.ModRelax(func(idx int) []int {
-		return getNeighbors(idx, hm, dimY)
-	}, func(idx int) float64 {
-		return hm[idx]
-	})
-	for i, h := range hm {
-		nh[i] = f(i, h)
-	}
-	return nh
 }
 
 func getNeighbors(i int, hm []float64, dimY int) []int {
