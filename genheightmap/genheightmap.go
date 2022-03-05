@@ -122,7 +122,7 @@ type GetHeight func(idx int) float64
 func ModRelax(n GetNeighbors, h GetHeight) ModifyWithIndex {
 	return func(idx int, val float64) float64 {
 		vals := []float64{val}
-		for _, nb := range n(i) {
+		for _, nb := range n(idx) {
 			vals = append(vals, h(nb))
 		}
 		return CalcMean(vals)
