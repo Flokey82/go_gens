@@ -81,15 +81,19 @@ func (w *World) ApplyGen(f genheightmap.GenFunc) {
 	w.normalizeHeight()
 }
 
+func ApplyModify(f genheightmap.Modify, hm []float64) {
+	for i := 0; i < len(hm); i++ {
+		hm[i] = f(hm[i])
+	}
+}
+
 func (w *World) getMinMax() (float64, float64) {
 	return genheightmap.MinMax(w.heightmap)
 }
 
 func normalizeHeight(hm []float64) {
 	min, max := genheightmap.MinMax(hm)
-	for i := 0; i < len(hm); i++ {
-		hm[i] = (hm[i] - min) / (max - min)
-	}
+	ApplyModify(genheightmap.ModNormalize(min, max), hm)
 }
 
 func (w *World) normalizeHeight() {
@@ -104,9 +108,7 @@ func (w *World) peakyHeight() {
 }
 
 func peakyHeight(hm []float64) {
-	for i := 0; i < len(hm); i++ {
-		hm[i] = math.Sqrt(hm[i])
-	}
+	ApplyModify(genheightmap.ModPeaky(), hm)
 }
 
 func (w *World) relaxHeight() {
@@ -122,15 +124,13 @@ func (w *World) relaxHeight() {
 
 func relaxHeight(hm []float64, dimY int) []float64 {
 	nh := make([]float64, len(hm))
-	getMeanNeighbor := func(i int) float64 {
-		var vals []float64
-		for _, nb := range getNeighbors(i, hm, dimY) {
-			vals = append(vals, hm[nb])
-		}
-		return genheightmap.CalcMean(vals)
-	}
-	for i := 0; i < len(hm); i++ {
-		nh[i] = getMeanNeighbor(i)
+	f := heightmap.ModRelax(func(idx int) []int {
+		return getNeighbors(idx, hm, dimY)
+	}, func(idx int) float64 {
+		return hm[idx]
+	})
+	for i, h := range hm {
+		nh[i] = f(i, h)
 	}
 	return nh
 }

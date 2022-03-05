@@ -110,41 +110,34 @@ func MeshHills(m *vmesh.Mesh, n int, r float64) *vmesh.Heightmap {
 
 func HeightRelax(h *vmesh.Heightmap) *vmesh.Heightmap {
 	newh := vmesh.NewHeightmap(h.Mesh)
-	for i := 0; i < h.Len(); i++ {
-		nbs := h.Neighbours(i)
-		if len(nbs) < 3 {
-			newh.Values[i] = 0
-			continue
-		}
-		var heights []float64
-		for _, j := range nbs {
-			heights = append(heights, h.Values[j])
-		}
-		newh.Values[i] = genheightmap.CalcMean(heights) //d3.mean(nbs.map(function (j) {return h[j]}));
+	f := heightmap.ModRelax(h.Neighbours, func(idx int) float64 {
+		return h.Values[idx]
+	})
+	for i, v := range h.Values {
+		newh.Values[i] = f(i, val) //d3.mean(nbs.map(function (j) {return h[j]}));
 	}
 	return newh
 }
 
 func HeightNormalize(h *vmesh.Heightmap) *vmesh.Heightmap {
-	lo, hi := h.MinMax()
-	return h.MapF(func(x float64) float64 {
-		return (x - lo) / (hi - lo)
-	})
+	min, max := h.MinMax()
+	return h.MapF(genheightmap.ModNormalize(min, max))
 }
 
 func HeightPeaky(h *vmesh.Heightmap) *vmesh.Heightmap {
-	return HeightNormalize(h).MapF(math.Sqrt)
+	return HeightNormalize(h).MapF(genheightmap.ModPeaky())
 }
 
 func HeightSetSeaLevel(h *vmesh.Heightmap, q float64) *vmesh.Heightmap {
-	newh := vmesh.NewHeightmap(h.Mesh)
-	min, max := newh.MinMax()
-	delta := min + (max-min)*0.1
+	//newh := vmesh.NewHeightmap(h.Mesh)
+	//delta := min + (max-min)*0.1
 	//delta := quantile(h, q)
-	for i := 0; i < h.Len(); i++ {
-		newh.Values[i] = h.Values[i] - delta
-	}
-	return newh
+	//for i := 0; i < h.Len(); i++ {
+	//	newh.Values[i] = h.Values[i] - delta
+	//}
+	//return newh
+	min, max := h.MinMax()
+	return h.MapF(genheightmap.ModSeaLevel(min, max, q))
 }
 
 func HeightCleanCoast(h *vmesh.Heightmap, iters int) *vmesh.Heightmap {

@@ -93,3 +93,38 @@ func MinMax(hm []float64) (float64, float64) {
 	}
 	return min, max
 }
+
+type Modify func(val float64) float64
+
+func ModNormalize(min, max float64) Modify {
+	return func(val float64) float64 {
+		return (val - min) / (max - min)
+	}
+}
+
+func ModPeaky() Modify {
+	return math.Sqrt
+}
+
+func ModSeaLevel(min, max, q float64) Modify {
+	delta := min + (max-min)*0.1
+	//delta := quantile(h, q)
+	return func(val float64) float64 {
+		return val - delta
+	}
+}
+
+type ModifyWithIndex func(idx int, val float64) float64
+
+type GetNeighbors func(idx int) []int
+type GetHeight func(idx int) float64
+
+func ModRelax(n GetNeighbors, h GetHeight) ModifyWithIndex {
+	return func(idx int, val float64) float64 {
+		vals := []float64{val}
+		for _, nb := range n(i) {
+			vals = append(vals, h(nb))
+		}
+		return CalcMean(vals)
+	}
+}

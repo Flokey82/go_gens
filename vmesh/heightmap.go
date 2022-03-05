@@ -139,3 +139,11 @@ func (h *Heightmap) MapF(f func(float64) float64) *Heightmap {
 	}
 	return newh
 }
+
+func (h *Heightmap) MapFIdx(f func(val float64) float64) *Heightmap {
+	newh := NewHeightmap(h.Mesh)
+	for i, hg := range h.Values {
+		newh.Values[i] = f(hg)
+	}
+	return newh
+}
