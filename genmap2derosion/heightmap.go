@@ -1,62 +1,25 @@
 package genmap2derosion
 
 import (
-	"bufio"
-	"fmt"
 	"github.com/Flokey82/go_gens/genheightmap"
 	"github.com/Flokey82/go_gens/vectors"
-	"os"
 )
 
-func (w *World) ExportOBJ(path string) error {
-	f, err := os.Create(path)
-	if err != nil {
-		return err
-	}
-	defer f.Close()
-	wr := bufio.NewWriter(f)
-	defer wr.Flush()
-
-	// Write the vertex index.
-	for i, h := range w.heightmap {
-		x := float64(i/int(w.dim.Y)) / float64(w.dim.Y)
-		y := float64(i%int(w.dim.Y)) / float64(w.dim.Y)
-		wr.WriteString(fmt.Sprintf("v %f %f %f \n", x, h*0.2, y))
-	}
-
-	// Write the triangles.
-	for x := 0; x < int(w.dim.X)-1; x++ {
-		for y := 0; y < int(w.dim.Y-1); y++ {
-			i1 := x*int(w.dim.Y) + y
-			i2 := i1 + 1
-			i3 := i2 + int(w.dim.Y)
-			i4 := i1 + int(w.dim.Y)
-			wr.WriteString(fmt.Sprintf("f %d %d %d \n", i1+1, i2+1, i3+1))
-			wr.WriteString(fmt.Sprintf("f %d %d %d \n", i4+1, i1+1, i3+1))
-		}
-	}
-	return nil
-}
-
 // Generate initial heightmap.
-func (w *World) generate() {
+func (w *World) genTerrain() {
 	w.addSlope(vectors.RandomVec2(4))
 	w.addVolCone(-1.0)
 	// w.addNoise(0.5)
 	w.addMountains(50, 0.05)
 	for i := 0; i < 10; i++ {
-		w.relaxHeight()
+		w.heightRelax()
 	}
-	w.peakyHeight()
-	w.normalizeHeight()
+	w.heightPeaky()
+	w.heightNormalize()
 }
 
-func (w *World) addNoise(amount float64) {
-	w.ApplyGen(genheightmap.GenNoise(w.seed, amount))
-}
-
-func (w *World) addMountains(n int, r float64) {
-	w.ApplyGen(genheightmap.GenMountains(1, 1, n, r)) // float64(w.dim.X), float64(w.dim.Y)
+func (w *World) addSlope(direction vectors.Vec2) {
+	w.ApplyGen(genheightmap.GenSlope(direction))
 }
 
 func (w *World) addCone(slope float64) {
@@ -67,8 +30,12 @@ func (w *World) addVolCone(slope float64) {
 	w.ApplyGen(genheightmap.GenVolCone(slope))
 }
 
-func (w *World) addSlope(direction vectors.Vec2) {
-	w.ApplyGen(genheightmap.GenSlope(direction))
+func (w *World) addMountains(n int, r float64) {
+	w.ApplyGen(genheightmap.GenMountains(1, 1, n, r)) // float64(w.dim.X), float64(w.dim.Y)
+}
+
+func (w *World) addNoise(amount float64) {
+	w.ApplyGen(genheightmap.GenNoise(w.seed, amount))
 }
 
 func (w *World) ApplyGen(f genheightmap.GenFunc) {
@@ -78,16 +45,16 @@ func (w *World) ApplyGen(f genheightmap.GenFunc) {
 		y := (float64(i%w.dim.Y) / float64(w.dim.Y)) - 0.5
 		hm[i] = f(x, y)
 	}
-	normalizeHeight(hm)
+	heightNormalize(hm)
 	for i, h := range hm {
 		w.heightmap[i] += h
 	}
 
 	// Normalize
-	w.normalizeHeight()
+	w.heightNormalize()
 }
 
-func ApplyModify(f genheightmap.Modify, hm []float64) {
+func MapF(f genheightmap.Modify, hm []float64) {
 	for i := 0; i < len(hm); i++ {
 		hm[i] = f(hm[i])
 	}
@@ -97,42 +64,44 @@ func (w *World) getMinMax() (float64, float64) {
 	return genheightmap.MinMax(w.heightmap)
 }
 
-func normalizeHeight(hm []float64) {
-	min, max := genheightmap.MinMax(hm)
-	ApplyModify(genheightmap.ModNormalize(min, max), hm)
-}
-
-func (w *World) normalizeHeight() {
-	normalizeHeight(w.heightmap)
-}
-
-func (w *World) peakyHeight() {
-	ApplyModify(genheightmap.ModPeaky(), w.heightmap)
-
-	// Normalize
-	w.normalizeHeight()
-}
-
-func (w *World) relaxHeight() {
+func (w *World) heightRelax() {
 	hm := make([]float64, len(w.heightmap))
-	f := genheightmap.ModRelax(func(idx int) []int {
-		return getNeighbors(idx, w.heightmap, int(w.dim.Y))
-	}, func(idx int) float64 {
+	f := genheightmap.ModRelax(w.getNeighbors, func(idx int) float64 {
 		return w.heightmap[idx]
 	})
 	for i, h := range w.heightmap {
 		hm[i] = f(i, h)
 	}
-	normalizeHeight(hm)
+	heightNormalize(hm)
 	for i, h := range hm {
 		w.heightmap[i] = h
 	}
 
 	// Normalize
-	w.normalizeHeight()
+	w.heightNormalize()
 }
 
-func getNeighbors(i int, hm []float64, dimY int) []int {
+func (w *World) heightNormalize() {
+	heightNormalize(w.heightmap)
+}
+
+func heightNormalize(hm []float64) {
+	min, max := genheightmap.MinMax(hm)
+	MapF(genheightmap.ModNormalize(min, max), hm)
+}
+
+func (w *World) heightPeaky() {
+	MapF(genheightmap.ModPeaky(), w.heightmap)
+
+	// Normalize
+	w.heightNormalize()
+}
+
+func (w *World) getNeighbors(i int) []int {
+	return getNeighbors(i, len(w.heightmap), int(w.dim.Y))
+}
+
+func getNeighbors(i, maxIdx int, dimY int) []int {
 	var nbs []int
 	if i > 0 {
 		nbs = append(nbs, i-1)
@@ -143,12 +112,12 @@ func getNeighbors(i int, hm []float64, dimY int) []int {
 			nbs = append(nbs, i-dimY-1)
 		}
 	}
-	if i < len(hm)-1 {
+	if i < maxIdx-1 {
 		nbs = append(nbs, i+1)
-		if i < len(hm)-1-dimY {
+		if i < maxIdx-1-dimY {
 			nbs = append(nbs, i+dimY-1, i+dimY)
 		}
-		if i+dimY+1 < len(hm) {
+		if i+dimY+1 < maxIdx {
 			nbs = append(nbs, i+dimY+1)
 		}
 	}

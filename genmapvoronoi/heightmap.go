@@ -9,6 +9,30 @@ import (
 	"math/rand"
 )
 
+func (r *Terrain) genTerrain() {
+	r.mesh = vmesh.GenerateGoodMesh(r.params.npts, &vmesh.Extent{
+		Width:  r.params.extent.width,
+		Height: r.params.extent.height,
+	})
+
+	r.h = vmesh.NewHeightmap(r.mesh)
+	r.h.Add(
+		MeshSlope(r.mesh, vectors.RandomVec2(4)),
+		MeshVolCone(r.mesh, -1),
+		//MeshCone(r.mesh, mesh, runif(-1, -1)),
+		MeshMountains(r.mesh, 50, 0.05),
+	)
+	for i := 0; i < 10; i++ {
+		r.h = HeightRelax(r.h)
+	}
+	r.h = HeightPeaky(r.h)
+	r.h = HeightNormalize(r.h)
+	r.h = doErosion(r.h, runif(0, 0.1), 5)
+	r.h = HeightSetSeaLevel(r.h, runif(0.2, 0.6))
+	r.h = HeightFillSinks(r.h)
+	r.h = HeightCleanCoast(r.h, 5)
+}
+
 // Mesh-based heightmap generation helpers.
 
 func MeshSlope(m *vmesh.Mesh, direction vectors.Vec2) *vmesh.Heightmap {

@@ -7,12 +7,12 @@ import (
 	"time"
 )
 
-func (w *World) generateClimate() *World2 {
+func (w *World) genClimate() *World2 {
 	// Generate climate. This is really suboptimal.
 	now := time.Now()
 	w2 := newWorld2(w.dim.X, w.dim.Y, w.seed)
 	w2.generate(w.heightmap)
-	w.export("b_image_terrain.png", w2.terrain.heightmap)
+	w.ExportPng("b_image_terrain.png", w2.terrain.heightmap)
 
 	for i := 0; i < 365; i++ {
 		log.Println(i)
@@ -42,11 +42,11 @@ func (w *World) generateClimate() *World2 {
 	log.Println(w2.climate.HumidityMap)
 	log.Println(w2.climate.RainMap)
 	log.Println(w2.climate.CloudMap)
-	w.export("b_image_avterrain.png", w2.terrain.heightmap)
-	w.export("b_image_avgrain.png", w2.climate.AvgRainMap)
-	w.export("b_image_avgtemp.png", w2.climate.AvgTempMap)
-	w.export("b_image_avgwind.png", w2.climate.AvgWindMap)
-	w.export("b_image_avgcloud.png", w2.climate.AvgCloudMap)
+	w.ExportPng("b_image_avterrain.png", w2.terrain.heightmap)
+	w.ExportPng("b_image_avgrain.png", w2.climate.AvgRainMap)
+	w.ExportPng("b_image_avgtemp.png", w2.climate.AvgTempMap)
+	w.ExportPng("b_image_avgwind.png", w2.climate.AvgWindMap)
+	w.ExportPng("b_image_avgcloud.png", w2.climate.AvgCloudMap)
 	log.Println(time.Since(now))
 	return w2
 }

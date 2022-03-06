@@ -8,7 +8,7 @@ import (
 func (w *World) getDownhill() [][]int {
 	idxs := make([][]int, len(w.heightmap))
 	for i, h := range w.heightmap {
-		nbs := getNeighbors(i, w.heightmap[:], int(w.dim.Y))
+		nbs := w.getNeighbors(i)
 		for _, nb := range nbs {
 			if nbh := w.heightmap[nb]; nbh < h {
 				idxs[i] = append(idxs[i], nb)
@@ -113,7 +113,6 @@ func (w *World) getRawFlux() []float64 {
 		}
 		// Iterate
 		for volume > 0.001 && fail != 0 {
-
 			set = make([]int64, 0, 1024)
 			for i := range tried {
 				tried[i] = false
@@ -212,7 +211,7 @@ func (w *World) getFlux() []float64 {
 		}
 		var sumh float64
 		var lower []int
-		nbs := getNeighbors(j, w.heightmap[:], int(w.dim.Y))
+		nbs := w.getNeighbors(j)
 		for _, nb := range nbs {
 			if nbh := w.heightmap[nb]; nbh < h {
 				sumh += h - nbh
