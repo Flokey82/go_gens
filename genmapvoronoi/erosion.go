@@ -6,13 +6,13 @@ import (
 	"sort"
 )
 
-func doErosion(h *vmesh.Heightmap, amount float64, n int) *vmesh.Heightmap {
-	h = HeightFillSinks(h)
+func doErosion(h *vmesh.Heightmap, amount float64, n int) (eroded *vmesh.Heightmap, sediment *vmesh.Heightmap) {
+	eroded = HeightFillSinks(h)
 	for i := 0; i < n; i++ {
-		h = erode(h, amount)
-		h = HeightFillSinks(h)
+		eroded = erode(eroded, amount)
+		eroded = HeightFillSinks(eroded)
 	}
-	return h
+	return eroded, eroded.Diff(h)
 }
 
 func erode(h *vmesh.Heightmap, amount float64) *vmesh.Heightmap {

@@ -46,6 +46,14 @@ func (h *Heightmap) ExportOBJ(path string) error {
 	return nil
 }
 
+func (h *Heightmap) Diff(hms *Heightmap) *Heightmap {
+	newh := NewHeightmap(h.Mesh)
+	for i, hg := range h.Values {
+		newh.Values[i] = hg - hms.Values[i]
+	}
+	return newh
+}
+
 func (h *Heightmap) Add(hms ...*Heightmap) {
 	n := h.Len()
 	for i := 0; i < n; i++ {

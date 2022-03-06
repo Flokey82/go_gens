@@ -54,6 +54,9 @@ func visualizeHeight(svg *svgo.SVG, r *Terrain, width, height int) {
 		if h.Values[i] <= 0 {
 			rr := int(math.Abs(((min - h.Values[i]) / min)) * 68)
 			rg := int(math.Abs(((min - h.Values[i]) / min)) * 68)
+			if r.sediment.Values[i] > 0 {
+				rg = 255
+			}
 			rb := int(math.Abs(((min - h.Values[i]) / min)) * 255)
 			svg.Path(genD(path, width, height), fmt.Sprintf("fill: rgb(%d, %d, %d)", rr, rg, rb)+tmpLine)
 		} else {

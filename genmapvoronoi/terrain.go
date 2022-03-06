@@ -36,9 +36,10 @@ type Params struct {
 }
 
 type Terrain struct {
-	params *Params
-	mesh   *vmesh.Mesh
-	h      *vmesh.Heightmap
+	params   *Params
+	mesh     *vmesh.Mesh
+	h        *vmesh.Heightmap
+	sediment *vmesh.Heightmap
 
 	cities          []int
 	cityTerritories []int

@@ -27,7 +27,7 @@ func (r *Terrain) genTerrain() {
 	}
 	r.h = HeightPeaky(r.h)
 	r.h = HeightNormalize(r.h)
-	r.h = doErosion(r.h, runif(0, 0.1), 5)
+	r.h, r.sediment = doErosion(r.h, runif(0, 0.1), 5)
 	r.h = HeightSetSeaLevel(r.h, runif(0.2, 0.6))
 	r.h = HeightFillSinks(r.h)
 	r.h = HeightCleanCoast(r.h, 5)
