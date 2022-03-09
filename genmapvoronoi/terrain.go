@@ -9,30 +9,21 @@ import (
 )
 
 type Extent struct {
-	width  float64
-	height float64
+	Width  float64
+	Height float64
 }
 
-var defaultExtent = &Extent{
-	width:  1,
-	height: 1,
-}
-
-type Generator func(*Params) *vmesh.Heightmap
-
-type Fontsizes struct {
-	region int
-	city   int
-	town   int
+var DefaultExtent = &Extent{
+	Width:  1,
+	Height: 1,
 }
 
 type Params struct {
-	extent    *Extent
-	generator Generator
-	npts      int
-	ncities   int
-	nterrs    int
-	fontsizes Fontsizes
+	Extent         *Extent
+	NumPoints      int
+	NumCities      int
+	NumTerritories int
+	RiverThreshold float64
 }
 
 type Terrain struct {
@@ -51,34 +42,36 @@ type Terrain struct {
 	cityBorders     [][]voronoi.Vertex
 }
 
-func DoMap() {
+var DefaultParams = &Params{
+	Extent:         DefaultExtent,
+	NumPoints:      16384,
+	NumCities:      15,
+	NumTerritories: 5,
+	RiverThreshold: 0.005,
+}
+
+func NewTerrain() (*Terrain, error) {
 	r := &Terrain{
-		params: &Params{
-			extent: defaultExtent,
-			//generator: generateCoast,
-			npts:    16384,
-			ncities: 15,
-			nterrs:  5,
-			fontsizes: Fontsizes{
-				region: 40,
-				city:   25,
-				town:   20,
-			},
-		},
+		params: DefaultParams,
 	}
+
 	r.genTerrain()
 	r.regenMapFeatures()
-	r.ExportSVG("test.svg")
+
+	if err := r.ExportSVG("test.svg"); err != nil {
+		return nil, err
+	}
 
 	if err := r.h.ExportOBJ("tmp.obj"); err != nil {
-		panic(err)
+		return nil, err
 	}
+
+	return r, nil
 }
 
 func (r *Terrain) regenMapFeatures() {
-	riverThreshold := 0.005
-	r.rivers = getRivers(r.h, riverThreshold)
-	r.riverPaths = getRiverPaths(r.h, riverThreshold)
+	r.rivers = getRivers(r.h, r.params.RiverThreshold)
+	r.riverPaths = getRiverPaths(r.h, r.params.RiverThreshold)
 	r.coasts = contour(r.h, 0)
 
 	// Place cities.

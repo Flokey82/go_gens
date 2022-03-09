@@ -46,7 +46,7 @@ func placeCity(render *Terrain) {
 
 func placeCities(render *Terrain) {
 	params := render.params
-	n := params.ncities
+	n := params.NumCities
 	for i := 0; i < n; i++ {
 		placeCity(render)
 	}

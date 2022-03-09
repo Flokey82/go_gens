@@ -5,5 +5,5 @@ import (
 )
 
 func main() {
-	genmapvoronoi.DoMap()
+	genmapvoronoi.NewTerrain()
 }

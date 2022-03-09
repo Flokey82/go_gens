@@ -56,7 +56,7 @@ func (pq *PriorityQueue) Pop() interface{} {
 func getTerritories(render *Terrain) []int {
 	h := render.h
 	cities := render.cities
-	n := render.params.nterrs
+	n := render.params.NumTerritories
 	if n > len(render.cities) {
 		n = len(render.cities)
 	}

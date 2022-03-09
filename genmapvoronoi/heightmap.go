@@ -10,9 +10,9 @@ import (
 )
 
 func (r *Terrain) genTerrain() {
-	r.mesh = vmesh.GenerateGoodMesh(r.params.npts, &vmesh.Extent{
-		Width:  r.params.extent.width,
-		Height: r.params.extent.height,
+	r.mesh = vmesh.GenerateGoodMesh(r.params.NumPoints, &vmesh.Extent{
+		Width:  r.params.Extent.Width,
+		Height: r.params.Extent.Height,
 	})
 
 	r.h = vmesh.NewHeightmap(r.mesh)

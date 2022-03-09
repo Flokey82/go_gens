@@ -12,16 +12,16 @@ import (
 )
 
 // ExportSVG exports the terrain as SVG to the given path.
-func (r *Terrain) ExportSVG(path string) {
+func (r *Terrain) ExportSVG(path string) error {
 	params := r.params
 	f, err := os.Create(path)
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 	defer f.Close()
 
 	width := 3500
-	height := int(float64(width) * params.extent.height / params.extent.width)
+	height := int(float64(width) * params.Extent.Height / params.Extent.Width)
 	svg := svgo.New(f)
 	svg.Start(width, height)
 
@@ -36,6 +36,7 @@ func (r *Terrain) ExportSVG(path string) {
 	//drawLabels(svg, render)
 
 	svg.End()
+	return nil
 }
 
 func visualizeHeight(svg *svgo.SVG, r *Terrain, width, height int) {
@@ -54,14 +55,14 @@ func visualizeHeight(svg *svgo.SVG, r *Terrain, width, height int) {
 		if h.Values[i] <= 0 {
 			rr := int(math.Abs(((min - h.Values[i]) / min)) * 68)
 			rg := int(math.Abs(((min - h.Values[i]) / min)) * 68)
-			if r.sediment.Values[i] > 0 {
-				rg = 255
-			}
 			rb := int(math.Abs(((min - h.Values[i]) / min)) * 255)
 			svg.Path(genD(path, width, height), fmt.Sprintf("fill: rgb(%d, %d, %d)", rr, rg, rb)+tmpLine)
 		} else {
 			rr := int((h.Values[i] / max) * 255)
 			rg := int((h.Values[i] / max) * 255)
+			if r.sediment.Values[i] > 0 {
+				rg = 255
+			}
 			svg.Path(genD(path, width, height), fmt.Sprintf("fill: rgb(%d, %d, %d)", rr, rg, rr)+tmpLine)
 		}
 	}
@@ -89,7 +90,7 @@ func genD(path []voronoi.Vertex, width, height int) string {
 func visualizeCities(svg *svgo.SVG, render *Terrain, width, height int) {
 	cities := render.cities
 	h := render.h
-	n := render.params.nterrs
+	n := render.params.NumTerritories
 
 	for i, city := range cities {
 		r := 4
