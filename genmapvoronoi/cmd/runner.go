@@ -11,7 +11,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	if err := r.h.ExportOBJ("tmp.obj"); err != nil {
+	if err := r.ExportOBJ("tmp.obj"); err != nil {
 		log.Fatal(err)
 	}
 }

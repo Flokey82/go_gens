@@ -11,6 +11,11 @@ import (
 	svgo "github.com/ajstarks/svgo"
 )
 
+// ExportOBJ returns a Wavefront OBJ file representing the heightmap.
+func (r *Terrain) ExportOBJ(path string) error {
+	return r.h.ExportOBJ(path)
+}
+
 // ExportSVG exports the terrain as SVG to the given path.
 func (r *Terrain) ExportSVG(path string) error {
 	params := r.params
