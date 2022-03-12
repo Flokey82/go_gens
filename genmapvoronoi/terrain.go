@@ -50,23 +50,15 @@ var DefaultParams = &Params{
 	RiverThreshold: 0.005,
 }
 
-func NewTerrain() (*Terrain, error) {
+func NewTerrain(params *Params) *Terrain {
 	r := &Terrain{
-		params: DefaultParams,
+		params: params,
 	}
 
 	r.genTerrain()
 	r.regenMapFeatures()
 
-	if err := r.ExportSVG("test.svg"); err != nil {
-		return nil, err
-	}
-
-	if err := r.h.ExportOBJ("tmp.obj"); err != nil {
-		return nil, err
-	}
-
-	return r, nil
+	return r
 }
 
 func (r *Terrain) regenMapFeatures() {

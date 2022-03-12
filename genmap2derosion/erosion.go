@@ -31,12 +31,14 @@ func (w *World) doErosion(cycles, drops int) {
 
 func (w *World) erode(drops int) {
 	// Track the Movement of all Particles
-	track := make([]int, w.dim.X*w.dim.Y)
+	sx := w.params.Size.X
+	sy := w.params.Size.Y
+	track := make([]int, sx*sy)
 	for j := 0; j < drops; j++ {
 		// Spawn New Particle
 		drop := NewDrop(vectors.NewVec2(
-			float64(w.r.Intn(int(w.dim.X))), // Random X pos.
-			float64(w.r.Intn(int(w.dim.Y))), // Random Y pos.
+			float64(w.r.Intn(int(sx))), // Random X pos.
+			float64(w.r.Intn(int(sy))), // Random Y pos.
 		), w.fdim)
 
 		spill := 5
@@ -58,7 +60,9 @@ func (w *World) erode(drops int) {
 			w.waterpath[i] = 0.25 * lrateInv * w.waterpath[i]
 		}
 	}
-	w.storeGifFrame(w.heightmap, w.waterpath, w.waterpool)
+	if w.params.StoreGIFFrames {
+		w.storeGifFrame(w.heightmap, w.waterpath, w.waterpool)
+	}
 }
 
 func (w *World) erodeRain(cycles int, rmap []float64) {
@@ -71,20 +75,22 @@ func (w *World) erodeRain(cycles int, rmap []float64) {
 	lrateInv := (1.0 - lrate)
 
 	now := time.Now()
+	sx := w.params.Size.X
+	sy := w.params.Size.Y
 	// Do a series of iterations!
 	for i := 0; i < cycles; i++ {
 		fmt.Println(fmt.Sprintf("Erode... (Cycle %d/%d)", i, cycles))
 
 		// Track the Movement of all Particles
-		track := make([]int, w.dim.X*w.dim.Y)
+		track := make([]int, sx*sy)
 		for j := 0; j < len(rmap); j++ {
 			if rmap[j] <= minVol {
 				continue
 			}
 			// Spawn New Particle
 			drop := NewDrop(vectors.NewVec2(
-				float64(int64(j)/w.dim.Y), // Random X pos.
-				float64(int64(j)%w.dim.Y), // Random Y pos.
+				float64(int64(j)/sy), // Random X pos.
+				float64(int64(j)%sy), // Random Y pos.
 			), w.fdim)
 			drop.volume = rmap[j]
 
@@ -131,10 +137,10 @@ func NewDrop(pos, dim vectors.Vec2) Drop {
 }
 
 // NewDropWithVolume returns a new particle at the given position with the given volume.
-func NewDropWithVolume(p, dim vectors.Vec2, v float64) Drop {
+func NewDropWithVolume(pos, dim vectors.Vec2, v float64) Drop {
 	return Drop{
-		pos:    p,
-		index:  int64(p.X*dim.X + p.X),
+		pos:    pos,
+		index:  int64(pos.X*dim.Y + pos.Y),
 		volume: v,
 	}
 }
@@ -151,7 +157,7 @@ const (
 )
 
 func (d *Drop) descend(w *World, track []int) {
-	dim := w.dim
+	dim := w.params.Size
 	var acc vectors.Vec2
 	var ind, nind int64
 	var effR, effD, effF, muAcc float64
@@ -214,7 +220,7 @@ func (d *Drop) descend(w *World, track []int) {
 }
 
 func (d *Drop) flood(w *World) {
-	dim := w.dim
+	dim := w.params.Size
 	// Current Height
 	d.index = int64(d.pos.X)*dim.Y + int64(d.pos.Y)
 	plane := w.heightmap[d.index] + w.waterpool[d.index]

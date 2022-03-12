@@ -9,8 +9,10 @@ import (
 
 func (w *World) genClimate() *World2 {
 	// Generate climate. This is really suboptimal.
+	sx := w.params.Size.X
+	sy := w.params.Size.Y
 	now := time.Now()
-	w2 := newWorld2(w.dim.X, w.dim.Y, w.seed)
+	w2 := newWorld2(sx, sy, w.seed)
 	w2.generate(w.heightmap)
 	w.ExportPng("b_image_terrain.png", w2.terrain.heightmap)
 

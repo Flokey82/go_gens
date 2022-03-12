@@ -25,21 +25,21 @@ func (r *Terrain) ExportSVG(path string) error {
 	svg := svgo.New(f)
 	svg.Start(width, height)
 
-	visualizeHeight(svg, r, width, height)
-	drawPaths(svg, r.riverPaths, "stroke=\"blue\" fill=\"none\" stroke-width=\"2\"", width, height)
-	drawPaths(svg, r.coasts, "stroke=\"black\" fill=\"none\" stroke-width=\"3\"", width, height)
-	drawPaths(svg, r.borders, "stroke=\"red\" fill=\"none\" stroke-width=\"2\"", width, height)
-	drawPaths(svg, r.cityBorders, "stroke=\"purple\" fill=\"none\"", width, height)
-	visualizeSlopes(svg, r, width, height)
-	visualizeCities(svg, r, width, height)
-	visualizeRidges(svg, r, width, height)
-	//drawLabels(svg, render)
+	svgVisualizeHeight(svg, r, width, height)
+	svgDrawPaths(svg, r.riverPaths, "stroke=\"blue\" fill=\"none\" stroke-width=\"2\"", width, height)
+	svgDrawPaths(svg, r.coasts, "stroke=\"black\" fill=\"none\" stroke-width=\"3\"", width, height)
+	svgDrawPaths(svg, r.borders, "stroke=\"red\" fill=\"none\" stroke-width=\"2\"", width, height)
+	svgDrawPaths(svg, r.cityBorders, "stroke=\"purple\" fill=\"none\"", width, height)
+	svgVisualizeSlopes(svg, r, width, height)
+	svgVisualizeCities(svg, r, width, height)
+	svgVisualizeRidges(svg, r, width, height)
+	//svgDrawLabels(svg, render)
 
 	svg.End()
 	return nil
 }
 
-func visualizeHeight(svg *svgo.SVG, r *Terrain, width, height int) {
+func svgVisualizeHeight(svg *svgo.SVG, r *Terrain, width, height int) {
 	h := r.h
 	//h = erosionRate3(r.bd,h)
 	//h = getFlux(h)
@@ -56,25 +56,25 @@ func visualizeHeight(svg *svgo.SVG, r *Terrain, width, height int) {
 			rr := int(math.Abs(((min - h.Values[i]) / min)) * 68)
 			rg := int(math.Abs(((min - h.Values[i]) / min)) * 68)
 			rb := int(math.Abs(((min - h.Values[i]) / min)) * 255)
-			svg.Path(genD(path, width, height), fmt.Sprintf("fill: rgb(%d, %d, %d)", rr, rg, rb)+tmpLine)
+			svg.Path(svgGenD(path, width, height), fmt.Sprintf("fill: rgb(%d, %d, %d)", rr, rg, rb)+tmpLine)
 		} else {
 			rr := int((h.Values[i] / max) * 255)
 			rg := int((h.Values[i] / max) * 255)
 			if r.sediment.Values[i] > 0 {
 				rg = 255
 			}
-			svg.Path(genD(path, width, height), fmt.Sprintf("fill: rgb(%d, %d, %d)", rr, rg, rr)+tmpLine)
+			svg.Path(svgGenD(path, width, height), fmt.Sprintf("fill: rgb(%d, %d, %d)", rr, rg, rr)+tmpLine)
 		}
 	}
 }
 
-func drawPaths(svg *svgo.SVG, paths [][]voronoi.Vertex, attr string, width, height int) {
+func svgDrawPaths(svg *svgo.SVG, paths [][]voronoi.Vertex, attr string, width, height int) {
 	for _, path := range paths {
-		svg.Path(genD(path, width, height), attr)
+		svg.Path(svgGenD(path, width, height), attr)
 	}
 }
 
-func genD(path []voronoi.Vertex, width, height int) string {
+func svgGenD(path []voronoi.Vertex, width, height int) string {
 	var str string
 
 	for i, p := range path {
@@ -87,7 +87,7 @@ func genD(path []voronoi.Vertex, width, height int) string {
 	return str
 }
 
-func visualizeCities(svg *svgo.SVG, render *Terrain, width, height int) {
+func svgVisualizeCities(svg *svgo.SVG, render *Terrain, width, height int) {
 	cities := render.cities
 	h := render.h
 	n := render.params.NumTerritories
@@ -101,7 +101,7 @@ func visualizeCities(svg *svgo.SVG, render *Terrain, width, height int) {
 	}
 }
 
-func visualizeRidges(svg *svgo.SVG, render *Terrain, width, height int) {
+func svgVisualizeRidges(svg *svgo.SVG, render *Terrain, width, height int) {
 	h := render.h
 	//visited := make(map[int]bool)
 	var ridges [][]voronoi.Vertex
@@ -125,7 +125,7 @@ func visualizeRidges(svg *svgo.SVG, render *Terrain, width, height int) {
 			ridges = append(ridges, vxxs)
 		}
 	}
-	drawPaths(svg, ridges, "stroke=\"gray\" fill=\"none\" stroke-width=\"0.5\"", width, height)
+	svgDrawPaths(svg, ridges, "stroke=\"gray\" fill=\"none\" stroke-width=\"0.5\"", width, height)
 }
 
 /*
@@ -156,7 +156,7 @@ func visualizeRidges(svg *svgo.SVG, render *Terrain, width, height int) {
 	drawPaths(svg, ridges, "stroke=\"gray\" fill=\"none\" stroke-width=\"0.5\"", width, height)
 }*/
 
-func visualizeSlopes(svg *svgo.SVG, render *Terrain, width, height int) {
+func svgVisualizeSlopes(svg *svgo.SVG, render *Terrain, width, height int) {
 	h := render.h
 	var sunStrokes, shadeStrokes [][]voronoi.Vertex
 	r := 0.25 / math.Sqrt(float64(h.Len()))
@@ -216,6 +216,6 @@ func visualizeSlopes(svg *svgo.SVG, render *Terrain, width, height int) {
 			//strokes = append(strokes, []voronoi.Vertex{voronoi.Vertex{x - l, y + l*s}, voronoi.Vertex{x + l, y - l*s}})
 		}
 	}
-	drawPaths(svg, shadeStrokes, "stroke=\"black\" fill=\"none\" stroke-width=\"1\"", width, height)
-	drawPaths(svg, sunStrokes, "stroke=\"gray\" fill=\"none\" stroke-width=\"0.5\"", width, height)
+	svgDrawPaths(svg, shadeStrokes, "stroke=\"black\" fill=\"none\" stroke-width=\"1\"", width, height)
+	svgDrawPaths(svg, sunStrokes, "stroke=\"gray\" fill=\"none\" stroke-width=\"0.5\"", width, height)
 }

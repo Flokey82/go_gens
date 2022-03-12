@@ -39,10 +39,12 @@ func (w *World) addNoise(amount float64) {
 }
 
 func (w *World) ApplyGen(f genheightmap.GenFunc) {
-	hm := make([]float64, w.dim.X*w.dim.Y)
-	for i := int64(0); i < w.dim.X*w.dim.Y; i++ {
-		x := (float64(i/w.dim.Y) / float64(w.dim.X)) - 0.5
-		y := (float64(i%w.dim.Y) / float64(w.dim.Y)) - 0.5
+	x := w.params.Size.X
+	y := w.params.Size.Y
+	hm := make([]float64, x*y)
+	for i := int64(0); i < int64(len(hm)); i++ {
+		x := (float64(i/y) / float64(x)) - 0.5
+		y := (float64(i%y) / float64(y)) - 0.5
 		hm[i] = f(x, y)
 	}
 	heightNormalize(hm)
@@ -98,7 +100,7 @@ func (w *World) heightPeaky() {
 }
 
 func (w *World) getNeighbors(i int) []int {
-	return getNeighbors(i, len(w.heightmap), int(w.dim.Y))
+	return getNeighbors(i, len(w.heightmap), int(w.params.Size.Y))
 }
 
 func getNeighbors(i, maxIdx int, dimY int) []int {
@@ -126,8 +128,8 @@ func getNeighbors(i, maxIdx int, dimY int) []int {
 
 func (w *World) surfaceNormal(index int64) vectors.Vec3 {
 	var n vectors.Vec3
-	dimY := w.dim.Y
-	dimX := w.dim.X
+	dimY := w.params.Size.Y
+	dimX := w.params.Size.X
 	scale := w.scale
 	// NOTE: Would be better to get x,y right in the arguments instead of index
 	x := index / dimY
