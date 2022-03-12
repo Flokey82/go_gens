@@ -15,3 +15,4 @@ gamecs/cmd/rgb.gif
 *.svg
 genmapvoronoi/cmd/runner
 genmap2derosion/cmd/runner
+gendemographics/cmd/runner
