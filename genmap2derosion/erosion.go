@@ -31,15 +31,15 @@ func (w *World) doErosion(cycles, drops int) {
 
 func (w *World) erode(drops int) {
 	// Track the Movement of all Particles
-	sx := w.params.Size.X
-	sy := w.params.Size.Y
+	sx := int(w.params.Size.X)
+	sy := int(w.params.Size.Y)
 	track := make([]int, sx*sy)
 	for j := 0; j < drops; j++ {
 		// Spawn New Particle
 		drop := NewDrop(vectors.NewVec2(
-			float64(w.r.Intn(int(sx))), // Random X pos.
-			float64(w.r.Intn(int(sy))), // Random Y pos.
-		), w.fdim)
+			float64(w.r.Intn(sx)), // Random X pos.
+			float64(w.r.Intn(sy)), // Random Y pos.
+		))
 
 		spill := 5
 		for drop.volume > minVol && spill != 0 {
@@ -75,8 +75,8 @@ func (w *World) erodeRain(cycles int, rmap []float64) {
 	lrateInv := (1.0 - lrate)
 
 	now := time.Now()
-	sx := w.params.Size.X
-	sy := w.params.Size.Y
+	sx := int(w.params.Size.X)
+	sy := int(w.params.Size.Y)
 	// Do a series of iterations!
 	for i := 0; i < cycles; i++ {
 		fmt.Println(fmt.Sprintf("Erode... (Cycle %d/%d)", i, cycles))
@@ -89,9 +89,9 @@ func (w *World) erodeRain(cycles int, rmap []float64) {
 			}
 			// Spawn New Particle
 			drop := NewDrop(vectors.NewVec2(
-				float64(int64(j)/sy), // Random X pos.
-				float64(int64(j)%sy), // Random Y pos.
-			), w.fdim)
+				float64(j/sy),
+				float64(j%sy),
+			))
 			drop.volume = rmap[j]
 
 			spill := 5
@@ -128,19 +128,17 @@ type Drop struct {
 }
 
 // NewDrop returns a new particle at the given position.
-func NewDrop(pos, dim vectors.Vec2) Drop {
+func NewDrop(pos vectors.Vec2) Drop {
 	return Drop{
 		volume: 1.0, // This will vary in time
 		pos:    pos,
-		index:  int64(pos.X*dim.Y + pos.Y),
 	}
 }
 
 // NewDropWithVolume returns a new particle at the given position with the given volume.
-func NewDropWithVolume(pos, dim vectors.Vec2, v float64) Drop {
+func NewDropWithVolume(pos vectors.Vec2, v float64) Drop {
 	return Drop{
 		pos:    pos,
-		index:  int64(pos.X*dim.Y + pos.Y),
 		volume: v,
 	}
 }

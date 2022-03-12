@@ -35,7 +35,7 @@ func (w *World) addMountains(n int, r float64) {
 }
 
 func (w *World) addNoise(amount float64) {
-	w.ApplyGen(genheightmap.GenNoise(w.seed, amount))
+	w.ApplyGen(genheightmap.GenNoise(w.params.Seed, amount))
 }
 
 func (w *World) ApplyGen(f genheightmap.GenFunc) {

@@ -1,18 +1,17 @@
 package genmap2derosion
 
 import (
-	opensimplex "github.com/ojrac/opensimplex-go"
 	"log"
 	"math/rand"
 	"time"
+
+	opensimplex "github.com/ojrac/opensimplex-go"
 )
 
 func (w *World) genClimate() *World2 {
 	// Generate climate. This is really suboptimal.
-	sx := w.params.Size.X
-	sy := w.params.Size.Y
 	now := time.Now()
-	w2 := newWorld2(sx, sy, w.seed)
+	w2 := newWorld2(w.params.Size.X, w.params.Size.Y, w.params.Seed)
 	w2.generate(w.heightmap)
 	w.ExportPng("b_image_terrain.png", w2.terrain.heightmap)
 
@@ -554,6 +553,7 @@ func (t *Terrain) genLocal(seed int, player Player) {
 	}
 }
 */
+
 type Vegetation struct {
 }
 
@@ -614,20 +614,6 @@ func newWorld2(dimX, dimY, seed int64) *World2 {
 		vegetation: new(Vegetation),
 	}
 }
-
-/*
-func (w *World2) changePos(e SDL_Event) {
-	switch e.key.keysym.sym {
-	case SDLK_UP:
-		yview -= 50
-	case SDLK_DOWN:
-		yview += 50
-	case SDLK_LEFT:
-		xview -= 50
-	case SDLK_RIGHT:
-		xview += 50
-	}
-}*/
 
 func (w *World2) generate(h []float64) {
 	//Geography

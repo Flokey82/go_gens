@@ -17,12 +17,14 @@ type Params struct {
 	StorePNGCycles bool
 	Height         int64
 	Width          int64
+	Seed           int64
 	Size           vectors.IVec2
 }
 
 var DefaultParams = &Params{
 	StoreGIFFrames: true,
 	StorePNGCycles: true,
+	Seed:           DefaultSeed,
 	Size: vectors.IVec2{
 		X: worldsize,
 		Y: worldsize,
@@ -34,10 +36,7 @@ type World struct {
 	images  []*image.Paletted // Generated frame used to construct the GIF.
 	palette []color.Color     // Default color palette.
 	delays  []int             // Delay for each individual frame (0 for now).
-	seed    int64
 	r       *rand.Rand
-	//dim     vectors.IVec2 // Size of the heightmap array
-	fdim vectors.Vec2
 
 	drainage    float64   // Drainage factor from pools
 	scale       float64   // "Physical" Height scaling of the map
@@ -58,16 +57,19 @@ type World struct {
 	// sedimentToughness [worldsize * worldsize]float64 // Sediment toughness storage
 }
 
+const DefaultSeed = 12356
+
 func NewWorld(params *Params) *World {
-	dimX := params.Size.X
-	dimY := params.Size.Y
-	idxSize := dimX * dimY
+	if params == nil {
+		params = DefaultParams
+	}
+
+	idxSize := params.Size.X * params.Size.Y
 	w := &World{
-		params:   params,
-		drainage: 0.01,
-		scale:    40.0,
-		//dim:           vectors.NewIVec2(dimX, dimY),
-		fdim:          vectors.NewVec2(float64(dimX), float64(dimY)),
+		params:        params,
+		r:             rand.New(rand.NewSource(params.Seed)),
+		drainage:      0.01,
+		scale:         40.0,
 		heightmap:     make([]float64, idxSize),
 		sediment:      make([]float64, idxSize),
 		waterpath:     make([]float64, idxSize),
@@ -76,14 +78,9 @@ func NewWorld(params *Params) *World {
 		fluxwaterpool: make([]float64, idxSize),
 	}
 
+	// Prepare grayscale palette for GIF (0-255).
 	for i := 0; i <= 255; i++ {
 		w.palette = append(w.palette, color.RGBA{uint8(i), uint8(i), uint8(i), 0xff})
-	}
-
-	// Seed the Random Generator
-	if w.seed == 0 {
-		w.seed = 12356
-		w.r = rand.New(rand.NewSource(w.seed))
 	}
 
 	// Initialize all water drains to -1 (unset)
