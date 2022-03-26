@@ -129,6 +129,15 @@ func (v1 Vec3) Add(v2 Vec3) Vec3 {
 	return Add3(v1, v2)
 }
 
+// Mul multiplies the current vector with c and returns the result.
+func (v1 Vec3) Mul(c float64) Vec3 {
+	return Vec3{
+		X: v1.X * c,
+		Y: v1.Y * c,
+		Z: v1.Z * c,
+	}
+}
+
 // AddToThis adds v2 to the current vector.
 func (v1 *Vec3) AddToThis(v2 Vec3) {
 	v1.X += v2.X
@@ -143,6 +152,23 @@ func Add3(v1, v2 Vec3) Vec3 {
 		Y: v1.Y + v2.Y,
 		Z: v1.Z + v2.Z,
 	}
+}
+
+// Sub3 subtracts
+func Sub3(v1, v2 Vec3) Vec3 {
+	return Vec3{
+		X: v1.X - v2.X,
+		Y: v1.Y - v2.Y,
+		Z: v1.Z - v2.Z,
+	}
+}
+
+// Dist3 returns the eucledian distance between two vectors.
+func Dist3(a, b Vec3) float64 {
+	xDiff := a.X - b.X
+	yDiff := a.Y - b.Y
+	zDiff := a.Z - b.Z
+	return float64(math.Sqrt(float64(xDiff*xDiff + yDiff*yDiff + zDiff*zDiff)))
 }
 
 // Cross3 returns the crossproduct of two vectors.
