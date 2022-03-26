@@ -26,6 +26,14 @@ type Params struct {
 	RiverThreshold float64
 }
 
+var DefaultParams = &Params{
+	Extent:         DefaultExtent,
+	NumPoints:      16384,
+	NumCities:      15,
+	NumTerritories: 5,
+	RiverThreshold: 0.005,
+}
+
 type Terrain struct {
 	params   *Params
 	mesh     *vmesh.Mesh
@@ -40,14 +48,6 @@ type Terrain struct {
 	terr            []int              // vertex to territory id mapping
 	borders         [][]voronoi.Vertex // territory border paths
 	cityBorders     [][]voronoi.Vertex
-}
-
-var DefaultParams = &Params{
-	Extent:         DefaultExtent,
-	NumPoints:      16384,
-	NumCities:      15,
-	NumTerritories: 5,
-	RiverThreshold: 0.005,
 }
 
 func NewTerrain(params *Params) *Terrain {
