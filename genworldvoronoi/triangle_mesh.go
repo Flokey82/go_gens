@@ -139,6 +139,10 @@ func (this *TriangleMesh) r_circulate_r(out_r []int, r int) []int {
 	}
 	return out_r
 }
+func (this *TriangleMesh) s_end_r(s int) int {
+	return this.Triangles[s_next_s(s)]
+}
+
 func (this *TriangleMesh) s_begin_r(s int) int {
 	return this.Triangles[s]
 }
@@ -146,9 +150,11 @@ func (this *TriangleMesh) s_begin_r(s int) int {
 func (this *TriangleMesh) s_opposite_s(s int) int {
 	return this.Halfedges[s]
 }
+
 func (this *TriangleMesh) s_inner_t(s int) int {
 	return s_to_t(s)
 }
+
 func (this *TriangleMesh) s_outer_t(s int) int {
 	return s_to_t(this.Halfedges[s])
 }

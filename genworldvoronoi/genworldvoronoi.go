@@ -4,12 +4,10 @@
 package genworldvoronoi
 
 import (
-	"bufio"
 	"container/heap"
-	"fmt"
+	"log"
 	"math"
 	"math/rand"
-	"os"
 	"sort"
 
 	"github.com/Flokey82/go_gens/vectors"
@@ -73,31 +71,6 @@ func NewMap(seed int64, P, N int, jitter float64) *Map {
 
 func (m *Map) resetRand() {
 	m.rand.Seed(m.seed)
-}
-
-func (m *Map) ExportOBJ(path string) error {
-	f, err := os.Create(path)
-	if err != nil {
-		return err
-	}
-	defer f.Close()
-	w := bufio.NewWriter(f)
-	//xy := stereographicProjection(m.r_xyz)
-	//for i := 0; i < len(xy); i += 2 {
-	//	w.WriteString(fmt.Sprintf("v %f %f %f \n", xy[i], xy[i+1], 2.0)) //
-	//}
-	for i := 0; i < len(m.r_xyz); i += 3 {
-		ve := convToVec3(m.r_xyz[i:]).Mul(1.0 + 0.01*m.r_elevation[i/3])
-		w.WriteString(fmt.Sprintf("v %f %f %f \n", ve.X, ve.Y, ve.Z)) //
-		//w.WriteString(fmt.Sprintf("v %f %f %f \n", m.r_xyz[i], m.r_xyz[i+1], m.r_xyz[i+2])) //
-	}
-	w.Flush()
-	for i := 0; i < len(m.mesh.Triangles); i += 3 {
-		w.WriteString(fmt.Sprintf("f %d %d %d \n", m.mesh.Triangles[i]+1, m.mesh.Triangles[i+1]+1, m.mesh.Triangles[i+2]+1))
-		w.Flush()
-	}
-	w.Flush()
-	return nil
 }
 
 func (m *Map) generateMap() {
@@ -200,6 +173,12 @@ func (m *Map) assignOceanPlates() {
 			// TODO: either make tiny plates non-ocean, or make sure tiny plates don't create seeds for rivers
 		}
 	}
+	log.Println(m.plate_is_ocean)
+	pm := make(map[int]int)
+	for _, r := range m.r_plate {
+		pm[r]++
+	}
+	log.Println(pm)
 }
 
 // Calculate the collision measure, which is the amount
@@ -207,73 +186,95 @@ func (m *Map) assignOceanPlates() {
 // the current plate vector.
 const collisionThreshold = 0.75
 
-func (m *Map) findCollisions() ([]int, []int, []int) {
-	r_xyz := m.r_xyz
+// FIXME: The smaller the distance of the cells, the more likely a plate moves past the neighbor plate.
+// This causes all kinds of issues.
+func (m *Map) findCollisions() ([]int, []int, []int, map[int]float64) {
 	plate_is_ocean := m.plate_is_ocean
 	r_plate := m.r_plate
 	plate_vec := m.plate_vec
-
-	const deltaTime = 1e-2 // simulate movement
 	numRegions := m.mesh.numRegions
-	var mountain_r, coastline_r, ocean_r, r_out []int
+	compression_r := make(map[int]float64)
+
+	const deltaTime = 1e-7 // simulate movement
+
 	// For each region, I want to know how much it's being compressed
 	// into an adjacent region. The "compression" is the change in
 	// distance as the two regions move. I'm looking for the adjacent
 	// region from a different plate that pushes most into this one
+	var mountain_r, coastline_r, ocean_r, r_out []int
+	var best_r int
+	var bestCompression float64
 	for current_r := 0; current_r < numRegions; current_r++ {
-		bestCompression := Infinity
-		best_r := -1
+		bestCompression = 0.0 // NOTE: Was Infinity
+		best_r = -1
 		r_out = m.mesh.r_circulate_r(r_out, current_r)
 		for _, neighbor_r := range r_out {
 			if r_plate[current_r] != r_plate[neighbor_r] {
 				// sometimes I regret storing xyz in a compact array...
-				current_pos := r_xyz[3*current_r : 3*current_r+3]
-				neighbor_pos := r_xyz[3*neighbor_r : 3*neighbor_r+3]
+				current_pos := convToVec3(m.r_xyz[3*current_r : 3*current_r+3])
+				neighbor_pos := convToVec3(m.r_xyz[3*neighbor_r : 3*neighbor_r+3])
+
 				// simulate movement for deltaTime seconds
-				distanceBefore := vectors.Dist3(convToVec3(current_pos), convToVec3(neighbor_pos))
-				a := vectors.Add3(convToVec3(current_pos), plate_vec[r_plate[current_r]].Mul(deltaTime))
-				b := vectors.Add3(convToVec3(neighbor_pos), plate_vec[r_plate[neighbor_r]].Mul(deltaTime))
+				distanceBefore := vectors.Dist3(current_pos, neighbor_pos)
+
+				plateVec := plate_vec[r_plate[current_r]].Mul(deltaTime)
+				a := vectors.Add3(current_pos, plateVec)
+
+				plateVecNeighbor := plate_vec[r_plate[neighbor_r]].Mul(deltaTime)
+				b := vectors.Add3(neighbor_pos, plateVecNeighbor)
+
 				distanceAfter := vectors.Dist3(a, b)
+
 				// how much closer did these regions get to each other?
 				compression := distanceBefore - distanceAfter
+
 				// keep track of the adjacent region that gets closest.
-				if compression < bestCompression {
+				if compression > bestCompression { // NOTE: changed from compression < bestCompression
 					best_r = neighbor_r
 					bestCompression = compression
 				}
 			}
 		}
-		if best_r != -1 {
-			// at this point, bestCompression tells us how much closer
-			// we are getting to the region that's pushing into us the most.
-			collided := bestCompression > collisionThreshold*deltaTime
-			if plate_is_ocean[current_r] && plate_is_ocean[best_r] {
-				if collided {
-					coastline_r = append(coastline_r, current_r)
-				} else {
-					ocean_r = append(ocean_r, current_r)
-				}
-			} else if !plate_is_ocean[current_r] && !plate_is_ocean[best_r] {
-				if collided {
-					mountain_r = append(mountain_r, current_r)
-				}
+		// Check if we have a collision candidate.
+		if best_r == -1 {
+			continue
+		}
+		compression_r[best_r] += bestCompression
+
+		// at this point, bestCompression tells us how much closer
+		// we are getting to the region that's pushing into us the most.
+		collided := bestCompression > collisionThreshold*deltaTime
+		if plate_is_ocean[current_r] && plate_is_ocean[best_r] {
+			if collided {
+				coastline_r = append(coastline_r, current_r)
 			} else {
-				if collided {
-					mountain_r = append(mountain_r, current_r)
-				} else {
-					coastline_r = append(coastline_r, current_r)
-				}
+				ocean_r = append(ocean_r, current_r)
+			}
+		} else if !plate_is_ocean[current_r] && !plate_is_ocean[best_r] {
+			if collided {
+				mountain_r = append(mountain_r, current_r)
+			}
+		} else {
+			if collided {
+				mountain_r = append(mountain_r, current_r)
+			} else {
+				coastline_r = append(coastline_r, current_r)
 			}
 		}
 	}
-	return mountain_r, coastline_r, ocean_r
+	return mountain_r, coastline_r, ocean_r, compression_r
 }
 
 // Calculate the centroid and push it onto an array.
 func pushCentroidOfTriangle(out []float64, ax, ay, az, bx, by, bz, cx, cy, cz float64) []float64 {
 	// TODO: renormalize to radius 1
-	out = append(out, (ax+bx+cx)/3, (ay+by+cy)/3, (az+bz+cz)/3)
-	return out
+	// v3 := vectors.Vec3{
+	//	X: (ax + bx + cx) / 3,
+	//	Y: (ay + by + cy) / 3,
+	//	Z: (az + bz + cz) / 3,
+	// }.Normalize()
+	//out = append(out, v3.X, v3.Y, v3.Z)
+	return append(out, (ax+bx+cx)/3, (ay+by+cy)/3, (az+bz+cz)/3)
 }
 
 func (m *Map) generateTriangleCenters() []float64 {
@@ -292,7 +293,9 @@ func (m *Map) generateTriangleCenters() []float64 {
 
 func (m *Map) assignRegionElevation() {
 	const epsilon = 1e-3
-	mountain_r, coastline_r, ocean_r := m.findCollisions()
+	mountain_r, coastline_r, ocean_r, _ := m.findCollisions()
+	//log.Println(compression_r)
+	log.Println(mountain_r)
 	for r := 0; r < m.mesh.numRegions; r++ {
 		if m.r_plate[r] == r {
 			if m.plate_is_ocean[r] {
@@ -318,15 +321,23 @@ func (m *Map) assignRegionElevation() {
 	r_distance_b := m.assignDistanceField(ocean_r, convToMap(coastline_r))
 	r_distance_c := m.assignDistanceField(coastline_r, stop_r)
 
+	// Get min/max compression.
+	//var compVals []float64
+	//for _, v := range compression_r {
+	//	compVals = append(compVals, v)
+	//}
+	//minComp, maxComp := MinMax(compVals)
+
 	r_xyz := m.r_xyz
 	for r := 0; r < m.mesh.numRegions; r++ {
-		a := r_distance_a[r] + epsilon
-		b := r_distance_b[r] + epsilon
-		c := r_distance_c[r] + epsilon
+		a := float64(r_distance_a[r]) + epsilon
+		b := float64(r_distance_b[r]) + epsilon
+		c := float64(r_distance_c[r]) + epsilon
 		if a == Infinity && b == Infinity {
 			m.r_elevation[r] = 0.1
 		} else {
 			m.r_elevation[r] = (1/a - 1/b) / (1/a + 1/b + 1/c)
+			// m.r_elevation[r] *= ((compression_r[r] - minComp) / (maxComp - minComp))
 		}
 		m.r_elevation[r] += m.fbm_noise(r_xyz[3*r], r_xyz[3*r+1], r_xyz[3*r+2])
 	}
@@ -386,13 +397,13 @@ func (m *Map) assignDownflow() {
 			m.order_t[queue_in] = t
 			queue_in++
 			m.t_downflow_s[t] = best_s
-			_queue.Push(&Item{ID: t, Value: m.t_elevation[t], Index: t})
+			heap.Push(&_queue, &Item{ID: t, Value: m.t_elevation[t], Index: t})
 		}
 	}
 
 	// Part 2: land triangles get visited in elevation priority.
 	for queue_out := 0; queue_out < numTriangles; queue_out++ {
-		current_t := _queue.Pop().(*Item).ID
+		current_t := heap.Pop(&_queue).(*Item).ID
 		for j := 0; j < 3; j++ {
 			s := 3*current_t + j
 			neighbor_t := m.mesh.s_outer_t(s) // uphill from current_t
@@ -400,8 +411,7 @@ func (m *Map) assignDownflow() {
 				m.t_downflow_s[neighbor_t] = m.mesh.s_opposite_s(s)
 				m.order_t[queue_in] = neighbor_t
 				queue_in++
-				_queue.Push(&Item{ID: neighbor_t, Value: m.t_elevation[neighbor_t]})
-				heap.Init(&_queue)
+				heap.Push(&_queue, &Item{ID: neighbor_t, Value: m.t_elevation[neighbor_t]})
 			}
 		}
 	}
@@ -489,11 +499,12 @@ const Infinity = 1.0
 
 // Distance from any point in seeds_r to all other points, but
 // don't go past any point in stop_r.
-func (m *Map) assignDistanceField(seeds_r []int, stop_r map[int]bool) []float64 {
+// NOTE: Float lacks precision for full integers like the ones used here.
+func (m *Map) assignDistanceField(seeds_r []int, stop_r map[int]bool) []int64 {
 	m.resetRand()
 	mesh := m.mesh
 	numRegions := mesh.numRegions
-	r_distance := make([]float64, numRegions)
+	r_distance := make([]int64, numRegions)
 	for i := range r_distance {
 		r_distance[i] = Infinity
 	}
@@ -519,6 +530,7 @@ func (m *Map) assignDistanceField(seeds_r []int, stop_r map[int]bool) []float64 
 			}
 		}
 	}
+	log.Println(r_distance)
 	// TODO: possible enhancement: keep track of which seed is closest
 	// to this point, so that we can assign variable mountain/ocean
 	// elevation to each seed instead of them always being +1/-1
@@ -566,4 +578,22 @@ func (m *Map) fbm_noise(nx, ny, nz float64) float64 {
 		sumOfAmplitudes += amplitudes[octave]
 	}
 	return sum / sumOfAmplitudes
+}
+
+func MinMax(hm []float64) (float64, float64) {
+	if len(hm) == 0 {
+		return 0, 0
+	}
+	min := hm[0]
+	max := hm[0]
+	for _, h := range hm {
+		if h > max {
+			max = h
+		}
+
+		if h < min {
+			min = h
+		}
+	}
+	return min, max
 }

@@ -1,6 +1,7 @@
 package genworldvoronoi
 
 import (
+	"github.com/Flokey82/go_gens/vectors"
 	"github.com/fogleman/delaunay"
 	"log"
 	"math"
@@ -49,6 +50,14 @@ func pushCartesianFromSpherical(out []float64, latDeg, lonDeg float64) []float64
 		math.Sin(latRad),
 	)
 	return out
+}
+
+func latLonFromVec3(position vectors.Vec3, sphereRadius float64) (float64, float64) {
+	// See https://stackoverflow.com/questions/46247499/vector3-to-latitude-longitude
+	const radToDeg = 180 / math.Pi
+	lat := math.Acos(position.Y / sphereRadius) //theta
+	lon := math.Atan2(position.X, position.Z)   //phi
+	return -1 * (90 - lat*radToDeg), -1 * (180 - lon*radToDeg)
 }
 
 /** Add south pole back into the mesh.
@@ -120,7 +129,6 @@ func addSouthPoleToMesh(southPoleId int, d *delaunay.Triangulation) *delaunay.Tr
 // stereographicProjection converts 3d coordinates into two dimensions.
 func stereographicProjection(r_xyz []float64) []float64 {
 	// See <https://en.wikipedia.org/wiki/Stereographic_projection>
-	const degToRad = math.Pi / 180
 	numPoints := len(r_xyz) / 3
 	var r_XY []float64
 	for r := 0; r < numPoints; r++ {

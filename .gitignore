@@ -18,3 +18,4 @@ genmap2derosion/cmd/runner
 gendemographics/cmd/runner
 genworldvoronoi/cmd/runner
 genworldvoronoi/cmd/test.obj
+genworldvoronoi/cmd/sphere.obj

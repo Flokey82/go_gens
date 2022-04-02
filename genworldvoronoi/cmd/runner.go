@@ -5,6 +5,8 @@ import (
 )
 
 func main() {
-	sp := genworldvoronoi.NewMap(1234, 20, 100000, 0.0)
+	sp := genworldvoronoi.NewMap(1234, 25, 200000, 0.0)
+	sp.ExportPng("test.png")
 	sp.ExportOBJ("test.obj")
+	sp.ExportSVG("test.svg")
 }
