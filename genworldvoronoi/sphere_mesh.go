@@ -8,18 +8,19 @@ import (
 	"math/rand"
 )
 
-func generateFibonacciSphere(seed int64, N int, jitter float64) []float64 {
+// generateFibonacciSphere generates a number of points along a spiral on a sphere.
+func generateFibonacciSphere(seed int64, numPoints int, jitter float64) []float64 {
 	rnd := rand.New(rand.NewSource(seed))
 	var a_latlong []float64
 	_randomLat := make(map[int]float64)
 	_randomLon := make(map[int]float64)
 
 	// Second algorithm from http://web.archive.org/web/20120421191837/http://www.cgafaq.info/wiki/Evenly_distributed_points_on_sphere
-	s := 3.6 / math.Sqrt(float64(N))
+	s := 3.6 / math.Sqrt(float64(numPoints))
 	dlong := math.Pi * (3 - math.Sqrt(5)) /* ~2.39996323 */
-	dz := 2.0 / float64(N)
+	dz := 2.0 / float64(numPoints)
 
-	for k, long, z := 0, 0.0, 1-(dz/2); k != N; k++ {
+	for k, long, z := 0, 0.0, 1-(dz/2); k != numPoints; k++ {
 		r := math.Sqrt(1 - z*z)
 		latDeg := math.Asin(z) * 180 / math.Pi
 		lonDeg := long * 180 / math.Pi
@@ -44,12 +45,11 @@ func generateFibonacciSphere(seed int64, N int, jitter float64) []float64 {
 func pushCartesianFromSpherical(out []float64, latDeg, lonDeg float64) []float64 {
 	latRad := latDeg / 180.0 * math.Pi
 	lonRad := lonDeg / 180.0 * math.Pi
-	out = append(out,
+	return append(out,
 		math.Cos(latRad)*math.Cos(lonRad),
 		math.Cos(latRad)*math.Sin(lonRad),
 		math.Sin(latRad),
 	)
-	return out
 }
 
 func latLonFromVec3(position vectors.Vec3, sphereRadius float64) (float64, float64) {

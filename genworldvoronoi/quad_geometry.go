@@ -93,6 +93,9 @@ func (this *QuadGeometry) setMap(mesh *TriangleMesh, m *Map) {
             count_ridge++
         }
     }
+    this.I = I
+    this.xyz = xyz
+    this.tm = tm
 
     //console.log('ridge=', count_ridge, ', valley=', count_valley);
 }

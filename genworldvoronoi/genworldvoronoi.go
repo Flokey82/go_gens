@@ -16,54 +16,53 @@ import (
 
 // ugh globals, sorry
 type Map struct {
-	t_xyz          []float64
-	t_moisture     []float64
-	t_elevation    []float64
-	t_flow         []float64
-	t_downflow_s   []int
-	r_xyz          []float64
-	r_elevation    []float64
-	r_moisture     []float64
-	r_plate        []int
-	s_flow         []float64
-	order_t        []int
-	plate_is_ocean map[int]bool
-	plate_r        map[int]bool
-	mesh           *TriangleMesh
-	seed           int64
-	rand           *rand.Rand
-	noise          opensimplex.Noise
-	plate_vec      []vectors.Vec3
-	P              int
-	N              int
-	Q              *QuadGeometry
+	t_xyz        []float64         // Triangle xyz coordinates
+	t_moisture   []float64         // Triangle moisture
+	t_elevation  []float64         // Triangle elevation
+	t_flow       []float64         // Flow intensity through triangles
+	t_downflow_s []int             // Triangle mapping to side through which water flows downhill.
+	r_xyz        []float64         // Point / region xyz coordinates
+	r_elevation  []float64         // Point / region elevation
+	r_moisture   []float64         // Point / region moisture
+	r_plate      []int             // Region to plate mapping
+	s_flow       []float64         // Flow intensity through sides
+	order_t      []int             // Uphill order of triangles (??)
+	PlateVectors []vectors.Vec3    // Plate tectonics / movement vectors
+	PlateIsOcean map[int]bool      // Plate was chosed to be an ocean plate
+	plate_r      []int             // Plate seed points / regions
+	mesh         *TriangleMesh     // Triangle mesh containing the sphere information
+	seed         int64             // Seed for random number generators
+	rand         *rand.Rand        // Rand initialized with above seed
+	noise        opensimplex.Noise // Opensimplex noise initialized with above seed
+	NumPlates    int               // Number of generated plates
+	NumPoints    int               // Number of generated points / regions
+	QuadGeom     *QuadGeometry     // Quad geometry generated from the mesh (?)
 }
 
-func NewMap(seed int64, P, N int, jitter float64) *Map {
-	result := MakeSphere(seed, N, jitter)
+func NewMap(seed int64, numPlates, numPoints int, jitter float64) *Map {
+	result := MakeSphere(seed, numPoints, jitter)
 	mesh := result.mesh
 
 	m := &Map{
-		plate_is_ocean: make(map[int]bool),
-		plate_r:        make(map[int]bool),
-		r_xyz:          result.r_xyz,
-		r_elevation:    make([]float64, mesh.numRegions),
-		t_elevation:    make([]float64, mesh.numTriangles),
-		r_moisture:     make([]float64, mesh.numRegions),
-		t_moisture:     make([]float64, mesh.numTriangles),
-		t_downflow_s:   make([]int, mesh.numTriangles),
-		order_t:        make([]int, mesh.numTriangles),
-		t_flow:         make([]float64, mesh.numTriangles),
-		s_flow:         make([]float64, mesh.numSides),
-		mesh:           result.mesh,
-		seed:           seed,
-		rand:           rand.New(rand.NewSource(seed)),
-		noise:          opensimplex.New(seed),
-		P:              P,
-		N:              N,
-		Q:              NewQuadGeometry(),
+		PlateIsOcean: make(map[int]bool),
+		r_xyz:        result.r_xyz,
+		r_elevation:  make([]float64, mesh.numRegions),
+		t_elevation:  make([]float64, mesh.numTriangles),
+		r_moisture:   make([]float64, mesh.numRegions),
+		t_moisture:   make([]float64, mesh.numTriangles),
+		t_downflow_s: make([]int, mesh.numTriangles),
+		order_t:      make([]int, mesh.numTriangles),
+		t_flow:       make([]float64, mesh.numTriangles),
+		s_flow:       make([]float64, mesh.numSides),
+		mesh:         result.mesh,
+		seed:         seed,
+		rand:         rand.New(rand.NewSource(seed)),
+		noise:        opensimplex.New(seed),
+		NumPlates:    numPlates,
+		NumPoints:    numPoints,
+		QuadGeom:     NewQuadGeometry(),
 	}
-	m.Q.setMesh(mesh)
+	m.QuadGeom.setMesh(mesh)
 	m.t_xyz = m.generateTriangleCenters()
 	m.generateMap()
 	return m
@@ -86,21 +85,24 @@ func (m *Map) generateMap() {
 	m.assignTriangleValues()
 	m.assignDownflow()
 	m.assignFlow()
-	m.Q.setMap(m.mesh, m)
+
+	// Quad geometry updete.
+	m.QuadGeom.setMap(m.mesh, m)
 }
 
 // Plates
 
-// pickRandomRegions picks n random points/regions.
-func (m *Map) pickRandomRegions(mesh *TriangleMesh, n int) map[int]bool {
+// pickRandomRegions picks n random points/regions from the given mesh.
+func (m *Map) pickRandomRegions(mesh *TriangleMesh, n int) []int {
 	m.resetRand()
 	chosen_r := make(map[int]bool) // new Set()
 	for len(chosen_r) < n && len(chosen_r) < mesh.numRegions {
 		chosen_r[m.rand.Intn(mesh.numRegions)] = true
 	}
-	return chosen_r
+	return convToArray(chosen_r)
 }
 
+// min is the int equivalent of math.Min(a, b).
 func min(a, b int) int {
 	if a < b {
 		return a
@@ -108,6 +110,8 @@ func min(a, b int) int {
 	return b
 }
 
+// generatePlates generates a number of plate seed points and starts growing the plates
+// starting from those seeds in a ranom order.
 func (m *Map) generatePlates() {
 	m.resetRand()
 	mesh := m.mesh
@@ -117,10 +121,10 @@ func (m *Map) generatePlates() {
 	}
 
 	// Pick random regions as seed points for plate generation.
-	plate_r := m.pickRandomRegions(mesh, min(m.P, m.N))
+	plate_r := m.pickRandomRegions(mesh, min(m.NumPlates, m.NumPoints))
 
 	var queue []int
-	for _, r := range convToArray(plate_r) {
+	for _, r := range plate_r {
 		queue = append(queue, r)
 		r_plate[r] = r
 	}
@@ -151,29 +155,30 @@ func (m *Map) generatePlates() {
 
 	// Assign a random movement vector for each plate
 	r_xyz := m.r_xyz
-	plate_vec := make([]vectors.Vec3, mesh.numRegions)
-	for center_r := range plate_r {
+	plateVectors := make([]vectors.Vec3, mesh.numRegions)
+	for _, center_r := range plate_r {
 		neighbor_r := mesh.r_circulate_r(nil, center_r)[0]
 		p0 := convToVec3(r_xyz[3*center_r : 3*center_r+3])
 		p1 := convToVec3(r_xyz[3*neighbor_r : 3*neighbor_r+3])
-		plate_vec[center_r] = vectors.Sub3(p1, p0).Normalize()
+		plateVectors[center_r] = vectors.Sub3(p1, p0).Normalize()
 	}
 
 	m.plate_r = plate_r
 	m.r_plate = r_plate
-	m.plate_vec = plate_vec
+	m.PlateVectors = plateVectors
 }
 
+// assignOceanPlates randomly assigns approx. 50% of the plates as ocean plates.
 func (m *Map) assignOceanPlates() {
 	m.resetRand()
-	m.plate_is_ocean = make(map[int]bool)
-	for _, r := range convToArray(m.plate_r) {
+	m.PlateIsOcean = make(map[int]bool)
+	for _, r := range m.plate_r {
 		if m.rand.Intn(10) < 5 {
-			m.plate_is_ocean[r] = true
+			m.PlateIsOcean[r] = true
 			// TODO: either make tiny plates non-ocean, or make sure tiny plates don't create seeds for rivers
 		}
 	}
-	log.Println(m.plate_is_ocean)
+	log.Println(m.PlateIsOcean)
 	pm := make(map[int]int)
 	for _, r := range m.r_plate {
 		pm[r]++
@@ -186,12 +191,18 @@ func (m *Map) assignOceanPlates() {
 // the current plate vector.
 const collisionThreshold = 0.75
 
+// findCollisions iterates through all regions and finds the regions whose neighbor points
+// belong to a different plate. This subset of points is than moved using their respective
+// tectonic plate vector and if they approach each other to an extent where they exceed the
+// collision threshold, a collision is noted. Depending on the type of plates involved in a
+// collision, they produce certain effects like forming a coastline, mountains, etc.
+//
 // FIXME: The smaller the distance of the cells, the more likely a plate moves past the neighbor plate.
 // This causes all kinds of issues.
 func (m *Map) findCollisions() ([]int, []int, []int, map[int]float64) {
-	plate_is_ocean := m.plate_is_ocean
+	plateIsOcean := m.PlateIsOcean
 	r_plate := m.r_plate
-	plate_vec := m.plate_vec
+	plateVectors := m.PlateVectors
 	numRegions := m.mesh.numRegions
 	compression_r := make(map[int]float64)
 
@@ -217,10 +228,10 @@ func (m *Map) findCollisions() ([]int, []int, []int, map[int]float64) {
 				// simulate movement for deltaTime seconds
 				distanceBefore := vectors.Dist3(current_pos, neighbor_pos)
 
-				plateVec := plate_vec[r_plate[current_r]].Mul(deltaTime)
+				plateVec := plateVectors[r_plate[current_r]].Mul(deltaTime)
 				a := vectors.Add3(current_pos, plateVec)
 
-				plateVecNeighbor := plate_vec[r_plate[neighbor_r]].Mul(deltaTime)
+				plateVecNeighbor := plateVectors[r_plate[neighbor_r]].Mul(deltaTime)
 				b := vectors.Add3(neighbor_pos, plateVecNeighbor)
 
 				distanceAfter := vectors.Dist3(a, b)
@@ -244,17 +255,27 @@ func (m *Map) findCollisions() ([]int, []int, []int, map[int]float64) {
 		// at this point, bestCompression tells us how much closer
 		// we are getting to the region that's pushing into us the most.
 		collided := bestCompression > collisionThreshold*deltaTime
-		if plate_is_ocean[current_r] && plate_is_ocean[best_r] {
+		if plateIsOcean[current_r] && plateIsOcean[best_r] {
+			// If both plates are ocean plates and they collide, a coastline is produced,
+			// while if they "drift apart" (which is not quite correct in our code, since
+			// drifting apart can already be a collision below the threshold), we mark it
+			// as "ocean" representing a rift.
 			if collided {
 				coastline_r = append(coastline_r, current_r)
 			} else {
+				// In theory, this is not 100% correct, as plates that drift apart result
+				// at times in volcanic islands that are formed from escaping magma.
+				// See: https://www.icelandontheweb.com/articles-on-iceland/nature/geology/tectonic-plates
 				ocean_r = append(ocean_r, current_r)
 			}
-		} else if !plate_is_ocean[current_r] && !plate_is_ocean[best_r] {
+		} else if !plateIsOcean[current_r] && !plateIsOcean[best_r] {
+			// If both plates are non-ocean plates and they collide, mountains are formed.
 			if collided {
 				mountain_r = append(mountain_r, current_r)
 			}
 		} else {
+			// If the plates are of different types, a collision results in a mountain and
+			// drifting apart results in a coastline being defined.
 			if collided {
 				mountain_r = append(mountain_r, current_r)
 			} else {
@@ -265,18 +286,19 @@ func (m *Map) findCollisions() ([]int, []int, []int, map[int]float64) {
 	return mountain_r, coastline_r, ocean_r, compression_r
 }
 
-// Calculate the centroid and push it onto an array.
-func pushCentroidOfTriangle(out []float64, ax, ay, az, bx, by, bz, cx, cy, cz float64) []float64 {
+// pushCentroidOfTriangle calculates the centroid of a given triange and appends it to the provided slice.
+func pushCentroidOfTriangle(out, a, b, c []float64) []float64 {
 	// TODO: renormalize to radius 1
 	// v3 := vectors.Vec3{
-	//	X: (ax + bx + cx) / 3,
-	//	Y: (ay + by + cy) / 3,
-	//	Z: (az + bz + cz) / 3,
+	//	X: (a[0]+b[0]+c[0]) / 3,
+	//	Y: (a[1]+b[1]+c[1]) / 3,
+	//	Z: (a[2]+b[2]+c[2]) / 3,
 	// }.Normalize()
 	//out = append(out, v3.X, v3.Y, v3.Z)
-	return append(out, (ax+bx+cx)/3, (ay+by+cy)/3, (az+bz+cz)/3)
+	return append(out, (a[0]+b[0]+c[0])/3, (a[1]+b[1]+c[1])/3, (a[2]+b[2]+c[2])/3)
 }
 
+// generateTriangleCenters iterates through all triangles and generates the centroids for each.
 func (m *Map) generateTriangleCenters() []float64 {
 	var t_xyz []float64
 	for t := 0; t < m.mesh.numTriangles; t++ {
@@ -284,21 +306,26 @@ func (m *Map) generateTriangleCenters() []float64 {
 		b := m.mesh.s_begin_r(3*t + 1)
 		c := m.mesh.s_begin_r(3*t + 2)
 		t_xyz = pushCentroidOfTriangle(t_xyz,
-			m.r_xyz[3*a], m.r_xyz[3*a+1], m.r_xyz[3*a+2],
-			m.r_xyz[3*b], m.r_xyz[3*b+1], m.r_xyz[3*b+2],
-			m.r_xyz[3*c], m.r_xyz[3*c+1], m.r_xyz[3*c+2])
+			m.r_xyz[3*a:3*a+3],
+			m.r_xyz[3*b:3*b+3],
+			m.r_xyz[3*c:3*c+3])
 	}
 	return t_xyz
 }
 
+// assignRegionElevation finds collisions between plate regions and assigns
+// elevation for each point on the sphere accordingly, which will result in
+// mountains, coastlines, etc.
+// To ensure variation, opensimplex noise is used to break up any uniformity.
 func (m *Map) assignRegionElevation() {
 	const epsilon = 1e-3
+	// TODO: Use collision values to determine intensity of generated landscape
+	// features.
 	mountain_r, coastline_r, ocean_r, _ := m.findCollisions()
-	//log.Println(compression_r)
 	log.Println(mountain_r)
 	for r := 0; r < m.mesh.numRegions; r++ {
 		if m.r_plate[r] == r {
-			if m.plate_is_ocean[r] {
+			if m.PlateIsOcean[r] {
 				ocean_r = append(ocean_r, r)
 			} else {
 				coastline_r = append(coastline_r, r)
@@ -306,6 +333,9 @@ func (m *Map) assignRegionElevation() {
 		}
 	}
 
+	// Distance field generation.
+	// I do not quite know how that works, but it is based on:
+	// See: https://www.redblobgames.com/x/1728-elevation-control/
 	stop_r := make(map[int]bool)
 	for _, r := range mountain_r {
 		stop_r[r] = true
@@ -322,11 +352,11 @@ func (m *Map) assignRegionElevation() {
 	r_distance_c := m.assignDistanceField(coastline_r, stop_r)
 
 	// Get min/max compression.
-	//var compVals []float64
-	//for _, v := range compression_r {
-	//	compVals = append(compVals, v)
-	//}
-	//minComp, maxComp := MinMax(compVals)
+	// var compVals []float64
+	// for _, v := range compression_r {
+	//   compVals = append(compVals, v)
+	// }
+	// minComp, maxComp := MinMax(compVals)
 
 	r_xyz := m.r_xyz
 	for r := 0; r < m.mesh.numRegions; r++ {
@@ -343,6 +373,9 @@ func (m *Map) assignRegionElevation() {
 	}
 }
 
+// assignRegionMoisture assigns moisture to each region based on the plate
+// it is on. Ideally we would calculate this using prevailing winds and distance
+// from the ocean and whatnot.
 func (m *Map) assignRegionMoisture() {
 	// TODO: assign region moisture in a better way!
 	for r := 0; r < m.mesh.numRegions; r++ {
@@ -351,6 +384,9 @@ func (m *Map) assignRegionMoisture() {
 }
 
 // Rivers - from mapgen4
+
+// assignTriangleValues averages out the values of the mesh points / regions and assigns them
+// to the triangles of the mesh (or the triangle centroid).
 func (m *Map) assignTriangleValues() {
 	r_elevation := m.r_elevation
 	r_moisture := m.r_moisture
@@ -369,6 +405,9 @@ func (m *Map) assignTriangleValues() {
 	m.t_moisture = t_moisture
 }
 
+// assignDownflow starts with triangles that are considered "ocean" and works its way
+// uphill to build a graph of child/parents that will allow us later to determine water
+// flux and whatnot.
 func (m *Map) assignDownflow() {
 	// Use a priority queue, starting with the ocean triangles and
 	// moving upwards using elevation as the priority, to visit all
@@ -417,8 +456,12 @@ func (m *Map) assignDownflow() {
 	}
 }
 
+// assignFlow calculates the water flux by traversing the graph generated with
+// assignDownflow in reverse order (so, downhill?) and summing up the moisture.
 func (m *Map) assignFlow() {
 	s_flow := m.s_flow
+
+	// Clear all existing water flux values.
 	for i := range s_flow {
 		s_flow[i] = 0
 	}
@@ -426,6 +469,9 @@ func (m *Map) assignFlow() {
 	t_flow := m.t_flow
 	t_elevation := m.t_elevation
 	t_moisture := m.t_moisture
+
+	// Set the flux value for each triangle above sealevel to
+	// half of its moisture squared as its initial state.
 	numTriangles := m.mesh.numTriangles
 	for t := 0; t < numTriangles; t++ {
 		if t_elevation[t] >= 0.0 {
@@ -435,10 +481,13 @@ func (m *Map) assignFlow() {
 		}
 	}
 
+	// Now traverse the flux graph in reverse order and sum up
+	// the moisture of all tributaries while descending.
 	order_t := m.order_t
 	t_downflow_s := m.t_downflow_s
 	_halfedges := m.mesh.Halfedges
 	for i := len(order_t) - 1; i >= 0; i-- {
+		// TODO: Describe what's going on here.
 		tributary_t := order_t[i]
 		flow_s := t_downflow_s[tributary_t]
 		if flow_s >= 0 {
@@ -497,9 +546,8 @@ func (pq PriorityQueue) Swap(i, j int) {
 
 const Infinity = 1.0
 
-// Distance from any point in seeds_r to all other points, but
+// assignDistanceField calculates the distance from any point in seeds_r to all other points, but
 // don't go past any point in stop_r.
-// NOTE: Float lacks precision for full integers like the ones used here.
 func (m *Map) assignDistanceField(seeds_r []int, stop_r map[int]bool) []int64 {
 	m.resetRand()
 	mesh := m.mesh
@@ -511,7 +559,7 @@ func (m *Map) assignDistanceField(seeds_r []int, stop_r map[int]bool) []int64 {
 
 	var queue []int
 	for _, r := range seeds_r {
-		queue = append(queue, r) //.push(r)
+		queue = append(queue, r)
 		r_distance[r] = 0
 	}
 
@@ -525,12 +573,11 @@ func (m *Map) assignDistanceField(seeds_r []int, stop_r map[int]bool) []int64 {
 		for _, neighbor_r := range out_r {
 			if r_distance[neighbor_r] == Infinity && !stop_r[neighbor_r] {
 				r_distance[neighbor_r] = r_distance[current_r] + 1
-
-				queue = append(queue, neighbor_r) //queue.push(neighbor_r)
+				queue = append(queue, neighbor_r)
 			}
 		}
 	}
-	log.Println(r_distance)
+
 	// TODO: possible enhancement: keep track of which seed is closest
 	// to this point, so that we can assign variable mountain/ocean
 	// elevation to each seed instead of them always being +1/-1
