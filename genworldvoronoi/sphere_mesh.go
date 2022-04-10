@@ -147,8 +147,8 @@ type SphereMesh struct {
 	r_xyz []float64
 }
 
-func MakeSphere(seed int64, N int, jitter float64) *SphereMesh {
-	latlong := generateFibonacciSphere(seed, N, jitter)
+func MakeSphere(seed int64, numPoints int, jitter float64) (*SphereMesh, error) {
+	latlong := generateFibonacciSphere(seed, numPoints, jitter)
 	var r_xyz []float64
 	for r := 0; r < len(latlong); r += 2 {
 		r_xyz = pushCartesianFromSpherical(r_xyz, latlong[r], latlong[r+1])
@@ -162,16 +162,16 @@ func MakeSphere(seed int64, N int, jitter float64) *SphereMesh {
 
 	tri, err := delaunay.Triangulate(pts)
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 
-	/* TODO: rotate an existing point into this spot instead of creating one */
+	// TODO: rotate an existing point into this spot instead of creating one.
 	r_xyz = append(r_xyz, 0, 0, 1)
 	tri = addSouthPoleToMesh((len(r_xyz)/3)-1, tri)
 
-	mesh := NewTriangleMesh(0, len(tri.Triangles), make([]Vertex, N+1), tri.Triangles, tri.Halfedges)
+	mesh := NewTriangleMesh(0, len(tri.Triangles), make([]Vertex, numPoints+1), tri.Triangles, tri.Halfedges)
 	return &SphereMesh{
 		mesh:  mesh,
 		r_xyz: r_xyz,
-	}
+	}, nil
 }

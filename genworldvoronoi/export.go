@@ -51,9 +51,9 @@ func (m *Map) ExportSVG(path string) error {
 	svg := svgo.New(f)
 	svg.Start(size, size)
 
-	min, max := MinMax(m.t_elevation)
+	min, max := minMax(m.t_elevation)
 	log.Println(max)
-	minMois, maxMois := MinMax(m.t_moisture)
+	minMois, maxMois := minMax(m.t_moisture)
 	for i := 0; i < len(m.mesh.Triangles); i += 3 {
 		tmpLine := ""
 
@@ -89,7 +89,7 @@ func (m *Map) ExportSVG(path string) error {
 			// Hacky: Modify elevation based on latitude to compensate for colder weather at the poles and warmer weather at the equator.
 			// valElev := math.Max(math.Min((elev/max)+(math.Sqrt(math.Abs(triLat)/90.0)-0.5), max), 0)
 			valMois := (m.t_moisture[i/3] - minMois) / (maxMois - minMois)
-			col = getBiomeColor(int(valElev*4)+1, int(valMois*6)+1, val)
+			col = GetRedblobBiomeColor(int(valElev*4)+1, int(valMois*6)+1, val)
 		}
 
 		svg.Path(svgGenD(path), fmt.Sprintf("fill: rgb(%d, %d, %d)", col.R, col.G, col.B)+tmpLine)
@@ -116,8 +116,8 @@ func (m *Map) ExportPng(name string) {
 	size := sizeFromZoom(zoom)
 	// Create a colored image of the given width and height.
 	img := image.NewNRGBA(image.Rect(0, 0, size, size))
-	min, max := MinMax(m.r_elevation)
-	minMois, maxMois := MinMax(m.r_moisture)
+	min, max := minMax(m.r_elevation)
+	minMois, maxMois := minMax(m.r_moisture)
 	// TODO: assign region moisture in a better way!
 	for r := 0; r < m.mesh.numRegions; r++ {
 		lat, lon := latLonFromVec3(convToVec3(m.r_xyz[r*3:(r*3)+3]), 1.0)
@@ -131,7 +131,7 @@ func (m *Map) ExportPng(name string) {
 			// Hacky: Modify elevation based on latitude to compensate for colder weather at the poles and warmer weather at the equator.
 			// valElev := math.Max(math.Min((elev/max)+(math.Sqrt(math.Abs(lat)/90.0)-0.5), max), 0)
 			valMois := (m.r_moisture[r] - minMois) / (maxMois - minMois)
-			col = getBiomeColor(int(valElev*4)+1, int(valMois*6)+1, val)
+			col = GetRedblobBiomeColor(int(valElev*4)+1, int(valMois*6)+1, val)
 		}
 		img.Set(int(x)+size/2, int(y), col)
 	}
@@ -160,23 +160,8 @@ func (m *Map) ExportOBJ(path string) error {
 	w := bufio.NewWriter(f)
 	drawPlates := false
 	drawRivers := false
-	//xy := stereographicProjection(m.r_xyz)
-	//for i := 0; i < len(xy); i += 2 {
-	//	w.WriteString(fmt.Sprintf("v %f %f %f \n", xy[i], xy[i+1], 2.0)) //
-	//}
-
 	/*
-		tvtxMap := make(map[int]int)
-		var tvtx []vectors.Vec3
-
-		addTVtx := func(i int) int {
-			if idx, ok := tvtxMap[i]; ok {
-				return idx
-			}
-			tvtxMap[i] = len(tvtx)
-			return tvtxMap[i]
-		}*/
-	/*
+		// This will export the quad geometry.
 		// Vertices
 		for i := 0; i < len(m.QuadGeom.xyz); i += 3 {
 			ve := convToVec3(m.QuadGeom.xyz[i:]).Mul(1.0 + 0.01*m.QuadGeom.tm[(i/3)*2])
@@ -188,7 +173,8 @@ func (m *Map) ExportOBJ(path string) error {
 			w.WriteString(fmt.Sprintf("f %d %d %d \n", m.QuadGeom.I[i]+1, m.QuadGeom.I[i+1]+1, m.QuadGeom.I[i+2]+1))
 			w.Flush()
 		}
-		w.Flush()*/
+		w.Flush()
+	*/
 
 	// Vertices
 	for i := 0; i < len(m.r_xyz); i += 3 {
@@ -243,115 +229,4 @@ func (m *Map) ExportOBJ(path string) error {
 		w.Flush()
 	}
 	return nil
-}
-
-func getMeanAnnualTemp(lat float64) float64 {
-	return (90.0-math.Abs(lat))*(45.0/90.0) - 15
-}
-
-const (
-	BioSnow = iota
-	BioTundra
-	BioBare
-	BioScorched
-	BioTaiga
-	BioShrubland
-	BioTemperateDesert
-	BioTemperateRainForest
-	BioTemperateDeciduousForest
-	BioTropicalRainForest
-	BioTropicalSeasonalForest
-	BioGrassland
-	BioSubtropicalDesert
-)
-
-// Biomes definition
-// See: http://www-cs-students.stanford.edu/~amitp/game-programming/polygon-map-generation/#biomes
-//
-//
-// Elevation ||| Moisture Zone ->
-// Zone      V|| 6 (wet)    |    5    |     4    |     3    |     2     |   1 (dry)  |
-// ==================================================================================
-// 4 (high)   || SNOW ---------------------------| TUNDRA --| BARE -----|  SCORCHED -|
-// ----------------------------------------------------------------------------------
-// 3          || TAIGA ---------------| SHRUBLAND ----------| TEMPERATE DESERT ------|
-// ----------------------------------------------------------------------------------
-// 2          || TEMPERATE -| TEMPERATE ---------| GRASSLAND -----------| TEMPERATE -|
-//            || RAIN FOREST| DECIDUOUS FOREST --| ---------------------| DESERT ----|
-// ----------------------------------------------------------------------------------
-// 1 (low)    || TROPICAL RAIN FOREST | TROPICAL SEASONAL --| GRASSLAND | SUBTROPICAL|
-//            || ---------------------| FOREST -------------| ----------| DESERT ----|
-// ----------------------------------------------------------------------------------
-
-func getBiome(height, moisture int) int {
-	switch height {
-	case 1:
-		if moisture > 4 {
-			return BioTropicalRainForest
-		}
-		if moisture > 2 {
-			return BioTropicalSeasonalForest
-		}
-		if moisture == 2 {
-			return BioGrassland
-		}
-		return BioSubtropicalDesert
-	case 2:
-		if moisture == 6 {
-			return BioTemperateRainForest
-		}
-		if moisture > 3 {
-			return BioTemperateDeciduousForest
-		}
-		if moisture > 1 {
-			return BioGrassland
-		}
-		return BioTemperateDesert
-	case 3:
-		if moisture > 4 {
-			return BioTaiga
-		}
-		if moisture > 2 {
-			return BioShrubland
-		}
-		return BioTemperateDesert
-	case 4:
-		switch moisture {
-		case 3:
-			return BioTundra
-		case 2:
-			return BioBare
-		case 1:
-			return BioScorched
-		default:
-			return BioSnow
-		}
-	}
-	return BioSnow
-}
-
-func getBiomeColor(height, moisture int, intensity float64) color.NRGBA {
-	c := biomeColor[getBiome(height, moisture)]
-	return color.NRGBA{
-		R: uint8(intensity * float64(c.R)),
-		G: uint8(intensity * float64(c.G)),
-		B: uint8(intensity * float64(c.B)),
-		A: 255,
-	}
-}
-
-var biomeColor = map[int]color.NRGBA{
-	BioSnow:                     {0xFF, 0xFF, 0xFF, 0},
-	BioTundra:                   {0xDD, 0xDD, 0xBB, 0},
-	BioBare:                     {0xBB, 0xBB, 0xBB, 0},
-	BioScorched:                 {0x99, 0x99, 0x99, 0},
-	BioTaiga:                    {0xCC, 0xD4, 0xBB, 0},
-	BioShrubland:                {0xC4, 0xCC, 0xBB, 0},
-	BioTemperateDesert:          {0xE4, 0xE8, 0xCA, 0},
-	BioTemperateRainForest:      {0xA4, 0xC4, 0xA8, 0},
-	BioTemperateDeciduousForest: {0xB4, 0xC9, 0xA9, 0},
-	BioTropicalRainForest:       {0x9C, 0xBB, 0xA9, 0},
-	BioTropicalSeasonalForest:   {0xA9, 0xCC, 0xA4, 0},
-	BioGrassland:                {0xC4, 0xD4, 0xAA, 0},
-	BioSubtropicalDesert:        {0xE9, 0xDD, 0xC7, 0},
 }

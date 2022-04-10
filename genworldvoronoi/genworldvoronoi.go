@@ -39,8 +39,11 @@ type Map struct {
 	QuadGeom     *QuadGeometry     // Quad geometry generated from the mesh (?)
 }
 
-func NewMap(seed int64, numPlates, numPoints int, jitter float64) *Map {
-	result := MakeSphere(seed, numPoints, jitter)
+func NewMap(seed int64, numPlates, numPoints int, jitter float64) (*Map, error) {
+	result, err := MakeSphere(seed, numPoints, jitter)
+	if err != nil {
+		return nil, err
+	}
 	mesh := result.mesh
 
 	m := &Map{
@@ -65,7 +68,7 @@ func NewMap(seed int64, numPlates, numPoints int, jitter float64) *Map {
 	m.QuadGeom.setMesh(mesh)
 	m.t_xyz = m.generateTriangleCenters()
 	m.generateMap()
-	return m
+	return m, nil
 }
 
 func (m *Map) resetRand() {
@@ -100,14 +103,6 @@ func (m *Map) pickRandomRegions(mesh *TriangleMesh, n int) []int {
 		chosen_r[m.rand.Intn(mesh.numRegions)] = true
 	}
 	return convToArray(chosen_r)
-}
-
-// min is the int equivalent of math.Min(a, b).
-func min(a, b int) int {
-	if a < b {
-		return a
-	}
-	return b
 }
 
 // generatePlates generates a number of plate seed points and starts growing the plates
@@ -356,7 +351,7 @@ func (m *Map) assignRegionElevation() {
 	// for _, v := range compression_r {
 	//   compVals = append(compVals, v)
 	// }
-	// minComp, maxComp := MinMax(compVals)
+	// minComp, maxComp := minMax(compVals)
 
 	r_xyz := m.r_xyz
 	for r := 0; r < m.mesh.numRegions; r++ {
@@ -584,27 +579,6 @@ func (m *Map) assignDistanceField(seeds_r []int, stop_r map[int]bool) []int64 {
 	return r_distance
 }
 
-func convToMap(in []int) map[int]bool {
-	res := make(map[int]bool)
-	for _, v := range in {
-		res[v] = true
-	}
-	return res
-}
-
-func convToArray(in map[int]bool) []int {
-	var res []int
-	for v := range in {
-		res = append(res, v)
-	}
-	sort.Ints(res)
-	return res
-}
-
-func convToVec3(a []float64) vectors.Vec3 {
-	return vectors.Vec3{a[0], a[1], a[2]}
-}
-
 const persistence = 2.0 / 3.0
 
 var amplitudes []float64
@@ -627,7 +601,16 @@ func (m *Map) fbm_noise(nx, ny, nz float64) float64 {
 	return sum / sumOfAmplitudes
 }
 
-func MinMax(hm []float64) (float64, float64) {
+// min is the int equivalent of math.Min(a, b).
+func min(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
+}
+
+// minMax returns the smallest and largest value in hm.
+func minMax(hm []float64) (float64, float64) {
 	if len(hm) == 0 {
 		return 0, 0
 	}
@@ -643,4 +626,26 @@ func MinMax(hm []float64) (float64, float64) {
 		}
 	}
 	return min, max
+}
+
+func convToMap(in []int) map[int]bool {
+	res := make(map[int]bool)
+	for _, v := range in {
+		res[v] = true
+	}
+	return res
+}
+
+func convToArray(in map[int]bool) []int {
+	var res []int
+	for v := range in {
+		res = append(res, v)
+	}
+	sort.Ints(res)
+	return res
+}
+
+// convToVec3 converts a float slice containing 3 values into a vectors.Vec3.
+func convToVec3(xyz []float64) vectors.Vec3 {
+	return vectors.Vec3{xyz[0], xyz[1], xyz[2]}
 }
