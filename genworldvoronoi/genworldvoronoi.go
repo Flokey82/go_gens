@@ -5,7 +5,7 @@ package genworldvoronoi
 
 import (
 	"container/heap"
-	"log"
+	//"log"
 	"math"
 	"math/rand"
 	"sort"
@@ -16,19 +16,21 @@ import (
 
 // ugh globals, sorry
 type Map struct {
-	t_xyz        []float64         // Triangle xyz coordinates
-	t_moisture   []float64         // Triangle moisture
-	t_elevation  []float64         // Triangle elevation
-	t_flow       []float64         // Flow intensity through triangles
-	t_downflow_s []int             // Triangle mapping to side through which water flows downhill.
-	r_xyz        []float64         // Point / region xyz coordinates
-	r_elevation  []float64         // Point / region elevation
-	r_moisture   []float64         // Point / region moisture
+	t_xyz        []float64 // Triangle xyz coordinates
+	t_moisture   []float64 // Triangle moisture
+	t_elevation  []float64 // Triangle elevation
+	t_flow       []float64 // Flow intensity through triangles
+	t_downflow_s []int     // Triangle mapping to side through which water flows downhill.
+	r_xyz        []float64 // Point / region xyz coordinates
+	r_elevation  []float64 // Point / region elevation
+	r_moisture   []float64 // Point / region moisture
+	r_rainfall   []float64
+	r_windvec    []Vertex
 	r_plate      []int             // Region to plate mapping
 	s_flow       []float64         // Flow intensity through sides
 	order_t      []int             // Uphill order of triangles (??)
 	PlateVectors []vectors.Vec3    // Plate tectonics / movement vectors
-	PlateIsOcean map[int]bool      // Plate was chosed to be an ocean plate
+	PlateIsOcean map[int]bool      // Plate was chosen to be an ocean plate
 	plate_r      []int             // Plate seed points / regions
 	mesh         *TriangleMesh     // Triangle mesh containing the sphere information
 	seed         int64             // Seed for random number generators
@@ -57,6 +59,8 @@ func NewMap(seed int64, numPlates, numPoints int, jitter float64) (*Map, error) 
 		order_t:      make([]int, mesh.numTriangles),
 		t_flow:       make([]float64, mesh.numTriangles),
 		s_flow:       make([]float64, mesh.numSides),
+		r_rainfall:   make([]float64, mesh.numRegions),
+		r_windvec:    make([]Vertex, mesh.numRegions),
 		mesh:         result.mesh,
 		seed:         seed,
 		rand:         rand.New(rand.NewSource(seed)),
@@ -84,7 +88,11 @@ func (m *Map) generateMap() {
 	m.assignRegionElevation()
 
 	// River / moisture.
-	m.assignRegionMoisture()
+	//m.assignRegionMoisture()
+	for i := 0; i < 24; i++ {
+		m.assignRainfall()
+		// m.assignFlux()
+	}
 	m.assignTriangleValues()
 	m.assignDownflow()
 	m.assignFlow()
@@ -173,12 +181,6 @@ func (m *Map) assignOceanPlates() {
 			// TODO: either make tiny plates non-ocean, or make sure tiny plates don't create seeds for rivers
 		}
 	}
-	log.Println(m.PlateIsOcean)
-	pm := make(map[int]int)
-	for _, r := range m.r_plate {
-		pm[r]++
-	}
-	log.Println(pm)
 }
 
 // Calculate the collision measure, which is the amount
@@ -211,7 +213,7 @@ func (m *Map) findCollisions() ([]int, []int, []int, map[int]float64) {
 	var best_r int
 	var bestCompression float64
 	for current_r := 0; current_r < numRegions; current_r++ {
-		bestCompression = 0.0 // NOTE: Was Infinity
+		bestCompression = -1.0 // NOTE: Was Infinity
 		best_r = -1
 		r_out = m.mesh.r_circulate_r(r_out, current_r)
 		for _, neighbor_r := range r_out {
@@ -250,7 +252,9 @@ func (m *Map) findCollisions() ([]int, []int, []int, map[int]float64) {
 		// at this point, bestCompression tells us how much closer
 		// we are getting to the region that's pushing into us the most.
 		collided := bestCompression > collisionThreshold*deltaTime
-		if plateIsOcean[current_r] && plateIsOcean[best_r] {
+		current_plate := m.r_plate[current_r]
+		best_plate := m.r_plate[best_r]
+		if plateIsOcean[current_plate] && plateIsOcean[best_plate] {
 			// If both plates are ocean plates and they collide, a coastline is produced,
 			// while if they "drift apart" (which is not quite correct in our code, since
 			// drifting apart can already be a collision below the threshold), we mark it
@@ -261,9 +265,9 @@ func (m *Map) findCollisions() ([]int, []int, []int, map[int]float64) {
 				// In theory, this is not 100% correct, as plates that drift apart result
 				// at times in volcanic islands that are formed from escaping magma.
 				// See: https://www.icelandontheweb.com/articles-on-iceland/nature/geology/tectonic-plates
-				ocean_r = append(ocean_r, current_r)
+				// ocean_r = append(ocean_r, current_r)
 			}
-		} else if !plateIsOcean[current_r] && !plateIsOcean[best_r] {
+		} else if !plateIsOcean[current_plate] && !plateIsOcean[best_plate] {
 			// If both plates are non-ocean plates and they collide, mountains are formed.
 			if collided {
 				mountain_r = append(mountain_r, current_r)
@@ -283,13 +287,13 @@ func (m *Map) findCollisions() ([]int, []int, []int, map[int]float64) {
 
 // pushCentroidOfTriangle calculates the centroid of a given triange and appends it to the provided slice.
 func pushCentroidOfTriangle(out, a, b, c []float64) []float64 {
-	// TODO: renormalize to radius 1
+	// TODO: renormalize to radius 1.
 	// v3 := vectors.Vec3{
 	//	X: (a[0]+b[0]+c[0]) / 3,
 	//	Y: (a[1]+b[1]+c[1]) / 3,
 	//	Z: (a[2]+b[2]+c[2]) / 3,
 	// }.Normalize()
-	//out = append(out, v3.X, v3.Y, v3.Z)
+	// out = append(out, v3.X, v3.Y, v3.Z)
 	return append(out, (a[0]+b[0]+c[0])/3, (a[1]+b[1]+c[1])/3, (a[2]+b[2]+c[2])/3)
 }
 
@@ -314,10 +318,8 @@ func (m *Map) generateTriangleCenters() []float64 {
 // To ensure variation, opensimplex noise is used to break up any uniformity.
 func (m *Map) assignRegionElevation() {
 	const epsilon = 1e-3
-	// TODO: Use collision values to determine intensity of generated landscape
-	// features.
+	// TODO: Use collision values to determine intensity of generated landscape features.
 	mountain_r, coastline_r, ocean_r, _ := m.findCollisions()
-	log.Println(mountain_r)
 	for r := 0; r < m.mesh.numRegions; r++ {
 		if m.r_plate[r] == r {
 			if m.PlateIsOcean[r] {
@@ -358,11 +360,14 @@ func (m *Map) assignRegionElevation() {
 		a := float64(r_distance_a[r]) + epsilon
 		b := float64(r_distance_b[r]) + epsilon
 		c := float64(r_distance_c[r]) + epsilon
-		if a == Infinity && b == Infinity {
+		if m.PlateIsOcean[m.r_plate[r]] {
+			m.r_elevation[r] = -0.1
+		}
+		if r_distance_a[r] == -1 && r_distance_b[r] == -1 { // if a == Infinity && b == Infinity {
 			m.r_elevation[r] = 0.1
 		} else {
-			m.r_elevation[r] = (1/a - 1/b) / (1/a + 1/b + 1/c)
-			// m.r_elevation[r] *= ((compression_r[r] - minComp) / (maxComp - minComp))
+			m.r_elevation[r] += (1/a - 1/b) / (1/a + 1/b + 1/c)
+			// m.r_elevation[r] *= (compression_r[r] - minComp) / (maxComp - minComp)
 		}
 		m.r_elevation[r] += m.fbm_noise(r_xyz[3*r], r_xyz[3*r+1], r_xyz[3*r+2])
 	}
@@ -373,8 +378,327 @@ func (m *Map) assignRegionElevation() {
 // from the ocean and whatnot.
 func (m *Map) assignRegionMoisture() {
 	// TODO: assign region moisture in a better way!
+	// for r := 0; r < m.mesh.numRegions; r++ {
+	//	m.r_moisture[r] = float64(m.r_plate[r]%10) / 10.0
+	// }
+	var sea_r []int
 	for r := 0; r < m.mesh.numRegions; r++ {
-		m.r_moisture[r] = float64(m.r_plate[r]%10) / 10.0
+		if m.r_elevation[r] < 0 {
+			sea_r = append(sea_r, r)
+		}
+	}
+
+	// Assign basic moisture per region based on distance to sea.
+	// NOTE: This is currently overridden in assignRainfall().
+	r_distance_d := m.assignDistanceField(sea_r, make(map[int]bool))
+	for r := 0; r < m.mesh.numRegions; r++ {
+		m.r_moisture[r] = 1 - math.Min(float64(r_distance_d[r]), 100)/float64(100)
+	}
+}
+
+func (m *Map) assignWindVectors() {
+	r_windvec := make([]Vertex, m.mesh.numRegions)
+
+	// Calculate dummy vector that will be the default for any region we don't have a proper logic for yet.
+	// windAngleRad := degToRad(biomesParam.wind_angle_deg)
+	// dummyVec := Vertex{math.Cos(windAngleRad), math.Sin(windAngleRad)}
+	for i := range r_windvec {
+		// Determine latitude of current region.
+		rXYZ := convToVec3(m.r_xyz[i*3 : i*3+3])
+		rLat, _ := latLonFromVec3(rXYZ.Normalize(), 1.0)
+		// Based on latitude, we calculate the wind vector angle.
+		var degree float64
+		if rLatAbs := math.Abs(rLat); rLatAbs >= 0 && rLatAbs <= 30 {
+			// +30° ... 0°, 0° ... -30° -> Primitive Hadley Cell.
+			// In a Hadley cell, we turn the wind vector until we are exactly parallel with the equator once we reach 0° Lat.
+			// TODO: This is probably not perfectly parallel at the equator.
+			if rLat > 0 {
+				degree = 180 + 90*(30-rLatAbs)/30 // Northern hemisphere.
+			} else {
+				degree = 360 - 90*(30-rLatAbs)/30 // Southern hemisphere.
+			}
+		} else if rLatAbs > 30 && rLatAbs <= 60 {
+			// +60° ... +30°, -30° ... -60° -> Primitive Mid Latitude Cell.
+			// In a mid latitude cell, we turn the wind vector until we are exactly parallel with the 60° Lat.
+			// TODO: This is probably not a full 90° turn. Fix this
+			if rLat > 0 {
+				degree = 0 + 90*(rLatAbs-30)/30 // Northern hemisphere.
+			} else {
+				degree = 180 - 90*(rLatAbs-30)/30 // Southern hemisphere.
+			}
+		} else {
+			// NOTE: This is buggy or at least "not nice".
+			// +90° ... +60°, -60° ... -90° -> Primitive Hadley Cell.
+			// In a polar cell, we turn the wind vector until we are exactly parallel with the equator once we reach 60° Lat.
+			if rLat > 0 {
+				degree = 180 + 90*(90-rLatAbs)/30 // Northern hemisphere.
+			} else {
+				degree = 360 - 90*(90-rLatAbs)/30 // Southern hemisphere.
+			}
+		}
+		rad := degToRad(degree)
+		r_windvec[i] = Vertex{math.Cos(rad), math.Sin(rad)}
+	}
+
+	// TODO: Add wind vectors based on local temperature gradients.
+	/*
+		r_windvec_local := make([]Vertex, m.mesh.numRegions)
+		_, maxElev := minMax(m.r_elevation)
+		for r := range r_windvec_local {
+			s0 := m.mesh.RInS[r]
+			incoming := s0
+			lat, _ := latLonFromVec3(convToVec3(m.r_xyz[r*3:(r*3)+3]).Normalize(), 1.0)
+			// Get temperature for r.
+			temp_r := getMeanAnnualTemp(lat) - getTempFalloffFromAltitude(8850*m.r_elevation[r]/maxElev)
+			var count int
+			for {
+				neighbor_r := m.mesh.s_begin_r(incoming)
+				// Get temperature for neighbor_r.
+				// if temp_neighbor_r > temp_r
+				// 	get direction of gradient.
+				// sum up using diff to determine average vector
+				count++
+				outgoing := s_next_s(incoming)
+				incoming = m.mesh.Halfedges[outgoing]
+				if incoming == s0 {
+					break
+				}
+			}
+		}
+	*/
+
+	// Average wind vectors using neighbor vectors.
+	interpolationSteps := 5
+	for i := 0; i < interpolationSteps; i++ {
+		r_windvec_interpol := make([]Vertex, m.mesh.numRegions)
+		for r := range r_windvec_interpol {
+			s0 := m.mesh.RInS[r]
+			incoming := s0
+			resVec := Vertex{
+				r_windvec[r][0],
+				r_windvec[r][1],
+			}
+			var count int
+			for {
+				neighbor_r := m.mesh.s_begin_r(incoming)
+				resVec[0] += r_windvec[neighbor_r][0]
+				resVec[1] += r_windvec[neighbor_r][1]
+				count++
+				outgoing := s_next_s(incoming)
+				incoming = m.mesh.Halfedges[outgoing]
+				if incoming == s0 {
+					break
+				}
+			}
+			resVec[0] /= float64(count + 1)
+			resVec[1] /= float64(count + 1)
+			r_windvec_interpol[r] = resVec
+		}
+		r_windvec = r_windvec_interpol
+	}
+
+	m.r_windvec = r_windvec
+}
+
+type biomesParams struct {
+	raininess   float64 // 0, 2
+	rain_shadow float64 // 0.1, 2
+	evaporation float64 // 0, 1
+}
+
+func (m *Map) assignRainfall() {
+	biomesParam := biomesParams{
+		raininess:   0.9,
+		rain_shadow: 0.5,
+		evaporation: 0.9,
+	}
+
+	// 1. Assign wind vector for every region
+	m.assignWindVectors()
+	r_windvec := m.r_windvec
+
+	// 2. Assign initial moisture of 1.0 to all regions below or at sea level
+	var sea_r []int
+	dist_order_r := make([]int, m.mesh.numRegions)
+	for r := 0; r < m.mesh.numRegions; r++ {
+		dist_order_r[r] = r
+		if m.r_elevation[r] <= 0 {
+			sea_r = append(sea_r, r)
+			m.r_moisture[r] = 1.0
+			m.r_rainfall[r] += biomesParam.raininess * m.r_moisture[r]
+		}
+	}
+
+	// 3. Sort all regions by distance to ocean. Lowest to highest.
+	r_distance_d := m.assignDistanceField(sea_r, make(map[int]bool))
+	sort.Slice(dist_order_r, func(a, b int) bool {
+		if r_distance_d[dist_order_r[a]] == r_distance_d[dist_order_r[b]] {
+			return m.r_elevation[dist_order_r[a]] < m.r_elevation[dist_order_r[b]]
+		}
+		return r_distance_d[dist_order_r[a]] < r_distance_d[dist_order_r[b]]
+	})
+
+	moistureTransferSourceToDest := true
+	if moistureTransferSourceToDest {
+		// 4. For each region, calculate dot product of Vec r -> r_neighbor and wind vector of r.
+		//    This will give us the amount of moisture we transfer to the neighbor region.
+		_, maxH := minMax(m.r_elevation)
+		for _, r := range dist_order_r {
+			count := 0
+			s0 := m.mesh.RInS[r]
+			incoming := s0
+			// Get XYZ Position of r.
+			rXYZ := convToVec3(m.r_xyz[r*3 : r*3+3])
+			// Convert to polar coordinates.
+			rLat, rLon := latLonFromVec3(rXYZ.Normalize(), 1.0)
+
+			// Add wind vector to neighbor lat/lon to get the "wind vector lat long" or something like that..
+			rwXYZ := convToVec3(latLonToCartesian(rLat+r_windvec[r][0], rLon+r_windvec[r][1])).Normalize()
+			for {
+				neighbor_r := m.mesh.s_begin_r(incoming)
+				// Calculate dot product of wind vector to vector r -> neighbor_r.
+				// Get XYZ Position of r_neighbor.
+				rnXYZ := convToVec3(m.r_xyz[neighbor_r*3 : neighbor_r*3+3])
+
+				// Calculate Vector between r and neighbor_r.
+				va := vectors.Sub3(rnXYZ, rXYZ).Normalize()
+
+				// Calculate Vector between r and wind_r.
+				vb := vectors.Sub3(rwXYZ, rXYZ).Normalize()
+
+				// Calculate dot product between va and vb.
+				// This will give us how much the current region lies within the wind direction of the
+				// current neighbor.
+				// See: https://www.scratchapixel.com/lessons/3d-basic-rendering/introduction-to-shading/shading-normals
+				dotV := vectors.Dot3(va, vb)
+				if dotV > 0 {
+					// Only positive dot products mean that we lie within 90°, so 'in wind direction'.
+					count++
+					var humidity, rainfall float64
+					humidity = m.r_moisture[neighbor_r] + m.r_moisture[r]*dotV
+					rainfall = m.r_rainfall[neighbor_r] + biomesParam.raininess*m.r_moisture[r]*dotV
+					heightVal := 1 - (m.r_elevation[neighbor_r] / maxH)
+					if humidity > heightVal {
+						orographicRainfall := biomesParam.rain_shadow * (humidity - heightVal)
+						rainfall += biomesParam.raininess * orographicRainfall
+						humidity -= orographicRainfall
+					}
+					// TODO: Calculate max humidity at current altitude, temperature, rain off the rest.
+					// WARNING: The humidity calculation is off.
+					humidity = math.Min(humidity, 1.0)
+					// rainfall = math.Min(rainfall, 1.0)
+					m.r_rainfall[neighbor_r] = rainfall
+					m.r_moisture[neighbor_r] = humidity
+				}
+
+				outgoing := s_next_s(incoming)
+				incoming = m.mesh.Halfedges[outgoing]
+				if incoming == s0 {
+					break
+				}
+			}
+		}
+	} else {
+		// 4. For each region, calculate dot product of Vec r -> r_neighbor and wind vector of r_neighbor.
+		//    This will give us the amount of moisture we transfer from the neighbor region.
+		for _, r := range dist_order_r {
+			count := 0
+			sum := 0.0
+			s0 := m.mesh.RInS[r]
+			incoming := s0
+			// Get XYZ Position of r.
+			rXYZ := convToVec3(m.r_xyz[r*3 : r*3+3])
+			for {
+				neighbor_r := m.mesh.s_begin_r(incoming)
+				// Calculate dot product of wind vector to vector r -> neighbor_r.
+				// Get XYZ Position of r_neighbor.
+				rnXYZ := convToVec3(m.r_xyz[neighbor_r*3 : neighbor_r*3+3])
+
+				// Convert to polar coordinates.
+				rLat, rLon := latLonFromVec3(rnXYZ.Normalize(), 1.0)
+
+				// Add wind vector to neighbor lat/lon to get the "wind vector lat long" or something like that..
+				rnwXYZ := convToVec3(latLonToCartesian(rLat+r_windvec[neighbor_r][0], rLon+r_windvec[neighbor_r][1])).Normalize()
+
+				// Calculate Vector between r and neighbor_r.
+				va := vectors.Sub3(rXYZ, rnXYZ).Normalize()
+
+				// Calculate Vector between neightbor_r and wind_neighbor_r.
+				vb := vectors.Sub3(rnwXYZ, rnXYZ).Normalize()
+
+				// Calculate dot product between va and vb.
+				// This will give us how much the current region lies within the wind direction of the
+				// current neighbor.
+				// See: https://www.scratchapixel.com/lessons/3d-basic-rendering/introduction-to-shading/shading-normals
+				dotV := vectors.Dot3(va, vb)
+				if dotV > 0 {
+					// Only positive dot products mean that we lie within 90°, so 'in wind direction'.
+					count++
+					sum += m.r_moisture[neighbor_r] * dotV
+				}
+				outgoing := s_next_s(incoming)
+				incoming = m.mesh.Halfedges[outgoing]
+				if incoming == s0 {
+					break
+				}
+			}
+
+			var humidity, rainfall float64
+			humidity = m.r_moisture[r]
+			if count > 0 {
+				// TODO: Calculate max humidity at current altitude, temperature, rain off the rest.
+				// WARNING: The humidity calculation is off.
+				humidity = math.Min(humidity+sum, 1.0) // / float64(count)
+				rainfall = math.Min(rainfall+biomesParam.raininess*sum, 1.0)
+			}
+			// if m.mesh.r_boundary(r) {
+			//	 humidity = 1.0
+			// }
+			if m.r_elevation[r] <= 0.0 {
+				// evaporation := biomesParam.evaporation * (-m.r_elevation[r])
+				// humidity = evaporation
+				humidity = m.r_moisture[r]
+			}
+			if humidity > 1.0-m.r_elevation[r] {
+				orographicRainfall := biomesParam.rain_shadow * (humidity - (1.0 - m.r_elevation[r]))
+				rainfall += biomesParam.raininess * orographicRainfall
+				humidity -= orographicRainfall
+			}
+			m.r_rainfall[r] = rainfall
+			m.r_moisture[r] = humidity
+
+		}
+	}
+
+	// Average moisture and rainfall.
+	interpolationSteps := 1
+	for i := 0; i < interpolationSteps; i++ {
+		r_moisture_interpol := make([]float64, m.mesh.numRegions)
+		r_rainfall_interpol := make([]float64, m.mesh.numRegions)
+		for r := range r_moisture_interpol {
+			s0 := m.mesh.RInS[r]
+			incoming := s0
+			rMoist := m.r_moisture[r]
+			rRain := m.r_rainfall[r]
+			var count int
+			for {
+				neighbor_r := m.mesh.s_begin_r(incoming)
+				rMoist += m.r_moisture[neighbor_r]
+				rRain += m.r_rainfall[neighbor_r]
+				count++
+				outgoing := s_next_s(incoming)
+				incoming = m.mesh.Halfedges[outgoing]
+				if incoming == s0 {
+					break
+				}
+			}
+			rMoist /= float64(count + 1)
+			r_moisture_interpol[r] = rMoist
+			rRain /= float64(count + 1)
+			r_rainfall_interpol[r] = rRain
+		}
+		m.r_moisture = r_moisture_interpol
+		m.r_rainfall = r_rainfall_interpol
 	}
 }
 
@@ -395,6 +719,18 @@ func (m *Map) assignTriangleValues() {
 		r3 := m.mesh.s_begin_r(s0 + 2)
 		t_elevation[t] = (1.0 / 3.0) * (r_elevation[r1] + r_elevation[r2] + r_elevation[r3])
 		t_moisture[t] = (1.0 / 3.0) * (r_moisture[r1] + r_moisture[r2] + r_moisture[r3])
+	}
+
+	// This averages out rainfall to calculate moisture for triangles.
+	// Note that this overrides the t_moisture calculated by averaging out r_moisture above.
+	for t := 0; t < numTriangles; t++ {
+		var moisture float64
+		for i := 0; i < 3; i++ {
+			s := 3*t + i
+			r := m.mesh.s_begin_r(s)
+			moisture += m.r_rainfall[r] / 3
+		}
+		t_moisture[t] = moisture
 	}
 	m.t_elevation = t_elevation
 	m.t_moisture = t_moisture
@@ -470,7 +806,7 @@ func (m *Map) assignFlow() {
 	numTriangles := m.mesh.numTriangles
 	for t := 0; t < numTriangles; t++ {
 		if t_elevation[t] >= 0.0 {
-			t_flow[t] = 0.5 * t_moisture[t] * t_moisture[t]
+			t_flow[t] = 1 / float64(numTriangles) * t_moisture[t] //0.5 * t_moisture[t] * t_moisture[t]
 		} else {
 			t_flow[t] = 0
 		}
@@ -486,7 +822,7 @@ func (m *Map) assignFlow() {
 		tributary_t := order_t[i]
 		flow_s := t_downflow_s[tributary_t]
 		if flow_s >= 0 {
-			trunk_t := (_halfedges[flow_s] / 3) | 0
+			trunk_t := (_halfedges[flow_s] / 3)
 			t_flow[trunk_t] += t_flow[tributary_t]
 			s_flow[flow_s] += t_flow[tributary_t] // TODO: isn't s_flow[flow_s] === t_flow[?]
 			if t_elevation[trunk_t] > t_elevation[tributary_t] {
@@ -539,7 +875,7 @@ func (pq PriorityQueue) Swap(i, j int) {
 	pq[j].Index = j
 }
 
-const Infinity = 1.0
+// const Infinity = 1.0
 
 // assignDistanceField calculates the distance from any point in seeds_r to all other points, but
 // don't go past any point in stop_r.
@@ -549,7 +885,7 @@ func (m *Map) assignDistanceField(seeds_r []int, stop_r map[int]bool) []int64 {
 	numRegions := mesh.numRegions
 	r_distance := make([]int64, numRegions)
 	for i := range r_distance {
-		r_distance[i] = Infinity
+		r_distance[i] = -1 // was: Infinity
 	}
 
 	var queue []int
@@ -566,7 +902,7 @@ func (m *Map) assignDistanceField(seeds_r []int, stop_r map[int]bool) []int64 {
 		queue[pos] = queue[queue_out]
 		out_r = mesh.r_circulate_r(out_r, current_r)
 		for _, neighbor_r := range out_r {
-			if r_distance[neighbor_r] == Infinity && !stop_r[neighbor_r] {
+			if r_distance[neighbor_r] == -1 && !stop_r[neighbor_r] {
 				r_distance[neighbor_r] = r_distance[current_r] + 1
 				queue = append(queue, neighbor_r)
 			}
@@ -614,13 +950,11 @@ func minMax(hm []float64) (float64, float64) {
 	if len(hm) == 0 {
 		return 0, 0
 	}
-	min := hm[0]
-	max := hm[0]
+	min, max := hm[0], hm[0]
 	for _, h := range hm {
 		if h > max {
 			max = h
 		}
-
 		if h < min {
 			min = h
 		}

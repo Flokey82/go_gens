@@ -139,6 +139,10 @@ func (this *TriangleMesh) r_circulate_r(out_r []int, r int) []int {
 	}
 	return out_r
 }
+func (this *TriangleMesh) r_x(r int) float64 { return this.RVertex[r][0] }
+func (this *TriangleMesh) r_y(r int) float64 { return this.RVertex[r][1] }
+func (this *TriangleMesh) t_x(r int) float64 { return this.TVertex[r][0] }
+func (this *TriangleMesh) t_y(r int) float64 { return this.TVertex[r][1] }
 func (this *TriangleMesh) s_end_r(s int) int {
 	return this.Triangles[s_next_s(s)]
 }
@@ -158,3 +162,9 @@ func (this *TriangleMesh) s_inner_t(s int) int {
 func (this *TriangleMesh) s_outer_t(s int) int {
 	return s_to_t(this.Halfedges[s])
 }
+
+func (this *TriangleMesh) ghost_r() int          { return this.numRegions - 1 }
+func (this *TriangleMesh) r_ghost(r int) bool    { return r == this.numRegions-1 }
+func (this *TriangleMesh) t_ghost(t int) bool    { return this.s_ghost(3 * t) }
+func (this *TriangleMesh) s_boundary(s int) bool { return this.s_ghost(s) && (s%3 == 0) }
+func (this *TriangleMesh) r_boundary(r int) bool { return r < this.numBoundaryRegions }

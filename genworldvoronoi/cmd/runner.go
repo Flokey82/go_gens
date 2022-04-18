@@ -12,5 +12,5 @@ func main() {
 	}
 	sp.ExportPng("test.png")
 	sp.ExportOBJ("test.obj")
-	//sp.ExportSVG("test.svg")
+	sp.ExportSVG("test.svg")
 }

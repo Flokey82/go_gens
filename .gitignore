@@ -19,3 +19,8 @@ gendemographics/cmd/runner
 genworldvoronoi/cmd/runner
 genworldvoronoi/cmd/test.obj
 genworldvoronoi/cmd/sphere.obj
+genworldvoronoi/cmd/test_90.png
+genworldvoronoi/cmd/test_orig_polar.png
+genworldvoronoi/cmd/test.png
+genworldvoronoi/cmd/test.png
+genworldvoronoi/cmd/test.png

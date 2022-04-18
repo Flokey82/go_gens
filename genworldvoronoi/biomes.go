@@ -2,11 +2,33 @@ package genworldvoronoi
 
 import (
 	"image/color"
+	//"log"
 	"math"
 )
 
+// getTempFalloffFromAltitude returns the temperature falloff at a given altitude in meters
+// above sea level. (approx. 9.8 °C per 1000 m)
+// NOTE: This is definitely not correct :)
+// Source: https://www.quora.com/At-what-rate-does-temperature-drop-with-altitude
+func getTempFalloffFromAltitude(height float64) float64 {
+	return 0.98 * height / 100
+}
+
+// getMeanAnnualTemp returns the temperature at a given latitude within the range of
+// -35 °C to +31 °C.
+// For this I assume that light hits the globe exactly from a 90° angle with respect
+// to the planitary axis.
+// See: https://www.scratchapixel.com/lessons/3d-basic-rendering/introduction-to-shading/shading-normals (facing ratio)
 func getMeanAnnualTemp(lat float64) float64 {
-	return (90.0-math.Abs(lat))*(45.0/90.0) - 15
+	return (math.Sin(degToRad(90-math.Abs(lat))))*66 - 35
+}
+
+func degToRad(deg float64) float64 {
+	return deg * math.Pi / 180
+}
+
+func radToDeg(rad float64) float64 {
+	return rad * 180 / math.Pi
 }
 
 // Biomes definition
@@ -170,7 +192,7 @@ const (
 func GetWhittakerBiome(temperature, precipitation int) int {
 	temperature = WhittakerClampTemperatureToIndex(temperature)
 	precipitation = WhittakerClampPrecipitationToIndex(precipitation)
-	return WhittakerLookupTable[temperature][precipitation]
+	return WhittakerLookupTable[precipitation][temperature]
 }
 
 var WhittakerBiomeColor = map[int]color.NRGBA{
@@ -262,6 +284,38 @@ const (
 	WhittakerModBiomeSavannah                = 0xE
 )
 
+func GetWhittakerModBiome(temperature, precipitation int) int {
+	temperature = WhittakerClampTemperatureToIndex(temperature)
+	precipitation = WhittakerClampPrecipitationToIndex(precipitation)
+	return WhittakerLookupTableModified[precipitation][temperature]
+}
+
+var WhittakerModBiomeColor = map[int]color.NRGBA{
+	WhittakerModBiomeTropicalRainForest:      {0x9C, 0xBB, 0xA9, 0},
+	WhittakerModBiomeTropicalSeasonalForest:  {0xA9, 0xCC, 0xA4, 0},
+	WhittakerModBiomeSubtropicalDesert:       {0xfd, 0xe3, 0x8d, 0}, // was 0xE9DDC7
+	WhittakerModBiomeTemperateRainForest:     {0xA4, 0xC4, 0xA8, 0},
+	WhittakerModBiomeTemperateSeasonalForest: {0xB4, 0xC9, 0xA9, 0},
+	WhittakerModBiomeWoodlandShrubland:       {0xC4, 0xCC, 0xBB, 0},
+	WhittakerModBiomeTemperateGrassland:      {0xE4, 0xE8, 0xCA, 0},
+	WhittakerModBiomeBorealForestTaiga:       {0xCC, 0xD4, 0xBB, 0},
+	WhittakerModBiomeTundra:                  {0xDD, 0xDD, 0xBB, 0},
+	WhittakerModBiomeColdDesert:              {0xCC, 0xCC, 0xCC, 0},
+	WhittakerModBiomeHotSwamp:                {0x96, 0x4B, 0x00, 0},
+	WhittakerModBiomeSavannah:                {0xff, 0xd1, 0x45, 0},
+	WhittakerModBiomeSnow:                    {0xFF, 0xFF, 0xFF, 0},
+}
+
+func GetWhittakerModBiomeColor(temperature, precipitation int, intensity float64) color.NRGBA {
+	c := WhittakerModBiomeColor[GetWhittakerModBiome(temperature, precipitation)]
+	return color.NRGBA{
+		R: uint8(intensity * float64(c.R)),
+		G: uint8(intensity * float64(c.G)),
+		B: uint8(intensity * float64(c.B)),
+		A: 255,
+	}
+}
+
 const (
 	minTemperatureC    = -15
 	maxTemperatureC    = 30
@@ -270,20 +324,20 @@ const (
 )
 
 func WhittakerClampTemperatureToIndex(temp int) int {
-	if temp <= maxTemperatureC && temp >= minTemperatureC {
-		return temp + 15
+	if temp <= minTemperatureC {
+		return 44
 	}
-	if temp < minTemperatureC {
+	if temp >= minTemperatureC {
 		return 0
 	}
-	return 45
+	return 44 - (temp + 15)
 }
 
 func WhittakerClampPrecipitationToIndex(prec int) int {
-	if prec > maxPrecipitationDM {
-		return 45
+	if prec >= maxPrecipitationDM {
+		return 44
 	}
-	if prec < minPrecipitationDM {
+	if prec <= minPrecipitationDM {
 		return 0
 	}
 	return prec

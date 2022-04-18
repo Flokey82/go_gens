@@ -58,12 +58,12 @@ func (m *Map) ExportSVG(path string) error {
 		tmpLine := ""
 
 		// Hacky way to filter paths/triangles that wrap around the entire SVG.
-		triLat, triLon := latLonFromVec3(convToVec3(m.t_xyz[i:i+3]), 1.0)
-		triX, triY := mercator.LatLonToPixels(triLat, triLon, zoom)
+		triLat, triLon := latLonFromVec3(convToVec3(m.t_xyz[i:i+3]).Normalize(), 1.0)
+		triX, triY := mercator.LatLonToPixels(triLat, -1*(180-triLon), zoom)
 		var skip bool
 		for _, j := range m.mesh.Triangles[i : i+3] {
-			lat, lon := latLonFromVec3(convToVec3(m.r_xyz[j*3:(j*3)+3]), 1.0)
-			x, y := mercator.LatLonToPixels(lat, lon, zoom)
+			lat, lon := latLonFromVec3(convToVec3(m.r_xyz[j*3:(j*3)+3]).Normalize(), 1.0)
+			x, y := mercator.LatLonToPixels(lat, -1*(180-lon), zoom)
 			if dist2([2]float64{x + float64(size)/2, y}, [2]float64{triX + float64(size)/2, triY}) > filterPathDist {
 				skip = true
 				break
@@ -75,8 +75,8 @@ func (m *Map) ExportSVG(path string) error {
 
 		var path [][2]float64
 		for _, j := range m.mesh.Triangles[i : i+3] {
-			lat, lon := latLonFromVec3(convToVec3(m.r_xyz[j*3:(j*3)+3]), 1.0)
-			x, y := mercator.LatLonToPixels(lat, lon, zoom)
+			lat, lon := latLonFromVec3(convToVec3(m.r_xyz[j*3:(j*3)+3]).Normalize(), 1.0)
+			x, y := mercator.LatLonToPixels(lat, -1*(180-lon), zoom)
 			path = append(path, [2]float64{x + float64(size)/2, y})
 		}
 		elev := m.t_elevation[i/3]
@@ -89,10 +89,34 @@ func (m *Map) ExportSVG(path string) error {
 			// Hacky: Modify elevation based on latitude to compensate for colder weather at the poles and warmer weather at the equator.
 			// valElev := math.Max(math.Min((elev/max)+(math.Sqrt(math.Abs(triLat)/90.0)-0.5), max), 0)
 			valMois := (m.t_moisture[i/3] - minMois) / (maxMois - minMois)
-			col = GetRedblobBiomeColor(int(valElev*4)+1, int(valMois*6)+1, val)
+			valMois = m.t_moisture[i/3] / maxMois
+			// col = GetRedblobBiomeColor(int(valElev*4)+1, int(valMois*6)+1, val)
+			col = GetWhittakerModBiomeColor(int(getMeanAnnualTemp(triLat)-getTempFalloffFromAltitude(8850*valElev)), int(valMois*45), val)
 		}
 
 		svg.Path(svgGenD(path), fmt.Sprintf("fill: rgb(%d, %d, %d)", col.R, col.G, col.B)+tmpLine)
+	}
+
+	// Rivers
+	drawRivers := false
+	if drawRivers {
+		for i := 0; i < m.mesh.numSides; i++ {
+			if m.s_flow[i] > 0.001 {
+				inner_t := m.mesh.s_inner_t(i)
+				outer_t := m.mesh.s_outer_t(i)
+				if m.t_elevation[inner_t] < 0 && m.t_elevation[outer_t] < 0 {
+					continue
+				}
+				lat, lon := latLonFromVec3(convToVec3(m.t_xyz[inner_t*3:(inner_t*3)+3]).Normalize(), 1.0)
+				x1, y1 := mercator.LatLonToPixels(lat, -1*(180-lon), zoom)
+				lat, lon = latLonFromVec3(convToVec3(m.t_xyz[outer_t*3:(outer_t*3)+3]).Normalize(), 1.0)
+				x2, y2 := mercator.LatLonToPixels(lat, -1*(180-lon), zoom)
+				if math.Abs(x1-x2) > float64(size)/2 || math.Abs(y1-y2) > float64(size)/2 {
+					continue
+				}
+				svg.Line(int(x1+float64(size)/2), int(y1), int(x2+float64(size)/2), int(y2), "stroke=\"blue\" stroke-width=\"1\"")
+			}
+		}
 	}
 
 	svg.End()
@@ -117,11 +141,12 @@ func (m *Map) ExportPng(name string) {
 	// Create a colored image of the given width and height.
 	img := image.NewNRGBA(image.Rect(0, 0, size, size))
 	min, max := minMax(m.r_elevation)
-	minMois, maxMois := minMax(m.r_moisture)
+	minMois, maxMois := minMax(m.r_rainfall)
 	// TODO: assign region moisture in a better way!
 	for r := 0; r < m.mesh.numRegions; r++ {
-		lat, lon := latLonFromVec3(convToVec3(m.r_xyz[r*3:(r*3)+3]), 1.0)
-		x, y := mercator.LatLonToPixels(lat, lon, zoom)
+		lat, lon := latLonFromVec3(convToVec3(m.r_xyz[r*3:(r*3)+3]).Normalize(), 1.0)
+		//log.Println(lat, lon)
+		x, y := mercator.LatLonToPixels(lat, -1*(180-lon), zoom)
 		val := (m.r_elevation[r] - min) / (max - min)
 		var col color.NRGBA
 		if elev := m.r_elevation[r]; elev < 0 {
@@ -130,8 +155,13 @@ func (m *Map) ExportPng(name string) {
 			valElev := elev / max
 			// Hacky: Modify elevation based on latitude to compensate for colder weather at the poles and warmer weather at the equator.
 			// valElev := math.Max(math.Min((elev/max)+(math.Sqrt(math.Abs(lat)/90.0)-0.5), max), 0)
-			valMois := (m.r_moisture[r] - minMois) / (maxMois - minMois)
+			valMois := (m.r_rainfall[r] - minMois) / (maxMois - minMois)
+			valMois = m.r_rainfall[r] / maxMois
 			col = GetRedblobBiomeColor(int(valElev*4)+1, int(valMois*6)+1, val)
+			col.R = uint8(255 * valMois)
+			col.G = 0
+			col.B = uint8(255 * (1 - valMois))
+			//col = GetWhittakerModBiomeColor(int(getMeanAnnualTemp(lat)-getTempFalloffFromAltitude(8850*valElev)), int(valMois*45), val)
 		}
 		img.Set(int(x)+size/2, int(y), col)
 	}
@@ -159,7 +189,7 @@ func (m *Map) ExportOBJ(path string) error {
 	defer f.Close()
 	w := bufio.NewWriter(f)
 	drawPlates := false
-	drawRivers := false
+	drawRivers := true
 	/*
 		// This will export the quad geometry.
 		// Vertices
@@ -201,7 +231,7 @@ func (m *Map) ExportOBJ(path string) error {
 	// Rivers
 	if drawRivers {
 		for i := 0; i < m.mesh.numSides; i++ {
-			if m.s_flow[i] > 1 {
+			if m.s_flow[i] > 0.001 {
 				inner_t := m.mesh.s_inner_t(i)
 				outer_t := m.mesh.s_outer_t(i)
 				if m.t_elevation[inner_t] < 0 && m.t_elevation[outer_t] < 0 {
