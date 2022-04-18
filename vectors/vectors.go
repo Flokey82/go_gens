@@ -180,6 +180,11 @@ func Cross3(v1, v2 Vec3) Vec3 {
 	}
 }
 
+// Dot3 returns the dotproduct of two vectors.
+func Dot3(v1, v2 Vec3) float64 {
+	return v1.Y*v2.Y + v1.X*v2.X + v1.Z*v2.Z
+}
+
 // Cross3XYZ returns the cross product of two sets of coordinates.
 func Cross3XYZ(v1x, v1y, v1z, v2x, v2y, v2z float64) Vec3 {
 	return Vec3{
