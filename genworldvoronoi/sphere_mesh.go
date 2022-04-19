@@ -46,6 +46,8 @@ func pushCartesianFromSpherical(out []float64, latDeg, lonDeg float64) []float64
 	return append(out, latLonToCartesian(latDeg, lonDeg)...)
 }
 
+// latLonToCartesian converts latitude and longitude to x, y, z coordinates.
+// See: https://rbrundritt.wordpress.com/2008/10/14/conversion-between-spherical-and-cartesian-coordinates-systems/
 func latLonToCartesian(latDeg, lonDeg float64) []float64 {
 	latRad := (latDeg / 180.0) * math.Pi
 	lonRad := (lonDeg / 180.0) * math.Pi
@@ -56,6 +58,8 @@ func latLonToCartesian(latDeg, lonDeg float64) []float64 {
 	}
 }
 
+// latLonFromVec3 converts a vectors.Vec3 to latitude and longitude.
+// See: https://rbrundritt.wordpress.com/2008/10/14/conversion-between-spherical-and-cartesian-coordinates-systems/
 func latLonFromVec3(position vectors.Vec3, sphereRadius float64) (float64, float64) {
 	// See https://stackoverflow.com/questions/46247499/vector3-to-latitude-longitude
 	lat := math.Asin(position.Z / sphereRadius) //theta

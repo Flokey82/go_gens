@@ -20,6 +20,7 @@ func getTempFalloffFromAltitude(height float64) float64 {
 // For this I assume that light hits the globe exactly from a 90° angle with respect
 // to the planitary axis.
 // See: https://www.scratchapixel.com/lessons/3d-basic-rendering/introduction-to-shading/shading-normals (facing ratio)
+// See: http://www-das.uwyo.edu/~geerts/cwx/notes/chap16/geo_clim.html
 func getMeanAnnualTemp(lat float64) float64 {
 	return (math.Sin(degToRad(90-math.Abs(lat))))*66 - 35
 }
@@ -50,10 +51,6 @@ func (m *Map) assignRegionMoisture() {
 
 func (m *Map) assignWindVectors() {
 	r_windvec := make([]Vertex, m.mesh.numRegions)
-
-	// Calculate dummy vector that will be the default for any region we don't have a proper logic for yet.
-	// windAngleRad := degToRad(biomesParam.wind_angle_deg)
-	// dummyVec := Vertex{math.Cos(windAngleRad), math.Sin(windAngleRad)}
 	for i := range r_windvec {
 		// Determine latitude of current region.
 		rXYZ := convToVec3(m.r_xyz[i*3 : i*3+3])
