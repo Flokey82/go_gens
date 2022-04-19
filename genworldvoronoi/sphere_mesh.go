@@ -43,13 +43,7 @@ func generateFibonacciSphere(seed int64, numPoints int, jitter float64) []float6
 // pushCartesianFromSpherical calculates x,y,z from spherical coordinates lat,lon and then push
 // them onto out array; for one-offs pass nil as the first argument
 func pushCartesianFromSpherical(out []float64, latDeg, lonDeg float64) []float64 {
-	latRad := (latDeg / 180.0) * math.Pi
-	lonRad := (lonDeg / 180.0) * math.Pi
-	return append(out,
-		math.Cos(latRad)*math.Cos(lonRad),
-		math.Cos(latRad)*math.Sin(lonRad),
-		math.Sin(latRad),
-	)
+	return append(out, latLonToCartesian(latDeg, lonDeg)...)
 }
 
 func latLonToCartesian(latDeg, lonDeg float64) []float64 {
@@ -60,14 +54,6 @@ func latLonToCartesian(latDeg, lonDeg float64) []float64 {
 		math.Cos(latRad) * math.Sin(lonRad),
 		math.Sin(latRad),
 	}
-}
-
-func latLonFromVec3_b(position vectors.Vec3, sphereRadius float64) (float64, float64) {
-	// See https://stackoverflow.com/questions/46247499/vector3-to-latitude-longitude
-	const radToDeg = 180 / math.Pi
-	lat := math.Acos(position.Y / sphereRadius) //theta
-	lon := math.Atan2(position.X, position.Z)   //phi
-	return -1 * (90 - lat*radToDeg), -1 * (180 - lon*radToDeg)
 }
 
 func latLonFromVec3(position vectors.Vec3, sphereRadius float64) (float64, float64) {

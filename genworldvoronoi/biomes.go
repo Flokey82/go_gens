@@ -2,34 +2,7 @@ package genworldvoronoi
 
 import (
 	"image/color"
-	//"log"
-	"math"
 )
-
-// getTempFalloffFromAltitude returns the temperature falloff at a given altitude in meters
-// above sea level. (approx. 9.8 °C per 1000 m)
-// NOTE: This is definitely not correct :)
-// Source: https://www.quora.com/At-what-rate-does-temperature-drop-with-altitude
-func getTempFalloffFromAltitude(height float64) float64 {
-	return 0.98 * height / 100
-}
-
-// getMeanAnnualTemp returns the temperature at a given latitude within the range of
-// -35 °C to +31 °C.
-// For this I assume that light hits the globe exactly from a 90° angle with respect
-// to the planitary axis.
-// See: https://www.scratchapixel.com/lessons/3d-basic-rendering/introduction-to-shading/shading-normals (facing ratio)
-func getMeanAnnualTemp(lat float64) float64 {
-	return (math.Sin(degToRad(90-math.Abs(lat))))*66 - 35
-}
-
-func degToRad(deg float64) float64 {
-	return deg * math.Pi / 180
-}
-
-func radToDeg(rad float64) float64 {
-	return rad * 180 / math.Pi
-}
 
 // Biomes definition
 // See: http://www-cs-students.stanford.edu/~amitp/game-programming/polygon-map-generation/#biomes

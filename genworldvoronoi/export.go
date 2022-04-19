@@ -14,13 +14,6 @@ import (
 	"github.com/davvo/mercator"
 )
 
-// dist2 returns the eucledian distance between two points.
-func dist2(a, b [2]float64) float64 {
-	xDiff := a[0] - b[0]
-	yDiff := a[1] - b[1]
-	return float64(math.Sqrt(float64(xDiff*xDiff + yDiff*yDiff)))
-}
-
 // sizeFromZoom returns the expected size of the world for the mercato projection used below.
 func sizeFromZoom(zoom int) int {
 	return int(math.Pow(2.0, float64(zoom)) * 256.0)
