@@ -5,7 +5,7 @@ package genworldvoronoi
 
 import (
 	"container/heap"
-	//"log"
+	// "log"
 	"math"
 	"math/rand"
 	"sort"
@@ -21,14 +21,16 @@ type Map struct {
 	t_elevation  []float64 // Triangle elevation
 	t_flow       []float64 // Flow intensity through triangles
 	t_downflow_s []int     // Triangle mapping to side through which water flows downhill.
+	order_t      []int     // Triangles in uphill order of elevation.
+	s_flow       []float64 // Flow intensity through sides
 	r_xyz        []float64 // Point / region xyz coordinates
 	r_elevation  []float64 // Point / region elevation
 	r_moisture   []float64 // Point / region moisture
 	r_rainfall   []float64
 	r_windvec    []Vertex
+	r_flux       []float64         // Hydrology (Variant B): Throughflow of rainfall.
+	r_downhill   []int             // Mapping of region to its lowest neighbor.
 	r_plate      []int             // Region to plate mapping
-	s_flow       []float64         // Flow intensity through sides
-	order_t      []int             // Uphill order of triangles (??)
 	PlateVectors []vectors.Vec3    // Plate tectonics / movement vectors
 	PlateIsOcean map[int]bool      // Plate was chosen to be an ocean plate
 	plate_r      []int             // Plate seed points / regions
@@ -54,6 +56,8 @@ func NewMap(seed int64, numPlates, numPoints int, jitter float64) (*Map, error) 
 		r_elevation:  make([]float64, mesh.numRegions),
 		t_elevation:  make([]float64, mesh.numTriangles),
 		r_moisture:   make([]float64, mesh.numRegions),
+		r_flux:       make([]float64, mesh.numRegions),
+		r_downhill:   make([]int, mesh.numRegions),
 		t_moisture:   make([]float64, mesh.numTriangles),
 		t_downflow_s: make([]int, mesh.numTriangles),
 		order_t:      make([]int, mesh.numTriangles),
@@ -88,11 +92,19 @@ func (m *Map) generateMap() {
 	m.assignRegionElevation()
 
 	// River / moisture.
-	//m.assignRegionMoisture()
-	for i := 0; i < 24; i++ {
+	// m.assignRegionMoisture()
+	for i := 0; i < 12; i++ {
 		m.assignRainfall()
 		// m.assignFlux()
 	}
+
+	// Hydrology (based on regions) - EXPERIMENTAL
+	m.assignDownhill()
+	m.assignFlux()
+	// m.getRivers(9000.1)
+	m.r_elevation = m.rErode(0.05)
+
+	// Hydrology (based on triangles)
 	m.assignTriangleValues()
 	m.assignDownflow()
 	m.assignFlow()
@@ -472,23 +484,15 @@ func (m *Map) assignWindVectors() {
 	for i := 0; i < interpolationSteps; i++ {
 		r_windvec_interpol := make([]Vertex, m.mesh.numRegions)
 		for r := range r_windvec_interpol {
-			s0 := m.mesh.RInS[r]
-			incoming := s0
 			resVec := Vertex{
 				r_windvec[r][0],
 				r_windvec[r][1],
 			}
 			var count int
-			for {
-				neighbor_r := m.mesh.s_begin_r(incoming)
+			for _, neighbor_r := range m.rNeighbors(r) {
 				resVec[0] += r_windvec[neighbor_r][0]
 				resVec[1] += r_windvec[neighbor_r][1]
 				count++
-				outgoing := s_next_s(incoming)
-				incoming = m.mesh.Halfedges[outgoing]
-				if incoming == s0 {
-					break
-				}
 			}
 			resVec[0] /= float64(count + 1)
 			resVec[1] /= float64(count + 1)
@@ -542,11 +546,10 @@ func (m *Map) assignRainfall() {
 	if moistureTransferSourceToDest {
 		// 4. For each region, calculate dot product of Vec r -> r_neighbor and wind vector of r.
 		//    This will give us the amount of moisture we transfer to the neighbor region.
+		// NOTE: This variant copies moisture from the current region to the neighbors that are in wind direction.
 		_, maxH := minMax(m.r_elevation)
 		for _, r := range dist_order_r {
 			count := 0
-			s0 := m.mesh.RInS[r]
-			incoming := s0
 			// Get XYZ Position of r.
 			rXYZ := convToVec3(m.r_xyz[r*3 : r*3+3])
 			// Convert to polar coordinates.
@@ -554,8 +557,7 @@ func (m *Map) assignRainfall() {
 
 			// Add wind vector to neighbor lat/lon to get the "wind vector lat long" or something like that..
 			rwXYZ := convToVec3(latLonToCartesian(rLat+r_windvec[r][0], rLon+r_windvec[r][1])).Normalize()
-			for {
-				neighbor_r := m.mesh.s_begin_r(incoming)
+			for _, neighbor_r := range m.rNeighbors(r) {
 				// Calculate dot product of wind vector to vector r -> neighbor_r.
 				// Get XYZ Position of r_neighbor.
 				rnXYZ := convToVec3(m.r_xyz[neighbor_r*3 : neighbor_r*3+3])
@@ -590,26 +592,18 @@ func (m *Map) assignRainfall() {
 					m.r_rainfall[neighbor_r] = rainfall
 					m.r_moisture[neighbor_r] = humidity
 				}
-
-				outgoing := s_next_s(incoming)
-				incoming = m.mesh.Halfedges[outgoing]
-				if incoming == s0 {
-					break
-				}
 			}
 		}
 	} else {
 		// 4. For each region, calculate dot product of Vec r -> r_neighbor and wind vector of r_neighbor.
 		//    This will give us the amount of moisture we transfer from the neighbor region.
+		// NOTE: This variant copies moisture to the current region from the neighbors depending on their wind direction.
 		for _, r := range dist_order_r {
 			count := 0
 			sum := 0.0
-			s0 := m.mesh.RInS[r]
-			incoming := s0
 			// Get XYZ Position of r.
 			rXYZ := convToVec3(m.r_xyz[r*3 : r*3+3])
-			for {
-				neighbor_r := m.mesh.s_begin_r(incoming)
+			for _, neighbor_r := range m.rNeighbors(r) {
 				// Calculate dot product of wind vector to vector r -> neighbor_r.
 				// Get XYZ Position of r_neighbor.
 				rnXYZ := convToVec3(m.r_xyz[neighbor_r*3 : neighbor_r*3+3])
@@ -635,11 +629,6 @@ func (m *Map) assignRainfall() {
 					// Only positive dot products mean that we lie within 90°, so 'in wind direction'.
 					count++
 					sum += m.r_moisture[neighbor_r] * dotV
-				}
-				outgoing := s_next_s(incoming)
-				incoming = m.mesh.Halfedges[outgoing]
-				if incoming == s0 {
-					break
 				}
 			}
 
@@ -676,21 +665,13 @@ func (m *Map) assignRainfall() {
 		r_moisture_interpol := make([]float64, m.mesh.numRegions)
 		r_rainfall_interpol := make([]float64, m.mesh.numRegions)
 		for r := range r_moisture_interpol {
-			s0 := m.mesh.RInS[r]
-			incoming := s0
 			rMoist := m.r_moisture[r]
 			rRain := m.r_rainfall[r]
 			var count int
-			for {
-				neighbor_r := m.mesh.s_begin_r(incoming)
+			for _, neighbor_r := range m.rNeighbors(r) {
 				rMoist += m.r_moisture[neighbor_r]
 				rRain += m.r_rainfall[neighbor_r]
 				count++
-				outgoing := s_next_s(incoming)
-				incoming = m.mesh.Halfedges[outgoing]
-				if incoming == s0 {
-					break
-				}
 			}
 			rMoist /= float64(count + 1)
 			r_moisture_interpol[r] = rMoist
@@ -734,6 +715,52 @@ func (m *Map) assignTriangleValues() {
 	}
 	m.t_elevation = t_elevation
 	m.t_moisture = t_moisture
+}
+
+// assignDownhill will populate r_downhill with a mapping of region to lowest neighbor region.
+// NOTE: This is based on mewo2's terrain generation code
+// See: https://github.com/mewo2/terrain
+func (m *Map) assignDownhill() {
+	// Here we will map each region to the lowest neighbor.
+	r_downhill := make([]int, m.mesh.numRegions)
+	for r := range r_downhill {
+		lowest_r := -1
+		lowest_elevation := 999.0
+		for _, neighbor_r := range m.rNeighbors(r) {
+			if elev := m.r_elevation[neighbor_r]; elev < lowest_elevation {
+				lowest_elevation = elev
+				lowest_r = neighbor_r
+			}
+		}
+		r_downhill[r] = lowest_r
+	}
+	m.r_downhill = r_downhill
+
+	// TODO: Triangle downhill.
+}
+
+// assignFlux will populate r_flux by summing up the rainfall for each region from highest to
+// lowest using r_downhill to reconstruct the downhill path that water would follow.
+// NOTE: This is based on mewo2's terrain generation code
+// See: https://github.com/mewo2/terrain
+func (m *Map) assignFlux() {
+	// Initialize flux values with r_rainfall.
+	r_flux := make([]float64, m.mesh.numRegions)
+	idxs := make([]int, m.mesh.numRegions)
+	for i := 0; i < m.mesh.numRegions; i++ {
+		idxs[i] = i
+		r_flux[i] = m.r_rainfall[i]
+	}
+	sort.Slice(idxs, func(a, b int) bool {
+		return m.r_elevation[idxs[b]]-m.r_elevation[idxs[a]] < 0
+	})
+	for i := 0; i < m.mesh.numRegions; i++ {
+		j := idxs[i]
+		if m.r_downhill[j] >= 0 {
+			r_flux[m.r_downhill[j]] += r_flux[j]
+		}
+	}
+	m.r_flux = r_flux
 }
 
 // assignDownflow starts with triangles that are considered "ocean" and works its way
@@ -806,7 +833,7 @@ func (m *Map) assignFlow() {
 	numTriangles := m.mesh.numTriangles
 	for t := 0; t < numTriangles; t++ {
 		if t_elevation[t] >= 0.0 {
-			t_flow[t] = 1 / float64(numTriangles) * t_moisture[t] //0.5 * t_moisture[t] * t_moisture[t]
+			t_flow[t] = 0.5 * t_moisture[t] * t_moisture[t]
 		} else {
 			t_flow[t] = 0
 		}
@@ -900,8 +927,7 @@ func (m *Map) assignDistanceField(seeds_r []int, stop_r map[int]bool) []int64 {
 		pos := queue_out + m.rand.Intn(len(queue)-queue_out)
 		current_r := queue[pos]
 		queue[pos] = queue[queue_out]
-		out_r = mesh.r_circulate_r(out_r, current_r)
-		for _, neighbor_r := range out_r {
+		for _, neighbor_r := range mesh.r_circulate_r(out_r, current_r) {
 			if r_distance[neighbor_r] == -1 && !stop_r[neighbor_r] {
 				r_distance[neighbor_r] = r_distance[current_r] + 1
 				queue = append(queue, neighbor_r)
@@ -913,6 +939,10 @@ func (m *Map) assignDistanceField(seeds_r []int, stop_r map[int]bool) []int64 {
 	// to this point, so that we can assign variable mountain/ocean
 	// elevation to each seed instead of them always being +1/-1
 	return r_distance
+}
+
+func (m *Map) rNeighbors(r int) []int {
+	return m.mesh.r_circulate_r(nil, r)
 }
 
 const persistence = 2.0 / 3.0

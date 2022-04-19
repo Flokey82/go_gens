@@ -52,7 +52,6 @@ func (m *Map) ExportSVG(path string) error {
 	svg.Start(size, size)
 
 	min, max := minMax(m.t_elevation)
-	log.Println(max)
 	minMois, maxMois := minMax(m.t_moisture)
 	for i := 0; i < len(m.mesh.Triangles); i += 3 {
 		tmpLine := ""
@@ -101,7 +100,7 @@ func (m *Map) ExportSVG(path string) error {
 	drawRivers := false
 	if drawRivers {
 		for i := 0; i < m.mesh.numSides; i++ {
-			if m.s_flow[i] > 0.001 {
+			if m.s_flow[i] > 1 {
 				inner_t := m.mesh.s_inner_t(i)
 				outer_t := m.mesh.s_outer_t(i)
 				if m.t_elevation[inner_t] < 0 && m.t_elevation[outer_t] < 0 {
@@ -142,7 +141,6 @@ func (m *Map) ExportPng(name string) {
 	img := image.NewNRGBA(image.Rect(0, 0, size, size))
 	min, max := minMax(m.r_elevation)
 	minMois, maxMois := minMax(m.r_rainfall)
-	// TODO: assign region moisture in a better way!
 	for r := 0; r < m.mesh.numRegions; r++ {
 		lat, lon := latLonFromVec3(convToVec3(m.r_xyz[r*3:(r*3)+3]).Normalize(), 1.0)
 		//log.Println(lat, lon)
@@ -189,7 +187,7 @@ func (m *Map) ExportOBJ(path string) error {
 	defer f.Close()
 	w := bufio.NewWriter(f)
 	drawPlates := false
-	drawRivers := true
+	drawRivers := false
 	/*
 		// This will export the quad geometry.
 		// Vertices
@@ -231,7 +229,7 @@ func (m *Map) ExportOBJ(path string) error {
 	// Rivers
 	if drawRivers {
 		for i := 0; i < m.mesh.numSides; i++ {
-			if m.s_flow[i] > 0.001 {
+			if m.s_flow[i] > 1 {
 				inner_t := m.mesh.s_inner_t(i)
 				outer_t := m.mesh.s_outer_t(i)
 				if m.t_elevation[inner_t] < 0 && m.t_elevation[outer_t] < 0 {

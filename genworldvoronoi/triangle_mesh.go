@@ -139,6 +139,38 @@ func (this *TriangleMesh) r_circulate_r(out_r []int, r int) []int {
 	}
 	return out_r
 }
+
+func (this *TriangleMesh) r_circulate_t(out_t []int, r int) []int {
+	s0 := this.RInS[r]
+	incoming := s0
+	out_t = out_t[:0]
+	for {
+		out_t = append(out_t, s_to_t(incoming))
+		outgoing := s_next_s(incoming)
+		incoming = this.Halfedges[outgoing]
+		if incoming == -1 || incoming == s0 {
+			break
+		}
+	}
+	return out_t
+}
+
+func (this *TriangleMesh) t_circulate_s(out_s []int, t int) []int {
+	out_s = make([]int, 3)
+	for i := 0; i < 3; i++ {
+		out_s[i] = 3*t + i
+	}
+	return out_s
+}
+
+func (this *TriangleMesh) t_circulate_r(out_r []int, t int) []int {
+	out_r = make([]int, 3)
+	for i := 0; i < 3; i++ {
+		out_r[i] = this.Triangles[3*t+i]
+	}
+	return out_r
+}
+
 func (this *TriangleMesh) r_x(r int) float64 { return this.RVertex[r][0] }
 func (this *TriangleMesh) r_y(r int) float64 { return this.RVertex[r][1] }
 func (this *TriangleMesh) t_x(r int) float64 { return this.TVertex[r][0] }
