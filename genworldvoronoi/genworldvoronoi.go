@@ -4,6 +4,7 @@
 package genworldvoronoi
 
 import (
+	//"log"
 	"math"
 	"math/rand"
 
@@ -13,31 +14,35 @@ import (
 
 // ugh globals, sorry
 type Map struct {
-	t_xyz        []float64 // Triangle xyz coordinates
-	t_moisture   []float64 // Triangle moisture
-	t_elevation  []float64 // Triangle elevation
-	t_flow       []float64 // Flow intensity through triangles
-	t_downflow_s []int     // Triangle mapping to side through which water flows downhill.
-	order_t      []int     // Triangles in uphill order of elevation.
-	s_flow       []float64 // Flow intensity through sides
-	r_xyz        []float64 // Point / region xyz coordinates
-	r_elevation  []float64 // Point / region elevation
-	r_moisture   []float64 // Point / region moisture
-	r_rainfall   []float64
-	r_windvec    []Vertex
-	r_flux       []float64         // Hydrology (Variant B): Throughflow of rainfall.
-	r_downhill   []int             // Mapping of region to its lowest neighbor.
-	r_plate      []int             // Region to plate mapping
-	PlateVectors []vectors.Vec3    // Plate tectonics / movement vectors
-	PlateIsOcean map[int]bool      // Plate was chosen to be an ocean plate
-	plate_r      []int             // Plate seed points / regions
-	mesh         *TriangleMesh     // Triangle mesh containing the sphere information
-	seed         int64             // Seed for random number generators
-	rand         *rand.Rand        // Rand initialized with above seed
-	noise        opensimplex.Noise // Opensimplex noise initialized with above seed
-	NumPlates    int               // Number of generated plates
-	NumPoints    int               // Number of generated points / regions
-	QuadGeom     *QuadGeometry     // Quad geometry generated from the mesh (?)
+	t_xyz          []float64 // Triangle xyz coordinates
+	t_moisture     []float64 // Triangle moisture
+	t_elevation    []float64 // Triangle elevation
+	t_flow         []float64 // Flow intensity through triangles
+	t_downflow_s   []int     // Triangle mapping to side through which water flows downhill.
+	order_t        []int     // Triangles in uphill order of elevation.
+	s_flow         []float64 // Flow intensity through sides
+	r_xyz          []float64 // Point / region xyz coordinates
+	r_elevation    []float64 // Point / region elevation
+	r_moisture     []float64 // Point / region moisture
+	r_rainfall     []float64
+	r_windvec      []Vertex
+	r_flux         []float64         // Hydrology (Variant B): Throughflow of rainfall.
+	r_downhill     []int             // Mapping of region to its lowest neighbor.
+	r_plate        []int             // Region to plate mapping
+	PlateVectors   []vectors.Vec3    // Plate tectonics / movement vectors
+	PlateIsOcean   map[int]bool      // Plate was chosen to be an ocean plate
+	plate_r        []int             // Plate seed points / regions
+	cities_r       []int             // City seed points / regions
+	r_territory    []int             // Mapping of region to territory
+	mesh           *TriangleMesh     // Triangle mesh containing the sphere information
+	seed           int64             // Seed for random number generators
+	rand           *rand.Rand        // Rand initialized with above seed
+	noise          opensimplex.Noise // Opensimplex noise initialized with above seed
+	NumPlates      int               // Number of generated plates
+	NumPoints      int               // Number of generated points / regions
+	NumCities      int               // Number of generated cities (regions)
+	NumTerritories int               // Number of generated territories
+	QuadGeom       *QuadGeometry     // Quad geometry generated from the mesh (?)
 }
 
 func NewMap(seed int64, numPlates, numPoints int, jitter float64) (*Map, error) {
@@ -48,27 +53,29 @@ func NewMap(seed int64, numPlates, numPoints int, jitter float64) (*Map, error) 
 	mesh := result.mesh
 
 	m := &Map{
-		PlateIsOcean: make(map[int]bool),
-		r_xyz:        result.r_xyz,
-		r_elevation:  make([]float64, mesh.numRegions),
-		t_elevation:  make([]float64, mesh.numTriangles),
-		r_moisture:   make([]float64, mesh.numRegions),
-		r_flux:       make([]float64, mesh.numRegions),
-		r_downhill:   make([]int, mesh.numRegions),
-		t_moisture:   make([]float64, mesh.numTriangles),
-		t_downflow_s: make([]int, mesh.numTriangles),
-		order_t:      make([]int, mesh.numTriangles),
-		t_flow:       make([]float64, mesh.numTriangles),
-		s_flow:       make([]float64, mesh.numSides),
-		r_rainfall:   make([]float64, mesh.numRegions),
-		r_windvec:    make([]Vertex, mesh.numRegions),
-		mesh:         result.mesh,
-		seed:         seed,
-		rand:         rand.New(rand.NewSource(seed)),
-		noise:        opensimplex.New(seed),
-		NumPlates:    numPlates,
-		NumPoints:    numPoints,
-		QuadGeom:     NewQuadGeometry(),
+		PlateIsOcean:   make(map[int]bool),
+		r_xyz:          result.r_xyz,
+		r_elevation:    make([]float64, mesh.numRegions),
+		t_elevation:    make([]float64, mesh.numTriangles),
+		r_moisture:     make([]float64, mesh.numRegions),
+		r_flux:         make([]float64, mesh.numRegions),
+		r_downhill:     make([]int, mesh.numRegions),
+		t_moisture:     make([]float64, mesh.numTriangles),
+		t_downflow_s:   make([]int, mesh.numTriangles),
+		order_t:        make([]int, mesh.numTriangles),
+		t_flow:         make([]float64, mesh.numTriangles),
+		s_flow:         make([]float64, mesh.numSides),
+		r_rainfall:     make([]float64, mesh.numRegions),
+		r_windvec:      make([]Vertex, mesh.numRegions),
+		mesh:           result.mesh,
+		seed:           seed,
+		rand:           rand.New(rand.NewSource(seed)),
+		noise:          opensimplex.New(seed),
+		NumPlates:      numPlates,
+		NumPoints:      numPoints,
+		NumTerritories: 5,
+		NumCities:      20,
+		QuadGeom:       NewQuadGeometry(),
 	}
 	m.QuadGeom.setMesh(mesh)
 	m.t_xyz = m.generateTriangleCenters()
@@ -100,6 +107,10 @@ func (m *Map) generateMap() {
 	m.assignFlux()
 	// m.getRivers(9000.1)
 	m.r_elevation = m.rErode(0.05)
+
+	// Place cities and territories in regions.
+	m.rPlaceNCities(m.NumCities)
+	m.rPlaceNTerritories(m.NumTerritories)
 
 	// Hydrology (based on triangles)
 	m.assignTriangleValues()

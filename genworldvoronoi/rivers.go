@@ -120,13 +120,61 @@ func (m *Map) assignDownhill() {
 		lowest_r := -1
 		lowest_elevation := 999.0
 		for _, neighbor_r := range m.rNeighbors(r) {
-			if elev := m.r_elevation[neighbor_r]; elev < lowest_elevation {
+			if elev := m.r_elevation[neighbor_r]; elev < lowest_elevation && elev < m.r_elevation[r] {
 				lowest_elevation = elev
 				lowest_r = neighbor_r
 			}
 		}
 		r_downhill[r] = lowest_r
 	}
+
+	/*
+		// TODO: Flood sinks.
+		// Sort regions by elevation, lowest -> highest.
+		idxs := make([]int, m.mesh.numRegions)
+		for i := 0; i < m.mesh.numRegions; i++ {
+			idxs[i] = i
+		}
+		sort.Slice(idxs, func(a, b int) bool {
+			return m.r_elevation[idxs[b]]-m.r_elevation[idxs[a]] > 0
+		})
+		// Iterate through sorted regions and identify pits.
+		for i := 0; i < m.mesh.numRegions; i++ {
+			j := idxs[i]
+			if r_downhill[j] == -1 && m.r_elevation[j] > 0 {
+				log.Println("pit", j, m.r_elevation[j])
+				visited := make(map[int]bool)
+
+				newDH := -1
+				newH := m.r_elevation[j]
+
+				// Visit all neighbors until we find a downhill value that is not within the set of visited regions.
+				var visit func(r int) bool
+				visit = func(r int) bool {
+					if visited[r] {
+						return true
+					}
+					visited[r] = true
+					if dh := r_downhill[r]; dh >= 0 && !visited[dh] && m.r_elevation[dh] < newH {
+						newDH = r_downhill[r]
+						newH = m.r_elevation[dh]
+						return false
+					}
+					for _, nb_r := range m.rNeighbors(r) {
+						if !visit(nb_r) {
+							return false
+						}
+					}
+					return true
+				}
+				visit(j)
+				r_downhill[j] = newDH
+				if r_downhill[j] == -1 {
+					log.Println("still pit", j, m.r_elevation[j])
+				}
+
+			}
+		}*/
 	m.r_downhill = r_downhill
 
 	// TODO: Triangle downhill.

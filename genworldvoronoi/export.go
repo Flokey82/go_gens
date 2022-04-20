@@ -12,6 +12,7 @@ import (
 
 	svgo "github.com/ajstarks/svgo"
 	"github.com/davvo/mercator"
+	"github.com/mazznoer/colorgrad"
 )
 
 // sizeFromZoom returns the expected size of the world for the mercato projection used below.
@@ -31,6 +32,9 @@ func genBlue(intensity float64) color.NRGBA {
 // ExportSVG exports the terrain as SVG to the given path.
 // NOTE: This produces broken somewhat incomplete output due to the wraparound of the mesh.
 func (m *Map) ExportSVG(path string) error {
+	drawRivers := false
+	drawCities := true
+
 	zoom := 2
 	filterPathDist := 20.0
 	size := sizeFromZoom(zoom)
@@ -51,12 +55,12 @@ func (m *Map) ExportSVG(path string) error {
 
 		// Hacky way to filter paths/triangles that wrap around the entire SVG.
 		triLat, triLon := latLonFromVec3(convToVec3(m.t_xyz[i:i+3]).Normalize(), 1.0)
-		triX, triY := mercator.LatLonToPixels(triLat, -1*(180-triLon), zoom)
+		triX, triY := mercator.LatLonToPixels(triLat, triLon, zoom)
 		var skip bool
 		for _, j := range m.mesh.Triangles[i : i+3] {
 			lat, lon := latLonFromVec3(convToVec3(m.r_xyz[j*3:(j*3)+3]).Normalize(), 1.0)
-			x, y := mercator.LatLonToPixels(lat, -1*(180-lon), zoom)
-			if dist2([2]float64{x + float64(size)/2, y}, [2]float64{triX + float64(size)/2, triY}) > filterPathDist {
+			x, y := mercator.LatLonToPixels(lat, lon, zoom)
+			if dist2([2]float64{x, y}, [2]float64{triX, triY}) > filterPathDist {
 				skip = true
 				break
 			}
@@ -68,8 +72,8 @@ func (m *Map) ExportSVG(path string) error {
 		var path [][2]float64
 		for _, j := range m.mesh.Triangles[i : i+3] {
 			lat, lon := latLonFromVec3(convToVec3(m.r_xyz[j*3:(j*3)+3]).Normalize(), 1.0)
-			x, y := mercator.LatLonToPixels(lat, -1*(180-lon), zoom)
-			path = append(path, [2]float64{x + float64(size)/2, y})
+			x, y := mercator.LatLonToPixels(lat, lon, zoom)
+			path = append(path, [2]float64{x, y})
 		}
 		elev := m.t_elevation[i/3]
 		val := (elev - min) / (max - min)
@@ -90,24 +94,38 @@ func (m *Map) ExportSVG(path string) error {
 	}
 
 	// Rivers
-	drawRivers := false
 	if drawRivers {
 		for i := 0; i < m.mesh.numSides; i++ {
-			if m.s_flow[i] > 1 {
+			if m.s_flow[i] > 10000 {
 				inner_t := m.mesh.s_inner_t(i)
 				outer_t := m.mesh.s_outer_t(i)
 				if m.t_elevation[inner_t] < 0 && m.t_elevation[outer_t] < 0 {
 					continue
 				}
 				lat, lon := latLonFromVec3(convToVec3(m.t_xyz[inner_t*3:(inner_t*3)+3]).Normalize(), 1.0)
-				x1, y1 := mercator.LatLonToPixels(lat, -1*(180-lon), zoom)
+				x1, y1 := mercator.LatLonToPixels(lat, lon, zoom)
 				lat, lon = latLonFromVec3(convToVec3(m.t_xyz[outer_t*3:(outer_t*3)+3]).Normalize(), 1.0)
-				x2, y2 := mercator.LatLonToPixels(lat, -1*(180-lon), zoom)
+				x2, y2 := mercator.LatLonToPixels(lat, lon, zoom)
 				if math.Abs(x1-x2) > float64(size)/2 || math.Abs(y1-y2) > float64(size)/2 {
 					continue
 				}
-				svg.Line(int(x1+float64(size)/2), int(y1), int(x2+float64(size)/2), int(y2), "stroke=\"blue\" stroke-width=\"1\"")
+				svg.Line(int(x1), int(y1), int(x2), int(y2), "stroke=\"blue\" stroke-width=\"1\"")
 			}
+		}
+	}
+
+	// Cities
+	if drawCities {
+		for i, r := range m.cities_r {
+			lat, lon := latLonFromVec3(convToVec3(m.r_xyz[r*3:(r*3)+3]).Normalize(), 1.0)
+			//log.Println(lat, lon)
+			x, y := mercator.LatLonToPixels(lat, lon, zoom)
+			r := 2
+			// Capital cities are bigger!
+			if i < m.NumTerritories {
+				r = 4
+			}
+			svg.Circle(int(x), int(y), r, "fill: rgb(255, 0, 0)")
 		}
 	}
 
@@ -128,6 +146,12 @@ func svgGenD(path [][2]float64) string {
 }
 
 func (m *Map) ExportPng(name string) {
+	grad := colorgrad.Rainbow()
+	cols := grad.Colors(uint(m.NumTerritories))
+	terrToCol := make(map[int]int)
+	for i, terr := range m.cities_r[:m.NumTerritories] {
+		terrToCol[terr] = i
+	}
 	zoom := 1
 	size := sizeFromZoom(zoom)
 	// Create a colored image of the given width and height.
@@ -137,7 +161,7 @@ func (m *Map) ExportPng(name string) {
 	for r := 0; r < m.mesh.numRegions; r++ {
 		lat, lon := latLonFromVec3(convToVec3(m.r_xyz[r*3:(r*3)+3]).Normalize(), 1.0)
 		//log.Println(lat, lon)
-		x, y := mercator.LatLonToPixels(lat, -1*(180-lon), zoom)
+		x, y := mercator.LatLonToPixels(lat, lon, zoom)
 		val := (m.r_elevation[r] - min) / (max - min)
 		var col color.NRGBA
 		if elev := m.r_elevation[r]; elev < 0 {
@@ -152,9 +176,17 @@ func (m *Map) ExportPng(name string) {
 			col.R = uint8(255 * valMois)
 			col.G = 0
 			col.B = uint8(255 * (1 - valMois))
+			if m.r_territory[r] == 0 {
+				col = GetWhittakerModBiomeColor(int(getMeanAnnualTemp(lat)-getTempFalloffFromAltitude(8850*valElev)), int(valMois*45), val)
+			} else {
+				cr, cg, cb, _ := cols[terrToCol[m.r_territory[r]]].RGBA()
+				col.R = uint8(float64(255) * float64(cr) / float64(0xffff))
+				col.G = uint8(float64(255) * float64(cg) / float64(0xffff))
+				col.B = uint8(float64(255) * float64(cb) / float64(0xffff))
+			}
 			//col = GetWhittakerModBiomeColor(int(getMeanAnnualTemp(lat)-getTempFalloffFromAltitude(8850*valElev)), int(valMois*45), val)
 		}
-		img.Set(int(x)+size/2, int(y), col)
+		img.Set(int(x), int(y), col)
 	}
 
 	f, err := os.Create(name)

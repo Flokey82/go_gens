@@ -1,6 +1,8 @@
 package genworldvoronoi
 
 import (
+	//"math"
+
 	"github.com/Flokey82/go_gens/vectors"
 )
 
@@ -219,6 +221,8 @@ func (m *Map) assignRegionElevation() {
 	// }
 	// minComp, maxComp := minMax(compVals)
 
+	// enableRipples := true
+
 	r_xyz := m.r_xyz
 	for r := 0; r < m.mesh.numRegions; r++ {
 		a := float64(r_distance_a[r]) + epsilon
@@ -230,7 +234,11 @@ func (m *Map) assignRegionElevation() {
 		if r_distance_a[r] == -1 && r_distance_b[r] == -1 { // if a == Infinity && b == Infinity {
 			m.r_elevation[r] = 0.1
 		} else {
-			m.r_elevation[r] += (1/a - 1/b) / (1/a + 1/b + 1/c)
+			f := (1/a - 1/b) / (1/a + 1/b + 1/c)
+			m.r_elevation[r] += f
+			// if a > epsilon && enableRipples && a < b && a < c {
+			//	m.r_elevation[r] -= (1 / a) * math.Sin(a) * f * (m.noise.Eval2(b, a) + 1) / 3
+			// }
 			// m.r_elevation[r] *= (compression_r[r] - minComp) / (maxComp - minComp)
 		}
 		m.r_elevation[r] += m.fbm_noise(r_xyz[3*r], r_xyz[3*r+1], r_xyz[3*r+2])
