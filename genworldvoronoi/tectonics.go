@@ -145,33 +145,42 @@ func (m *Map) findCollisions() ([]int, []int, []int, map[int]float64) {
 		// at this point, bestCompression tells us how much closer
 		// we are getting to the region that's pushing into us the most.
 		collided := bestCompression > collisionThreshold*deltaTime
-		current_plate := m.r_plate[current_r]
-		best_plate := m.r_plate[best_r]
-		if plateIsOcean[current_plate] && plateIsOcean[best_plate] {
-			// If both plates are ocean plates and they collide, a coastline is produced,
-			// while if they "drift apart" (which is not quite correct in our code, since
-			// drifting apart can already be a collision below the threshold), we mark it
-			// as "ocean" representing a rift.
-			if collided {
-				coastline_r = append(coastline_r, current_r)
+
+		enablePlateCheck := true
+		if enablePlateCheck {
+			current_plate := m.r_plate[current_r]
+			best_plate := m.r_plate[best_r]
+			if plateIsOcean[current_plate] && plateIsOcean[best_plate] {
+				// If both plates are ocean plates and they collide, a coastline is produced,
+				// while if they "drift apart" (which is not quite correct in our code, since
+				// drifting apart can already be a collision below the threshold), we mark it
+				// as "ocean" representing a rift.
+				if collided {
+					coastline_r = append(coastline_r, current_r)
+				} else {
+					// In theory, this is not 100% correct, as plates that drift apart result
+					// at times in volcanic islands that are formed from escaping magma.
+					// See: https://www.icelandontheweb.com/articles-on-iceland/nature/geology/tectonic-plates
+					// ocean_r = append(ocean_r, current_r)
+				}
+			} else if !plateIsOcean[current_plate] && !plateIsOcean[best_plate] {
+				// If both plates are non-ocean plates and they collide, mountains are formed.
+				if collided {
+					mountain_r = append(mountain_r, current_r)
+				}
 			} else {
-				// In theory, this is not 100% correct, as plates that drift apart result
-				// at times in volcanic islands that are formed from escaping magma.
-				// See: https://www.icelandontheweb.com/articles-on-iceland/nature/geology/tectonic-plates
-				// ocean_r = append(ocean_r, current_r)
-			}
-		} else if !plateIsOcean[current_plate] && !plateIsOcean[best_plate] {
-			// If both plates are non-ocean plates and they collide, mountains are formed.
-			if collided {
-				mountain_r = append(mountain_r, current_r)
+				// If the plates are of different types, a collision results in a mountain and
+				// drifting apart results in a coastline being defined.
+				if collided {
+					mountain_r = append(mountain_r, current_r)
+				} else {
+					coastline_r = append(coastline_r, current_r)
+				}
 			}
 		} else {
-			// If the plates are of different types, a collision results in a mountain and
-			// drifting apart results in a coastline being defined.
+			// If both plates collide, mountains are formed.
 			if collided {
 				mountain_r = append(mountain_r, current_r)
-			} else {
-				coastline_r = append(coastline_r, current_r)
 			}
 		}
 	}

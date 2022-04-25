@@ -1,7 +1,8 @@
 package genworldvoronoi
 
 import (
-	"math"
+	//"math"
+	"log"
 )
 
 func (m *Map) rCityScore() []float64 {
@@ -9,12 +10,19 @@ func (m *Map) rCityScore() []float64 {
 	_, maxFlux := minMax(m.r_flux)
 	score := make([]float64, m.mesh.numRegions)
 	for i, fl := range m.r_flux {
-		score[i] = math.Sqrt(fl / maxFlux)
+		score[i] = fl / maxFlux //math.Sqrt(fl / maxFlux)
 	}
 
+	// TODO: Create different fitness functions for different types of settlement.
+	//   - Capital
+	//   - Cities / Settlements
+	//     ) Proximity to capital!
+	//   - Agricultural
+	//   - Mining
+	//   - ...
 	r_distance_c := m.assignDistanceField(cities, make(map[int]bool))
 	for i := 0; i < m.mesh.numRegions; i++ {
-		if m.r_elevation[i] <= 0 {
+		if m.r_elevation[i] <= 0 || m.r_pool[i] > 0 {
 			score[i] = -999999.0
 			continue
 		}
@@ -22,16 +30,22 @@ func (m *Map) rCityScore() []float64 {
 		// TODO: Add bonus if near ocean or lake.
 		// TODO: Consider biome
 		// TODO: Consider sediment/fertility of land.
+		// TODO: Add bonus for mountain proximity (mines, resources)
 
-		// Penalty for proximity to other cities.
-		for j := 0; j < len(cities); j++ {
-			score[i] -= 0.05 / (float64(r_distance_c[i]) + 1e-9)
-		}
 		for _, nbs := range m.rNeighbors(i) {
-			if m.r_elevation[nbs] <= 0 {
-				score[nbs] += 0.09
+			// TODO: Take in account size of ocean / lake.
+			if m.r_elevation[nbs] <= 0 || m.r_pool[nbs] > 0 {
+				score[i] += 0.09
+				if m.r_waterbodies[nbs] >= 0 {
+					score[i] -= 0.05 / (float64(m.r_waterbody_size[m.r_waterbodies[nbs]]) + 1e-9)
+				} else if m.r_drainage[nbs] >= 0 {
+					score[i] -= 0.05 / (float64(m.r_lake_size[m.r_drainage[nbs]]) + 1e-9)
+				}
+				break
 			}
 		}
+		// Penalty for proximity to other cities.
+		score[i] *= (float64(r_distance_c[i]) + 1e-9)
 	}
 	return score
 }
@@ -51,6 +65,7 @@ func (m *Map) rPlaceCity() {
 
 func (m *Map) rPlaceNCities(n int) {
 	for i := 0; i < n; i++ {
+		log.Println("placint city", i)
 		m.rPlaceCity()
 	}
 }

@@ -15,9 +15,81 @@ import (
 	"github.com/mazznoer/colorgrad"
 )
 
+const tileSize = 256
+
 // sizeFromZoom returns the expected size of the world for the mercato projection used below.
 func sizeFromZoom(zoom int) int {
-	return int(math.Pow(2.0, float64(zoom)) * 256.0)
+	return int(math.Pow(2.0, float64(zoom)) * float64(tileSize))
+}
+
+type tileBB struct {
+	x1   float64
+	y1   float64
+	x2   float64
+	y2   float64
+	zoom int
+}
+
+func (t *tileBB) ToLatLon() (lat1, lon1, lat2, lon2 float64) {
+	lat1, lon1 = mercator.PixelsToLatLon(t.x1, t.y1, t.zoom)
+	lat2, lon2 = mercator.PixelsToLatLon(t.x2, t.y2, t.zoom)
+	log.Println(lat1, lon1, lat2, lon2)
+	return
+}
+
+func tileBoundingBox(tx, ty, zoom int) tileBB {
+	return tileBB{
+		x1:   float64(tx * zoom * tileSize),
+		y1:   float64(ty * zoom * tileSize),
+		x2:   float64((tx + 1) * zoom * tileSize),
+		y2:   float64((ty + 1) * zoom * tileSize),
+		zoom: zoom,
+	}
+}
+
+type QueryResult struct {
+	r []int
+	t []int
+}
+
+func (m *Map) getBB(lat1, lon1, lat2, lon2 float64) *QueryResult {
+	r := &QueryResult{}
+	// TODO: Add convenience function to check against bounding box.
+	for i, ll := range m.r_latLon {
+		l0 := ll[0]
+		if l0 < 0 {
+			l0 += 180 // This sucks.
+		}
+		if l0 < lat1 || l0 >= lat2 {
+			continue
+		}
+		l1 := ll[1]
+		if l1 < 0 {
+			l1 += 360 // This sucks.
+		}
+		if l1 < lon1 || l1 >= lon2 {
+			continue
+		}
+		r.r = append(r.r, i)
+	}
+	for i, ll := range m.t_latLon {
+		l0 := ll[0]
+		if l0 < 0 {
+			l0 += 180 // This sucks.
+		}
+		if l0 < lat1 || l0 >= lat2 {
+			continue
+		}
+		l1 := ll[1]
+		if l1 < 0 {
+			l1 += 360 // This sucks.
+		}
+		if l1 < lon1 || l1 >= lon2 {
+			continue
+		}
+		r.t = append(r.t, i)
+	}
+	return r
 }
 
 func genBlue(intensity float64) color.NRGBA {
@@ -32,10 +104,13 @@ func genBlue(intensity float64) color.NRGBA {
 // ExportSVG exports the terrain as SVG to the given path.
 // NOTE: This produces broken somewhat incomplete output due to the wraparound of the mesh.
 func (m *Map) ExportSVG(path string) error {
-	drawRivers := false
+	drawRiversA := true
+	drawRiversB := false
 	drawCities := true
+	drawSinks := true
+	drawPools := false
 
-	zoom := 2
+	zoom := 3
 	filterPathDist := 20.0
 	size := sizeFromZoom(zoom)
 
@@ -51,15 +126,26 @@ func (m *Map) ExportSVG(path string) error {
 	min, max := minMax(m.t_elevation)
 	minMois, maxMois := minMax(m.t_moisture)
 	for i := 0; i < len(m.mesh.Triangles); i += 3 {
+		// Hack to test tile fetching
+		// tbb := tileBoundingBox(2, 1, zoom)
+		// la1, lo1, la2, lo2 := tbb.ToLatLon()
+		// re := m.getBB(la1, lo1, la2, lo2)
+		// for _, i := range re.t {
+		//  i *= 3
+		// end hack
 		tmpLine := ""
 
 		// Hacky way to filter paths/triangles that wrap around the entire SVG.
-		triLat, triLon := latLonFromVec3(convToVec3(m.t_xyz[i:i+3]).Normalize(), 1.0)
+		triLat := m.t_latLon[i/3][0]
+		triLon := m.t_latLon[i/3][1]
 		triX, triY := mercator.LatLonToPixels(triLat, triLon, zoom)
 		var skip bool
+		var poolCount int
 		for _, j := range m.mesh.Triangles[i : i+3] {
-			lat, lon := latLonFromVec3(convToVec3(m.r_xyz[j*3:(j*3)+3]).Normalize(), 1.0)
-			x, y := mercator.LatLonToPixels(lat, lon, zoom)
+			if m.r_pool[j] > 0 {
+				poolCount++
+			}
+			x, y := mercator.LatLonToPixels(m.r_latLon[j][0], m.r_latLon[j][1], zoom)
 			if dist2([2]float64{x, y}, [2]float64{triX, triY}) > filterPathDist {
 				skip = true
 				break
@@ -71,14 +157,13 @@ func (m *Map) ExportSVG(path string) error {
 
 		var path [][2]float64
 		for _, j := range m.mesh.Triangles[i : i+3] {
-			lat, lon := latLonFromVec3(convToVec3(m.r_xyz[j*3:(j*3)+3]).Normalize(), 1.0)
-			x, y := mercator.LatLonToPixels(lat, lon, zoom)
+			x, y := mercator.LatLonToPixels(m.r_latLon[j][0], m.r_latLon[j][1], zoom)
 			path = append(path, [2]float64{x, y})
 		}
 		elev := m.t_elevation[i/3]
 		val := (elev - min) / (max - min)
 		var col color.NRGBA
-		if elev < 0 {
+		if elev <= 0 || poolCount > 2 {
 			col = genBlue(val)
 		} else {
 			valElev := elev / max
@@ -94,22 +179,54 @@ func (m *Map) ExportSVG(path string) error {
 	}
 
 	// Rivers
-	if drawRivers {
+	if drawRiversA {
+		for _, riv := range m.getRivers(0.001) {
+			var path [][2]float64
+			for _, rivseg := range riv {
+				x, y := mercator.LatLonToPixels(m.r_latLon[rivseg][0], m.r_latLon[rivseg][1], zoom)
+				path = append(path, [2]float64{x, y})
+			}
+			svg.Path(svgGenD(path), "stroke=\"blue\" fill=\"none\" stroke-width=\"0.5\"")
+		}
+	}
+
+	if drawRiversB {
 		for i := 0; i < m.mesh.numSides; i++ {
-			if m.s_flow[i] > 10000 {
-				inner_t := m.mesh.s_inner_t(i)
-				outer_t := m.mesh.s_outer_t(i)
-				if m.t_elevation[inner_t] < 0 && m.t_elevation[outer_t] < 0 {
-					continue
-				}
-				lat, lon := latLonFromVec3(convToVec3(m.t_xyz[inner_t*3:(inner_t*3)+3]).Normalize(), 1.0)
-				x1, y1 := mercator.LatLonToPixels(lat, lon, zoom)
-				lat, lon = latLonFromVec3(convToVec3(m.t_xyz[outer_t*3:(outer_t*3)+3]).Normalize(), 1.0)
-				x2, y2 := mercator.LatLonToPixels(lat, lon, zoom)
-				if math.Abs(x1-x2) > float64(size)/2 || math.Abs(y1-y2) > float64(size)/2 {
-					continue
-				}
-				svg.Line(int(x1), int(y1), int(x2), int(y2), "stroke=\"blue\" stroke-width=\"1\"")
+			if m.s_flow[i] < 10000 {
+				continue
+			}
+			inner_t := m.mesh.s_inner_t(i)
+			outer_t := m.mesh.s_outer_t(i)
+			if m.t_elevation[inner_t] < 0 && m.t_elevation[outer_t] < 0 {
+				continue
+			}
+			x1, y1 := mercator.LatLonToPixels(m.t_latLon[inner_t][0], m.t_latLon[inner_t][1], zoom)
+			x2, y2 := mercator.LatLonToPixels(m.t_latLon[outer_t][0], m.t_latLon[outer_t][1], zoom)
+			if math.Abs(x1-x2) > float64(size)/2 || math.Abs(y1-y2) > float64(size)/2 {
+				continue
+			}
+			svg.Line(int(x1), int(y1), int(x2), int(y2), "stroke=\"blue\" stroke-width=\"1\"")
+		}
+	}
+
+	// Sinks
+	if drawSinks {
+		for r, rdh := range m.r_downhill {
+			if rdh < 0 && m.r_drainage[r] < 0 && m.r_elevation[r] > 0 {
+				x, y := mercator.LatLonToPixels(m.r_latLon[r][0], m.r_latLon[r][1], zoom)
+				r := 2
+				svg.Circle(int(x), int(y), r, "fill: rgb(0, 255, 0)")
+
+			}
+		}
+	}
+
+	// Water pools
+	if drawPools {
+		for r, pVal := range m.r_pool {
+			if pVal > 0 {
+				x, y := mercator.LatLonToPixels(m.r_latLon[r][0], m.r_latLon[r][1], zoom)
+				svg.Circle(int(x), int(y), 1, "fill: rgb(0, 0, 255)")
 			}
 		}
 	}
@@ -117,9 +234,7 @@ func (m *Map) ExportSVG(path string) error {
 	// Cities
 	if drawCities {
 		for i, r := range m.cities_r {
-			lat, lon := latLonFromVec3(convToVec3(m.r_xyz[r*3:(r*3)+3]).Normalize(), 1.0)
-			//log.Println(lat, lon)
-			x, y := mercator.LatLonToPixels(lat, lon, zoom)
+			x, y := mercator.LatLonToPixels(m.r_latLon[r][0], m.r_latLon[r][1], zoom)
 			r := 2
 			// Capital cities are bigger!
 			if i < m.NumTerritories {
@@ -159,12 +274,13 @@ func (m *Map) ExportPng(name string) {
 	min, max := minMax(m.r_elevation)
 	minMois, maxMois := minMax(m.r_rainfall)
 	for r := 0; r < m.mesh.numRegions; r++ {
-		lat, lon := latLonFromVec3(convToVec3(m.r_xyz[r*3:(r*3)+3]).Normalize(), 1.0)
+		lat := m.r_latLon[r][0]
+		lon := m.r_latLon[r][1]
 		//log.Println(lat, lon)
 		x, y := mercator.LatLonToPixels(lat, lon, zoom)
 		val := (m.r_elevation[r] - min) / (max - min)
 		var col color.NRGBA
-		if elev := m.r_elevation[r]; elev < 0 {
+		if elev := m.r_elevation[r]; elev <= 0 || m.r_pool[r] > 0 || m.r_flux[r] > 1000 {
 			col = genBlue(val)
 		} else {
 			valElev := elev / max
@@ -231,7 +347,7 @@ func (m *Map) ExportOBJ(path string) error {
 
 	// Vertices
 	for i := 0; i < len(m.r_xyz); i += 3 {
-		ve := convToVec3(m.r_xyz[i:]).Mul(1.0 + 0.01*m.r_elevation[i/3])
+		ve := convToVec3(m.r_xyz[i:]).Mul(1.0 + 0.01*(m.r_elevation[i/3]+m.r_pool[i/3]))
 		w.WriteString(fmt.Sprintf("v %f %f %f \n", ve.X, ve.Y, ve.Z))
 	}
 

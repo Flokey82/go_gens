@@ -150,14 +150,19 @@ func stereographicProjection(r_xyz []float64) []float64 {
 }
 
 type SphereMesh struct {
-	mesh  *TriangleMesh
-	r_xyz []float64
+	mesh     *TriangleMesh
+	r_xyz    []float64
+	r_latLon [][2]float64
 }
 
 func MakeSphere(seed int64, numPoints int, jitter float64) (*SphereMesh, error) {
 	latlong := generateFibonacciSphere(seed, numPoints, jitter)
 	var r_xyz []float64
+	var r_latLon [][2]float64
 	for r := 0; r < len(latlong); r += 2 {
+		// HACKY! Fix this properly!
+		nla, nlo := latLonFromVec3(convToVec3(latLonToCartesian(latlong[r], latlong[r+1])).Normalize(), 1.0)
+		r_latLon = append(r_latLon, [2]float64{nla, nlo})
 		r_xyz = pushCartesianFromSpherical(r_xyz, latlong[r], latlong[r+1])
 	}
 
@@ -174,11 +179,14 @@ func MakeSphere(seed int64, numPoints int, jitter float64) (*SphereMesh, error) 
 
 	// TODO: rotate an existing point into this spot instead of creating one.
 	r_xyz = append(r_xyz, 0, 0, 1)
+	r_latLon = append(r_latLon, [2]float64{-90.0, 45.0})
+
 	tri = addSouthPoleToMesh((len(r_xyz)/3)-1, tri)
 
 	mesh := NewTriangleMesh(0, len(tri.Triangles), make([]Vertex, numPoints+1), tri.Triangles, tri.Halfedges)
 	return &SphereMesh{
-		mesh:  mesh,
-		r_xyz: r_xyz,
+		mesh:     mesh,
+		r_xyz:    r_xyz,
+		r_latLon: r_latLon,
 	}, nil
 }

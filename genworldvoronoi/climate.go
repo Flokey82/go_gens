@@ -53,8 +53,7 @@ func (m *Map) assignWindVectors() {
 	r_windvec := make([]Vertex, m.mesh.numRegions)
 	for i := range r_windvec {
 		// Determine latitude of current region.
-		rXYZ := convToVec3(m.r_xyz[i*3 : i*3+3])
-		rLat, _ := latLonFromVec3(rXYZ.Normalize(), 1.0)
+		rLat := m.r_latLon[i][0]
 		// Based on latitude, we calculate the wind vector angle.
 		var degree float64
 		if rLatAbs := math.Abs(rLat); rLatAbs >= 0 && rLatAbs <= 30 {
@@ -190,7 +189,8 @@ func (m *Map) assignRainfall() {
 			// Get XYZ Position of r.
 			rXYZ := convToVec3(m.r_xyz[r*3 : r*3+3])
 			// Convert to polar coordinates.
-			rLat, rLon := latLonFromVec3(rXYZ.Normalize(), 1.0)
+			rLat := m.r_latLon[r][0]
+			rLon := m.r_latLon[r][1]
 
 			// Add wind vector to neighbor lat/lon to get the "wind vector lat long" or something like that..
 			rwXYZ := convToVec3(latLonToCartesian(rLat+r_windvec[r][0], rLon+r_windvec[r][1])).Normalize()
@@ -225,7 +225,7 @@ func (m *Map) assignRainfall() {
 					// TODO: Calculate max humidity at current altitude, temperature, rain off the rest.
 					// WARNING: The humidity calculation is off.
 					humidity = math.Min(humidity, 1.0)
-					// rainfall = math.Min(rainfall, 1.0)
+					rainfall = math.Min(rainfall, 1.0)
 					m.r_rainfall[neighbor_r] = rainfall
 					m.r_moisture[neighbor_r] = humidity
 				}
@@ -246,7 +246,8 @@ func (m *Map) assignRainfall() {
 				rnXYZ := convToVec3(m.r_xyz[neighbor_r*3 : neighbor_r*3+3])
 
 				// Convert to polar coordinates.
-				rLat, rLon := latLonFromVec3(rnXYZ.Normalize(), 1.0)
+				rLat := m.r_latLon[neighbor_r][0]
+				rLon := m.r_latLon[neighbor_r][1]
 
 				// Add wind vector to neighbor lat/lon to get the "wind vector lat long" or something like that..
 				rnwXYZ := convToVec3(latLonToCartesian(rLat+r_windvec[neighbor_r][0], rLon+r_windvec[neighbor_r][1])).Normalize()
@@ -310,10 +311,8 @@ func (m *Map) assignRainfall() {
 				rRain += m.r_rainfall[neighbor_r]
 				count++
 			}
-			rMoist /= float64(count + 1)
-			r_moisture_interpol[r] = rMoist
-			rRain /= float64(count + 1)
-			r_rainfall_interpol[r] = rRain
+			r_moisture_interpol[r] = rMoist / float64(count+1)
+			r_rainfall_interpol[r] = rRain / float64(count+1)
 		}
 		m.r_moisture = r_moisture_interpol
 		m.r_rainfall = r_rainfall_interpol
