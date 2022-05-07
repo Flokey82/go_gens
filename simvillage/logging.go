@@ -82,6 +82,7 @@ func (l *Log) add_event(tier int, text string) {
 		l.t3_events = append(l.t3_events, "[3] "+text)
 	}
 }
+
 func (l *Log) display_log() {
 	var verbose_stack []string
 

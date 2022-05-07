@@ -27,7 +27,7 @@ const (
 	// How often settlers will arrive
 	// at your village per year
 	// Default = 12
-	SETTLER_CHANCE = 12
+	SETTLER_CHANCE = 22
 
 	// WORLD_SADNESS
 	// This controls how likely it is for people to have a good day

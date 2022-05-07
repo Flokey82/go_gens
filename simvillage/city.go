@@ -44,21 +44,17 @@ func (c *CityManager) log_stats() {
 }
 
 func (c *CityManager) food_eaten() {
-
 	sum_food := 0
-
 	for _, p := range c.pop.people {
 		if 0 < p.age && p.age < 4 {
+			sum_food += 1
+		} else if 4 < p.age && p.age < 10 {
 			sum_food += 3
-		}
-		if 4 < p.age && p.age < 10 {
-			sum_food += 4
 		} else {
 			sum_food += 5
 		}
 	}
 	c.food -= sum_food
-
 	if c.food < 0 {
 		c.food = 0
 		c.log = append(c.log, "Food stocks are empty! Bad times are ahead")
@@ -74,6 +70,7 @@ func (c *CityManager) food_eaten() {
 		}
 	}
 }
+
 func (c *CityManager) wood_burned() {
 	sum_burned_cook := 5
 	sum_burned_warmth := 5
@@ -85,6 +82,6 @@ func (c *CityManager) wood_burned() {
 		c.log = append(c.log, "Wood stocks are empty! Bad times are ahead")
 	} else {
 		c.log = append(c.log, fmt.Sprintf("The citizens burn %d wood to cook", sum_burned_cook))
-		c.log = append(c.log, fmt.Sprintf("The citizens burn %d  wood to stay warm", sum_burned_warmth))
+		c.log = append(c.log, fmt.Sprintf("The citizens burn %d wood to stay warm", sum_burned_warmth))
 	}
 }

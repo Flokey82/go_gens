@@ -5,6 +5,10 @@ import (
 	"math/rand"
 )
 
+func pickRandString(strs []string) string {
+	return strs[rand.Intn(len(strs))]
+}
+
 type Personality struct {
 	person_traits []string
 	big_five      []int
@@ -44,42 +48,47 @@ func NewPersonality(name string) *Personality {
 
 	// Openness
 	if p.big_five[0] > 50 {
-		p.person_traits = append(p.person_traits, high_o[rand.Intn(len(high_o))])
+		p.person_traits = append(p.person_traits, pickRandString(high_o))
 	} else {
-		p.person_traits = append(p.person_traits, low_o[rand.Intn(len(low_o))])
+		p.person_traits = append(p.person_traits, pickRandString(low_o))
 	}
+
 	// Conscientiousness
 	if p.big_five[1] > 50 {
-		p.person_traits = append(p.person_traits, high_c[rand.Intn(len(high_c))])
+		p.person_traits = append(p.person_traits, pickRandString(high_c))
 	} else {
-		p.person_traits = append(p.person_traits, low_c[rand.Intn(len(low_c))])
+		p.person_traits = append(p.person_traits, pickRandString(low_c))
 	}
+
 	// Extraversion
 	if p.big_five[2] > 50 {
-		p.person_traits = append(p.person_traits, high_e[rand.Intn(len(high_e))])
+		p.person_traits = append(p.person_traits, pickRandString(high_e))
 	} else {
-		p.person_traits = append(p.person_traits, low_e[rand.Intn(len(low_e))])
+		p.person_traits = append(p.person_traits, pickRandString(low_e))
 	}
+
 	// Agreeableness
 	if p.big_five[3] > 50 {
-		p.person_traits = append(p.person_traits, high_a[rand.Intn(len(high_a))])
+		p.person_traits = append(p.person_traits, pickRandString(high_a))
 	} else {
-		p.person_traits = append(p.person_traits, low_a[rand.Intn(len(low_a))])
+		p.person_traits = append(p.person_traits, pickRandString(low_a))
 	}
+
 	// Neuroticism
 	if p.big_five[4] > 50 {
-		p.person_traits = append(p.person_traits, high_n[rand.Intn(len(high_n))])
+		p.person_traits = append(p.person_traits, pickRandString(high_n))
 	} else {
-		p.person_traits = append(p.person_traits, low_n[rand.Intn(len(low_n))])
+		p.person_traits = append(p.person_traits, pickRandString(low_n))
 	}
+
 	s_lines := []string{"%s is also %s.", "%s has a %s side."}
 	t_lines := []string{"%s is %s and %s. ", "Friends know %s as %s and %s. ",
 		"Dont overlook %ss %s and %s side. "}
 	p.story = ""
 
-	p.story += fmt.Sprintf(t_lines[rand.Intn(len(t_lines))], name, p.person_traits[0], p.person_traits[1])
-	p.story += fmt.Sprintf(t_lines[rand.Intn(len(t_lines))], name, p.person_traits[2], p.person_traits[3])
-	p.story += fmt.Sprintf(s_lines[rand.Intn(len(s_lines))], name, p.person_traits[4])
+	p.story += fmt.Sprintf(pickRandString(t_lines), name, p.person_traits[0], p.person_traits[1])
+	p.story += fmt.Sprintf(pickRandString(t_lines), name, p.person_traits[2], p.person_traits[3])
+	p.story += fmt.Sprintf(pickRandString(s_lines), name, p.person_traits[4])
 	return p
 }
 func (p *Personality) get_backstory() string {

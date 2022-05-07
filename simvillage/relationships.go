@@ -27,11 +27,13 @@ func NewRelations(my_name string, my_id int) *Relations {
 	r.log = nil
 	return r
 }
+
 func (r *Relations) Tick() []string {
 	cp_log := r.log
 	r.log = nil
 	return cp_log
 }
+
 func (r *Relations) get_rels_str() []string {
 	var rels []string
 	for _, r := range r.rel {
@@ -39,17 +41,20 @@ func (r *Relations) get_rels_str() []string {
 	}
 	return rels
 }
+
 func (r *Relations) init_relationships(people []*Person) {
 	for _, p := range people {
 		r.add_relationship(p, 2.0, "")
 	}
 }
+
 func (r *Relations) add_relationship(person *Person, rel_value float64, rel_text string) {
 	if rel_value == 0 {
 		rel_value = 2.0
 	}
 	r.rel = append(r.rel, &Relationship{person, rel_value, rel_text})
 }
+
 func (r *Relations) del_relationship(tgt_person *Person) float64 {
 	// When a villager dies remove the relationship.
 	// Return strength of relationship and relationship
@@ -63,6 +68,7 @@ func (r *Relations) del_relationship(tgt_person *Person) float64 {
 	}
 	return dead_rel_value
 }
+
 func (r *Relations) mod_relationship(value float64, person *Person) {
 	for _, people := range r.rel {
 		if people.A == person {
@@ -78,11 +84,11 @@ func (r *Relations) mod_relationship(value float64, person *Person) {
 
 			// If the relationship catagorychanged
 			if old_rel_text != rel_text {
-				if rel_text == "Liked" {
+				if rel_text == RelLiked {
 					rel_text = "\u001b[32m" + rel_text + "\u001b[0m"
-				} else if rel_text == "Disliked" {
+				} else if rel_text == RelDisliked {
 					rel_text = "\u001b[31m" + rel_text + "\u001b[0m"
-				} else if rel_text == "Friendly" {
+				} else if rel_text == RelFriendly {
 					rel_text = " \u001b[32;1m" + rel_text + "\u001b[0m"
 				}
 				new_rel_text := fmt.Sprintf("%s is now %s with %s. (%.2f)", r.my_name, rel_text, people.A.name, fin_rel_value)
@@ -91,6 +97,7 @@ func (r *Relations) mod_relationship(value float64, person *Person) {
 		}
 	}
 }
+
 func (r *Relations) get_relationship(person *Person) float64 {
 	for _, people := range r.rel {
 		if people.A == person {
@@ -102,16 +109,23 @@ func (r *Relations) get_relationship(person *Person) float64 {
 	r.rel = append(r.rel, &Relationship{person, 2.0, ""})
 	return 2.0
 }
-func (r *Relations) get_rel_text(rel_value float64) string {
 
+const (
+	RelDisliked = "Disliked"
+	RelNeutral  = "Neutral"
+	RelLiked    = "Liked"
+	RelFriendly = "Friendly"
+)
+
+func (r *Relations) get_rel_text(rel_value float64) string {
 	if rel_value < 1.00 {
-		return "Disliked"
+		return RelDisliked
 	} else if 1.00 < rel_value && rel_value < 2.00 {
-		return "Neutral"
+		return RelNeutral
 	} else if 2.00 < rel_value && rel_value < 3.00 {
-		return "Liked"
+		return RelLiked
 	} else if 3.00 < rel_value {
-		return "Friendly"
+		return RelFriendly
 	}
 	return "?"
 }

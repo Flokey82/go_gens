@@ -20,13 +20,10 @@ func NewMood() *Mood {
 	m := &Mood{}
 	m.mood = ""
 	m.is_depressed = false
-
 	m.happy = 5 // 0-10 scale
 	m.sad = 4   // 0-10 scale
 	m.productivity = 1.0
-
-	// Holds multi-day mood effects
-	m.mood_events = nil
+	m.mood_events = nil // Holds multi-day mood effects
 
 	m.update_mood()
 	m.update_productivity()
@@ -51,7 +48,6 @@ func (m *Mood) Tick() []string {
 		} else {
 			m.happy += delta_mood[0]
 			m.sad += delta_mood[1]
-
 			count_events++
 		}
 	}
@@ -115,21 +111,30 @@ func (m *Mood) mod_mood(happy, sad int) {
 	}
 }
 
+const (
+	MoodIndifferent = "Indifferent"
+	MoodJoyous      = "Joyous"
+	MoodHappy       = "Happy"
+	MoodSad         = "Sad"
+	MoodMelancholic = "Melancholic"
+	MoodDepressed   = "Depressed"
+)
+
 func (m *Mood) update_mood() {
 	// Slap a label on the current emotional state
 	if m.happy == m.sad {
-		m.mood = "Indifferent"
+		m.mood = MoodIndifferent
 	} else if m.happy > m.sad+3 {
-		m.mood = "Joyous"
+		m.mood = MoodJoyous
 	} else if m.happy > m.sad {
-		m.mood = "Happy"
+		m.mood = MoodHappy
 	} else if m.sad > m.happy+2 {
-		m.mood = "Sad"
+		m.mood = MoodSad
 	} else if m.sad > m.happy {
-		m.mood = "Melancholic"
+		m.mood = MoodMelancholic
 	}
 	if (m.happy < 2) && (m.sad > 8) {
-		m.mood = "Depressed"
+		m.mood = MoodDepressed
 		m.is_depressed = true
 	} else {
 		m.is_depressed = false
@@ -150,11 +155,9 @@ func (m *Mood) update_productivity() {
 func (m *Mood) daily_mood() {
 	// On any given day one can be happy or sad
 	if rand.Float64() < AVG_HAPPY {
-		// good day
-		m.mod_mood(1, -1)
+		m.mod_mood(1, -1) // good day
 	} else {
-		// bad day
-		m.mod_mood(-1, 1)
+		m.mod_mood(-1, 1) // bad day
 	}
 }
 

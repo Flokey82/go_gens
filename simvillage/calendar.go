@@ -2,6 +2,13 @@ package simvillage
 
 import "fmt"
 
+const (
+	SeasonWinter = "Winter"
+	SeasonSpring = "Spring"
+	SeasonSummer = "Summer"
+	SeasonFall   = "Fall"
+)
+
 // Calendar manages time and seasons
 type Calendar struct {
 	day       int
@@ -17,7 +24,7 @@ func NewCalendar() *Calendar {
 		day:       1,
 		month:     3,
 		year:      1,
-		season:    "Spring",
+		season:    SeasonSpring,
 		sum_ticks: 0,
 	}
 }
@@ -47,15 +54,16 @@ func (c *Calendar) increment_date() {
 		}
 	}
 }
+
 func (c *Calendar) set_season() {
 	if c.month == 12 || c.month == 1 {
-		c.season = "Winter"
+		c.season = SeasonWinter
 	} else if c.month >= 2 && c.month <= 5 {
-		c.season = "Spring"
+		c.season = SeasonSpring
 	} else if c.month >= 6 && c.month <= 8 {
-		c.season = "Summer"
+		c.season = SeasonSummer
 	} else if c.month >= 9 && c.month <= 11 {
-		c.season = "Fall"
+		c.season = SeasonFall
 	}
 }
 
