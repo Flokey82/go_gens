@@ -13,43 +13,23 @@ import (
 
 // ugh globals, sorry
 type Map struct {
-	t_xyz            []float64 // Triangle xyz coordinates
-	t_latLon         [][2]float64
-	t_pool           []float64
-	t_moisture       []float64    // Triangle moisture
-	t_elevation      []float64    // Triangle elevation
-	t_flow           []float64    // Triangle flow intensity (rainfall)
-	t_downflow_s     []int        // Triangle mapping to side through which water flows downhill.
-	order_t          []int        // Triangles in uphill order of elevation.
-	s_flow           []float64    // Flow intensity through sides
-	r_latLon         [][2]float64 // Point / region latitude and longitude
-	r_xyz            []float64    // Point / region xyz coordinates
-	r_elevation      []float64    // Point / region elevation
-	r_moisture       []float64    // Point / region moisture
-	r_rainfall       []float64    // Point / region rainfall
-	r_windvec        []Vertex     // Point / region wind vector
-	r_flux           []float64    // Point / region hydrology: throughflow of rainfall
-	r_pool           []float64
-	r_drainage       []int
-	r_downhill       []int // Point / region mapping to its lowest neighbor
-	r_plate          []int // Point / region to plate mapping
-	r_territory      []int // Point / region mapping to territory (political)
-	r_waterbodies    []int
-	r_waterbody_size map[int]int
-	r_lake_size      map[int]int
-	PlateVectors     []vectors.Vec3    // Plate tectonics / movement vectors
-	PlateIsOcean     map[int]bool      // Plate was chosen to be an ocean plate
-	plate_r          []int             // Plate seed points / regions
-	cities_r         []int             // City seed points / regions
-	mesh             *TriangleMesh     // Triangle mesh containing the sphere information
-	seed             int64             // Seed for random number generators
-	rand             *rand.Rand        // Rand initialized with above seed
-	noise            opensimplex.Noise // Opensimplex noise initialized with above seed
-	NumPlates        int               // Number of generated plates
-	NumPoints        int               // Number of generated points / regions
-	NumCities        int               // Number of generated cities (regions)
-	NumTerritories   int               // Number of generated territories
-	QuadGeom         *QuadGeometry     // Quad geometry generated from the mesh (?)
+	BaseObject
+	t_flow         []float64      // Triangle flow intensity (rainfall)
+	t_downflow_s   []int          // Triangle mapping to side through which water flows downhill.
+	order_t        []int          // Triangles in uphill order of elevation.
+	s_flow         []float64      // Flow intensity through sides
+	r_windvec      []Vertex       // Point / region wind vector
+	r_plate        []int          // Point / region to plate mapping
+	r_territory    []int          // Point / region mapping to territory (political)
+	PlateVectors   []vectors.Vec3 // Plate tectonics / movement vectors
+	PlateIsOcean   map[int]bool   // Plate was chosen to be an ocean plate
+	plate_r        []int          // Plate seed points / regions
+	cities_r       []int          // City seed points / regions
+	NumPlates      int            // Number of generated plates
+	NumPoints      int            // Number of generated points / regions
+	NumCities      int            // Number of generated cities (regions)
+	NumTerritories int            // Number of generated territories
+	QuadGeom       *QuadGeometry  // Quad geometry generated from the mesh (?)
 }
 
 func NewMap(seed int64, numPlates, numPoints int, jitter float64) (*Map, error) {
@@ -60,45 +40,43 @@ func NewMap(seed int64, numPlates, numPoints int, jitter float64) (*Map, error) 
 	mesh := result.mesh
 
 	m := &Map{
-		PlateIsOcean:     make(map[int]bool),
-		r_xyz:            result.r_xyz,
-		r_latLon:         result.r_latLon,
-		r_pool:           make([]float64, mesh.numRegions),
-		r_elevation:      make([]float64, mesh.numRegions),
-		t_pool:           make([]float64, mesh.numTriangles),
-		t_elevation:      make([]float64, mesh.numTriangles),
-		r_moisture:       make([]float64, mesh.numRegions),
-		r_flux:           make([]float64, mesh.numRegions),
-		r_downhill:       make([]int, mesh.numRegions),
-		r_drainage:       make([]int, mesh.numRegions),
-		t_moisture:       make([]float64, mesh.numTriangles),
-		t_downflow_s:     make([]int, mesh.numTriangles),
-		order_t:          make([]int, mesh.numTriangles),
-		t_flow:           make([]float64, mesh.numTriangles),
-		s_flow:           make([]float64, mesh.numSides),
-		r_rainfall:       make([]float64, mesh.numRegions),
-		r_windvec:        make([]Vertex, mesh.numRegions),
-		r_waterbodies:    make([]int, mesh.numRegions),
-		r_waterbody_size: make(map[int]int),
-		r_lake_size:      make(map[int]int),
-		mesh:             result.mesh,
-		seed:             seed,
-		rand:             rand.New(rand.NewSource(seed)),
-		noise:            opensimplex.New(seed),
-		NumPlates:        numPlates,
-		NumPoints:        numPoints,
-		NumTerritories:   10,
-		NumCities:        50,
-		QuadGeom:         NewQuadGeometry(),
+		PlateIsOcean: make(map[int]bool),
+		BaseObject: BaseObject{
+			r_xyz:            result.r_xyz,
+			r_latLon:         result.r_latLon,
+			r_elevation:      make([]float64, mesh.numRegions),
+			r_moisture:       make([]float64, mesh.numRegions),
+			r_flux:           make([]float64, mesh.numRegions),
+			r_pool:           make([]float64, mesh.numRegions),
+			r_rainfall:       make([]float64, mesh.numRegions),
+			r_downhill:       make([]int, mesh.numRegions),
+			r_drainage:       make([]int, mesh.numRegions),
+			t_pool:           make([]float64, mesh.numTriangles),
+			t_elevation:      make([]float64, mesh.numTriangles),
+			t_moisture:       make([]float64, mesh.numTriangles),
+			r_waterbodies:    make([]int, mesh.numRegions),
+			r_waterbody_size: make(map[int]int),
+			r_lake_size:      make(map[int]int),
+			seed:             seed,
+			rand:             rand.New(rand.NewSource(seed)),
+			noise:            opensimplex.New(seed),
+			mesh:             result.mesh,
+		},
+		t_downflow_s:   make([]int, mesh.numTriangles),
+		order_t:        make([]int, mesh.numTriangles),
+		t_flow:         make([]float64, mesh.numTriangles),
+		s_flow:         make([]float64, mesh.numSides),
+		r_windvec:      make([]Vertex, mesh.numRegions),
+		NumPlates:      numPlates,
+		NumPoints:      numPoints,
+		NumTerritories: 10,
+		NumCities:      50,
+		QuadGeom:       NewQuadGeometry(),
 	}
 	m.QuadGeom.setMesh(mesh)
 	m.generateTriangleCenters()
 	m.generateMap()
 	return m, nil
-}
-
-func (m *Map) resetRand() {
-	m.rand.Seed(m.seed)
 }
 
 func (m *Map) generateMap() {
@@ -154,27 +132,6 @@ func getCentroidOfTriangle(a, b, c []float64) vectors.Vec3 {
 	}.Normalize()
 }
 
-// generateTriangleCenters iterates through all triangles and generates the centroids for each.
-func (m *Map) generateTriangleCenters() {
-	var t_xyz []float64
-	var t_latLon [][2]float64
-	for t := 0; t < m.mesh.numTriangles; t++ {
-		a := m.mesh.s_begin_r(3 * t)
-		b := m.mesh.s_begin_r(3*t + 1)
-		c := m.mesh.s_begin_r(3*t + 2)
-		v3 := getCentroidOfTriangle(
-			m.r_xyz[3*a:3*a+3],
-			m.r_xyz[3*b:3*b+3],
-			m.r_xyz[3*c:3*c+3])
-		t_xyz = append(t_xyz, v3.X, v3.Y, v3.Z)
-		nla, nlo := latLonFromVec3(v3, 1.0)
-		t_latLon = append(t_latLon, [2]float64{nla, nlo})
-
-	}
-	m.t_latLon = t_latLon
-	m.t_xyz = t_xyz
-}
-
 // const Infinity = 1.0
 
 // assignDistanceField calculates the distance from any point in seeds_r to all other points, but
@@ -213,9 +170,58 @@ func (m *Map) assignDistanceField(seeds_r []int, stop_r map[int]bool) []int64 {
 	// elevation to each seed instead of them always being +1/-1
 	return r_distance
 }
+func (m *Map) assignDistanceField2(seeds_r []int, stop_r map[int]bool, compression map[int]float64) []float64 {
+	enableNegativeCompression := true
+	enablePositiveCompression := true
 
-func (m *Map) rNeighbors(r int) []int {
-	return m.mesh.r_circulate_r(nil, r)
+	m.resetRand()
+	mesh := m.mesh
+	numRegions := mesh.numRegions
+	r_distance := make([]float64, numRegions)
+	for i := range r_distance {
+		r_distance[i] = -1 // was: Infinity
+	}
+
+	var queue []int
+	for _, r := range seeds_r {
+		queue = append(queue, r)
+		r_distance[r] = 0
+	}
+
+	maxComp := 0.0
+	minComp := 0.0
+	for _, comp := range compression {
+		if comp > maxComp {
+			maxComp = comp
+		}
+		if comp < minComp {
+			minComp = comp
+		}
+	}
+
+	// Random search adapted from breadth first search.
+	var out_r []int
+	for queue_out := 0; queue_out < len(queue); queue_out++ {
+		pos := queue_out + m.rand.Intn(len(queue)-queue_out)
+		current_r := queue[pos]
+		queue[pos] = queue[queue_out]
+		for _, neighbor_r := range mesh.r_circulate_r(out_r, current_r) {
+			if r_distance[neighbor_r] == -1 && !stop_r[neighbor_r] {
+				r_distance[neighbor_r] = r_distance[current_r] + 1
+				if compression[current_r] > 0 && enablePositiveCompression {
+					r_distance[neighbor_r] -= compression[current_r] / maxComp
+				} else if compression[current_r] < 0 && enableNegativeCompression {
+					r_distance[neighbor_r] += compression[current_r] / minComp
+				}
+				queue = append(queue, neighbor_r)
+			}
+		}
+	}
+
+	// TODO: possible enhancement: keep track of which seed is closest
+	// to this point, so that we can assign variable mountain/ocean
+	// elevation to each seed instead of them always being +1/-1
+	return r_distance
 }
 
 const persistence = 2.0 / 3.0

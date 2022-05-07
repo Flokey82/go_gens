@@ -194,7 +194,7 @@ func (m *Map) findCollisions() ([]int, []int, []int, map[int]float64) {
 func (m *Map) assignRegionElevation() {
 	const epsilon = 1e-3
 	// TODO: Use collision values to determine intensity of generated landscape features.
-	mountain_r, coastline_r, ocean_r, _ := m.findCollisions()
+	mountain_r, coastline_r, ocean_r, compression_r := m.findCollisions()
 	for r := 0; r < m.mesh.numRegions; r++ {
 		if m.r_plate[r] == r {
 			if m.PlateIsOcean[r] {
@@ -219,9 +219,13 @@ func (m *Map) assignRegionElevation() {
 		stop_r[r] = true
 	}
 
-	r_distance_a := m.assignDistanceField(mountain_r, convToMap(ocean_r))
-	r_distance_b := m.assignDistanceField(ocean_r, convToMap(coastline_r))
-	r_distance_c := m.assignDistanceField(coastline_r, stop_r)
+	r_distance_a := m.assignDistanceField2(mountain_r, convToMap(ocean_r), compression_r)
+	r_distance_b := m.assignDistanceField2(ocean_r, convToMap(coastline_r), compression_r)
+	r_distance_c := m.assignDistanceField2(coastline_r, stop_r, compression_r)
+
+	//r_distance_a := m.assignDistanceField(mountain_r, convToMap(ocean_r))
+	//r_distance_b := m.assignDistanceField(ocean_r, convToMap(coastline_r))
+	//r_distance_c := m.assignDistanceField(coastline_r, stop_r)
 
 	// Get min/max compression.
 	// var compVals []float64

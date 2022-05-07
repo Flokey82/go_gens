@@ -21,14 +21,14 @@ func (m *Map) rErode(amount float64) []float64 {
 // NOTE: This is based on mewo2's erosion code
 // See: https://github.com/mewo2/terrain
 func (m *Map) rErosionRate() []float64 {
-	const nbErosionFactor = 0.15
+	const nbErosionFactor = 0.015
 	m.assignFlux()
 	flux := m.r_flux
 	_, maxFlux := minMax(m.r_flux)
 	slope := m.getRSlope()
 	newh := make([]float64, m.mesh.numRegions)
 	for i := 0; i < m.mesh.numRegions; i++ {
-		river := math.Sqrt(flux[i]/maxFlux) * slope[i]
+		river := math.Sqrt((flux[i]/maxFlux)+m.r_pool[i]) * slope[i]
 		creep := slope[i] * slope[i]
 		total := 1000*river + creep
 		if total > 200 {
