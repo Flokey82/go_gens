@@ -44,14 +44,14 @@ func (m *HistoryManager) add_events(events []string) {
 		}
 	}
 }
+
 func (m *HistoryManager) list_todays_events() {
 	m.curr_log.display_log()
 }
 
 // Log object represents a single tick in the village
 type Log struct {
-	date string
-
+	date         string
 	world_events []string
 	char_info    []string
 	t1_events    []string
@@ -85,7 +85,6 @@ func (l *Log) add_event(tier int, text string) {
 
 func (l *Log) display_log() {
 	var verbose_stack []string
-
 	v := LOGGING_VERBOSITY
 	if v > 0 {
 		verbose_stack = append(verbose_stack, l.world_events...)
@@ -103,7 +102,6 @@ func (l *Log) display_log() {
 		verbose_stack = append(verbose_stack, l.t3_events...)
 	}
 	log.Println(fmt.Sprintf("     ~~~ %s ~~~", l.date))
-
 	for _, categories := range verbose_stack {
 		log.Println(categories)
 		//for _, items := range categories {

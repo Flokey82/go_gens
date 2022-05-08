@@ -4,22 +4,19 @@ import "fmt"
 
 // CityManager manages the villages stockpiles and items.
 type CityManager struct {
-	name string
-
 	pop        *PeopleManager
+	name       string
 	population int
-
-	wood  int
-	stone int
-	food  int
-
-	log []string
+	wood       int
+	stone      int
+	food       int
+	log        []string
 }
 
 func NewCityManager(people *PeopleManager) *CityManager {
 	return &CityManager{
-		name:       get_name(),
 		pop:        people,
+		name:       get_name(),
 		population: len(people.people),
 		wood:       20,
 		stone:      20,
@@ -29,11 +26,9 @@ func NewCityManager(people *PeopleManager) *CityManager {
 
 func (c *CityManager) Tick() []string {
 	c.population = len(c.pop.people)
-
 	c.food_eaten()
 	c.wood_burned()
 	c.log_stats()
-
 	cp_log := c.log
 	c.log = nil
 	return cp_log
@@ -74,9 +69,7 @@ func (c *CityManager) food_eaten() {
 func (c *CityManager) wood_burned() {
 	sum_burned_cook := 5
 	sum_burned_warmth := 5
-
 	c.wood -= (sum_burned_cook + sum_burned_warmth)
-
 	if c.wood < 0 {
 		c.wood = 0
 		c.log = append(c.log, "Wood stocks are empty! Bad times are ahead")

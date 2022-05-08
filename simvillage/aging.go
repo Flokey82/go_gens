@@ -17,8 +17,8 @@ const (
 type Age struct {
 	age      int
 	bday     int
-	log      []string
 	age_text string
+	log      []string
 }
 
 func NewAge(age int) *Age {

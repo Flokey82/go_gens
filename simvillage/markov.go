@@ -30,6 +30,7 @@ func (m *MarkovGen) get_chef() string {
 	return text_model.make_short_sentence(100)*/
 	return "cooked stuff"
 }
+
 func (m *MarkovGen) get_death() string {
 	/*fdat, err := os.ReadFile(m.prefix + "/death.txt")
 	if err != nil {

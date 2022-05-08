@@ -14,8 +14,8 @@ type Calendar struct {
 	day       int
 	month     int
 	year      int
-	season    string
 	sum_ticks int
+	season    string
 	logs      []string
 }
 
@@ -45,7 +45,6 @@ func (c *Calendar) increment_date() {
 		c.set_season()
 		c.logs = append(c.logs, fmt.Sprintf("It is now month %d", c.month))
 		c.logs = append(c.logs, fmt.Sprintf("It is now %s", c.season))
-
 		if c.month%12 == 0 {
 			c.year++
 			c.month = 1

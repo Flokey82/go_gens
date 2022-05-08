@@ -18,10 +18,10 @@ type Death struct {
 }
 
 func NewDeath(pmanager *PeopleManager, mark *MarkovGen) *Death {
-	d := &Death{}
-	d.pop = pmanager
-	d.mark = mark
-	d.dead = nil
+	d := &Death{
+		pop:  pmanager,
+		mark: mark,
+	}
 
 	// By chance ways to die
 	d.ways_to_die = []string{
@@ -46,12 +46,11 @@ func NewDeath(pmanager *PeopleManager, mark *MarkovGen) *Death {
 	d.log = nil
 	return d
 }
-func (d *Death) Tick() []string {
 
+func (d *Death) Tick() []string {
 	for _, p := range d.pop.people {
 		d.tick_death(p)
 	}
-
 	cp_log := d.log
 	d.log = nil
 	return cp_log
@@ -59,9 +58,7 @@ func (d *Death) Tick() []string {
 
 // tick_death check if the villager will die today by aging
 func (d *Death) tick_death(v *Person) {
-
 	// TODO: refactor < 35 random death
-
 	if 35 < v.age && v.age < 50 { // Adult
 		if rand.Intn(241995) == 0 {
 			d.kill_villager(v, "")
@@ -79,10 +76,8 @@ func (d *Death) tick_death(v *Person) {
 		}
 	}
 
-	//Check if the villager is depressed
-
+	// Check if the villager is depressed
 	if v.mood.is_depressed && rand.Intn(10) == 0 {
-		//self.kill_villager(v, r.choice(self.suicides))
 		d.kill_villager(v, "%s loses the will to exist -- "+d.mark.get_death())
 		return
 	}
@@ -96,6 +91,7 @@ func (d *Death) tick_death(v *Person) {
 		return
 	}
 }
+
 func (d *Death) kill_villager(villager *Person, reason string) {
 	// Time to kick the bucket
 	if reason == "" {
@@ -104,7 +100,6 @@ func (d *Death) kill_villager(villager *Person, reason string) {
 	if strings.Contains(reason, "starved") {
 		reason = "%s's hunger lead them to " + d.mark.get_death()
 	}
-
 	d.log = append(d.log, fmt.Sprintf(reason, "\u001b[31;1m"+villager.name+"\u001b[0m"))
 
 	// Clean up lists
@@ -114,7 +109,8 @@ func (d *Death) kill_villager(villager *Person, reason string) {
 			break
 		}
 	}
-	//d.pop.people.remove(villager)
+
+	// d.pop.people.remove(villager)
 	d.dead = append(d.dead, villager)
 
 	// Clean up relationship objects

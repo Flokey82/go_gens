@@ -17,18 +17,16 @@ type Mood struct {
 }
 
 func NewMood() *Mood {
-	m := &Mood{}
-	m.mood = ""
-	m.is_depressed = false
-	m.happy = 5 // 0-10 scale
-	m.sad = 4   // 0-10 scale
-	m.productivity = 1.0
-	m.mood_events = nil // Holds multi-day mood effects
+	m := &Mood{
+		is_depressed: false,
+		happy:        5, // 0-10 scale
+		sad:          4, // 0-10 scale
+		productivity: 1.0,
+		mood_events:  nil, // Holds multi-day mood effects
+	}
 
 	m.update_mood()
 	m.update_productivity()
-
-	m.log = nil
 	return m
 }
 
@@ -41,7 +39,6 @@ func (m *Mood) Tick() []string {
 	for count_events < len(m.mood_events) {
 		a, b := m.mood_events[count_events].tick()
 		delta_mood := [2]int{a, b}
-
 		if delta_mood == [2]int{-1, -1} {
 			//del m.mood_events[count_events]
 			m.mood_events = append(m.mood_events[:count_events], m.mood_events[count_events+1:]...)
@@ -51,6 +48,7 @@ func (m *Mood) Tick() []string {
 			count_events++
 		}
 	}
+
 	// People will gradually stabalize to 5/3 by default
 	if rand.Intn(2) < 1 {
 		if m.happy > 5 {
@@ -94,19 +92,16 @@ func (m *Mood) __mood_event(h_tot, s_tot, dur int, txt string) {
 func (m *Mood) mod_mood(happy, sad int) {
 	// Modify the current moods
 	m.happy += happy
-	m.sad += sad
-
 	if m.happy < 0 {
 		m.happy = 0
-	}
-	if m.happy > 10 {
+	} else if m.happy > 10 {
 		m.happy = 10
 	}
 
+	m.sad += sad
 	if m.sad < 0 {
 		m.sad = 0
-	}
-	if m.sad > 10 {
+	} else if m.sad > 10 {
 		m.sad = 10
 	}
 }
@@ -133,6 +128,7 @@ func (m *Mood) update_mood() {
 	} else if m.sad > m.happy {
 		m.mood = MoodMelancholic
 	}
+
 	if (m.happy < 2) && (m.sad > 8) {
 		m.mood = MoodDepressed
 		m.is_depressed = true
@@ -168,18 +164,16 @@ type MoodEvent struct {
 	elapsed     int
 }
 
-/*
-   Moods can be effected by larger events like having a kid, losing
-   a loved one, or getting a promotion at work. These last multiple
-   days and effect sadness and happiness daily.
-*/
+// Moods can be effected by larger events like having a kid, losing
+// a loved one, or getting a promotion at work. These last multiple
+// days and effect sadness and happiness daily.
 func NewMoodEvent(daily_happy, daily_sad, duration int, text string) *MoodEvent {
-	e := &MoodEvent{}
-	e.daily_happy = daily_happy
-	e.daily_sad = daily_sad
-	e.duration = duration
-	e.elapsed = 0
-	return e
+	return &MoodEvent{
+		daily_happy: daily_happy,
+		daily_sad:   daily_sad,
+		duration:    duration,
+		elapsed:     0,
+	}
 }
 
 func (e *MoodEvent) tick() (int, int) {

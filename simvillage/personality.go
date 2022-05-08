@@ -3,6 +3,7 @@ package simvillage
 import (
 	"fmt"
 	"math/rand"
+	"strings"
 )
 
 func pickRandString(strs []string) string {
@@ -18,10 +19,10 @@ type Personality struct {
 // Each villager gets a personality archetype which
 // effects how social, work, and life events effect them.
 func NewPersonality(name string) *Personality {
-	p := &Personality{}
-	p.person_traits = nil
-
-	p.big_five = nil
+	p := &Personality{
+		person_traits: nil,
+		big_five:      nil,
+	}
 	for i := 0; i <= 5; i++ {
 		p.big_five = append(p.big_five, rand.Intn(100))
 	}
@@ -81,14 +82,22 @@ func NewPersonality(name string) *Personality {
 		p.person_traits = append(p.person_traits, pickRandString(low_n))
 	}
 
-	s_lines := []string{"%s is also %s.", "%s has a %s side."}
-	t_lines := []string{"%s is %s and %s. ", "Friends know %s as %s and %s. ",
-		"Dont overlook %ss %s and %s side. "}
-	p.story = ""
+	s_lines := []string{
+		"%s is also %s.",
+		"%s has a %s side.",
+	}
 
-	p.story += fmt.Sprintf(pickRandString(t_lines), name, p.person_traits[0], p.person_traits[1])
-	p.story += fmt.Sprintf(pickRandString(t_lines), name, p.person_traits[2], p.person_traits[3])
-	p.story += fmt.Sprintf(pickRandString(s_lines), name, p.person_traits[4])
+	t_lines := []string{
+		"%s is %s and %s.",
+		"Friends know %s as %s and %s.",
+		"Dont overlook %ss %s and %s side.",
+	}
+
+	p.story = strings.Join([]string{
+		fmt.Sprintf(pickRandString(t_lines), name, p.person_traits[0], p.person_traits[1]),
+		fmt.Sprintf(pickRandString(t_lines), name, p.person_traits[2], p.person_traits[3]),
+		fmt.Sprintf(pickRandString(s_lines), name, p.person_traits[4]),
+	}, " ")
 	return p
 }
 func (p *Personality) get_backstory() string {

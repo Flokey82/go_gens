@@ -18,9 +18,10 @@ type Relations struct {
 }
 
 func NewRelations(my_name string, my_id int) *Relations {
-	r := &Relations{}
-	r.my_name = my_name
-	r.my_id = my_id
+	r := &Relations{
+		my_name: my_name,
+		my_id:   my_id,
+	}
 
 	// Holds person obj, rel value, text to describe it
 	r.rel = nil
@@ -49,7 +50,7 @@ func (r *Relations) init_relationships(people []*Person) {
 }
 
 func (r *Relations) add_relationship(person *Person, rel_value float64, rel_text string) {
-	if rel_value == 0 {
+	if rel_value == 0.0 {
 		rel_value = 2.0
 	}
 	r.rel = append(r.rel, &Relationship{person, rel_value, rel_text})
@@ -59,7 +60,7 @@ func (r *Relations) del_relationship(tgt_person *Person) float64 {
 	// When a villager dies remove the relationship.
 	// Return strength of relationship and relationship
 	// text to create a mood event.
-	dead_rel_value := 0.0
+	var dead_rel_value float64
 	for _, person := range r.rel {
 		if person.A == tgt_person {
 			dead_rel_value = person.Value
@@ -120,11 +121,14 @@ const (
 func (r *Relations) get_rel_text(rel_value float64) string {
 	if rel_value < 1.00 {
 		return RelDisliked
-	} else if 1.00 < rel_value && rel_value < 2.00 {
+	}
+	if 1.00 < rel_value && rel_value < 2.00 {
 		return RelNeutral
-	} else if 2.00 < rel_value && rel_value < 3.00 {
+	}
+	if 2.00 < rel_value && rel_value < 3.00 {
 		return RelLiked
-	} else if 3.00 < rel_value {
+	}
+	if 3.00 < rel_value {
 		return RelFriendly
 	}
 	return "?"

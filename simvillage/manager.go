@@ -24,7 +24,6 @@ type Instance struct {
 
 func NewInstance() *Instance {
 	in := &Instance{}
-
 	in.cal = NewCalendar()                           // Controls the incrementing of date
 	in.log = NewHistoryManager(in.cal)               // Controls logging events
 	in.markov = NewMarkovGen()                       // Better flavor text generation
@@ -34,14 +33,15 @@ func NewInstance() *Instance {
 	in.social_events = NewSocialEvents(in.villagers) // Make social events happen
 	in.reaper = NewDeath(in.villagers, in.markov)    // Controls death and dying events
 
-	in.managers = nil                                   // Holds a list of all known objects that need to tick
-	in.managers = append(in.managers, in.log)           // Create a new logging entry for the day
-	in.managers = append(in.managers, in.cal)           // Date goes up
-	in.managers = append(in.managers, in.stats)         // People eat and food is lost
-	in.managers = append(in.managers, in.villagers)     // Villagers tick
-	in.managers = append(in.managers, in.prof)          // Professions are managed, jobs reassigned
-	in.managers = append(in.managers, in.social_events) // Random social events occur
-	in.managers = append(in.managers, in.reaper)        // Sometimes people kick the bucket
+	in.managers = []Mngi{ // Holds a list of all known objects that need to tick
+		in.log,           // Create a new logging entry for the day
+		in.cal,           // Date goes up
+		in.stats,         // People eat and food is lost
+		in.villagers,     // Villagers tick
+		in.prof,          // Professions are managed, jobs reassigned
+		in.social_events, // Random social events occur
+		in.reaper,        // Sometimes people kick the bucket
+	}
 	return in
 }
 
