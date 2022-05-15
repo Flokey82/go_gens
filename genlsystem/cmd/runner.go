@@ -11,4 +11,5 @@ func main() {
 	genlsystem.ExportToPNG("hilbert.png", genlsystem.Hilbert(5))
 	genlsystem.Hilbert3d("out.obj", 3)
 	genlsystem.Plant3d("plant.obj", 4)
+	genlsystem.Pyramid3d("pyramid.obj", 5)
 }
