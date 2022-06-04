@@ -129,11 +129,16 @@ func (m *Map) ExportSVG(path string) error {
 	drawRiversA := true
 	drawRiversB := false
 	drawFlux := false
-	drawDrains := true
-	drawCities := false
-	drawSinks := true
-	drawPools := true
-	drawErosion := true
+	drawDrains := false
+	drawCities := true
+	drawSinks := false
+	drawPools := false
+	drawErosion := false
+	drawHumidity := false
+	drawRainfall := false
+	drawBorders := true
+	drawLakeBorders := true
+	drawBelow := false
 
 	zoom := 3
 	filterPathDist := 20.0
@@ -148,17 +153,17 @@ func (m *Map) ExportSVG(path string) error {
 	svg := svgo.New(f)
 	svg.Start(size, size)
 
-	//em := m
+	em := m
 	// Hack to test tile fetching
 	// 113.48673955688815 180 139.02010193037987 225
 	// 139.02010193037987 180 0 225
-	tbb := tileBoundingBox(0, 0, 0)
-	la1, lo1, la2, lo2 := tbb.ToLatLon()
-	re := m.getBB(la1, lo1, la2, lo2)
-	em, err := m.interpolate(re.r)
-	if err != nil {
-		panic(err)
-	}
+	//tbb := tileBoundingBox(0, 0, 0)
+	//la1, lo1, la2, lo2 := tbb.ToLatLon()
+	//re := m.getBB(la1, lo1, la2, lo2)
+	//em, err := m.interpolate(re.r)
+	//if err != nil {
+	//	panic(err)
+	//}
 	// end hack
 	min, max := minMax(m.t_elevation)
 	minMois, maxMois := minMax(m.t_moisture)
@@ -208,6 +213,28 @@ func (m *Map) ExportSVG(path string) error {
 		svg.Path(svgGenD(path), fmt.Sprintf("fill: rgb(%d, %d, %d)", col.R, col.G, col.B)+tmpLine)
 	}
 
+	if drawBorders {
+		for _, border := range m.getBorders() {
+			var path [][2]float64
+			for _, borderSeg := range border {
+				x, y := mercator.LatLonToPixels(m.t_latLon[borderSeg][0], m.t_latLon[borderSeg][1], zoom)
+				path = append(path, [2]float64{x, y})
+			}
+			svg.Path(svgGenD(path), "stroke=\"red\" fill=\"none\" stroke-width=\"0.5\"")
+		}
+	}
+
+	if drawLakeBorders {
+		for _, border := range m.getLakeBorders() {
+			var path [][2]float64
+			for _, borderSeg := range border {
+				x, y := mercator.LatLonToPixels(m.t_latLon[borderSeg][0], m.t_latLon[borderSeg][1], zoom)
+				path = append(path, [2]float64{x, y})
+			}
+			svg.Path(svgGenD(path), "stroke=\"blue\"", "fill=\"blue\"", "fill-opacity=\"0.5\"", "stroke-width=\"0.5\"")
+		}
+	}
+
 	// Rivers
 	if drawRiversA {
 		for _, riv := range m.getRivers(0.005) {
@@ -250,6 +277,7 @@ func (m *Map) ExportSVG(path string) error {
 			}
 		}
 	}
+
 	if drawFlux {
 		minFlux, maxFlux := minMax(m.r_flux)
 		for r, rdh := range m.r_flux {
@@ -257,11 +285,38 @@ func (m *Map) ExportSVG(path string) error {
 				x, y := mercator.LatLonToPixels(m.r_latLon[r][0], m.r_latLon[r][1], zoom)
 				r := 1
 				col := genGreen((rdh - minFlux) / (maxFlux - minFlux))
-				svg.Circle(int(x), int(y), r, fmt.Sprintf("fill: rgb(%d, %d, %d)", col.R, col.G, col.B))
+				col = genGreen(rdh / maxFlux)
+				svg.Circle(int(x), int(y), r, fmt.Sprintf("fill: rgb(%d, %d, %d)", col.R, col.R, col.R))
+			}
+		}
+	}
+
+	if drawHumidity {
+		minHumid, maxHumid := minMax(m.r_moisture)
+		for r, rdh := range m.r_moisture {
+			if rdh > 0 {
+				x, y := mercator.LatLonToPixels(m.r_latLon[r][0], m.r_latLon[r][1], zoom)
+				r := 1
+				col := genGreen((rdh - minHumid) / (maxHumid - minHumid))
+				svg.Circle(int(x), int(y), r, fmt.Sprintf("fill: rgb(%d, %d, %d)", col.R, col.R, col.R))
 
 			}
 		}
 	}
+
+	if drawRainfall {
+		minRain, maxRain := minMax(m.r_rainfall)
+		for r, rdh := range m.r_rainfall {
+			if rdh > 0 {
+				x, y := mercator.LatLonToPixels(m.r_latLon[r][0], m.r_latLon[r][1], zoom)
+				r := 1
+				col := genGreen((rdh - minRain) / (maxRain - minRain))
+				svg.Circle(int(x), int(y), r, fmt.Sprintf("fill: rgb(%d, %d, %d)", col.R, col.R, col.R))
+
+			}
+		}
+	}
+
 	if drawErosion {
 		er := m.rErosionRate()
 		minFlux, maxFlux := minMax(er)
@@ -272,6 +327,14 @@ func (m *Map) ExportSVG(path string) error {
 				col := genBlue((rdh - minFlux) / (maxFlux - minFlux))
 				svg.Circle(int(x), int(y), r, fmt.Sprintf("fill: rgb(%d, %d, %d)", col.R, col.G, col.G))
 
+			}
+		}
+	}
+	if drawBelow {
+		for r, pVal := range m.r_elevation {
+			if pVal <= 0 {
+				x, y := mercator.LatLonToPixels(m.r_latLon[r][0], m.r_latLon[r][1], zoom)
+				svg.Circle(int(x), int(y), 2, "fill: rgb(0, 0, 255)")
 			}
 		}
 	}

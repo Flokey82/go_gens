@@ -44,6 +44,7 @@ func (m *Map) rCityScore() []float64 {
 				break
 			}
 		}
+
 		// Penalty for proximity to other cities.
 		score[i] *= (float64(r_distance_c[i]) + 1e-9)
 	}

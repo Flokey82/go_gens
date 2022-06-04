@@ -192,7 +192,8 @@ func (m *Map) findCollisions() ([]int, []int, []int, map[int]float64) {
 // mountains, coastlines, etc.
 // To ensure variation, opensimplex noise is used to break up any uniformity.
 func (m *Map) assignRegionElevation() {
-	const epsilon = 1e-3
+	useDistanceFieldWithCompression := true
+
 	// TODO: Use collision values to determine intensity of generated landscape features.
 	mountain_r, coastline_r, ocean_r, compression_r := m.findCollisions()
 	for r := 0; r < m.mesh.numRegions; r++ {
@@ -219,14 +220,16 @@ func (m *Map) assignRegionElevation() {
 		stop_r[r] = true
 	}
 
-	r_distance_a := m.assignDistanceField2(mountain_r, convToMap(ocean_r), compression_r)
-	r_distance_b := m.assignDistanceField2(ocean_r, convToMap(coastline_r), compression_r)
-	r_distance_c := m.assignDistanceField2(coastline_r, stop_r, compression_r)
-
-	//r_distance_a := m.assignDistanceField(mountain_r, convToMap(ocean_r))
-	//r_distance_b := m.assignDistanceField(ocean_r, convToMap(coastline_r))
-	//r_distance_c := m.assignDistanceField(coastline_r, stop_r)
-
+	var r_distance_a, r_distance_b, r_distance_c []float64
+	if useDistanceFieldWithCompression {
+		r_distance_a = m.assignDistanceField2(mountain_r, convToMap(ocean_r), compression_r)
+		r_distance_b = m.assignDistanceField2(ocean_r, convToMap(coastline_r), compression_r)
+		r_distance_c = m.assignDistanceField2(coastline_r, stop_r, compression_r)
+	} else {
+		r_distance_a = m.assignDistanceField(mountain_r, convToMap(ocean_r))
+		r_distance_b = m.assignDistanceField(ocean_r, convToMap(coastline_r))
+		r_distance_c = m.assignDistanceField(coastline_r, stop_r)
+	}
 	// Get min/max compression.
 	// var compVals []float64
 	// for _, v := range compression_r {
@@ -236,11 +239,12 @@ func (m *Map) assignRegionElevation() {
 
 	// enableRipples := true
 
+	const epsilon = 1e-3
 	r_xyz := m.r_xyz
 	for r := 0; r < m.mesh.numRegions; r++ {
-		a := float64(r_distance_a[r]) + epsilon
-		b := float64(r_distance_b[r]) + epsilon
-		c := float64(r_distance_c[r]) + epsilon
+		a := r_distance_a[r] + epsilon
+		b := r_distance_b[r] + epsilon
+		c := r_distance_c[r] + epsilon
 		if m.PlateIsOcean[m.r_plate[r]] {
 			m.r_elevation[r] = -0.1
 		}

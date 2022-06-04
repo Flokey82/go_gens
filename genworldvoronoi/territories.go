@@ -20,7 +20,8 @@ func (pq PriorityQueue2) Len() int { return len(pq) }
 
 func (pq PriorityQueue2) Less(i, j int) bool {
 	// We want Pop to give us the highest, not lowest, priority so we use greater than here.
-	return pq[i].score > pq[j].score
+	// return pq[i].score > pq[j].score // 3, 2, 1
+	return pq[i].score < pq[j].score // 1, 2, 3
 }
 
 func (pq PriorityQueue2) Swap(i, j int) {
@@ -63,7 +64,7 @@ func (m *Map) rPlaceNTerritories(n int) {
 		vlon := m.r_latLon[v][1]
 
 		horiz := haversine(ulat, ulon, vlat, vlon) / (2 * math.Pi)
-		vert := m.r_elevation[v]/maxElev - m.r_elevation[u]/maxElev
+		vert := (m.r_elevation[v] - m.r_elevation[u]) / maxElev
 		if vert > 0 {
 			vert /= 10
 		}
@@ -77,6 +78,7 @@ func (m *Map) rPlaceNTerritories(n int) {
 		}
 		return horiz * diff
 	}
+
 	for i := 0; i < n; i++ {
 		terr[m.cities_r[i]] = m.cities_r[i]
 		nbs := m.rNeighbors(m.cities_r[i])
@@ -92,7 +94,7 @@ func (m *Map) rPlaceNTerritories(n int) {
 		}
 	}
 	for queue.Len() > 0 {
-		u := queue.Pop().(*queueEntry)
+		u := heap.Pop(&queue).(*queueEntry)
 		if terr[u.vx] != 0 {
 			continue
 		}

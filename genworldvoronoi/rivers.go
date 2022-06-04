@@ -164,14 +164,18 @@ func unshiftIndexPath(path []int, p int) []int {
 	return append([]int{p}, path...)
 }
 
+const (
+	FloodVariant1 = 0
+	FloodVariant2 = 1
+)
+
 // assignDownhill will populate r_downhill with a mapping of region to lowest neighbor region.
 // NOTE: This is based on mewo2's terrain generation code
 // See: https://github.com/mewo2/terrain
 func (m *Map) assignDownhill() {
-
-	// Identify sinks above sea level.
-	var attempts int
 	maxAttempts := 20
+	floodVariant := FloodVariant2
+	skipSinksBelowSea := true
 
 	// Reset drains.
 	for i := range m.r_drainage {
@@ -179,47 +183,67 @@ func (m *Map) assignDownhill() {
 	}
 
 	// Try to flood all sinks.
+	var attempts int
 	for {
-		var r_sinks []int
+		// Identify sinks above sea level.
+		r_sinks := m.BaseObject.getSinks(skipSinksBelowSea, true)
 		m.BaseObject.assignDownhill(true)
-		for r, lowest_r := range m.r_downhill {
-			if lowest_r == -1 && m.r_elevation[r] > 0 { // && m.r_drainage[r] < 0
-				r_sinks = append(r_sinks, r)
-			}
-		}
+
+		// Regenerate flux.
 		m.assignFlux()
 
-		// TODO: Regenerate flux.
+		// Abort if we have no more sinks or ran out of attempts.
 		if len(r_sinks) == 0 || attempts > maxAttempts {
 			log.Println("ran out of attempts", len(r_sinks))
 			// TODO: Fill remaining sinks and re-generate downhill and flux.
 			break
 		}
-		//m.r_elevation = m.rErode(0.005)
+		attempts++
 
 		// Reset drains.
-		/*for i := range m.r_drainage {
+		for i := range m.r_drainage {
 			m.r_drainage[i] = -1
-		}*/
+		}
+
+		// Reset pools.
 		for i := range m.r_pool {
 			m.r_pool[i] = 0
 		}
 
-		attempts++
+		// Erode a little.
+		// m.r_elevation = m.rErode(0.001) // NOTE: Flux would change as downhill values would change.
+		m.BaseObject.assignDownhill(false)
+
+		// Regenerate flux.
+		m.assignFlux()
+
+		// Identify sinks above sea level.
+		r_sinks = m.BaseObject.getSinks(false, false)
+
+		// start from lowest sink.
+		sort.Slice(r_sinks, func(i, j int) bool {
+			return m.r_elevation[r_sinks[i]] < m.r_elevation[r_sinks[j]]
+		})
+
 		// Flood sink up to lowest neighbor + epsilon.
 		for _, r := range r_sinks {
-			if m.r_flux[r] < m.r_rainfall[r] {
-				continue
+			log.Println(m.r_elevation[r])
+			//if m.r_flux[r] < m.r_rainfall[r] {
+			//	continue
+			//}
+			switch floodVariant {
+			case FloodVariant1:
+				m.floodV1(r, m.r_flux[r])
+			case FloodVariant2:
+				m.floodV2(r, m.r_flux[r])
 			}
-			m.floodV2(r, m.r_flux[r])
-			//m.flood(r, m.r_flux[r])
 		}
+
+		// TODO: Diffuse flux and pool.
+		m.assignRainfall(1)
 	}
 
 	// TODO: Triangle downhill.
-	log.Println(m.r_drainage)
-	log.Println(m.r_pool)
-
 	// TODO: Make note of lakes.
 	//   - Sum up regions r_pool[r] > 0
 	//   - Note lake sizes (for city placement)
@@ -231,95 +255,137 @@ func (m *Map) assignDownhill() {
 	// TODO: Make note of rivers.
 }
 
+const (
+	FluxVolVariantBasic = 0
+	FluxVolVariantWalk1 = 1
+	FluxVolVariantWalk2 = 2
+)
+
 // assignFlux will populate r_flux by summing up the rainfall for each region from highest to
 // lowest using r_downhill to reconstruct the downhill path that water would follow.
 // NOTE: This is based on mewo2's terrain generation code
 // See: https://github.com/mewo2/terrain
 func (m *Map) assignFlux() {
+	// Determines if we discard all regions with an elevation < 0.
+	skipBelowSea := true
+
+	// Determines which flux calculation algorithm we use.
+	variant := FluxVolVariantWalk2
+
 	// Initialize flux values with r_rainfall.
 	r_flux := make([]float64, m.mesh.numRegions)
-	idxs := make([]int, m.mesh.numRegions)
-	drains := make(map[int]bool)
 	for i := 0; i < m.mesh.numRegions; i++ {
-		idxs[i] = i
-		if m.r_drainage[i] >= 0 {
-			drains[m.r_drainage[i]] = true
-			//r_flux[m.r_drainage[i]] += m.r_rainfall[i]
-		}
-		if m.r_elevation[i] >= 0 {
-			r_flux[i] += m.r_rainfall[i]
+		if m.r_elevation[i] >= 0 || !skipBelowSea {
+			r_flux[i] = m.r_rainfall[i]
 		}
 	}
-	sort.Slice(idxs, func(a, b int) bool {
-		if (m.r_elevation[idxs[b]] + m.r_pool[idxs[b]]) == (m.r_elevation[idxs[a]] + m.r_pool[idxs[a]]) {
-			return drains[idxs[b]]
+
+	// TODO  && m.r_drainage[i] != i!!!!!
+
+	switch variant {
+	case FluxVolVariantBasic:
+		// Basic variant copying the flux to the downhill neighbor or the drainage.
+		// Initialize map for identifying drains and populate initial state of sorted index.
+		drains := make(map[int]bool)
+		idxs := make([]int, m.mesh.numRegions)
+		for i := range idxs {
+			if m.r_drainage[i] >= 0 {
+				drains[m.r_drainage[i]] = true
+				// r_flux[m.r_drainage[i]] += m.r_rainfall[i]
+			}
+			idxs[i] = i
 		}
-		return (m.r_elevation[idxs[b]] + m.r_pool[idxs[b]]) < (m.r_elevation[idxs[a]] + m.r_pool[idxs[a]])
-	})
-	/*
+
+		// Sort index array.
+		sort.Slice(idxs, func(a, b int) bool {
+			if (m.r_elevation[idxs[b]] + m.r_pool[idxs[b]]) == (m.r_elevation[idxs[a]] + m.r_pool[idxs[a]]) {
+				return drains[idxs[a]]
+			}
+			return (m.r_elevation[idxs[b]] + m.r_pool[idxs[b]]) < (m.r_elevation[idxs[a]] + m.r_pool[idxs[a]])
+		})
+
+		// Copy flux to known drainage point or next lowest neighbor.
 		for _, j := range idxs {
+			// Do not copy flux if we are below sea level.
+			if m.r_elevation[j] < 0 && skipBelowSea {
+				continue
+			}
+
+			// Check if we are entering a pool that drains somewhere else.
+			if m.r_drainage[j] >= 0 {
+				r_flux[m.r_drainage[j]] += r_flux[j]
+			} else if m.r_downhill[j] >= 0 {
+				r_flux[m.r_downhill[j]] += r_flux[j]
+			}
+		}
+	case FluxVolVariantWalk1:
+		r_flux_tmp := make([]float64, m.mesh.numRegions)
+		for j := 0; j < m.mesh.numRegions; j++ {
 			seen := make(map[int]bool)
+			fl := r_flux[j]
 			drain := m.r_drainage[j]
 			for drain != -1 {
-				if seen[drain] {
-					log.Println(m.r_drainage)
-					log.Println(drain)
-					log.Println(seen)
-					panic("double")
+				if m.r_elevation[drain] < 0 && skipBelowSea {
+					break
 				}
-				seen[drain] = true
-				if m.r_drainage[drain] >= 0 {
+				//if seen[drain] {
+				//log.Println(m.r_drainage)
+				//	log.Println(drain)
+				//	log.Println(seen)
+				//panic("double")
+				//	continue
+				//}
+				r_flux_tmp[drain] += fl
+				if m.r_drainage[drain] >= 0 && !seen[drain] {
 					drain = m.r_drainage[drain]
 				} else if m.r_downhill[drain] >= 0 {
 					drain = m.r_downhill[drain]
 				} else {
 					drain = -1
 				}
+				seen[drain] = true
 			}
 		}
-		for _, j := range idxs {
-			drain := m.r_drainage[j]
-			if drain < 0 {
-				//drain = m.r_downhill[j]
-				continue
-			}
-			previ := j
+
+		// Copy the flux to the resulting flux map.
+		for r, fl := range r_flux_tmp {
+			r_flux[r] += fl
+		}
+	case FluxVolVariantWalk2:
+		r_flux_tmp := make([]float64, m.mesh.numRegions)
+		for j := 0; j < m.mesh.numRegions; j++ {
+			fl := r_flux[j]
 			seen := make(map[int]bool)
-			for drain >= 0 {
-				if seen[drain] {
-					log.Println(drain)
-					log.Println(seen)
+			r := j
+			var chain []int
+			for {
+				seen[r] = true
+				if m.r_drainage[r] >= 0 {
+					r = m.r_drainage[r]
+				} else {
+					r = m.r_downhill[r]
+				}
+				if r < 0 || m.r_elevation[r] < 0 && skipBelowSea {
 					break
 				}
-				r_flux[drain] += r_flux[previ]
-				seen[drain] = true
-				previ = drain
-				if m.r_drainage[drain] >= 0 {
-					drain = m.r_drainage[drain]
-				} else {
-					drain = m.r_downhill[drain]
+				if seen[r] {
+					break // Abort to avoid circular references.
 				}
+				chain = append(chain, r)
+				r_flux_tmp[r] += fl
 			}
-
 			//r_flux[m.r_drainage[j]] += r_flux[j]
-		}*/
-	for _, j := range idxs {
-		if m.r_elevation[j] < 0 {
-			continue
 		}
-		// Check if we are entering a pool that drains somewhere else.
-		if m.r_downhill[j] >= 0 {
-			r_flux[m.r_downhill[j]] += r_flux[j]
-		}
-		if m.r_drainage[j] >= 0 {
-			r_flux[m.r_drainage[j]] += r_flux[j]
+
+		// Copy the flux to the resulting flux map.
+		for r, fl := range r_flux_tmp {
+			r_flux[r] += fl
 		}
 	}
 	m.r_flux = r_flux
-	log.Println(minMax(r_flux))
 }
 
-func (m *Map) flood(r int, dVol float64) {
+func (m *Map) floodV1(r int, dVol float64) {
 	const volumeFactor = 100.0 // "Water Deposition Rate"
 	const epsilon = 1e-3
 	const minVol = 0.01
@@ -459,7 +525,7 @@ func (m *Map) floodV2(r int, dVol float64) bool {
 	var drain, drainedFrom int
 	drainedFrom = -1
 
-	useDrain := true
+	useDrain := true // Use drainage point instead of region draining into drainage point.
 
 	// Returns whether the set is closed at given height
 	var findset func(i int, plane float64) bool
@@ -495,11 +561,15 @@ func (m *Map) floodV2(r int, dVol float64) bool {
 		})
 		for _, neighbor_r := range nbs {
 			if !findset(neighbor_r, plane) {
-				if drainfound && drainedFrom == -1 {
+				if drainfound { // && drainedFrom == -1
+					newDrain := -1
 					if useDrain {
-						drainedFrom = drain
+						newDrain = drain
 					} else {
-						drainedFrom = i
+						newDrain = i
+					}
+					if drainedFrom == -1 || m.r_elevation[newDrain]+m.r_pool[newDrain] < m.r_elevation[drainedFrom]+m.r_pool[drainedFrom] {
+						drainedFrom = newDrain
 					}
 				}
 				return false
@@ -697,13 +767,13 @@ func (m *Map) assignFlow() {
 	// the moisture of all tributaries while descending.
 	order_t := m.order_t
 	t_downflow_s := m.t_downflow_s
-	_halfedges := m.mesh.Halfedges
+	halfedges := m.mesh.Halfedges
 	for i := len(order_t) - 1; i >= 0; i-- {
 		// TODO: Describe what's going on here.
 		tributary_t := order_t[i]
 		flow_s := t_downflow_s[tributary_t]
 		if flow_s >= 0 {
-			trunk_t := (_halfedges[flow_s] / 3)
+			trunk_t := (halfedges[flow_s] / 3)
 			t_flow[trunk_t] += t_flow[tributary_t]
 			s_flow[flow_s] += t_flow[tributary_t] // TODO: isn't s_flow[flow_s] === t_flow[?]
 			if t_elevation[trunk_t] > t_elevation[tributary_t] {

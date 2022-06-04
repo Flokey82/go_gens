@@ -1,6 +1,7 @@
 package genworldvoronoi
 
 import (
+	"log"
 	"math"
 	"sort"
 
@@ -146,30 +147,36 @@ type biomesParams struct {
 	evaporation float64 // 0, 1
 }
 
-func (m *Map) assignRainfall() {
+const (
+	moistTransferDirect   = 0
+	moistTransferIndirect = 1
+	moistTransferWalk     = 2
+	moistTransferDirect2  = 3
+)
+
+func (m *Map) assignRainfall(numSteps int) {
 	biomesParam := biomesParams{
 		raininess:   0.9,
-		rain_shadow: 0.5,
+		rain_shadow: 0.9,
 		evaporation: 0.9,
 	}
 
-	// 1. Assign wind vector for every region
-	m.assignWindVectors()
-	r_windvec := m.r_windvec
-
-	// 2. Assign initial moisture of 1.0 to all regions below or at sea level
+	// 1. Initialize
+	// 1.1. Determine all sea regions.
 	var sea_r []int
-	dist_order_r := make([]int, m.mesh.numRegions)
+	is_sea := make(map[int]bool)
 	for r := 0; r < m.mesh.numRegions; r++ {
-		dist_order_r[r] = r
 		if m.r_elevation[r] <= 0 {
+			is_sea[r] = true
 			sea_r = append(sea_r, r)
-			m.r_moisture[r] = 1.0
-			m.r_rainfall[r] += biomesParam.raininess * m.r_moisture[r]
 		}
 	}
 
-	// 3. Sort all regions by distance to ocean. Lowest to highest.
+	// 1.2. Sort all regions by distance to ocean. Lowest to highest.
+	dist_order_r := make([]int, m.mesh.numRegions)
+	for r := 0; r < m.mesh.numRegions; r++ {
+		dist_order_r[r] = r
+	}
 	r_distance_d := m.assignDistanceField(sea_r, make(map[int]bool))
 	sort.Slice(dist_order_r, func(a, b int) bool {
 		if r_distance_d[dist_order_r[a]] == r_distance_d[dist_order_r[b]] {
@@ -178,127 +185,333 @@ func (m *Map) assignRainfall() {
 		return r_distance_d[dist_order_r[a]] < r_distance_d[dist_order_r[b]]
 	})
 
-	moistureTransferSourceToDest := true
-	if moistureTransferSourceToDest {
-		// 4. For each region, calculate dot product of Vec r -> r_neighbor and wind vector of r.
-		//    This will give us the amount of moisture we transfer to the neighbor region.
-		// NOTE: This variant copies moisture from the current region to the neighbors that are in wind direction.
-		_, maxH := minMax(m.r_elevation)
-		for _, r := range dist_order_r {
-			count := 0
-			// Get XYZ Position of r.
-			rXYZ := convToVec3(m.r_xyz[r*3 : r*3+3])
-			// Convert to polar coordinates.
-			rLat := m.r_latLon[r][0]
-			rLon := m.r_latLon[r][1]
+	// 1.3. Assign wind vector for every region
+	m.assignWindVectors()
+	r_windvec := m.r_windvec
+	_, maxH := minMax(m.r_elevation)
 
-			// Add wind vector to neighbor lat/lon to get the "wind vector lat long" or something like that..
-			rwXYZ := convToVec3(latLonToCartesian(rLat+r_windvec[r][0], rLon+r_windvec[r][1])).Normalize()
-			for _, neighbor_r := range m.rNeighbors(r) {
-				// Calculate dot product of wind vector to vector r -> neighbor_r.
-				// Get XYZ Position of r_neighbor.
-				rnXYZ := convToVec3(m.r_xyz[neighbor_r*3 : neighbor_r*3+3])
+	calcRainfall := func(r int, humidity float64) float64 {
+		r_elev := m.r_elevation[r]
+		if r_elev < 0 {
+			r_elev = 0 // Set to sea-level
+		}
+		heightVal := 1 - (r_elev / maxH)
+		if humidity > heightVal {
+			return biomesParam.rain_shadow * (humidity - heightVal)
+		}
+		return 0
+	}
 
-				// Calculate Vector between r and neighbor_r.
-				va := vectors.Sub3(rnXYZ, rXYZ).Normalize()
+	transferMode := moistTransferDirect2
+	for step := 0; step < numSteps; step++ {
+		log.Println(step)
+		// Evaporation.
 
-				// Calculate Vector between r and wind_r.
-				vb := vectors.Sub3(rwXYZ, rXYZ).Normalize()
+		// 2. Assign initial moisture of 1.0 to all regions below or at sea level or replenish
+		// moisture through evaporation if our moisture is below 0.
+		for _, r := range sea_r {
+			if m.r_moisture[r] < 1.0 {
+				m.r_moisture[r] = 1.0
+			}
+			//m.r_rainfall[r] += biomesParam.raininess * m.r_moisture[r]
+		}
 
-				// Calculate dot product between va and vb.
-				// This will give us how much the current region lies within the wind direction of the
-				// current neighbor.
-				// See: https://www.scratchapixel.com/lessons/3d-basic-rendering/introduction-to-shading/shading-normals
-				dotV := vectors.Dot3(va, vb)
-				if dotV > 0 {
-					// Only positive dot products mean that we lie within 90°, so 'in wind direction'.
-					count++
-					var humidity, rainfall float64
-					humidity = m.r_moisture[neighbor_r] + m.r_moisture[r]*dotV
-					rainfall = m.r_rainfall[neighbor_r] + biomesParam.raininess*m.r_moisture[r]*dotV
-					heightVal := 1 - (m.r_elevation[neighbor_r] / maxH)
-					if humidity > heightVal {
-						orographicRainfall := biomesParam.rain_shadow * (humidity - heightVal)
+		// Rivers should experience some evaporation.
+		for r, fluxval := range m.r_flux {
+			if m.r_moisture[r] < fluxval && m.r_moisture[r] < 1.0 {
+				m.r_moisture[r] = 1.0 // TODO: Should depend on available water.
+			}
+		}
+
+		// Water pools should experience some evaporation.
+		for r, poolval := range m.r_pool {
+			if poolval > 0 && m.r_moisture[r] < 1.0 {
+				m.r_moisture[r] = 1.0 // TODO: Should depend on available water.
+			}
+		}
+		// m.interpolateRainfallMoisture(1)
+
+		// 3. Transfer moisture based on wind vectors.
+		switch transferMode {
+		case moistTransferDirect2:
+			sort.Slice(dist_order_r, func(a, b int) bool {
+				if m.r_moisture[dist_order_r[a]] == m.r_moisture[dist_order_r[b]] {
+					return r_distance_d[dist_order_r[a]] < r_distance_d[dist_order_r[b]]
+				}
+				return m.r_moisture[dist_order_r[a]] > m.r_moisture[dist_order_r[b]]
+			})
+			r_moisture_interpol := make([]float64, m.mesh.numRegions)
+			// 3.1.A For each region, calculate dot product of Vec r -> r_neighbor and wind vector of r.
+			//       This will give us the amount of moisture we transfer to the neighbor region.
+			// NOTE: This variant copies moisture from the current region to the neighbors that are in wind direction.
+			//       Additionally we use a temporary array to store the transferred moisture and only merge the moisture
+			//       once all regions are copied.
+			for _, r := range dist_order_r {
+				// Get XYZ Position of r.
+				rXYZ := convToVec3(m.r_xyz[r*3 : r*3+3])
+				// Convert to polar coordinates.
+				rLat := m.r_latLon[r][0]
+				rLon := m.r_latLon[r][1]
+
+				// Add wind vector to neighbor lat/lon to get the "wind vector lat long" or something like that..
+				rwXYZ := convToVec3(latLonToCartesian(rLat+r_windvec[r][0], rLon+r_windvec[r][1])).Normalize()
+				for _, neighbor_r := range m.rNeighbors(r) {
+					//if is_sea[neighbor_r] {
+					//	continue
+					//}
+					// Calculate dot product of wind vector to vector r -> neighbor_r.
+					// Get XYZ Position of r_neighbor.
+					rnXYZ := convToVec3(m.r_xyz[neighbor_r*3 : neighbor_r*3+3])
+
+					// Calculate Vector between r and neighbor_r.
+					va := vectors.Sub3(rnXYZ, rXYZ).Normalize()
+
+					// Calculate Vector between r and wind_r.
+					vb := vectors.Sub3(rwXYZ, rXYZ).Normalize()
+
+					// Calculate dot product between va and vb.
+					// This will give us how much the current region lies within the wind direction of the
+					// current neighbor.
+					// See: https://www.scratchapixel.com/lessons/3d-basic-rendering/introduction-to-shading/shading-normals
+					dotV := vectors.Dot3(va, vb)
+					if dotV > 0 {
+						moistOut := m.r_moisture[r] * dotV
+						r_moisture_interpol[neighbor_r] += moistOut
+					}
+				}
+			}
+			// Now merge the additional moisture with the base moisture and let it rain accordingly.
+			for _, r := range dist_order_r {
+				// Only positive dot products mean that we lie within 90°, so 'in wind direction'.
+				humidity := m.r_moisture[r] + r_moisture_interpol[r]
+				rainfall := m.r_rainfall[r] // + biomesParam.raininess*m.r_moisture[r]*dotV
+				orographicRainfall := calcRainfall(r, humidity)
+				if orographicRainfall > 0.0 {
+					rainfall = biomesParam.raininess * orographicRainfall
+					humidity -= orographicRainfall
+				}
+				// TODO: Calculate max humidity at current altitude, temperature, rain off the rest.
+				// WARNING: The humidity calculation is off.
+				// humidity = math.Min(humidity, 1.0)
+				// rainfall = math.Min(rainfall, 1.0)
+				m.r_rainfall[r] = rainfall
+				m.r_moisture[r] = humidity
+			}
+		case moistTransferDirect:
+			// 3.1.B For each region, calculate dot product of Vec r -> r_neighbor and wind vector of r.
+			//       This will give us the amount of moisture we transfer to the neighbor region.
+			// NOTE: This variant copies moisture from the current region to the neighbors that are in wind direction.
+			for _, r := range dist_order_r {
+				count := 0
+				// Get XYZ Position of r.
+				rXYZ := convToVec3(m.r_xyz[r*3 : r*3+3])
+				// Convert to polar coordinates.
+				rLat := m.r_latLon[r][0]
+				rLon := m.r_latLon[r][1]
+
+				// Add wind vector to neighbor lat/lon to get the "wind vector lat long" or something like that..
+				rwXYZ := convToVec3(latLonToCartesian(rLat+r_windvec[r][0], rLon+r_windvec[r][1])).Normalize()
+				for _, neighbor_r := range m.rNeighbors(r) {
+					if is_sea[neighbor_r] {
+						continue
+					}
+					// Calculate dot product of wind vector to vector r -> neighbor_r.
+					// Get XYZ Position of r_neighbor.
+					rnXYZ := convToVec3(m.r_xyz[neighbor_r*3 : neighbor_r*3+3])
+
+					// Calculate Vector between r and neighbor_r.
+					va := vectors.Sub3(rnXYZ, rXYZ).Normalize()
+
+					// Calculate Vector between r and wind_r.
+					vb := vectors.Sub3(rwXYZ, rXYZ).Normalize()
+
+					// Calculate dot product between va and vb.
+					// This will give us how much the current region lies within the wind direction of the
+					// current neighbor.
+					// See: https://www.scratchapixel.com/lessons/3d-basic-rendering/introduction-to-shading/shading-normals
+					dotV := vectors.Dot3(va, vb)
+					if dotV > 0 {
+						// Only positive dot products mean that we lie within 90°, so 'in wind direction'.
+						count++
+						humidity := m.r_moisture[neighbor_r] + m.r_moisture[r]*dotV
+						rainfall := m.r_rainfall[neighbor_r] // + biomesParam.raininess*m.r_moisture[r]*dotV
+						orographicRainfall := calcRainfall(neighbor_r, humidity)
+						if orographicRainfall > 0.0 {
+							rainfall += biomesParam.raininess * orographicRainfall
+							humidity -= orographicRainfall
+						}
+						// TODO: Calculate max humidity at current altitude, temperature, rain off the rest.
+						// WARNING: The humidity calculation is off.
+						// humidity = math.Min(humidity, 1.0)
+						// rainfall = math.Min(rainfall, 1.0)
+						m.r_rainfall[neighbor_r] = rainfall
+						m.r_moisture[neighbor_r] = humidity
+					}
+				}
+			}
+		case moistTransferIndirect:
+			// 3.2. For each region, calculate dot product of Vec r -> r_neighbor and wind vector of r_neighbor.
+			//    This will give us the amount of moisture we transfer from the neighbor region.
+			// NOTE: This variant copies moisture to the current region from the neighbors depending on their wind direction.
+			for _, r := range dist_order_r {
+				count := 0
+				sum := 0.0
+				// Get XYZ Position of r.
+				rXYZ := convToVec3(m.r_xyz[r*3 : r*3+3])
+				for _, neighbor_r := range m.rNeighbors(r) {
+					// Calculate dot product of wind vector to vector r -> neighbor_r.
+					// Get XYZ Position of r_neighbor.
+					rnXYZ := convToVec3(m.r_xyz[neighbor_r*3 : neighbor_r*3+3])
+
+					// Convert to polar coordinates.
+					rLat := m.r_latLon[neighbor_r][0]
+					rLon := m.r_latLon[neighbor_r][1]
+
+					// Add wind vector to neighbor lat/lon to get the "wind vector lat long" or something like that..
+					rnwXYZ := convToVec3(latLonToCartesian(rLat+r_windvec[neighbor_r][0], rLon+r_windvec[neighbor_r][1])).Normalize()
+
+					// Calculate Vector between r and neighbor_r.
+					va := vectors.Sub3(rXYZ, rnXYZ).Normalize()
+
+					// Calculate Vector between neightbor_r and wind_neighbor_r.
+					vb := vectors.Sub3(rnwXYZ, rnXYZ).Normalize()
+
+					// Calculate dot product between va and vb.
+					// This will give us how much the current region lies within the wind direction of the
+					// current neighbor.
+					// See: https://www.scratchapixel.com/lessons/3d-basic-rendering/introduction-to-shading/shading-normals
+					dotV := vectors.Dot3(va, vb)
+					if dotV > 0 {
+						// Only positive dot products mean that we lie within 90°, so 'in wind direction'.
+						count++
+						sum += m.r_moisture[neighbor_r] * dotV
+					}
+				}
+
+				var humidity, rainfall float64
+				humidity = m.r_moisture[r]
+				if count > 0 {
+					// TODO: Calculate max humidity at current altitude, temperature, rain off the rest.
+					// WARNING: The humidity calculation is off.
+					humidity = math.Min(humidity+sum, 1.0) // / float64(count)
+					rainfall = math.Min(rainfall+biomesParam.raininess*sum, 1.0)
+				}
+				// if m.mesh.r_boundary(r) {
+				//	 humidity = 1.0
+				// }
+				if m.r_elevation[r] <= 0.0 {
+					// evaporation := biomesParam.evaporation * (-m.r_elevation[r])
+					// humidity = evaporation
+					humidity = m.r_moisture[r]
+				}
+				orographicRainfall := calcRainfall(r, humidity)
+				if orographicRainfall > 0.0 {
+					rainfall += biomesParam.raininess * orographicRainfall
+					humidity -= orographicRainfall
+				}
+				m.r_rainfall[r] = rainfall
+				m.r_moisture[r] = humidity
+			}
+		case moistTransferWalk:
+			seen := make([]bool, m.mesh.numRegions)
+			var drill func(r int, transfer float64)
+			drill = func(r int, transfer float64) {
+				log.Println(transfer)
+				if seen[r] || transfer < 0.00001 {
+					return
+				}
+				seen[r] = true
+				// Get XYZ Position of r.
+				rXYZ := convToVec3(m.r_xyz[r*3 : r*3+3])
+				// Convert to polar coordinates.
+				rLat := m.r_latLon[r][0]
+				rLon := m.r_latLon[r][1]
+
+				// Add wind vector to neighbor lat/lon to get the "wind vector lat long" or something like that..
+				rwXYZ := convToVec3(latLonToCartesian(rLat+r_windvec[r][0], rLon+r_windvec[r][1])).Normalize()
+				for _, neighbor_r := range m.rNeighbors(r) {
+					// Calculate dot product of wind vector to vector r -> neighbor_r.
+					// Get XYZ Position of r_neighbor.
+					rnXYZ := convToVec3(m.r_xyz[neighbor_r*3 : neighbor_r*3+3])
+
+					// Calculate Vector between r and neighbor_r.
+					va := vectors.Sub3(rnXYZ, rXYZ).Normalize()
+
+					// Calculate Vector between r and wind_r.
+					vb := vectors.Sub3(rwXYZ, rXYZ).Normalize()
+
+					// Calculate dot product between va and vb.
+					// This will give us how much the current region lies within the wind direction of the
+					// current neighbor.
+					// See: https://www.scratchapixel.com/lessons/3d-basic-rendering/introduction-to-shading/shading-normals
+					dotV := vectors.Dot3(va, vb)
+					if dotV > 0 && !seen[neighbor_r] && m.r_elevation[neighbor_r] > 0 { //
+						// Only positive dot products mean that we lie within 90°, so 'in wind direction'.
+						m.r_moisture[neighbor_r] += transfer * dotV
+						humidity := m.r_moisture[neighbor_r]
+						rainfall := m.r_rainfall[neighbor_r] // + biomesParam.raininess*m.r_moisture[r]*dotV
+						orographicRainfall := calcRainfall(neighbor_r, humidity)
+						if orographicRainfall > 0.0 {
+							rainfall += biomesParam.raininess * orographicRainfall
+							humidity -= orographicRainfall
+						}
+						// TODO: Calculate max humidity at current altitude, temperature, rain off the rest.
+						// WARNING: The humidity calculation is off.
+						// humidity = math.Min(humidity, 1.0)
+						// rainfall = math.Min(rainfall, 1.0)
+						m.r_rainfall[neighbor_r] = rainfall
+						m.r_moisture[neighbor_r] = humidity
+						drill(neighbor_r, transfer*dotV)
+					}
+				}
+			}
+			for _, r := range dist_order_r {
+				if dist_order_r[r] < 1 || m.r_moisture[r] > 0 {
+					drill(r, m.r_moisture[r])
+					for i := range seen {
+						seen[i] = false
+					}
+				}
+				/*
+					humidity := m.r_moisture[r]
+					rainfall := m.r_rainfall[r] // + biomesParam.raininess*m.r_moisture[r]*dotV
+					orographicRainfall := calcRainfall(r, humidity)
+					if orographicRainfall > 0.0 {
 						rainfall += biomesParam.raininess * orographicRainfall
 						humidity -= orographicRainfall
 					}
 					// TODO: Calculate max humidity at current altitude, temperature, rain off the rest.
 					// WARNING: The humidity calculation is off.
-					humidity = math.Min(humidity, 1.0)
-					rainfall = math.Min(rainfall, 1.0)
-					m.r_rainfall[neighbor_r] = rainfall
-					m.r_moisture[neighbor_r] = humidity
-				}
+					// humidity = math.Min(humidity, 1.0)
+					// rainfall = math.Min(rainfall, 1.0)
+					m.r_rainfall[r] = rainfall
+					m.r_moisture[r] = humidity*/
 			}
+			log.Println(m.r_rainfall)
+			/*
+				for _, r := range dist_order_r {
+					humidity := m.r_moisture[r]
+					rainfall := m.r_rainfall[r] // + biomesParam.raininess*m.r_moisture[r]*dotV
+					orographicRainfall := calcRainfall(r, humidity)
+					if orographicRainfall > 0.0 {
+						rainfall += biomesParam.raininess * orographicRainfall
+						humidity -= orographicRainfall
+					}
+					// TODO: Calculate max humidity at current altitude, temperature, rain off the rest.
+					// WARNING: The humidity calculation is off.
+					// humidity = math.Min(humidity, 1.0)
+					// rainfall = math.Min(rainfall, 1.0)
+					m.r_rainfall[r] = rainfall
+					m.r_moisture[r] = humidity
+				}*/
 		}
-	} else {
-		// 4. For each region, calculate dot product of Vec r -> r_neighbor and wind vector of r_neighbor.
-		//    This will give us the amount of moisture we transfer from the neighbor region.
-		// NOTE: This variant copies moisture to the current region from the neighbors depending on their wind direction.
-		for _, r := range dist_order_r {
-			count := 0
-			sum := 0.0
-			// Get XYZ Position of r.
-			rXYZ := convToVec3(m.r_xyz[r*3 : r*3+3])
-			for _, neighbor_r := range m.rNeighbors(r) {
-				// Calculate dot product of wind vector to vector r -> neighbor_r.
-				// Get XYZ Position of r_neighbor.
-				rnXYZ := convToVec3(m.r_xyz[neighbor_r*3 : neighbor_r*3+3])
 
-				// Convert to polar coordinates.
-				rLat := m.r_latLon[neighbor_r][0]
-				rLon := m.r_latLon[neighbor_r][1]
-
-				// Add wind vector to neighbor lat/lon to get the "wind vector lat long" or something like that..
-				rnwXYZ := convToVec3(latLonToCartesian(rLat+r_windvec[neighbor_r][0], rLon+r_windvec[neighbor_r][1])).Normalize()
-
-				// Calculate Vector between r and neighbor_r.
-				va := vectors.Sub3(rXYZ, rnXYZ).Normalize()
-
-				// Calculate Vector between neightbor_r and wind_neighbor_r.
-				vb := vectors.Sub3(rnwXYZ, rnXYZ).Normalize()
-
-				// Calculate dot product between va and vb.
-				// This will give us how much the current region lies within the wind direction of the
-				// current neighbor.
-				// See: https://www.scratchapixel.com/lessons/3d-basic-rendering/introduction-to-shading/shading-normals
-				dotV := vectors.Dot3(va, vb)
-				if dotV > 0 {
-					// Only positive dot products mean that we lie within 90°, so 'in wind direction'.
-					count++
-					sum += m.r_moisture[neighbor_r] * dotV
-				}
-			}
-
-			var humidity, rainfall float64
-			humidity = m.r_moisture[r]
-			if count > 0 {
-				// TODO: Calculate max humidity at current altitude, temperature, rain off the rest.
-				// WARNING: The humidity calculation is off.
-				humidity = math.Min(humidity+sum, 1.0) // / float64(count)
-				rainfall = math.Min(rainfall+biomesParam.raininess*sum, 1.0)
-			}
-			// if m.mesh.r_boundary(r) {
-			//	 humidity = 1.0
-			// }
-			if m.r_elevation[r] <= 0.0 {
-				// evaporation := biomesParam.evaporation * (-m.r_elevation[r])
-				// humidity = evaporation
-				humidity = m.r_moisture[r]
-			}
-			if humidity > 1.0-m.r_elevation[r] {
-				orographicRainfall := biomesParam.rain_shadow * (humidity - (1.0 - m.r_elevation[r]))
-				rainfall += biomesParam.raininess * orographicRainfall
-				humidity -= orographicRainfall
-			}
-			m.r_rainfall[r] = rainfall
-			m.r_moisture[r] = humidity
-
-		}
+		// 4. Average moisture and rainfall.
+		//m.interpolateRainfallMoisture(1)
 	}
+}
 
-	// Average moisture and rainfall.
-	interpolationSteps := 1
+func (m *Map) interpolateRainfallMoisture(interpolationSteps int) {
 	for i := 0; i < interpolationSteps; i++ {
 		r_moisture_interpol := make([]float64, m.mesh.numRegions)
 		r_rainfall_interpol := make([]float64, m.mesh.numRegions)

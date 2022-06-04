@@ -22,25 +22,39 @@ func (m *Map) rErode(amount float64) []float64 {
 // See: https://github.com/mewo2/terrain
 func (m *Map) rErosionRate() []float64 {
 	const nbErosionFactor = 0.015
+	erodeNeighbors := true
+	erodeNeighborDepth := 2
 	m.assignFlux()
 	flux := m.r_flux
 	_, maxFlux := minMax(m.r_flux)
 	slope := m.getRSlope()
 	newh := make([]float64, m.mesh.numRegions)
+
+	var erodeRegion func(r, rem int, toErode float64)
+	erodeRegion = func(r, rem int, toErode float64) {
+		if toErode > newh[r] {
+			newh[r] = toErode
+		}
+		rem--
+		// Check erosion depth.
+		if rem < 0 || !erodeNeighbors {
+			return
+		}
+		// Additionally erode all neighbors by a certain fraction.
+		toErode *= nbErosionFactor
+		nbs := m.rNeighbors(r)
+		for _, nb := range nbs {
+			erodeRegion(nb, rem, toErode)
+		}
+	}
 	for i := 0; i < m.mesh.numRegions; i++ {
-		river := math.Sqrt((flux[i]/maxFlux)+m.r_pool[i]) * slope[i]
+		river := math.Sqrt(flux[i]/maxFlux) * slope[i] //flux[i] * slope[i] / maxFlux
 		creep := slope[i] * slope[i]
 		total := 1000*river + creep
 		if total > 200 {
 			total = 200
 		}
-
-		// Additionally erode all neighbors by a certain fraction.
-		nbs := m.rNeighbors(i)
-		for _, nb := range nbs {
-			newh[nb] += total * nbErosionFactor
-		}
-		newh[i] += total
+		erodeRegion(i, erodeNeighborDepth, total)
 	}
 	return newh
 }

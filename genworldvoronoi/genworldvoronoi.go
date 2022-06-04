@@ -89,14 +89,13 @@ func (m *Map) generateMap() {
 
 	// River / moisture.
 	// m.assignRegionMoisture()
-	for i := 0; i < 12; i++ {
-		m.assignRainfall()
-		// m.assignFlux()
-	}
+	m.assignRainfall(10)
+	// m.assignFlux()
 
 	// Hydrology (based on regions) - EXPERIMENTAL
 	m.assignDownhill()
 	m.assignFlux()
+	//m.makeItRain()
 	// m.getRivers(9000.1)
 	// m.r_elevation = m.rErode(0.05)
 
@@ -136,11 +135,11 @@ func getCentroidOfTriangle(a, b, c []float64) vectors.Vec3 {
 
 // assignDistanceField calculates the distance from any point in seeds_r to all other points, but
 // don't go past any point in stop_r.
-func (m *Map) assignDistanceField(seeds_r []int, stop_r map[int]bool) []int64 {
+func (m *Map) assignDistanceField(seeds_r []int, stop_r map[int]bool) []float64 {
 	m.resetRand()
 	mesh := m.mesh
 	numRegions := mesh.numRegions
-	r_distance := make([]int64, numRegions)
+	r_distance := make([]float64, numRegions)
 	for i := range r_distance {
 		r_distance[i] = -1 // was: Infinity
 	}
@@ -170,6 +169,7 @@ func (m *Map) assignDistanceField(seeds_r []int, stop_r map[int]bool) []int64 {
 	// elevation to each seed instead of them always being +1/-1
 	return r_distance
 }
+
 func (m *Map) assignDistanceField2(seeds_r []int, stop_r map[int]bool, compression map[int]float64) []float64 {
 	enableNegativeCompression := true
 	enablePositiveCompression := true
@@ -204,14 +204,16 @@ func (m *Map) assignDistanceField2(seeds_r []int, stop_r map[int]bool, compressi
 	for queue_out := 0; queue_out < len(queue); queue_out++ {
 		pos := queue_out + m.rand.Intn(len(queue)-queue_out)
 		current_r := queue[pos]
+		current_comp := compression[current_r]
+		current_dist := r_distance[current_r]
 		queue[pos] = queue[queue_out]
 		for _, neighbor_r := range mesh.r_circulate_r(out_r, current_r) {
 			if r_distance[neighbor_r] == -1 && !stop_r[neighbor_r] {
-				r_distance[neighbor_r] = r_distance[current_r] + 1
-				if compression[current_r] > 0 && enablePositiveCompression {
-					r_distance[neighbor_r] -= compression[current_r] / maxComp
-				} else if compression[current_r] < 0 && enableNegativeCompression {
-					r_distance[neighbor_r] += compression[current_r] / minComp
+				r_distance[neighbor_r] = current_dist + 1
+				if current_comp > 0 && enablePositiveCompression {
+					r_distance[neighbor_r] -= current_comp / maxComp
+				} else if current_comp < 0 && enableNegativeCompression {
+					r_distance[neighbor_r] += current_comp / minComp
 				}
 				queue = append(queue, neighbor_r)
 			}

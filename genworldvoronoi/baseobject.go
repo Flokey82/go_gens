@@ -9,14 +9,14 @@ import (
 )
 
 type BaseObject struct {
-	r_xyz            []float64 // Point / region xyz coordinates
-	r_elevation      []float64 // Point / region elevation
-	r_moisture       []float64 // Point / region moisture
-	r_rainfall       []float64 // Point / region rainfall
-	r_flux           []float64 // Point / region hydrology: throughflow of rainfall
-	r_pool           []float64
+	r_xyz            []float64    // Point / region xyz coordinates
 	r_latLon         [][2]float64 // Point / region latitude and longitude
-	r_downhill       []int        // Point / region mapping to its lowest neighbor
+	r_elevation      []float64    // Point / region elevation
+	r_moisture       []float64    // Point / region moisture
+	r_rainfall       []float64    // Point / region rainfall
+	r_flux           []float64    // Point / region hydrology: throughflow of rainfall
+	r_pool           []float64
+	r_downhill       []int // Point / region mapping to its lowest neighbor
 	r_drainage       []int
 	r_waterbodies    []int
 	r_waterbody_size map[int]int
@@ -93,6 +93,10 @@ func (m *BaseObject) assignTriangleValues() {
 // NOTE: This is based on mewo2's terrain generation code
 // See: https://github.com/mewo2/terrain
 func (m *BaseObject) assignDownhill(usePool bool) {
+	m.r_downhill = m.getDownhill(usePool)
+}
+
+func (m *BaseObject) getDownhill(usePool bool) []int {
 	// Here we will map each region to the lowest neighbor.
 	r_downhill := make([]int, m.mesh.numRegions)
 	for r := range r_downhill {
@@ -114,7 +118,18 @@ func (m *BaseObject) assignDownhill(usePool bool) {
 		}
 		r_downhill[r] = lowest_r
 	}
-	m.r_downhill = r_downhill
+	return r_downhill
+}
+
+func (m *BaseObject) getSinks(skipSinksBelowSea, usePool bool) []int {
+	// Identify sinks above sea level.
+	var r_sinks []int
+	for r, lowest_r := range m.getDownhill(usePool) {
+		if lowest_r == -1 && (!skipSinksBelowSea || m.r_elevation[r] >= 0) { // && m.r_drainage[r] < 0
+			r_sinks = append(r_sinks, r)
+		}
+	}
+	return r_sinks
 }
 
 func (m *BaseObject) resetRand() {
@@ -123,6 +138,20 @@ func (m *BaseObject) resetRand() {
 
 func (m *BaseObject) rNeighbors(r int) []int {
 	return m.mesh.r_circulate_r(nil, r)
+}
+
+func (m *BaseObject) getLowestNeighbor(r int) int {
+	lowest_r := -1
+	lowest_elevation := 999.0
+	rElev := m.r_elevation[r]
+	for _, neighbor_r := range m.rNeighbors(r) {
+		elev := m.r_elevation[neighbor_r]
+		if elev < lowest_elevation && elev < rElev {
+			lowest_elevation = elev
+			lowest_r = neighbor_r
+		}
+	}
+	return lowest_r
 }
 
 func (m *BaseObject) interpolate(rr []int) (*interpolated, error) {
