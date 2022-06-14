@@ -107,8 +107,8 @@ func addSouthPoleToMesh(southPoleId int, d *delaunay.Triangulation) *delaunay.Tr
 
 	newTriangles := make([]int, numSides+3*numUnpairedSides)
 	newHalfedges := make([]int, numSides+3*numUnpairedSides)
-	copy(newTriangles, triangles) //newTriangles.set(triangles)
-	copy(newHalfedges, halfedges) //newHalfedges.set(halfedges)
+	copy(newTriangles, triangles)
+	copy(newHalfedges, halfedges)
 
 	for i, s := 0, firstUnpairedSide; i < numUnpairedSides; i++ {
 		log.Println(i)

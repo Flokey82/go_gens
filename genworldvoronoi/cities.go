@@ -5,6 +5,7 @@ import (
 	"log"
 )
 
+// rCityScore calculates the fitness value for settlements for all regions.
 func (m *Map) rCityScore() []float64 {
 	cities := m.cities_r
 	_, maxFlux := minMax(m.r_flux)
@@ -51,11 +52,11 @@ func (m *Map) rCityScore() []float64 {
 	return score
 }
 
+// rPlaceCity places another city at the region with the highest fitness score.
 func (m *Map) rPlaceCity() {
-	score := m.rCityScore()
 	var newcity int
 	lastMax := -999999.0
-	for i, val := range score {
+	for i, val := range m.rCityScore() {
 		if val > lastMax {
 			newcity = i
 			lastMax = val
@@ -64,6 +65,7 @@ func (m *Map) rPlaceCity() {
 	m.cities_r = append(m.cities_r, newcity)
 }
 
+// rPlaceNCities places n cities with the highest fitness scores.
 func (m *Map) rPlaceNCities(n int) {
 	for i := 0; i < n; i++ {
 		log.Println("placint city", i)

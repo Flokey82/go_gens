@@ -4,21 +4,30 @@ import (
 	"container/heap"
 	"log"
 	"sort"
+	"time"
 )
 
 func (m *BaseObject) getRivers(limit float64) [][]int {
+	links := m.getRiverSegments(limit)
+	log.Println("start merge")
+	start := time.Now()
+	defer func() {
+		log.Println("Done river segments in ", time.Since(start).String())
+	}()
+	return mergeIndexSegments(links)
+}
+
+func (m *BaseObject) getRiverSegments(limit float64) [][2]int {
 	dh := m.r_downhill
 	flux := m.r_flux
 	var links [][2]int
 	for r := 0; r < m.mesh.numRegions; r++ {
-		if flux[r] > m.r_rainfall[r] && m.r_elevation[r] > 0 && dh[r] >= 0 && flux[dh[r]] > m.r_rainfall[dh[r]] {
-			up := r
-			down := dh[r]
-			links = append(links, [2]int{up, down})
+		if flux[r] > m.r_rainfall[r] && m.r_elevation[r] >= 0 && dh[r] >= 0 && flux[dh[r]] > m.r_rainfall[dh[r]] {
+			// up := r, down := dh[r]
+			links = append(links, [2]int{r, dh[r]})
 		}
 	}
-	log.Println("start merge")
-	return mergeIndexSegments(links)
+	return links
 }
 
 func (m *BaseObject) getWaterBodies() []int {
@@ -77,9 +86,8 @@ func (m *Map) getRivers2(limit float64) [][]int {
 	var links [][2]int
 	for r := 0; r < m.mesh.numRegions; r++ {
 		if flux[r]/maxFlux > limit && m.r_elevation[r] > 0 && dh[r] >= 0 && flux[dh[r]]/maxFlux > limit {
-			up := r
-			down := dh[r]
-			links = append(links, [2]int{up, down})
+			// up := r, down := dh[r]
+			links = append(links, [2]int{r, dh[r]})
 		}
 	}
 	log.Println("start merge")
@@ -106,14 +114,16 @@ func mergeIndexSegments(segs [][2]int) [][]int {
 	adj := make(map[int][]int)
 	for i := 0; i < len(segs); i++ {
 		seg := segs[i]
-		a0 := adj[seg[0]]
-		a1 := adj[seg[1]]
-		a0 = append(a0, seg[1])
-		a1 = append(a1, seg[0])
-		adj[seg[0]] = a0
-		adj[seg[1]] = a1
+		adj[seg[0]] = append(adj[seg[0]], seg[1])
+		adj[seg[1]] = append(adj[seg[1]], seg[0])
 	}
-	done := make(map[int]bool)
+	var maxSegIdx int
+	for s := range adj {
+		if s > maxSegIdx {
+			maxSegIdx = s
+		}
+	}
+	done := make([]bool, maxSegIdx)
 	var paths [][]int
 	var path []int
 	log.Println("start paths")
@@ -136,20 +146,52 @@ func mergeIndexSegments(segs [][2]int) [][]int {
 			if done[i] {
 				continue
 			}
-			if len(adj[path[0]]) == 2 && segs[i][0] == path[0] {
-				path = unshiftIndexPath(path, segs[i][1])
-			} else if len(adj[path[0]]) == 2 && segs[i][1] == path[0] {
-				path = unshiftIndexPath(path, segs[i][0])
-			} else if len(adj[path[len(path)-1]]) == 2 && segs[i][0] == path[len(path)-1] {
-				path = append(path, segs[i][1])
-			} else if len(adj[path[len(path)-1]]) == 2 && segs[i][1] == path[len(path)-1] {
-				path = append(path, segs[i][0])
-			} else {
-				continue
+
+			/*
+				// Original code.
+				if len(adj[path[0]]) == 2 && segs[i][0] == path[0] {
+					path = unshiftIndexPath(path, segs[i][1])
+				} else if len(adj[path[0]]) == 2 && segs[i][1] == path[0] {
+					path = unshiftIndexPath(path, segs[i][0])
+				} else if len(adj[path[len(path)-1]]) == 2 && segs[i][0] == path[len(path)-1] {
+					path = append(path, segs[i][1])
+				} else if len(adj[path[len(path)-1]]) == 2 && segs[i][1] == path[len(path)-1] {
+					path = append(path, segs[i][0])
+				} else {
+					continue
+				}
+				done[i] = true
+				changed = true
+				break
+			*/
+			if len(adj[path[0]]) == 2 {
+				if segs[i][0] == path[0] {
+					path = unshiftIndexPath(path, segs[i][1])
+					done[i] = true
+					changed = true
+					break
+				}
+				if segs[i][1] == path[0] {
+					path = unshiftIndexPath(path, segs[i][0])
+					done[i] = true
+					changed = true
+					break
+				}
 			}
-			done[i] = true
-			changed = true
-			break
+			if len(adj[path[len(path)-1]]) == 2 {
+				if segs[i][0] == path[len(path)-1] {
+					path = append(path, segs[i][1])
+					done[i] = true
+					changed = true
+					break
+				}
+				if segs[i][1] == path[len(path)-1] {
+					path = append(path, segs[i][0])
+					done[i] = true
+					changed = true
+					break
+				}
+			}
 		}
 		if !changed {
 			//log.Println("done paths", len(paths), "pathlen", len(path))
@@ -161,7 +203,10 @@ func mergeIndexSegments(segs [][2]int) [][]int {
 }
 
 func unshiftIndexPath(path []int, p int) []int {
-	return append([]int{p}, path...)
+	res := make([]int, len(path)+1)
+	res[0] = p
+	copy(res[1:], path)
+	return res
 }
 
 const (
@@ -169,10 +214,201 @@ const (
 	FloodVariant2 = 1
 )
 
-// assignDownhill will populate r_downhill with a mapping of region to lowest neighbor region.
-// NOTE: This is based on mewo2's terrain generation code
-// See: https://github.com/mewo2/terrain
-func (m *Map) assignDownhill() {
+func (m *Map) fillSinks() []float64 {
+	var sea_r []int
+	sort_r := make([]int, m.mesh.numRegions)
+	is_sea := make([]bool, m.mesh.numRegions)
+	for r, h := range m.r_elevation {
+		if h < 0 {
+			sea_r = append(sea_r, r)
+			is_sea[r] = true
+		}
+		sort_r[r] = r
+	}
+	epsilon := 1e-13
+	log.Println("fill sink epsilon is too big!")
+	r_distance_c := m.assignDistanceField(sea_r, make(map[int]bool))
+	sort.Slice(sort_r, func(i, j int) bool {
+		if r_distance_c[sort_r[i]] == r_distance_c[sort_r[j]] {
+			return m.r_elevation[sort_r[i]] < m.r_elevation[sort_r[j]]
+		}
+		return r_distance_c[sort_r[i]] < r_distance_c[sort_r[j]]
+	})
+
+	for {
+		var changed bool
+		r_sinks := m.BaseObject.getSinks(true, false)
+		log.Println("sinks ", len(r_sinks))
+		sort.Slice(r_sinks, func(i, j int) bool {
+			return r_distance_c[r_sinks[i]] < r_distance_c[r_sinks[j]]
+		})
+		for _, r := range r_sinks {
+			if m.r_flux[r] == 0 || is_sea[r] {
+				continue
+			}
+			closest := r_distance_c[r]
+			rn := -1
+			for _, nb := range m.rNeighbors(r) {
+				if closest > r_distance_c[nb] {
+					closest = r_distance_c[nb]
+					rn = nb
+				}
+			}
+			if rn >= 0 {
+				if m.r_elevation[rn] > m.r_elevation[r] {
+					delta := m.r_elevation[rn] - m.r_elevation[r]
+					m.r_elevation[r] += epsilon
+					m.r_elevation[rn] -= delta
+					changed = true
+				} else if m.r_elevation[rn] == m.r_elevation[r] {
+					m.r_elevation[rn] -= epsilon
+					changed = true
+				}
+			}
+		}
+		if !changed {
+			break
+		}
+	}
+	for false {
+		var changed bool
+		for _, r := range sort_r {
+			if is_sea[r] {
+				continue
+			}
+
+			for _, nb := range m.rNeighbors(r) {
+				if r_distance_c[r] < r_distance_c[nb] {
+					if m.r_elevation[r] > m.r_elevation[nb] {
+						delta := m.r_elevation[r] - m.r_elevation[nb]
+						m.r_elevation[nb] += epsilon // delta / 2
+						m.r_elevation[r] -= delta    // (delta / 2) + epsilon
+						changed = true
+					} else if m.r_elevation[nb] == m.r_elevation[r] {
+						m.r_elevation[r] -= epsilon
+						changed = true
+					}
+				} else if r_distance_c[r] > r_distance_c[nb] {
+					if m.r_elevation[nb] > m.r_elevation[r] {
+						delta := m.r_elevation[nb] - m.r_elevation[r]
+						m.r_elevation[r] += epsilon // delta / 2
+						m.r_elevation[nb] -= delta  // (delta / 2) + epsilon
+						changed = true
+					} else if m.r_elevation[nb] == m.r_elevation[r] {
+						m.r_elevation[nb] -= epsilon
+						changed = true
+					}
+				}
+			}
+		}
+		if !changed {
+			break
+		}
+	}
+	for false {
+		var changed bool
+		r_sinks := m.BaseObject.getSinks(true, false)
+		log.Println("sinks ", len(r_sinks))
+		sort.Slice(r_sinks, func(i, j int) bool {
+			return r_distance_c[r_sinks[i]] < r_distance_c[r_sinks[j]]
+		})
+		for _, r := range r_sinks {
+			if m.r_flux[r] == 0 {
+				continue
+			}
+			for _, nb := range m.rNeighbors(r) {
+				if r_distance_c[r] > r_distance_c[nb] {
+					if m.r_elevation[nb] > m.r_elevation[r] {
+						delta := m.r_elevation[nb] - m.r_elevation[r]
+						m.r_elevation[r] += (delta / 2) //+ epsilon
+						m.r_elevation[nb] -= (delta / 2) + epsilon
+						changed = true
+					} else if m.r_elevation[nb] == m.r_elevation[r] {
+						m.r_elevation[nb] -= epsilon
+						changed = true
+					}
+				}
+			}
+			/*
+				closest := r_distance_c[r]
+				rn := -1
+				for _, nb := range m.rNeighbors(r) {
+					if closest > r_distance_c[nb] {
+						closest = r_distance_c[nb]
+						rn = nb
+					}
+				}
+				if rn >= 0 {
+					if m.r_elevation[rn] > m.r_elevation[r] {
+						delta := m.r_elevation[rn] - m.r_elevation[r]
+						m.r_elevation[r] += (delta / 2) //+ epsilon
+						m.r_elevation[rn] -= (delta / 2) + epsilon
+						changed = true
+					} else if m.r_elevation[rn] == m.r_elevation[r] {
+						m.r_elevation[rn] -= epsilon
+						changed = true
+					}
+				}*/
+		}
+		if !changed {
+			return m.r_elevation
+		}
+	}
+	return m.r_elevation
+}
+
+// assignHydrology will calculate river systems and fill sinks instead of trying to generate
+// water pools.
+func (m *Map) assignHydrology() {
+	maxAttempts := 5
+	erosionAmount := 0.00001
+
+	// Try to flood all sinks.
+	var attempts int
+	m.BaseObject.assignDownhill(true)
+	m.assignFlux(false)
+	for {
+		// Abort if we have no more sinks or ran out of attempts.
+		if attempts > maxAttempts {
+			m.r_elevation = m.fillSinks()
+			// Regenerate downhill.
+			m.BaseObject.assignDownhill(true)
+
+			// Regenerate flux.
+			m.assignFlux(true)
+
+			// TODO: Diffuse flux and pool.
+			m.assignRainfallBasic()
+			// TODO: Fill remaining sinks and re-generate downhill and flux.
+			break
+		}
+		attempts++
+		// Reset drains.
+		for i := range m.r_drainage {
+			m.r_drainage[i] = -1
+		}
+
+		// Reset pools.
+		for i := range m.r_pool {
+			m.r_pool[i] = 0
+		}
+		m.r_elevation = m.fillSinks()
+
+		// TODO: Diffuse flux and pool.
+		m.assignRainfallBasic()
+
+		// Regenerate downhill.
+		m.BaseObject.assignDownhill(true)
+
+		// Regenerate flux.
+		m.assignFlux(false)
+		// Erode a little.
+		m.r_elevation = m.rErode(erosionAmount) // NOTE: Flux would change as downhill values would change.
+	}
+}
+
+// assignHydrologyWithFlooding will calculate river systems and water pools.
+func (m *Map) assignHydrologyWithFlooding() {
 	maxAttempts := 20
 	floodVariant := FloodVariant2
 	skipSinksBelowSea := true
@@ -187,18 +423,27 @@ func (m *Map) assignDownhill() {
 	for {
 		// Identify sinks above sea level.
 		r_sinks := m.BaseObject.getSinks(skipSinksBelowSea, true)
-		m.BaseObject.assignDownhill(true)
-
-		// Regenerate flux.
-		m.assignFlux()
 
 		// Abort if we have no more sinks or ran out of attempts.
 		if len(r_sinks) == 0 || attempts > maxAttempts {
+			m.r_elevation = m.fillSinks()
+			// Regenerate downhill.
+			m.BaseObject.assignDownhill(true)
+
+			// Regenerate flux.
+			m.assignFlux(true)
+
+			// TODO: Diffuse flux and pool.
+			m.assignRainfall(4, moistTransferDirect2)
+
 			log.Println("ran out of attempts", len(r_sinks))
 			// TODO: Fill remaining sinks and re-generate downhill and flux.
 			break
 		}
 		attempts++
+
+		// Now that we want to calculate the max. flux that accumulates in sinks,
+		// we will have to disregard any drainage and waterpools.
 
 		// Reset drains.
 		for i := range m.r_drainage {
@@ -212,22 +457,23 @@ func (m *Map) assignDownhill() {
 
 		// Erode a little.
 		// m.r_elevation = m.rErode(0.001) // NOTE: Flux would change as downhill values would change.
+
+		// Regenerate downhill and do not skip below sea level.
 		m.BaseObject.assignDownhill(false)
 
 		// Regenerate flux.
-		m.assignFlux()
+		m.assignFlux(true)
 
 		// Identify sinks above sea level.
 		r_sinks = m.BaseObject.getSinks(false, false)
 
-		// start from lowest sink.
+		// Start from lowest sink.
 		sort.Slice(r_sinks, func(i, j int) bool {
 			return m.r_elevation[r_sinks[i]] < m.r_elevation[r_sinks[j]]
 		})
 
 		// Flood sink up to lowest neighbor + epsilon.
 		for _, r := range r_sinks {
-			log.Println(m.r_elevation[r])
 			//if m.r_flux[r] < m.r_rainfall[r] {
 			//	continue
 			//}
@@ -240,7 +486,7 @@ func (m *Map) assignDownhill() {
 		}
 
 		// TODO: Diffuse flux and pool.
-		m.assignRainfall(1)
+		m.assignRainfall(1, moistTransferDirect2)
 	}
 
 	// TODO: Triangle downhill.
@@ -256,21 +502,23 @@ func (m *Map) assignDownhill() {
 }
 
 const (
-	FluxVolVariantBasic = 0
-	FluxVolVariantWalk1 = 1
-	FluxVolVariantWalk2 = 2
+	FluxVolVariantBasic           = 0
+	FluxVolVariantBasicWithDrains = 1
+	FluxVolVariantWalk1           = 2
+	FluxVolVariantWalk2           = 3
 )
 
 // assignFlux will populate r_flux by summing up the rainfall for each region from highest to
 // lowest using r_downhill to reconstruct the downhill path that water would follow.
 // NOTE: This is based on mewo2's terrain generation code
 // See: https://github.com/mewo2/terrain
-func (m *Map) assignFlux() {
-	// Determines if we discard all regions with an elevation < 0.
-	skipBelowSea := true
+func (m *Map) assignFlux(skipBelowSea bool) {
+	m.r_flux = m.getFlux(skipBelowSea)
+}
 
+func (m *Map) getFlux(skipBelowSea bool) []float64 {
 	// Determines which flux calculation algorithm we use.
-	variant := FluxVolVariantWalk2
+	variant := FluxVolVariantBasic
 
 	// Initialize flux values with r_rainfall.
 	r_flux := make([]float64, m.mesh.numRegions)
@@ -280,10 +528,24 @@ func (m *Map) assignFlux() {
 		}
 	}
 
-	// TODO  && m.r_drainage[i] != i!!!!!
-
 	switch variant {
 	case FluxVolVariantBasic:
+		idxs := make([]int, len(r_flux))
+		for i := range r_flux {
+			idxs[i] = i
+		}
+		sort.Slice(idxs, func(a, b int) bool {
+			return m.r_elevation[idxs[b]]-m.r_elevation[idxs[a]] < 0
+		})
+
+		for _, j := range idxs {
+			// Do not copy flux if we are below sea level.
+			if (m.r_elevation[j] < 0 && skipBelowSea) || m.r_downhill[j] < 0 {
+				continue
+			}
+			r_flux[m.r_downhill[j]] += r_flux[j]
+		}
+	case FluxVolVariantBasicWithDrains:
 		// Basic variant copying the flux to the downhill neighbor or the drainage.
 		// Initialize map for identifying drains and populate initial state of sorted index.
 		drains := make(map[int]bool)
@@ -320,21 +582,13 @@ func (m *Map) assignFlux() {
 		}
 	case FluxVolVariantWalk1:
 		r_flux_tmp := make([]float64, m.mesh.numRegions)
-		for j := 0; j < m.mesh.numRegions; j++ {
+		for j, fl := range r_flux {
 			seen := make(map[int]bool)
-			fl := r_flux[j]
 			drain := m.r_drainage[j]
 			for drain != -1 {
 				if m.r_elevation[drain] < 0 && skipBelowSea {
 					break
 				}
-				//if seen[drain] {
-				//log.Println(m.r_drainage)
-				//	log.Println(drain)
-				//	log.Println(seen)
-				//panic("double")
-				//	continue
-				//}
 				r_flux_tmp[drain] += fl
 				if m.r_drainage[drain] >= 0 && !seen[drain] {
 					drain = m.r_drainage[drain]
@@ -353,8 +607,7 @@ func (m *Map) assignFlux() {
 		}
 	case FluxVolVariantWalk2:
 		r_flux_tmp := make([]float64, m.mesh.numRegions)
-		for j := 0; j < m.mesh.numRegions; j++ {
-			fl := r_flux[j]
+		for j, fl := range r_flux {
 			seen := make(map[int]bool)
 			r := j
 			var chain []int
@@ -382,7 +635,7 @@ func (m *Map) assignFlux() {
 			r_flux[r] += fl
 		}
 	}
-	m.r_flux = r_flux
+	return r_flux
 }
 
 func (m *Map) floodV1(r int, dVol float64) {
@@ -464,7 +717,7 @@ func (m *Map) floodV1(r int, dVol float64) {
 				}
 			}
 			// Remove Sediment
-			//d.sediment *= 0.1
+			// d.sediment *= 0.1
 			log.Println(r, "found drain!")
 			break
 		}
@@ -653,7 +906,7 @@ func (m *Map) floodV2(r int, dVol float64) bool {
 		}
 		// Water-Level to Plane-Height
 		for _, s := range floodset {
-			//  volume += ((plane > h[ind])?(h[ind] + p[ind] - plane):p[ind])/volumeFactor;
+			// volume += ((plane > h[ind])?(h[ind] + p[ind] - plane):p[ind])/volumeFactor;
 			if plane > m.r_elevation[s] {
 				m.r_pool[s] = plane - m.r_elevation[s]
 				if s != drainedFrom {
@@ -666,7 +919,7 @@ func (m *Map) floodV2(r int, dVol float64) bool {
 		}
 
 		for bfirst := range boundary {
-			//  volume += ((plane > h[ind])?(h[ind] + p[ind] - plane):p[ind])/volumeFactor;
+			// volume += ((plane > h[ind])?(h[ind] + p[ind] - plane):p[ind])/volumeFactor;
 			if plane > m.r_elevation[bfirst] {
 				m.r_pool[bfirst] = plane - m.r_elevation[bfirst]
 				if bfirst != drainedFrom {

@@ -4,8 +4,10 @@
 package genworldvoronoi
 
 import (
+	"log"
 	"math"
 	"math/rand"
+	"time"
 
 	"github.com/Flokey82/go_gens/vectors"
 	opensimplex "github.com/ojrac/opensimplex-go"
@@ -14,22 +16,23 @@ import (
 // ugh globals, sorry
 type Map struct {
 	BaseObject
-	t_flow         []float64      // Triangle flow intensity (rainfall)
-	t_downflow_s   []int          // Triangle mapping to side through which water flows downhill.
-	order_t        []int          // Triangles in uphill order of elevation.
-	s_flow         []float64      // Flow intensity through sides
-	r_windvec      []Vertex       // Point / region wind vector
-	r_plate        []int          // Point / region to plate mapping
-	r_territory    []int          // Point / region mapping to territory (political)
-	PlateVectors   []vectors.Vec3 // Plate tectonics / movement vectors
-	PlateIsOcean   map[int]bool   // Plate was chosen to be an ocean plate
-	plate_r        []int          // Plate seed points / regions
-	cities_r       []int          // City seed points / regions
-	NumPlates      int            // Number of generated plates
-	NumPoints      int            // Number of generated points / regions
-	NumCities      int            // Number of generated cities (regions)
-	NumTerritories int            // Number of generated territories
-	QuadGeom       *QuadGeometry  // Quad geometry generated from the mesh (?)
+	t_flow          []float64      // Triangle flow intensity (rainfall)
+	t_downflow_s    []int          // Triangle mapping to side through which water flows downhill.
+	order_t         []int          // Triangles in uphill order of elevation.
+	s_flow          []float64      // Flow intensity through sides
+	r_windvec       []Vertex       // Point / region wind vector
+	r_windvec_local []Vertex       // Point / region wind vector (local)
+	r_plate         []int          // Point / region to plate mapping
+	r_territory     []int          // Point / region mapping to territory (political)
+	PlateVectors    []vectors.Vec3 // Plate tectonics / movement vectors
+	PlateIsOcean    map[int]bool   // Plate was chosen to be an ocean plate
+	plate_r         []int          // Plate seed points / regions
+	cities_r        []int          // City seed points / regions
+	NumPlates       int            // Number of generated plates
+	NumPoints       int            // Number of generated points / regions
+	NumCities       int            // Number of generated cities (regions)
+	NumTerritories  int            // Number of generated territories
+	QuadGeom        *QuadGeometry  // Quad geometry generated from the mesh (?)
 }
 
 func NewMap(seed int64, numPlates, numPoints int, jitter float64) (*Map, error) {
@@ -62,16 +65,17 @@ func NewMap(seed int64, numPlates, numPoints int, jitter float64) (*Map, error) 
 			noise:            opensimplex.New(seed),
 			mesh:             result.mesh,
 		},
-		t_downflow_s:   make([]int, mesh.numTriangles),
-		order_t:        make([]int, mesh.numTriangles),
-		t_flow:         make([]float64, mesh.numTriangles),
-		s_flow:         make([]float64, mesh.numSides),
-		r_windvec:      make([]Vertex, mesh.numRegions),
-		NumPlates:      numPlates,
-		NumPoints:      numPoints,
-		NumTerritories: 10,
-		NumCities:      50,
-		QuadGeom:       NewQuadGeometry(),
+		t_downflow_s:    make([]int, mesh.numTriangles),
+		order_t:         make([]int, mesh.numTriangles),
+		t_flow:          make([]float64, mesh.numTriangles),
+		s_flow:          make([]float64, mesh.numSides),
+		r_windvec:       make([]Vertex, mesh.numRegions),
+		r_windvec_local: make([]Vertex, mesh.numRegions),
+		NumPlates:       numPlates,
+		NumPoints:       numPoints,
+		NumTerritories:  10,
+		NumCities:       50,
+		QuadGeom:        NewQuadGeometry(),
 	}
 	m.QuadGeom.setMesh(mesh)
 	m.generateTriangleCenters()
@@ -81,35 +85,56 @@ func NewMap(seed int64, numPlates, numPoints int, jitter float64) (*Map, error) 
 
 func (m *Map) generateMap() {
 	// Plates.
+	start := time.Now()
 	m.generatePlates()
 	m.assignOceanPlates()
+	log.Println("Done plates in ", time.Since(start).String())
 
 	// Elevation.
+	start = time.Now()
 	m.assignRegionElevation()
+	log.Println("Done elevation in ", time.Since(start).String())
+
+	start = time.Now()
+	m.identifyLandmasses()
+	log.Println("Done identify landmasses in ", time.Since(start).String())
 
 	// River / moisture.
+	start = time.Now()
 	// m.assignRegionMoisture()
-	m.assignRainfall(10)
+	m.assignRainfallBasic()
+	// m.assignRainfall(10, moistTransferDirect2)
 	// m.assignFlux()
+	log.Println("Done rainfall in ", time.Since(start).String())
 
 	// Hydrology (based on regions) - EXPERIMENTAL
-	m.assignDownhill()
-	m.assignFlux()
-	//m.makeItRain()
+	start = time.Now()
+	//m.assignHydrologyWithFlooding()
+	m.assignHydrology()
 	// m.getRivers(9000.1)
 	// m.r_elevation = m.rErode(0.05)
+	log.Println("Done hydrology in ", time.Since(start).String())
 
 	// Place cities and territories in regions.
+	start = time.Now()
 	m.rPlaceNCities(m.NumCities)
+	log.Println("Done cities in ", time.Since(start).String())
+
+	start = time.Now()
 	m.rPlaceNTerritories(m.NumTerritories)
+	log.Println("Done territories in ", time.Since(start).String())
 
 	// Hydrology (based on triangles)
+	start = time.Now()
 	m.assignTriangleValues()
+	log.Println("Done triangles in ", time.Since(start).String())
 	// m.assignDownflow()
 	// m.assignFlow()
 
 	// Quad geometry updete.
+	start = time.Now()
 	m.QuadGeom.setMap(m.mesh, m)
+	log.Println("Done quadgeom in ", time.Since(start).String())
 }
 
 // Plates
@@ -170,7 +195,7 @@ func (m *Map) assignDistanceField(seeds_r []int, stop_r map[int]bool) []float64 
 	return r_distance
 }
 
-func (m *Map) assignDistanceField2(seeds_r []int, stop_r map[int]bool, compression map[int]float64) []float64 {
+func (m *Map) assignDistanceFieldWithIntensity(seeds_r []int, stop_r map[int]bool, compression map[int]float64) []float64 {
 	enableNegativeCompression := true
 	enablePositiveCompression := true
 

@@ -222,9 +222,9 @@ func (m *Map) assignRegionElevation() {
 
 	var r_distance_a, r_distance_b, r_distance_c []float64
 	if useDistanceFieldWithCompression {
-		r_distance_a = m.assignDistanceField2(mountain_r, convToMap(ocean_r), compression_r)
-		r_distance_b = m.assignDistanceField2(ocean_r, convToMap(coastline_r), compression_r)
-		r_distance_c = m.assignDistanceField2(coastline_r, stop_r, compression_r)
+		r_distance_a = m.assignDistanceFieldWithIntensity(mountain_r, convToMap(ocean_r), compression_r)
+		r_distance_b = m.assignDistanceFieldWithIntensity(ocean_r, convToMap(coastline_r), compression_r)
+		r_distance_c = m.assignDistanceFieldWithIntensity(coastline_r, stop_r, compression_r)
 	} else {
 		r_distance_a = m.assignDistanceField(mountain_r, convToMap(ocean_r))
 		r_distance_b = m.assignDistanceField(ocean_r, convToMap(coastline_r))
@@ -249,7 +249,7 @@ func (m *Map) assignRegionElevation() {
 			m.r_elevation[r] = -0.1
 		}
 		if r_distance_a[r] == -1 && r_distance_b[r] == -1 { // if a == Infinity && b == Infinity {
-			m.r_elevation[r] = 0.1
+			m.r_elevation[r] += 0.1
 		} else {
 			f := (1/a - 1/b) / (1/a + 1/b + 1/c)
 			m.r_elevation[r] += f

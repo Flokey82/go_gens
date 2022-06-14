@@ -101,17 +101,16 @@ func (m *BaseObject) getDownhill(usePool bool) []int {
 	r_downhill := make([]int, m.mesh.numRegions)
 	for r := range r_downhill {
 		lowest_r := -1
-		lowest_elevation := 999.0
-		rElev := m.r_elevation[r]
+		lowest_elevation := m.r_elevation[r]
 		if usePool {
-			rElev += m.r_pool[r]
+			lowest_elevation += m.r_pool[r]
 		}
 		for _, neighbor_r := range m.rNeighbors(r) {
 			elev := m.r_elevation[neighbor_r]
 			if usePool {
 				elev += m.r_pool[neighbor_r]
 			}
-			if elev < lowest_elevation && elev < rElev {
+			if elev < lowest_elevation {
 				lowest_elevation = elev
 				lowest_r = neighbor_r
 			}

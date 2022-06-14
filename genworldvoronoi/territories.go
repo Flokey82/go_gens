@@ -2,9 +2,67 @@ package genworldvoronoi
 
 import (
 	"container/heap"
+	"container/list"
+	"log"
 	"math"
 	//"github.com/Flokey82/go_gens/vectors"
 )
+
+// identifyLandmasses returns a mapping from region to landmass ID.
+// A landmass is a connected number of regions above sealevel.
+func (m *Map) identifyLandmasses() []int {
+	// NOTE: this is still in need of refinement.
+	landMasses := make([]int, m.mesh.numRegions)
+	for r := range landMasses {
+		landMasses[r] = -1
+	}
+	var landID int
+	var landSizes []int
+	for r, h := range m.r_elevation {
+		// Skip if the current region has already been allocated
+		// or is below sealevel.
+		if landMasses[r] != -1 || h < 0 {
+			continue
+		}
+		var currentLandSize int
+		queue := list.New()
+		enqueue := func(r int) {
+			// Skip if the current region has already been allocated
+			// or is below sealevel.
+			if landMasses[r] != -1 || m.r_elevation[r] < 0 {
+				return
+			}
+			landMasses[r] = landID // Assign current landID to the region.
+			currentLandSize++      // Increase size of known landmass.
+			for _, nb := range m.rNeighbors(r) {
+				// Skip if the neighbor region has already been allocated
+				// or is below sealevel.
+				if landMasses[nb] != -1 || m.r_elevation[nb] < 0 {
+					continue
+				}
+				queue.PushBack(nb)
+			}
+		}
+		// Start queue with current region.
+		queue.PushBack(r)
+
+		// Process each queue entry until we run out of
+		// regions that belong to this landmass.
+		for queue.Len() > 0 {
+			e := queue.Front()
+			enqueue(e.Value.(int))
+			queue.Remove(e)
+		}
+
+		// Once done, append the current size to the list of landmass-
+		// sizes and increment the current landID.
+		landSizes = append(landSizes, currentLandSize)
+		landID++
+	}
+	log.Println("number of landmasses", landID)
+	log.Println(landSizes)
+	return landMasses
+}
 
 type queueEntry struct {
 	index int // The index of the item in the heap.
@@ -81,15 +139,14 @@ func (m *Map) rPlaceNTerritories(n int) {
 
 	for i := 0; i < n; i++ {
 		terr[m.cities_r[i]] = m.cities_r[i]
-		nbs := m.rNeighbors(m.cities_r[i])
-		for j := 0; j < len(nbs); j++ {
-			if m.r_elevation[nbs[j]] <= 0 {
+		for _, v := range m.rNeighbors(m.cities_r[i]) {
+			if m.r_elevation[v] <= 0 {
 				continue
 			}
 			heap.Push(&queue, &queueEntry{
-				score: weight(m.cities_r[i], nbs[j]),
+				score: weight(m.cities_r[i], v),
 				city:  m.cities_r[i],
-				vx:    nbs[j],
+				vx:    v,
 			})
 		}
 	}
@@ -99,10 +156,8 @@ func (m *Map) rPlaceNTerritories(n int) {
 			continue
 		}
 		terr[u.vx] = u.city
-		nbs := m.rNeighbors(u.vx)
-		for i := 0; i < len(nbs); i++ {
-			v := nbs[i]
-			if terr[v] != 0 {
+		for _, v := range m.rNeighbors(u.vx) {
+			if terr[v] != 0 || m.r_elevation[v] < 0 {
 				continue
 			}
 			newdist := weight(u.vx, v)
@@ -119,6 +174,7 @@ func (m *Map) rPlaceNTerritories(n int) {
 	m.r_territory = terr
 }
 
+// haversine returns the great arc distance between two lat/long pairs.
 func haversine(lat1, lon1, lat2, lon2 float64) float64 {
 	// distance between latitudes and longitudes
 	dLat := degToRad(lat2 - lat1)
@@ -128,7 +184,7 @@ func haversine(lat1, lon1, lat2, lon2 float64) float64 {
 	lat1 = degToRad(lat1)
 	lat2 = degToRad(lat2)
 
-	// apply formulae
+	// apply formula
 	a := math.Pow(math.Sin(dLat/2), 2) + math.Pow(math.Sin(dLon/2), 2)*math.Cos(lat1)*math.Cos(lat2)
 	c := 2 * math.Atan2(math.Sqrt(a), math.Sqrt(1-a))
 	return c
