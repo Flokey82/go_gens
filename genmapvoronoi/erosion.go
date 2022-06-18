@@ -16,7 +16,7 @@ func doErosion(h *vmesh.Heightmap, amount float64, n int) (eroded *vmesh.Heightm
 }
 
 func erode(h *vmesh.Heightmap, amount float64) *vmesh.Heightmap {
-	er := erosionRate(h)
+	er := erosionRate2(h)
 	newh := vmesh.NewHeightmap(h.Mesh)
 	_, maxr := er.MinMax()
 	for i := 0; i < h.Len(); i++ {

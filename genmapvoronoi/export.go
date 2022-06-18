@@ -46,6 +46,7 @@ func (r *Terrain) ExportSVG(path string) error {
 
 func svgVisualizeHeight(svg *svgo.SVG, r *Terrain, width, height int) {
 	h := r.h
+	h = erosionRate2(h)
 	//h = erosionRate3(r.bd,h)
 	//h = getFlux(h)
 	//h = calcWind(r.bd)
