@@ -23,7 +23,7 @@ func sizeFromZoom(zoom int) int {
 }
 
 func latLonToPixels(lat, lon float64, zoom int) (float64, float64) {
-	return mercator.LatLonToPixels(lat, lon, zoom)
+	return mercator.LatLonToPixels(-1*lat, lon, zoom)
 }
 
 type tileBB struct {
@@ -37,19 +37,6 @@ type tileBB struct {
 func (t *tileBB) ToLatLon() (lat1, lon1, lat2, lon2 float64) {
 	lat1, lon1 = mercator.PixelsToLatLon(t.x1, t.y1, t.zoom)
 	lat2, lon2 = mercator.PixelsToLatLon(t.x2, t.y2, t.zoom)
-	log.Println(lat1, lon1, lat2, lon2)
-	/*if lat1 < 0 {
-		lat1 += 180 // This sucks.
-	}
-	if lat2 < 0 {
-		lat2 += 180 // This sucks.
-	}
-	if lon1 < 0 {
-		lon1 += 360 // This sucks.
-	}
-	if lon2 < 0 {
-		lon2 += 360 // This sucks.
-	}*/
 	return
 }
 
@@ -72,23 +59,13 @@ func (m *BaseObject) getBB(lat1, lon1, lat2, lon2 float64) *QueryResult {
 	r := &QueryResult{}
 	// TODO: Add convenience function to check against bounding box.
 	for i, ll := range m.r_latLon {
-		l0 := ll[0]
-		if l0 < lat1 || l0 >= lat2 {
-			continue
-		}
-		l1 := ll[1]
-		if l1 < lon1 || l1 >= lon2 {
+		if l0, l1 := ll[0], ll[1]; l0 < lat1 || l0 >= lat2 || l1 < lon1 || l1 >= lon2 {
 			continue
 		}
 		r.r = append(r.r, i)
 	}
 	for i, ll := range m.t_latLon {
-		l0 := ll[0]
-		if l0 < lat1 || l0 >= lat2 {
-			continue
-		}
-		l1 := ll[1]
-		if l1 < lon1 || l1 >= lon2 {
+		if l0, l1 := ll[0], ll[1]; l0 < lat1 || l0 >= lat2 || l1 < lon1 || l1 >= lon2 {
 			continue
 		}
 		r.t = append(r.t, i)
@@ -126,11 +103,14 @@ func (m *Map) ExportSVG(path string) error {
 	drawSinks := false
 	drawPools := false
 	drawErosion := false
+	drawErosion2 := false
 	drawHumidity := false
+	drawWindOrder := false
 	drawRainfall := false
 	drawBorders := true
 	drawLakeBorders := true
 	drawBelow := false
+	drawContour := true
 
 	zoom := 3
 	filterPathDist := 20.0
@@ -206,17 +186,30 @@ func (m *Map) ExportSVG(path string) error {
 
 		svg.Path(svgGenD(path), fmt.Sprintf("fill: rgb(%d, %d, %d)", col.R, col.G, col.B)+tmpLine)
 	}
+	x, y := latLonToPixels(43.0, -80.0, zoom)
+	r := 4
+	svg.Circle(int(x), int(y), r, "fill: rgb(123, 255, 23)")
+	x, y = latLonToPixels(-43.0, 80.0, zoom)
+	svg.Circle(int(x), int(y), r, "fill: rgb(123, 255, 23)")
+	x, y = latLonToPixels(60.0, 0.0, zoom)
+	svg.Circle(int(x), int(y), r, "fill: rgb(123, 255, 223)")
+	x, y = latLonToPixels(30.0, 0.0, zoom)
+	svg.Circle(int(x), int(y), r, "fill: rgb(123, 255, 223)")
+	x, y = latLonToPixels(0.0, 0.0, zoom)
+	svg.Circle(int(x), int(y), r, "fill: rgb(123, 255, 223)")
+	x, y = latLonToPixels(-30.0, 0.0, zoom)
+	svg.Circle(int(x), int(y), r, "fill: rgb(0, 255, 223)")
+	x, y = latLonToPixels(-60.0, 0.0, zoom)
+	svg.Circle(int(x), int(y), r, "fill: rgb(0, 255, 223)")
 
 	if drawBorders {
 		for _, border := range m.getBorders() {
 			var path [][2]float64
 			for _, borderSeg := range border {
 				x, y := latLonToPixels(m.t_latLon[borderSeg][0], m.t_latLon[borderSeg][1], zoom)
-				if len(path) >= 1 {
-					if dist2(path[len(path)-1], [2]float64{x, y}) > filterPathDist {
-						svg.Path(svgGenD(path), "stroke=\"red\"", "fill=\"none\"", "stroke-width=\"0.5\"")
-						path = nil
-					}
+				if len(path) >= 1 && dist2(path[len(path)-1], [2]float64{x, y}) > filterPathDist {
+					svg.Path(svgGenD(path), "stroke=\"red\"", "fill=\"none\"", "stroke-width=\"0.5\"")
+					path = nil
 				}
 				path = append(path, [2]float64{x, y})
 			}
@@ -229,11 +222,9 @@ func (m *Map) ExportSVG(path string) error {
 			var path [][2]float64
 			for _, borderSeg := range border {
 				x, y := latLonToPixels(m.t_latLon[borderSeg][0], m.t_latLon[borderSeg][1], zoom)
-				if len(path) >= 1 {
-					if dist2(path[len(path)-1], [2]float64{x, y}) > filterPathDist {
-						svg.Path(svgGenD(path), "stroke=\"blue\"", "fill=\"blue\"", "fill-opacity=\"0.5\"", "stroke-width=\"0.5\"")
-						path = nil
-					}
+				if len(path) >= 1 && dist2(path[len(path)-1], [2]float64{x, y}) > filterPathDist {
+					svg.Path(svgGenD(path), "stroke=\"blue\"", "fill=\"blue\"", "fill-opacity=\"0.5\"", "stroke-width=\"0.5\"")
+					path = nil
 				}
 				path = append(path, [2]float64{x, y})
 			}
@@ -241,9 +232,24 @@ func (m *Map) ExportSVG(path string) error {
 		}
 	}
 
+	if drawContour {
+		for _, border := range m.contour() {
+			var path [][2]float64
+			for _, borderSeg := range border {
+				x, y := latLonToPixels(m.t_latLon[borderSeg][0], m.t_latLon[borderSeg][1], zoom)
+				if len(path) >= 1 && dist2(path[len(path)-1], [2]float64{x, y}) > filterPathDist {
+					svg.Path(svgGenD(path), "stroke=\"black\"", "fill=\"none\"", "stroke-width=\"0.5\"")
+					path = nil
+				}
+				path = append(path, [2]float64{x, y})
+			}
+			svg.Path(svgGenD(path), "stroke=\"black\"", "fill=\"none\"", "stroke-width=\"0.5\"")
+		}
+	}
+
 	// Rivers (based on regions)
 	if drawRiversA {
-		for _, riv := range m.getRivers(0.005) {
+		for _, riv := range m.getRivers(0.05) {
 			var path [][2]float64
 			for _, rivseg := range riv {
 				// Skip frozen regions
@@ -256,11 +262,9 @@ func (m *Map) ExportSVG(path string) error {
 					continue
 				}
 				x, y := latLonToPixels(m.r_latLon[rivseg][0], m.r_latLon[rivseg][1], zoom)
-				if len(path) >= 1 {
-					if dist2(path[len(path)-1], [2]float64{x, y}) > filterPathDist {
-						svg.Path(svgGenD(path), "stroke=\"blue\" fill=\"none\" stroke-width=\"0.5\"")
-						path = nil
-					}
+				if len(path) >= 1 && dist2(path[len(path)-1], [2]float64{x, y}) > filterPathDist {
+					svg.Path(svgGenD(path), "stroke=\"blue\" fill=\"none\" stroke-width=\"0.5\"")
+					path = nil
 				}
 				path = append(path, [2]float64{x, y})
 			}
@@ -297,6 +301,19 @@ func (m *Map) ExportSVG(path string) error {
 				svg.Circle(int(x), int(y), r, "fill: rgb(0, 255, 0)")
 
 			}
+		}
+	}
+	if drawWindOrder {
+		wind_sort, ord := m.getWindSortOrder()
+		minFlux, maxFlux := minMax(wind_sort)
+		for _, r := range ord {
+			rdh := wind_sort[r]
+			log.Println(rdh)
+			x, y := latLonToPixels(m.r_latLon[r][0], m.r_latLon[r][1], zoom)
+			r := 1
+			col := genGreen((rdh - minFlux) / (maxFlux - minFlux))
+			col = genGreen(rdh / maxFlux)
+			svg.Circle(int(x), int(y), r, fmt.Sprintf("fill: rgb(%d, %d, %d)", col.R, col.R, col.R))
 		}
 	}
 
@@ -341,6 +358,20 @@ func (m *Map) ExportSVG(path string) error {
 
 	if drawErosion {
 		er := m.rErosionRate()
+		minFlux, maxFlux := minMax(er)
+		for r, rdh := range m.r_flux {
+			if rdh > 0 {
+				x, y := latLonToPixels(m.r_latLon[r][0], m.r_latLon[r][1], zoom)
+				r := 1
+				col := genBlue((rdh - minFlux) / (maxFlux - minFlux))
+				svg.Circle(int(x), int(y), r, fmt.Sprintf("fill: rgb(%d, %d, %d)", col.R, col.G, col.G))
+
+			}
+		}
+	}
+
+	if drawErosion2 {
+		er := m.getRErosion2()
 		minFlux, maxFlux := minMax(er)
 		for r, rdh := range m.r_flux {
 			if rdh > 0 {

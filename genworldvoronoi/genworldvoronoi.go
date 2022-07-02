@@ -103,7 +103,7 @@ func (m *Map) generateMap() {
 	start = time.Now()
 	// m.assignRegionMoisture()
 	m.assignRainfallBasic()
-	// m.assignRainfall(10, moistTransferDirect2)
+	//m.assignRainfall(1, moistTransferIndirect, moistOrderWind)
 	// m.assignFlux()
 	log.Println("Done rainfall in ", time.Since(start).String())
 
@@ -148,6 +148,7 @@ func (m *Map) pickRandomRegions(mesh *TriangleMesh, n int) []int {
 	}
 	return convToArray(chosen_r)
 }
+
 func getCentroidOfTriangle(a, b, c []float64) vectors.Vec3 {
 	return vectors.Vec3{
 		X: (a[0] + b[0] + c[0]) / 3,
@@ -213,8 +214,7 @@ func (m *Map) assignDistanceFieldWithIntensity(seeds_r []int, stop_r map[int]boo
 		r_distance[r] = 0
 	}
 
-	maxComp := 0.0
-	minComp := 0.0
+	var maxComp, minComp float64
 	for _, comp := range compression {
 		if comp > maxComp {
 			maxComp = comp

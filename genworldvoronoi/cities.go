@@ -68,7 +68,7 @@ func (m *Map) rPlaceCity() {
 // rPlaceNCities places n cities with the highest fitness scores.
 func (m *Map) rPlaceNCities(n int) {
 	for i := 0; i < n; i++ {
-		log.Println("placint city", i)
+		log.Println("placing city", i)
 		m.rPlaceCity()
 	}
 }

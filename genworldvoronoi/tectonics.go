@@ -167,6 +167,8 @@ func (m *Map) findCollisions() ([]int, []int, []int, map[int]float64) {
 				// If both plates are non-ocean plates and they collide, mountains are formed.
 				if collided {
 					mountain_r = append(mountain_r, current_r)
+				} else {
+					// coastline_r = append(coastline_r, current_r)
 				}
 			} else {
 				// If the plates are of different types, a collision results in a mountain and

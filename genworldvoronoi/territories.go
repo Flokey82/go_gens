@@ -173,19 +173,3 @@ func (m *Map) rPlaceNTerritories(n int) {
 	}
 	m.r_territory = terr
 }
-
-// haversine returns the great arc distance between two lat/long pairs.
-func haversine(lat1, lon1, lat2, lon2 float64) float64 {
-	// distance between latitudes and longitudes
-	dLat := degToRad(lat2 - lat1)
-	dLon := degToRad(lon2 - lon1)
-
-	// convert to radians
-	lat1 = degToRad(lat1)
-	lat2 = degToRad(lat2)
-
-	// apply formula
-	a := math.Pow(math.Sin(dLat/2), 2) + math.Pow(math.Sin(dLon/2), 2)*math.Cos(lat1)*math.Cos(lat2)
-	c := 2 * math.Atan2(math.Sqrt(a), math.Sqrt(1-a))
-	return c
-}

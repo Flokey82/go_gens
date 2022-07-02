@@ -79,23 +79,23 @@ func GetRedblobBiomeColor(height, moisture int, intensity float64) color.NRGBA {
 }
 
 func RedblobClampHeightToIndex(height int) int {
-	if height <= 4 && height >= 1 {
-		return height - 1
-	}
 	if height < 1 {
 		return 0
 	}
-	return 3
+	if height > 4 {
+		return 3
+	}
+	return height - 1
 }
 
 func RedblobClampMoistureToIndex(moisture int) int {
-	if moisture <= 6 && moisture >= 1 {
-		return moisture - 1
-	}
 	if moisture < 1 {
 		return 0
 	}
-	return 5
+	if moisture > 6 {
+		return 5
+	}
+	return moisture - 1
 }
 
 // Whittaker biomes based on:

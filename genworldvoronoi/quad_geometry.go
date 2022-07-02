@@ -40,9 +40,8 @@ func (this *QuadGeometry) setMap(mesh *TriangleMesh, m *Map) {
     numRegions := mesh.numRegions
     for r := 0; r < numRegions; r++ {
         tm[p] = r_elevation[r]
-        p++
-        tm[p] = r_moisture[r]
-        p++
+        tm[p+1] = r_moisture[r]
+        p += 2
     }
 
     t_elevation := m.t_elevation
@@ -50,9 +49,8 @@ func (this *QuadGeometry) setMap(mesh *TriangleMesh, m *Map) {
     numTriangles := mesh.numTriangles
     for t := 0; t < numTriangles; t++ {
         tm[p] = t_elevation[t]
-        p++
-        tm[p] = t_moisture[t]
-        p++
+        tm[p+1] = t_moisture[t]
+        p += 2
     }
 
     i := 0
@@ -76,20 +74,16 @@ func (this *QuadGeometry) setMap(mesh *TriangleMesh, m *Map) {
         if coast || s_flow[s] > 0 || s_flow[opposite_s] > 0 {
             // It's a coastal or river edge, forming a valley
             I[i] = r1
-            i++
-            I[i] = numRegions + t2
-            i++
-            I[i] = numRegions + t1
-            i++
+            I[i+1] = numRegions + t2
+            I[i+2] = numRegions + t1
+            i += 3
             count_valley++
         } else {
             // It's a ridge
             I[i] = r1
-            i++
-            I[i] = r2
-            i++
-            I[i] = numRegions + t1
-            i++
+            I[i+1] = r2
+            I[i+2] = numRegions + t1
+            i += 3
             count_ridge++
         }
     }

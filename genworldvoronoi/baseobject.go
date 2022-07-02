@@ -1,6 +1,7 @@
 package genworldvoronoi
 
 import (
+	"log"
 	"math/rand"
 
 	opensimplex "github.com/ojrac/opensimplex-go"
@@ -63,14 +64,16 @@ func (m *BaseObject) assignTriangleValues() {
 	t_moisture := m.t_moisture
 	t_pool := m.t_pool
 	numTriangles := m.mesh.numTriangles
+
+	const tFraction = 1.0 / 3.0
 	for t := 0; t < numTriangles; t++ {
 		s0 := 3 * t
 		r1 := m.mesh.s_begin_r(s0)
 		r2 := m.mesh.s_begin_r(s0 + 1)
 		r3 := m.mesh.s_begin_r(s0 + 2)
-		t_pool[t] = (1.0 / 3.0) * (r_pool[r1] + r_pool[r2] + r_pool[r3])
-		t_elevation[t] = (1.0 / 3.0) * (r_elevation[r1] + r_elevation[r2] + r_elevation[r3])
-		t_moisture[t] = (1.0 / 3.0) * (r_moisture[r1] + r_moisture[r2] + r_moisture[r3])
+		t_pool[t] = tFraction * (r_pool[r1] + r_pool[r2] + r_pool[r3])
+		t_elevation[t] = tFraction * (r_elevation[r1] + r_elevation[r2] + r_elevation[r3])
+		t_moisture[t] = tFraction * (r_moisture[r1] + r_moisture[r2] + r_moisture[r3])
 	}
 
 	// This averages out rainfall to calculate moisture for triangles.
@@ -151,6 +154,38 @@ func (m *BaseObject) getLowestNeighbor(r int) int {
 		}
 	}
 	return lowest_r
+}
+
+func (m *BaseObject) testAreas() {
+	var tot float64
+	for i := 0; i < m.mesh.numRegions; i++ {
+		a := m.getRegionArea(i)
+		tot += a
+		log.Println(a)
+	}
+	log.Println(tot)
+}
+
+func (m *BaseObject) getRegionArea(r int) float64 {
+	rLatLon := m.r_latLon[r]
+	ts := m.mesh.r_circulate_t(nil, r)
+	dists := make([]float64, len(ts))
+	for i, t := range ts {
+		dLatLon := m.t_latLon[t]
+		dists[i] = haversine(rLatLon[0], rLatLon[1], dLatLon[0], dLatLon[1])
+	}
+	var area float64
+	for ti0, t0 := range ts {
+		ti1 := (ti0 + 1) % len(ts)
+		t1 := ts[ti1]
+		t0LatLon := m.t_latLon[t0]
+		t1LatLon := m.t_latLon[t1]
+		a := dists[ti0]
+		b := dists[ti1]
+		c := haversine(t0LatLon[0], t0LatLon[1], t1LatLon[0], t1LatLon[1])
+		area += heronsTriArea(a, b, c)
+	}
+	return area
 }
 
 func (m *BaseObject) interpolate(rr []int) (*interpolated, error) {

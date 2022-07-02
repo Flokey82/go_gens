@@ -9,6 +9,30 @@ import (
 // NOTE: This is based on mewo2's erosion code
 // See: https://github.com/mewo2/terrain
 func (m *Map) rErode(amount float64) []float64 {
+	// Get downhill height diffs so we can ensure that we do not erode
+	// any more than that, which would produce sinks (which we try to avoid).
+	dhDiff := make([]float64, m.mesh.numRegions)
+	for r, dhr := range m.getDownhill(false) {
+		if dhr < 0 {
+			// Sinks have no height diff, but in theory we could give it a negative
+			// height diff to fill the sinks during the erosion steps?
+			continue
+		}
+		dhDiff[r] = m.r_elevation[r] - m.r_elevation[dhr]
+	}
+
+	// Now apply the erosion.
+	newh := make([]float64, m.mesh.numRegions)
+	er := m.rErosionRate()
+	_, maxr := minMax(er)
+	for r, e := range er {
+		// We can at most erode amount*dhDiff[r].
+		newh[r] = m.r_elevation[r] - amount*dhDiff[r]*(e/maxr)
+	}
+	return newh
+}
+
+func (m *Map) rErodeOld(amount float64) []float64 {
 	newh := make([]float64, m.mesh.numRegions)
 	er := m.rErosionRate()
 	_, maxr := minMax(er)
@@ -115,6 +139,93 @@ func (m *Map) rSlope(i int) [2]float64 {
 	res[0] /= float64(count)
 	res[1] /= float64(count)
 	return res
+}
+
+func (m *Map) getRErosion2() []float64 {
+	const maxErosionDistance = 3 * 0.006
+	const minExp = 1.0
+	const varExp = 3.0
+
+	steeps := m.getRSteepness()
+	erodeOnlyAboveSealevel := false
+
+	toE := make([]float64, m.mesh.numRegions)
+	flux := m.getFlux(erodeOnlyAboveSealevel)
+	_, maxFlux := minMax(flux)
+	for r, fl := range flux {
+		// Exponent (e):
+		//
+		// The exponent determines the shape of the eroded ravine.
+		//
+		// y = pow(|x|, e)
+		//         _  _
+		// e = 1:   \/
+		//         _   _
+		// e = 2:   \_/
+		//         _   _
+		// e = 4+:  |_|
+		exponent := minExp + varExp*(1.0-steeps[r])
+
+		// The amount of flux determines how wide the resulting eroded path is.
+		// Since rivers slow down the wider they are, they start to be less erosive with higher flux.
+		fluxVal := fl / maxFlux
+
+		// Calculate maximum erosion distance based on the water flow intensity aka flux.
+		maxDist := fluxVal * maxErosionDistance
+
+		// Assign the erosion intensity.
+		if toE[r] < maxDist {
+			toE[r] = maxDist
+			// TODO: sharp drops should carve with higher intensity.
+		}
+		rLatLon := m.r_latLon[r]
+		seen := make(map[int]bool)
+		var doErode func(reg int)
+		doErode = func(reg int) {
+			if seen[reg] {
+				return
+			}
+			seen[reg] = true
+			for _, nb := range m.rNeighbors(reg) {
+				// Calculate great arc distance.
+				dLatLon := m.r_latLon[nb]
+				dist := haversine(rLatLon[0], rLatLon[1], dLatLon[0], dLatLon[1])
+				if dist > maxDist {
+					continue // Skip everything that is too far away.
+				}
+				distRes := dist / maxDist
+				erode := math.Pow(distRes, exponent)
+				toErode := maxDist - erode
+				if toE[nb] < toErode {
+					toE[nb] = toErode
+				}
+				doErode(nb)
+			}
+		}
+		doErode(r)
+	}
+	return toE
+}
+
+func (m *Map) getRSteepness() []float64 {
+	steeps := make([]float64, m.mesh.numRegions)
+	dh := m.getDownhill(false)
+	for r, d := range dh {
+		if d < 0 {
+			continue // Skip all sinks.
+		}
+		// Height difference.
+		hDiff := m.r_elevation[r] - m.r_elevation[d]
+
+		// Great arc distance.
+		rLatLon := m.r_latLon[r]
+		dLatLon := m.r_latLon[d]
+		dist := haversine(rLatLon[0], rLatLon[1], dLatLon[0], dLatLon[1])
+
+		// Essentially the angle (0°-90°) in the range of 0.0 to 1.0.
+		steeps[r] = math.Atan(hDiff/dist) * 2 / math.Pi
+	}
+	return steeps
 }
 
 func (m *Map) rPolySlope(i int) [2]float64 {
