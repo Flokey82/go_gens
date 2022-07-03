@@ -174,7 +174,10 @@ func (m *Map) findCollisions() ([]int, []int, []int, map[int]float64) {
 				// If the plates are of different types, a collision results in a mountain and
 				// drifting apart results in a coastline being defined.
 				if collided {
-					mountain_r = append(mountain_r, current_r)
+					// If one plate is ocean, mountains only fold up on the non-ocean plate.
+					if !plateIsOcean[current_plate] {
+						mountain_r = append(mountain_r, current_r)
+					}
 				} else {
 					coastline_r = append(coastline_r, current_r)
 				}

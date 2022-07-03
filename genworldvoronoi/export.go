@@ -111,6 +111,7 @@ func (m *Map) ExportSVG(path string) error {
 	drawLakeBorders := true
 	drawBelow := false
 	drawContour := true
+	drawPlateCompression := false
 
 	zoom := 3
 	filterPathDist := 20.0
@@ -313,6 +314,39 @@ func (m *Map) ExportSVG(path string) error {
 			r := 1
 			col := genGreen((rdh - minFlux) / (maxFlux - minFlux))
 			col = genGreen(rdh / maxFlux)
+			svg.Circle(int(x), int(y), r, fmt.Sprintf("fill: rgb(%d, %d, %d)", col.R, col.R, col.R))
+		}
+	}
+	if drawPlateCompression {
+		mountain_r, coastline_r, ocean_r, compression_r := m.findCollisions()
+		var minComp, maxComp float64
+		for _, comp := range compression_r {
+			if comp < minComp {
+				minComp = comp
+			}
+			if comp > maxComp {
+				maxComp = comp
+			}
+		}
+		for _, r := range mountain_r {
+			x, y := latLonToPixels(m.r_latLon[r][0], m.r_latLon[r][1], zoom)
+			svg.Circle(int(x), int(y), 2, "fill: rgb(255, 128, 128)")
+		}
+		for _, r := range coastline_r {
+			x, y := latLonToPixels(m.r_latLon[r][0], m.r_latLon[r][1], zoom)
+			svg.Circle(int(x), int(y), 2, "fill: rgb(128, 255, 128)")
+		}
+		for _, r := range ocean_r {
+			x, y := latLonToPixels(m.r_latLon[r][0], m.r_latLon[r][1], zoom)
+			svg.Circle(int(x), int(y), 2, "fill: rgb(128, 128, 255)")
+		}
+		for r := 0; r < m.mesh.numSides; r++ {
+			if compression_r[r] == 0 {
+				continue
+			}
+			x, y := latLonToPixels(m.r_latLon[r][0], m.r_latLon[r][1], zoom)
+			r := 1
+			col := genGreen((compression_r[r] - minComp) / (maxComp - minComp))
 			svg.Circle(int(x), int(y), r, fmt.Sprintf("fill: rgb(%d, %d, %d)", col.R, col.R, col.R))
 		}
 	}

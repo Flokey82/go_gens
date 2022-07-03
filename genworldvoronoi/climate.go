@@ -89,43 +89,45 @@ func (m *Map) assignWindVectors() {
 		// log.Println(rLat, degree, r_windvec[i])
 	}
 
-	// TODO: Add wind vectors based on local temperature gradients.
-	// TODO: Add wind deflection based on altitude changes.
 	r_windvec_local := make([]Vertex, m.mesh.numRegions)
 	_, maxElev := minMax(m.r_elevation)
-
-	// Determine all sea regions.
-	var sea_r []int
-	for r := 0; r < m.mesh.numRegions; r++ {
-		if m.r_elevation[r] <= 0 {
-			sea_r = append(sea_r, r)
+	/*
+		// TODO: Add wind vectors based on local temperature gradients.
+		// NOTE: This is currently overridden by the altitude changes below.
+		// Determine all sea regions.
+		var sea_r []int
+		for r := 0; r < m.mesh.numRegions; r++ {
+			if m.r_elevation[r] <= 0 {
+				sea_r = append(sea_r, r)
+			}
 		}
-	}
-	r_distance_sea := m.assignDistanceField(sea_r, make(map[int]bool))
-	for r := range r_windvec_local {
-		lat := m.r_latLon[r][0]
-		lon := m.r_latLon[r][1]
-		temp_r := getMeanAnnualTemp(lat) - getTempFalloffFromAltitude(8850*m.r_elevation[r]/maxElev)
-		// if m.r_elevation[r] < 0 {
-		// TODO: Use actual distance from ocean to calculate temperature falloff.
-		temp_r -= 1 / (r_distance_sea[r] + 1)
-		// }
-		// Get temperature for r.
-		var v vectors.Vec2
-		for _, nb := range m.rNeighbors(r) {
-			nbLat := m.r_latLon[nb][0]
-			nbLon := m.r_latLon[nb][1]
-			temp_nb := getMeanAnnualTemp(nbLat) - getTempFalloffFromAltitude(8850*m.r_elevation[nb]/maxElev)
-			// if m.r_elevation[nb] < 0 {
+		r_distance_sea := m.assignDistanceField(sea_r, make(map[int]bool))
+		for r := range r_windvec_local {
+			lat := m.r_latLon[r][0]
+			lon := m.r_latLon[r][1]
+			temp_r := getMeanAnnualTemp(lat) - getTempFalloffFromAltitude(8850*m.r_elevation[r]/maxElev)
+			// if m.r_elevation[r] < 0 {
 			// TODO: Use actual distance from ocean to calculate temperature falloff.
-			temp_nb -= 1 / (r_distance_sea[nb] + 1)
+			temp_r -= 1 / (r_distance_sea[r] + 1)
 			// }
-			ve := calcVecFromLatLong(lat, lon, nbLat, nbLon)
-			v = v.Add(vectors.Normalize(vectors.NewVec2(ve[0], ve[1])).Mul(temp_nb - temp_r))
+			// Get temperature for r.
+			var v vectors.Vec2
+			for _, nb := range m.rNeighbors(r) {
+				nbLat := m.r_latLon[nb][0]
+				nbLon := m.r_latLon[nb][1]
+				temp_nb := getMeanAnnualTemp(nbLat) - getTempFalloffFromAltitude(8850*m.r_elevation[nb]/maxElev)
+				// if m.r_elevation[nb] < 0 {
+				// TODO: Use actual distance from ocean to calculate temperature falloff.
+				temp_nb -= 1 / (r_distance_sea[nb] + 1)
+				// }
+				ve := calcVecFromLatLong(lat, lon, nbLat, nbLon)
+				v = v.Add(vectors.Normalize(vectors.NewVec2(ve[0], ve[1])).Mul(temp_nb - temp_r))
+			}
+			v = vectors.Normalize(v)
+			r_windvec_local[r] = Vertex{v.X, v.Y}
 		}
-		v = vectors.Normalize(v)
-		r_windvec_local[r] = Vertex{v.X, v.Y}
-	}
+	*/
+	// TODO: Add wind deflection based on altitude changes.
 	for r := range r_windvec_local {
 		rVec := r_windvec[r]
 		// Get XYZ Position of r.
@@ -164,7 +166,10 @@ func (m *Map) assignWindVectors() {
 				nbLat := m.r_latLon[neighbor_r][0]
 				nbLon := m.r_latLon[neighbor_r][1]
 				ve := calcVecFromLatLong(rLat, rLon, nbLat, nbLon)
-				v = v.Add(vectors.Normalize(vectors.NewVec2(ve[0], ve[1])).Mul(((hnb - h) * dotV / maxElev)))
+				// The higher the dot product (the more direct the neighbor is in wind direction), the higher
+				// the influence of an elevation change. So a steep mountain ahead will slow the wind down.
+				// If a steep mountain is too the left, the wind vector will be pushed to the right.
+				v = v.Add(vectors.Normalize(vectors.NewVec2(ve[0], ve[1])).Mul((h - hnb) * dotV / maxElev))
 			}
 		}
 		v = vectors.Normalize(v)
