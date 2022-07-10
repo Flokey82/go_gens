@@ -111,6 +111,7 @@ func (m *Map) ExportSVG(path string) error {
 	drawLakeBorders := true
 	drawBelow := false
 	drawContour := true
+	drawWindDir := false
 	drawPlateCompression := false
 
 	zoom := 3
@@ -304,6 +305,7 @@ func (m *Map) ExportSVG(path string) error {
 			}
 		}
 	}
+
 	if drawWindOrder {
 		wind_sort, ord := m.getWindSortOrder()
 		minFlux, maxFlux := minMax(wind_sort)
@@ -313,7 +315,21 @@ func (m *Map) ExportSVG(path string) error {
 			x, y := latLonToPixels(m.r_latLon[r][0], m.r_latLon[r][1], zoom)
 			r := 1
 			col := genGreen((rdh - minFlux) / (maxFlux - minFlux))
-			col = genGreen(rdh / maxFlux)
+			svg.Circle(int(x), int(y), r, fmt.Sprintf("fill: rgb(%d, %d, %d)", col.R, col.R, col.R))
+		}
+	}
+	if drawWindDir {
+		windAng := make([]float64, m.mesh.numRegions)
+		for i, vec := range m.r_windvec {
+			windAng[i] = math.Atan2(vec[0], vec[1])
+		}
+		minFlux, maxFlux := minMax(windAng)
+		for r := range windAng {
+			rdh := windAng[r]
+			log.Println(rdh)
+			x, y := latLonToPixels(m.r_latLon[r][0], m.r_latLon[r][1], zoom)
+			r := 1
+			col := genGreen((rdh - minFlux) / (maxFlux - minFlux))
 			svg.Circle(int(x), int(y), r, fmt.Sprintf("fill: rgb(%d, %d, %d)", col.R, col.R, col.R))
 		}
 	}

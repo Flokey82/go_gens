@@ -192,6 +192,13 @@ func (m *Map) findCollisions() ([]int, []int, []int, map[int]float64) {
 	return mountain_r, coastline_r, ocean_r, compression_r
 }
 
+const (
+	RTypeNone = iota
+	RTypeMountain
+	RTypeCoastline
+	RTypeOcean
+)
+
 // assignRegionElevation finds collisions between plate regions and assigns
 // elevation for each point on the sphere accordingly, which will result in
 // mountains, coastlines, etc.
@@ -202,12 +209,8 @@ func (m *Map) assignRegionElevation() {
 	// TODO: Use collision values to determine intensity of generated landscape features.
 	mountain_r, coastline_r, ocean_r, compression_r := m.findCollisions()
 	for r := 0; r < m.mesh.numRegions; r++ {
-		if m.r_plate[r] == r {
-			if m.PlateIsOcean[r] {
-				ocean_r = append(ocean_r, r)
-			} else {
-				coastline_r = append(coastline_r, r)
-			}
+		if m.r_plate[r] == r && m.PlateIsOcean[r] {
+			ocean_r = append(ocean_r, r)
 		}
 	}
 
