@@ -1,7 +1,7 @@
 package main
 
 import (
-	"frohrweck/simvillage"
+	"github.com/Flokey82/go_gens/simvillage"
 )
 
 func main() {

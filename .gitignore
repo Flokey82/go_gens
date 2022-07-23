@@ -27,3 +27,4 @@ genworldvoronoi/cmd/test.png
 simmotive/cmd/runner
 simvillage/cmd/runner
 genlsystem/cmd/runner
+simvillage_simple/cmd/runner
