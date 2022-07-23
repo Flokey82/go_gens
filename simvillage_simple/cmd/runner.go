@@ -6,7 +6,7 @@ import (
 
 func main() {
 	v := simvillage_simple.New()
-	for i := 0; i < 3000; i++ {
+	for i := 0; i < 30000; i++ {
 		v.Tick()
 	}
 }
