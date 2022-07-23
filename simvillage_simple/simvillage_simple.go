@@ -13,6 +13,8 @@ type Village struct {
 	People []*Person
 	maxID  int
 	tick   int
+	day    int
+	year   int
 
 	// Food int
 	// Wood int
@@ -54,8 +56,10 @@ func (v *Village) getNextID() int {
 }
 
 func (v *Village) Tick() {
-	log.Println("Tick", v.tick, "Population", len(v.People))
 	v.tick++
+	v.year += (v.day + 1) / 365
+	v.day = (v.day + 1) % 365
+	log.Println("Tick", v.tick, "day", v.day, "year", v.year, "Population", len(v.People))
 
 	// Increase age of villagers.
 	v.popAge()
@@ -82,7 +86,10 @@ func (v *Village) Tick() {
 
 func (v *Village) popAge() {
 	for _, p := range v.People {
-		p.age++
+		if p.bday == v.day {
+			p.age++
+			log.Println(p.String(), "has a birthday!")
+		}
 	}
 }
 
@@ -137,7 +144,22 @@ func (v *Village) popGrowth() {
 	var children []*Person
 	for _, p := range v.People {
 		if p.canBePregnant() {
-			if rand.Intn(20) < 3 {
+			// Approximately once every 4 years if no children.
+			// TODO: Figure out proper chance of birth.
+			chance := 4 * 365
+			if p.age > 40 {
+				// Over 40, it becomes more and more unlikely.
+				// TODO: Genetic variance?
+				chance *= (p.age - 40)
+			}
+
+			// The more children, the less likely it becomes
+			// that more children are on the way.
+			// NOTE: Not because of biological reasons, but
+			// who wants more children after having some.
+			chance *= p.numLivingChildren() + 1
+
+			if rand.Intn(chance) < 1 {
 				c := v.newPerson()
 				c.lastName = p.lastName
 				c.mother = p
@@ -148,12 +170,13 @@ func (v *Village) popGrowth() {
 			p.pregnant++
 
 			// Give birth if we are far along enough.
-			if p.pregnant > 10 {
+			if p.pregnant > 9*30 { // TODO: Add some variance
 				c := p.pregnantWith
 				p.pregnantWith = nil
 				p.pregnant = 0
 				c.mother.children = append(c.mother.children, c)
 				c.father.children = append(c.father.children, c)
+				c.bday = v.day // Birthday!
 				children = append(children, c)
 				log.Println(c.mother.String(), "and", c.father.String(), "had a baby")
 			}
@@ -162,13 +185,18 @@ func (v *Village) popGrowth() {
 	v.People = append(v.People, children...)
 
 	// Random arrivals.
-	if rand.Intn(10) < 2 {
-		p := v.newPerson()
-		p.lastName = v.lastGen.String()
-		p.age = rand.Intn(20) + 16
-		v.People = append(v.People, p)
-		log.Println(p.String(), "arrived")
+	if rand.Intn(365) < 1 {
+		v.AddRandomPerson()
 	}
+}
+
+func (v *Village) AddRandomPerson() {
+	p := v.newPerson()
+	p.lastName = v.lastGen.String()
+	p.age = rand.Intn(20) + 16
+	p.bday = rand.Intn(365)
+	v.People = append(v.People, p)
+	log.Println(p.String(), "arrived")
 }
 
 func (v *Village) popDeath() {
@@ -177,18 +205,26 @@ func (v *Village) popDeath() {
 	// - Increase chances of death if there is a famine or other states.
 	var livingPeople []*Person
 	for _, p := range v.People {
-		// absolute value
-		// - lowest chance at 30 years old (2 in 80)
-		// - high child mortality (2 in 50)
-		// - increasing mortality at > 60 years old (2 in < 50)
-		chance := absInt(p.age - 30)
-		if rand.Intn(80-chance) < 2 {
+		// TODO: Figure out proper chance of death.
+
+		// From: https://github.com/Kontari/Village/blob/master/src/death.py
+		if 35 < p.age && p.age < 50 { // Adult
+			p.dead = rand.Intn(241995) == 0
+		} else if 50 < p.age && p.age < 70 { // Old Person
+			p.dead = rand.Intn(29380579) == 0
+		} else if p.age > 70 { // Elderly
+			p.dead = rand.Intn(5475) == 0
+		}
+		if p.dead {
 			// Kill villager.
-			p.dead = true
 			if spouse := p.spouse; spouse != nil {
 				spouse.spouse = nil // Remove dead spouse from spouse.
 			}
-			log.Println(p.String(), "died and has", len(p.children), "children")
+			// TODO: Remove child from parents?
+			log.Println(p.String(), "died and has", len(p.children), "children !!!!!!!!", p.numLivingChildren(), "alive")
+			for _, c := range p.children {
+				log.Println(c.String())
+			}
 		} else {
 			// Filter out dead people.
 			livingPeople = append(livingPeople, p)
@@ -206,13 +242,26 @@ func (v *Village) newPerson() *Person {
 	return p
 }
 
+type Gender int
+
 const (
-	GenderFemale = iota
+	GenderFemale Gender = iota
 	GenderMale
 )
 
-func randGender() int {
-	return rand.Intn(2)
+func (g Gender) String() string {
+	switch g {
+	case GenderFemale:
+		return "F"
+	case GenderMale:
+		return "M"
+	default:
+		return "X"
+	}
+}
+
+func randGender() Gender {
+	return Gender(rand.Intn(2))
 }
 
 type Person struct {
@@ -220,12 +269,13 @@ type Person struct {
 	firstName    string
 	lastName     string
 	age          int
+	bday         int
 	dead         bool
 	mother       *Person
 	father       *Person
 	spouse       *Person // TODO: keep track of former spouses?
 	children     []*Person
-	gender       int
+	gender       Gender
 	pregnant     int
 	pregnantWith *Person
 }
@@ -235,11 +285,21 @@ func (p *Person) Name() string {
 }
 
 func (p *Person) String() string {
-	gen := "F"
-	if p.gender == GenderMale {
-		gen = "M"
+	deadStr := ""
+	if p.dead {
+		deadStr = " dead"
 	}
-	return p.Name() + fmt.Sprintf(" (%d%s)", p.age, gen)
+	return p.Name() + fmt.Sprintf(" (%d %s%s)", p.age, p.gender, deadStr)
+}
+
+func (p *Person) numLivingChildren() int {
+	var n int
+	for _, c := range p.children {
+		if !c.dead {
+			n++
+		}
+	}
+	return n
 }
 
 func (p *Person) isEligibleSingle() bool {

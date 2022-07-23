@@ -6,7 +6,15 @@ import (
 
 func main() {
 	v := simvillage_simple.New()
-	for i := 0; i < 30000; i++ {
+	v.AddRandomPerson()
+	v.AddRandomPerson()
+	v.AddRandomPerson()
+	v.AddRandomPerson()
+	v.AddRandomPerson()
+	for i := 0; i < 60000; i++ {
 		v.Tick()
+		if len(v.People) == 0 {
+			break
+		}
 	}
 }
