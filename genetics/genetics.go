@@ -1,20 +1,26 @@
 package genetics
 
+import (
+	"math/rand"
+)
+
 type Genes uint64
 
 func (g *Genes) setBits(offs, n int, val uint64) {
-	*g &^= ((1 << n) - 1) // clear bits
-	*g |= (val << offs)
+	ge := uint64(*g)
+	ge &^= ((1 << n) - 1) // clear bits
+	ge |= (val << offs)
+	*g = Genes(ge)
 }
 
 func (g *Genes) getBits(offs, n int) uint64 {
-	return (*g >> offs) & ((1 << n) - 1)
+	return (uint64(*g) >> offs) & ((1 << n) - 1)
 }
 
 func Mix(a, b Genes) Genes {
-	t := a & b                    // common bits
-	x := (a | b) &^ t             // diff bits
-	t |= x & uint64(rand.Int63()) // random diffs
+	t := uint64(a) & uint64(b)        // common bits
+	x := (uint64(a) | uint64(b)) &^ t // diff bits
+	t |= x & uint64(rand.Int63())     // random diffs
 
 	// Mutations (random bit flips)
 	nMutations := 1
@@ -22,7 +28,7 @@ func Mix(a, b Genes) Genes {
 		t ^= 1 << rand.Intn(63)
 	}
 
-	return t
+	return Genes(t)
 }
 
 // Gene layout
