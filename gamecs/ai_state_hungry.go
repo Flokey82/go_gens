@@ -3,7 +3,7 @@ package gamecs
 import (
 	"fmt"
 	"github.com/Flokey82/aistate"
-	"github.com/Flokey82/go_gens/aitree"
+	"github.com/Flokey82/aitree"
 	"github.com/Flokey82/go_gens/vectors"
 	"log"
 )
