@@ -7,6 +7,7 @@ import (
 	"sort"
 
 	"github.com/Flokey82/go_gens/genetics"
+	"github.com/Flokey82/go_gens/genetics/geneticshuman"
 	"github.com/s0rg/fantasyname"
 )
 
@@ -181,7 +182,7 @@ func (v *Village) popGrowth() {
 				fixGenes(c)
 				c.bday = v.day // Birthday!
 				children = append(children, c)
-				log.Println(c.mother.String(), "\n", genetics.String(c.mother.g), "\nand", c.father.String(), "\n", genetics.String(c.father.g), "\nhad a baby\n", genetics.String(c.g))
+				log.Println(c.mother.String(), "\n", geneticshuman.String(c.mother.g), "\nand", c.father.String(), "\n", geneticshuman.String(c.father.g), "\nhad a baby\n", geneticshuman.String(c.g))
 			}
 		}
 	}
@@ -196,11 +197,11 @@ func (v *Village) popGrowth() {
 func fixGenes(p *Person) {
 	switch p.gender {
 	case GenderFemale:
-		genetics.SetGender(&p.g, genetics.GenderFemale)
+		geneticshuman.SetGender(&p.g, geneticshuman.GenderFemale)
 	case GenderMale:
-		genetics.SetGender(&p.g, genetics.GenderMale)
+		geneticshuman.SetGender(&p.g, geneticshuman.GenderMale)
 	default:
-		genetics.SetGender(&p.g, 0)
+		geneticshuman.SetGender(&p.g, 0)
 	}
 }
 
