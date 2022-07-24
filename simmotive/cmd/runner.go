@@ -12,7 +12,7 @@ func main() {
 	m.Log("Your sim was born into the world")
 	for {
 		m.SimMotives(1)
-		m.Clr()
+		m.Clear()
 		log.Printf("Day %d : [%02d:%02d]\n\n", m.ClockD, m.ClockH, m.ClockM)
 		m.PrintMotives()
 		log.Printf("\nLog")

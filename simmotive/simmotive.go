@@ -10,17 +10,13 @@ import (
 	"os"
 )
 
-func (m *Motive) Clr() {
-	os.Stdout.Write([]byte{0x1B, 0x5B, 0x33, 0x3B, 0x4A, 0x1B, 0x5B, 0x48, 0x1B, 0x5B, 0x32, 0x4A})
-}
-
 func SRand(upper int) float64 {
 	return float64(rand.Intn(upper) + 1)
 }
 
 type Motive struct {
-	Motive    [16]float64
-	oldMotive [16]float64
+	Motive    [mMax]float64
+	oldMotive [mMax]float64
 	ClockH    int
 	ClockM    int
 	ClockD    int
@@ -33,6 +29,10 @@ func NewMotive() *Motive {
 	}
 }
 
+func (m *Motive) Clear() {
+	os.Stdout.Write([]byte{0x1B, 0x5B, 0x33, 0x3B, 0x4A, 0x1B, 0x5B, 0x48, 0x1B, 0x5B, 0x32, 0x4A})
+}
+
 func (m *Motive) Log(msg string) {
 	m.Logs = append(m.Logs, fmt.Sprintf("[Day %d at %02d:%02d]  %s", m.ClockD, m.ClockH, m.ClockM, msg))
 	if len(m.Logs) > 12 {
@@ -41,37 +41,37 @@ func (m *Motive) Log(msg string) {
 }
 
 const (
-	mHappyLife = 0
-	mHappyWeek = 1
-	mHappyDay  = 2
-	mHappyNow  = 3
-
-	mPhysical = 4
-	mEnergy   = 5
-	mComfort  = 6
-	mHunger   = 7
-	mHygiene  = 8
-	mBladder  = 9
-
+	mHappyLife   = 0
+	mHappyWeek   = 1
+	mHappyDay    = 2
+	mHappyNow    = 3
+	mPhysical    = 4
+	mEnergy      = 5
+	mComfort     = 6
+	mHunger      = 7
+	mHygiene     = 8
+	mBladder     = 9
 	mMental      = 10
 	mAlertness   = 11
 	mStress      = 12
 	mEnvironment = 13
 	mSocial      = 14
 	mEntertained = 15
+	mMax         = 16
 )
 
 // 1 tick = 2 minutes game time
-const DAYTICKS = 720
-const WEEKTICKS = 5040
+const (
+	dayTicks  = 720
+	weekTicks = 5040
+)
 
 func (m *Motive) InitMotives() {
-	var count int
-
-	for count = 0; count < 16; count++ {
-		m.Motive[count] = 0
+	// Clear motive.
+	for i := 0; i < mMax; i++ {
+		m.Motive[i] = 0
 	}
-
+	// Set initial state.
 	m.Motive[mEnergy] = 70
 	m.Motive[mAlertness] = 20
 	m.Motive[mHunger] = -40
@@ -80,12 +80,9 @@ func (m *Motive) InitMotives() {
 // Simulates internal m.motive changes
 func (m *Motive) SimMotives(count int) {
 	var tem float64
-	//var z int
-	// Rect r = { 100, 100, 140, 140 };
 
-	// inc game clock (Jamie, remove this)
+	// Increase game clock (Jamie, remove this) :)
 	m.ClockM += 2
-
 	if m.ClockM > 58 {
 		m.ClockM = 0
 		m.ClockH++
@@ -95,7 +92,7 @@ func (m *Motive) SimMotives(count int) {
 		}
 	}
 
-	// energy
+	// Energy.
 	if m.Motive[mEnergy] > 0 {
 		if m.Motive[mAlertness] > 0 {
 			m.Motive[mEnergy] -= (m.Motive[mAlertness] / 100)
@@ -110,13 +107,13 @@ func (m *Motive) SimMotives(count int) {
 		}
 	}
 
-	// I had some food
+	// I had some food.
 	if m.Motive[mHunger] > m.oldMotive[mHunger] {
 		tem = m.Motive[mHunger] - m.oldMotive[mHunger]
 		m.Motive[mEnergy] += tem / 4
 	}
 
-	// comfort
+	// Comfort.
 	if m.Motive[mBladder] < 0 {
 		m.Motive[mComfort] += m.Motive[mBladder] / 10 // max -10
 	}
@@ -129,7 +126,7 @@ func (m *Motive) SimMotives(count int) {
 	// dec a max 100/cycle in a cubed curve (seek zero)
 	m.Motive[mComfort] -= (m.Motive[mComfort] * m.Motive[mComfort] * m.Motive[mComfort]) / 10000
 
-	// hunger
+	// Hunger.
 	tem = ((m.Motive[mAlertness] + 100) / 200) * ((m.Motive[mHunger] + 100) / 100) // ^alert * hunger^0
 
 	if m.Motive[mStress] < 0 { // stress -> hunger
@@ -140,31 +137,33 @@ func (m *Motive) SimMotives(count int) {
 		m.Motive[mHunger] = 80
 	}
 
-	// hygiene
+	// Hygiene.
 	if m.Motive[mAlertness] > 0 {
 		m.Motive[mHygiene] -= 0.3
 	} else {
 		m.Motive[mHygiene] -= 0.1
 	}
-	// hit limit, bath
+	// Hit hygiene limit, take a bath.
 	if m.Motive[mHygiene] < -97 {
 		m.Log("You smell very bad, mandatory bath")
 		m.Motive[mHygiene] = 80
 	}
 
-	// bladder
+	// Bladder.
 	if m.Motive[mAlertness] > 0 {
-		// bladder fills faster while awake
-		m.Motive[mBladder] -= 0.4
+		m.Motive[mBladder] -= 0.4 // Bladder fills faster while awake.
 	} else {
 		m.Motive[mBladder] -= 0.2
 	}
-	// food eaten goes into bladder
+
+	// Food eaten goes into bladder (well, not really,
+	// but I don't handle number two separately).
 	if m.Motive[mHunger] > m.oldMotive[mHunger] {
 		tem = m.Motive[mHunger] - m.oldMotive[mHunger]
 		m.Motive[mBladder] -= tem / 4
 	}
-	// hit limit, gotta go
+
+	// If we hit limit, gotta go.
 	if m.Motive[mBladder] < -97 {
 		if m.Motive[mAlertness] < 0 {
 			m.Log("You have wet your bed")
@@ -174,7 +173,7 @@ func (m *Motive) SimMotives(count int) {
 		m.Motive[mBladder] = 9
 	}
 
-	// alertness
+	// Alertness.
 	if m.Motive[mAlertness] > 0 {
 		// max delta at zero
 		tem = (100 - m.Motive[mAlertness]) / 50
@@ -199,13 +198,14 @@ func (m *Motive) SimMotives(count int) {
 	if m.Motive[mBladder] < -50 {
 		m.Motive[mAlertness] -= (m.Motive[mBladder] / 100) * tem
 	}
-	// stress
+
+	// Stress
 	m.Motive[mStress] += m.Motive[mComfort] / 10     // max -10
 	m.Motive[mStress] += m.Motive[mEntertained] / 10 // max -10
 	m.Motive[mStress] += m.Motive[mEnvironment] / 15 // max -7
 	m.Motive[mStress] += m.Motive[mSocial] / 20      // max -5
 
-	// cut stress while asleep
+	// Cut stress while asleep
 	if m.Motive[mAlertness] < 0 {
 		m.Motive[mStress] = m.Motive[mStress] / 3
 	}
@@ -220,16 +220,17 @@ func (m *Motive) SimMotives(count int) {
 			}
 		}
 	}
-	// environment
 
-	// social
+	// Environment (TODO)
 
-	// enterntained
-	// cut enterntained while asleep
+	// Social (TODO)
+
+	// Entertained.
+	// cut entertained while asleep
 	if m.Motive[mAlertness] < 0 {
 		m.Motive[mEntertained] = m.Motive[mEntertained] / 2
 	}
-	// calc physical
+	// Calc physical.
 	tem = m.Motive[mEnergy]
 	tem += m.Motive[mComfort]
 	tem += m.Motive[mHunger]
@@ -249,15 +250,14 @@ func (m *Motive) SimMotives(count int) {
 	}
 	m.Motive[mPhysical] = tem
 
-	// calc mental
-	tem += m.Motive[mStress] // stress counts *2
-	tem += m.Motive[mStress]
+	// Calc mental.
+	tem += m.Motive[mStress] * 2 // Stress counts *2
 	tem += m.Motive[mEnvironment]
 	tem += m.Motive[mSocial]
 	tem += m.Motive[mEntertained]
 	tem = tem / 5
 
-	// map the linear average into squared curve
+	// Map the linear average into squared curve.
 	if tem > 0 {
 		tem = 100 - tem
 		tem = (tem * tem) / 100
@@ -269,31 +269,32 @@ func (m *Motive) SimMotives(count int) {
 	}
 	m.Motive[mMental] = tem
 
-	// calc and average happiness
+	// Calc and average happiness.
 	// happy = mental + physical
 	m.Motive[mHappyNow] = (m.Motive[mPhysical] + m.Motive[mMental]) / 2
-	m.Motive[mHappyDay] = ((m.Motive[mHappyDay] * (DAYTICKS - 1)) + m.Motive[mHappyNow]) / DAYTICKS
-	m.Motive[mHappyWeek] = ((m.Motive[mHappyDay] * (WEEKTICKS - 1)) + m.Motive[mHappyNow]) / WEEKTICKS
+	m.Motive[mHappyDay] = ((m.Motive[mHappyDay] * (dayTicks - 1)) + m.Motive[mHappyNow]) / dayTicks
+	m.Motive[mHappyWeek] = ((m.Motive[mHappyDay] * (weekTicks - 1)) + m.Motive[mHappyNow]) / weekTicks
 	m.Motive[mHappyLife] = ((m.Motive[mHappyLife] * 9) + m.Motive[mHappyWeek]) / 10
 
-	for z := 0; z < 16; z++ {
-		if m.Motive[z] > 100 {
-			m.Motive[z] = 100 // check for over/under flow
+	for i := 0; i < mMax; i++ {
+		// Check for over/underflow.
+		if m.Motive[i] > 100 {
+			m.Motive[i] = 100
+		} else if m.Motive[i] < -100 {
+			m.Motive[i] = -100
 		}
-		if m.Motive[z] < -100 {
-			m.Motive[z] = -100
-		}
-		m.oldMotive[z] = m.Motive[z] // save set in oldMotives (for delta tests)
+		m.oldMotive[i] = m.Motive[i] // Save set in oldMotives (for delta tests).
 	}
 }
 
 // use this to change m.motives (checks overflow)
 func (m *Motive) ChangeMotive(motive int, value float64) {
 	m.Motive[motive] += value
+
+	// Check for over/underflow.
 	if m.Motive[motive] > 100 {
 		m.Motive[motive] = 100
-	}
-	if m.Motive[motive] < -100 {
+	} else if m.Motive[motive] < -100 {
 		m.Motive[motive] = -100
 	}
 }
