@@ -1,7 +1,7 @@
 package gamecs
 
 import (
-	"github.com/Flokey82/go_gens/aifiver"
+	"github.com/Flokey82/aifiver"
 	"math/rand"
 )
 
