@@ -6,6 +6,7 @@ import (
 	"math/rand"
 	"sort"
 
+	"github.com/Flokey82/go_gens/genetics"
 	"github.com/s0rg/fantasyname"
 )
 
@@ -176,9 +177,11 @@ func (v *Village) popGrowth() {
 				p.pregnant = 0
 				c.mother.children = append(c.mother.children, c)
 				c.father.children = append(c.father.children, c)
+				c.g = genetics.Mix(c.mother.g, c.father.g, 2)
+				fixGenes(c)
 				c.bday = v.day // Birthday!
 				children = append(children, c)
-				log.Println(c.mother.String(), "and", c.father.String(), "had a baby")
+				log.Println(c.mother.String(), "\n", genetics.String(c.mother.g), "\nand", c.father.String(), "\n", genetics.String(c.father.g), "\nhad a baby\n", genetics.String(c.g))
 			}
 		}
 	}
@@ -190,12 +193,26 @@ func (v *Village) popGrowth() {
 	}
 }
 
+func fixGenes(p *Person) {
+	switch p.gender {
+	case GenderFemale:
+		genetics.SetGender(&p.g, genetics.GenderFemale)
+	case GenderMale:
+		genetics.SetGender(&p.g, genetics.GenderMale)
+	default:
+		genetics.SetGender(&p.g, 0)
+	}
+}
+
 func (v *Village) AddRandomPerson() {
 	p := v.newPerson()
 	p.lastName = v.lastGen.String()
 	p.age = rand.Intn(20) + 16
 	p.bday = rand.Intn(365)
+	p.g = genetics.NewRandom()
+	fixGenes(p)
 	v.People = append(v.People, p)
+
 	log.Println(p.String(), "arrived")
 }
 
@@ -278,6 +295,7 @@ type Person struct {
 	gender       Gender
 	pregnant     int
 	pregnantWith *Person
+	g            genetics.Genes
 }
 
 func (p *Person) Name() string {
