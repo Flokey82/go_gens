@@ -1,8 +1,9 @@
 package genmapvoronoi
 
 import (
-	"github.com/Flokey82/go_gens/vmesh"
 	"math"
+
+	"github.com/Flokey82/go_gens/vmesh"
 )
 
 func cityScore(render *Terrain) *vmesh.Heightmap {

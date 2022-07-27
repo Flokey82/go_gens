@@ -2,11 +2,12 @@ package genmapvoronoi
 
 import (
 	"fmt"
-	"github.com/pzsz/voronoi"
 	"log"
 	"math"
 	"math/rand"
 	"os"
+
+	"github.com/pzsz/voronoi"
 
 	svgo "github.com/ajstarks/svgo"
 )

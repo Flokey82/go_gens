@@ -1,9 +1,10 @@
 package genheightmap
 
 import (
-	"github.com/Flokey82/go_gens/vectors"
 	"math"
 	"math/rand"
+
+	"github.com/Flokey82/go_gens/vectors"
 
 	opensimplex "github.com/ojrac/opensimplex-go"
 )

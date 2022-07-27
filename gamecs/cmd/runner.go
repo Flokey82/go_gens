@@ -2,9 +2,10 @@ package main
 
 import (
 	"fmt"
+	"time"
+
 	"github.com/Flokey82/go_gens/gamecs"
 	"github.com/Flokey82/go_gens/gameloop"
-	"time"
 )
 
 func main() {

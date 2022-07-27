@@ -2,7 +2,6 @@ package main
 
 import (
 	"github.com/Flokey82/go_gens/gendemographics"
-	//"log"
 )
 
 func main() {

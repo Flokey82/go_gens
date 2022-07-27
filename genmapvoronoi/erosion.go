@@ -1,9 +1,10 @@
 package genmapvoronoi
 
 import (
-	"github.com/Flokey82/go_gens/vmesh"
 	"math"
 	"sort"
+
+	"github.com/Flokey82/go_gens/vmesh"
 )
 
 func doErosion(h *vmesh.Heightmap, amount float64, n int) (eroded *vmesh.Heightmap, sediment *vmesh.Heightmap) {

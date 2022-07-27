@@ -1,9 +1,10 @@
 package main
 
 import (
-	"github.com/Flokey82/go_gens/simmotive"
 	"log"
 	"time"
+
+	"github.com/Flokey82/go_gens/simmotive"
 )
 
 func main() {

@@ -1,12 +1,13 @@
 package genmapvoronoi
 
 import (
+	"math"
+	"math/rand"
+
 	"github.com/Flokey82/go_gens/genheightmap"
 	"github.com/Flokey82/go_gens/vectors"
 	"github.com/Flokey82/go_gens/vmesh"
 	"github.com/pzsz/voronoi"
-	"math"
-	"math/rand"
 )
 
 func (r *Terrain) genTerrain() {

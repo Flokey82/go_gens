@@ -1,8 +1,9 @@
 package gamecs
 
 import (
-	"github.com/Flokey82/go_gens/vectors"
 	"math"
+
+	"github.com/Flokey82/go_gens/vectors"
 )
 
 const (

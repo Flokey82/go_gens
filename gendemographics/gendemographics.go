@@ -1,11 +1,6 @@
 // Package gendemographics is based on Medieval Demographics Made Easy by S. John Ross.
 package gendemographics
 
-import (
-//"fmt"
-//"log"
-)
-
 type Client struct {
 	BT []*BusinessType
 }

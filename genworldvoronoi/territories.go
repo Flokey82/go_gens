@@ -5,7 +5,6 @@ import (
 	"container/list"
 	"log"
 	"math"
-	//"github.com/Flokey82/go_gens/vectors"
 )
 
 // identifyLandmasses returns a mapping from region to landmass ID.

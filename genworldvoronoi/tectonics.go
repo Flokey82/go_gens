@@ -1,8 +1,6 @@
 package genworldvoronoi
 
 import (
-	//"math"
-
 	"github.com/Flokey82/go_gens/vectors"
 )
 

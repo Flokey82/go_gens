@@ -3,13 +3,14 @@ package genmap2derosion
 import (
 	"bufio"
 	"fmt"
-	"github.com/Flokey82/go_gens/genheightmap"
 	"image"
 	"image/color"
 	"image/gif"
 	"image/png"
 	"log"
 	"os"
+
+	"github.com/Flokey82/go_gens/genheightmap"
 )
 
 func (w *World) ExportOBJ(path string) error {

@@ -2,9 +2,10 @@ package gamecs
 
 import (
 	"fmt"
+	"log"
+
 	"github.com/Flokey82/aitree"
 	"github.com/Flokey82/go_gens/vectors"
-	"log"
 )
 
 type ActionWander struct {

@@ -1,8 +1,9 @@
 package genworldvoronoi
 
 import (
-	"github.com/fogleman/delaunay"
 	"math"
+
+	"github.com/fogleman/delaunay"
 )
 
 type Vertex [2]float64

@@ -3,10 +3,11 @@ package genlsystem
 import (
 	"bufio"
 	"fmt"
-	"github.com/Flokey82/go_gens/vectors"
 	"image/color"
 	"math"
 	"os"
+
+	"github.com/Flokey82/go_gens/vectors"
 )
 
 type Bounds3d struct {

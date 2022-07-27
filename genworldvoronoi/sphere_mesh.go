@@ -1,11 +1,12 @@
 package genworldvoronoi
 
 import (
-	"github.com/Flokey82/go_gens/vectors"
-	"github.com/fogleman/delaunay"
 	"log"
 	"math"
 	"math/rand"
+
+	"github.com/Flokey82/go_gens/vectors"
+	"github.com/fogleman/delaunay"
 )
 
 // generateFibonacciSphere generates a number of points along a spiral on a sphere.

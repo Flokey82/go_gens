@@ -1,9 +1,10 @@
 package main
 
 import (
-	"github.com/Flokey82/go_gens/genfloortxt"
 	"log"
 	"os"
+
+	"github.com/Flokey82/go_gens/genfloortxt"
 )
 
 func main() {

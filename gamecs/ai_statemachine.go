@@ -1,8 +1,9 @@
 package gamecs
 
 import (
-	"github.com/Flokey82/aistate"
 	"log"
+
+	"github.com/Flokey82/aistate"
 )
 
 type CAiScheduler struct {

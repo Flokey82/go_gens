@@ -1,10 +1,9 @@
 package genmapvoronoi
 
 import (
-	"github.com/Flokey82/go_gens/vmesh"
-	//"github.com/pzsz/voronoi"
-	//"log"
 	"math"
+
+	"github.com/Flokey82/go_gens/vmesh"
 )
 
 func getSteepness(h *vmesh.Heightmap) *vmesh.Heightmap {

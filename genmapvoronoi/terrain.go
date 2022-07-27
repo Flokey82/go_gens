@@ -4,8 +4,6 @@ package genmapvoronoi
 import (
 	"github.com/Flokey82/go_gens/vmesh"
 	"github.com/pzsz/voronoi"
-	//"log"
-	//"fmt"
 )
 
 type Extent struct {

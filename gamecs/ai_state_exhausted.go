@@ -2,8 +2,9 @@ package gamecs
 
 import (
 	"fmt"
-	"github.com/Flokey82/aistate"
 	"log"
+
+	"github.com/Flokey82/aistate"
 )
 
 const StateTypeRest aistate.StateType = 4

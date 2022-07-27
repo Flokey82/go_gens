@@ -4,10 +4,11 @@ package genmap2derosion
 
 import (
 	"fmt"
-	"github.com/Flokey82/go_gens/vectors"
 	"image"
 	"image/color"
 	"math/rand"
+
+	"github.com/Flokey82/go_gens/vectors"
 )
 
 const worldsize = 256

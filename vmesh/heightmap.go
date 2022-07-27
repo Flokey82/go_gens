@@ -3,8 +3,9 @@ package vmesh
 import (
 	"bufio"
 	"fmt"
-	"github.com/Flokey82/go_gens/genheightmap"
 	"os"
+
+	"github.com/Flokey82/go_gens/genheightmap"
 )
 
 type Heightmap struct {

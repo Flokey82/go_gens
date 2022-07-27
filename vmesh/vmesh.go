@@ -1,13 +1,14 @@
 package vmesh
 
 import (
+	"math"
+	"math/rand"
+	"sort"
+
 	"github.com/Flokey82/go_gens/genheightmap"
 	"github.com/fogleman/delaunay"
 	"github.com/pzsz/voronoi"
 	"github.com/pzsz/voronoi/utils"
-	"math"
-	"math/rand"
-	"sort"
 )
 
 type Extent struct {

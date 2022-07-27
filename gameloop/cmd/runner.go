@@ -1,9 +1,10 @@
 package main
 
 import (
-	"github.com/Flokey82/go_gens/gameloop"
 	"log"
 	"time"
+
+	"github.com/Flokey82/go_gens/gameloop"
 )
 
 func main() {

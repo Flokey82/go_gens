@@ -1,7 +1,6 @@
 package genworldvoronoi
 
 import (
-	//"math"
 	"log"
 )
 

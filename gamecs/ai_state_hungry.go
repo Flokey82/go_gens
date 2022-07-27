@@ -2,10 +2,11 @@ package gamecs
 
 import (
 	"fmt"
+	"log"
+
 	"github.com/Flokey82/aistate"
 	"github.com/Flokey82/aitree"
 	"github.com/Flokey82/go_gens/vectors"
-	"log"
 )
 
 const StateTypeFind aistate.StateType = 0

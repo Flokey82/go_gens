@@ -2,13 +2,14 @@ package gamecs
 
 import (
 	"fmt"
-	"github.com/Flokey82/go_gens/vectors"
 	"image"
 	"image/color"
 	"image/gif"
 	"log"
 	"math/rand"
 	"os"
+
+	"github.com/Flokey82/go_gens/vectors"
 )
 
 type World struct {

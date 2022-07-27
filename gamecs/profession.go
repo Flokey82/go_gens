@@ -1,9 +1,10 @@
 package gamecs
 
 import (
-	"github.com/Flokey82/aistate"
 	"log"
 	"math/rand"
+
+	"github.com/Flokey82/aistate"
 )
 
 type ProfessionType struct {

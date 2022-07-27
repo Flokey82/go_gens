@@ -2,10 +2,11 @@ package genmap2derosion
 
 import (
 	"fmt"
-	"github.com/Flokey82/go_gens/vectors"
 	"log"
 	"math"
 	"time"
+
+	"github.com/Flokey82/go_gens/vectors"
 )
 
 var (

@@ -1,8 +1,9 @@
 package gamecs
 
 import (
-	"github.com/Flokey82/aifiver"
 	"math/rand"
+
+	"github.com/Flokey82/aifiver"
 )
 
 type CAi struct {

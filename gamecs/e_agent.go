@@ -2,9 +2,10 @@ package gamecs
 
 import (
 	"fmt"
-	"github.com/Flokey82/go_gens/vectors"
 	"log"
 	"math/rand"
+
+	"github.com/Flokey82/go_gens/vectors"
 )
 
 type Agent struct {

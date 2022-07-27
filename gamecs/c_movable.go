@@ -2,8 +2,9 @@ package gamecs
 
 import (
 	"fmt"
-	"github.com/Flokey82/go_gens/vectors"
 	"log"
+
+	"github.com/Flokey82/go_gens/vectors"
 )
 
 // CMovable is a movable component.
