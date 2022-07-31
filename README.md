@@ -16,17 +16,6 @@ This package attempts to generate a stable, self sustaining economy given some i
 ### genfloortxt: Simple 2D Text Floorplan Renderer (WIP)
 This package provides a little demo on how to 'render' walls as unicode characters, imitating the cp437 symbol set.
 
-## AI and Problem Solving
-
-### aistate: Simple State Machine
-This package provides a very basic/minimalistic state machine implemented in Go. It is neither efficient nor fast, but a start if you want to experiment with very, very, veeeery simple AI :) Feel free to fork and/or improve!
-
-### aiplanner: Simple GOAP-ish (?) Planner (WIP)
-This package provides maybe a GOAP implementation. It does stuff with actions and plans and whatnot.
-
-### aitree: Simple Behavior Tree (WIP)
-This package provides something that is barely a working behavior tree. Still work in progress!
-
 ## Game Components
 
 ### gameloop: Simple Game Loop
