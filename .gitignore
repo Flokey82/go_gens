@@ -28,3 +28,6 @@ simmotive/cmd/runner
 simvillage/cmd/runner
 genlsystem/cmd/runner
 simvillage_simple/cmd/runner
+simnpcs/cmd/runner.exe
+gendungeon/cmd/runner
+simnpcs/cmd/runner
