@@ -6,6 +6,7 @@ import (
 	"math/rand"
 )
 
+// Career is an instance of a profession associated with a person.
 type Career struct {
 	ID           uint64
 	Start        int         // Start cycle
@@ -24,11 +25,13 @@ type Career struct {
 	WorkingOn *ProductionTask
 }
 
+// ProductionTask is a task that is being worked on.
 type ProductionTask struct {
 	*Item
 	Remaining int
 }
 
+// IsWorkTime returns true if the given day of the week and hour is active for this profession.
 func (c *Career) IsWorkTime(day, hour int) bool {
 	if c == nil {
 		return false
@@ -40,6 +43,7 @@ func (c *Career) IsWorkTime(day, hour int) bool {
 	return c.WorkingHours[day][hour]
 }
 
+// NeedsItems returns all items that are required to produce items for this profession.
 func (c *Career) NeedsItems() []*Item {
 	if c == nil {
 		return nil
@@ -48,6 +52,7 @@ func (c *Career) NeedsItems() []*Item {
 	return c.BuysItems()
 }
 
+// BuysItems returns all items that can be bought by this profession.
 func (c *Career) BuysItems() []*Item {
 	var res []*Item
 	for _, item := range c.Profession.CanCraft(c.Active) {
@@ -56,6 +61,7 @@ func (c *Career) BuysItems() []*Item {
 	return res
 }
 
+// SellsItems returns all items that can be sold by this profession.
 func (c *Career) SellsItems() []*Item {
 	if c == nil {
 		return nil
@@ -110,6 +116,7 @@ func (c *Career) Update() {
 	}
 }
 
+// Profession represents a profession like "smith", "farmer", "miner", etc.
 type Profession struct {
 	ID       uint64
 	Name     string       // Name of the profession.
@@ -132,6 +139,7 @@ type Profession struct {
 	Skills  []*Skill
 }
 
+// NewProfession creates a new profession.
 func NewProfession(id uint64, name string, req LocationType) *Profession {
 	prof := &Profession{
 		ID:           id,
@@ -151,6 +159,7 @@ func NewProfession(id uint64, name string, req LocationType) *Profession {
 	return prof
 }
 
+// AddSkill adds a new skill to the profession.
 func (p *Profession) AddSkill(id uint64, name string, produce []*Item, minExp int) {
 	skill := &Skill{
 		ID:            id,
@@ -168,9 +177,12 @@ func (p *Profession) AddSkill(id uint64, name string, produce []*Item, minExp in
 	p.Skills = append(p.Skills, skill)
 }
 
+// CanCraft returns all items that can be crafted by this profession at the given experience level.
 func (p *Profession) CanCraft(activeTics int) []*Item {
 	var res []*Item
 	for _, skill := range p.Skills {
+		// Check if we have enough experience to produce the items associated
+		// with the given skill.
 		if activeTics >= skill.MinExperience {
 			res = append(res, skill.CanProduce...)
 		}
@@ -178,22 +190,11 @@ func (p *Profession) CanCraft(activeTics int) []*Item {
 	return res
 }
 
+// Skill represents a skill that can be used to produce items.
 type Skill struct {
-	ID            uint64
-	Name          string
-	CanProduce    []*Item
+	ID            uint64      // Unique ID of the skill.
+	Name          string      // Name of the skill.
+	CanProduce    []*Item     // Items that can be produced by this skill.
 	Requires      *Profession // Profession required.
 	MinExperience int         // Minimum number of active cycles needed
 }
-
-type DayOfWeek int
-
-const (
-	DayMonday DayOfWeek = iota
-	DayTuesday
-	DayWednesday
-	DayThursday
-	DayFriday
-	DaySaturday
-	DaySunday
-)

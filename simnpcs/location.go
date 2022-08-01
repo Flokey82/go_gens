@@ -43,6 +43,7 @@ type Location struct {
 	// Currently producing []*Item
 }
 
+// NewLocation creates a new location.
 func NewLocation(id uint64, name string, t LocationType, s LocationScale) *Location {
 	return &Location{
 		ID:    id,
@@ -52,14 +53,16 @@ func NewLocation(id uint64, name string, t LocationType, s LocationScale) *Locat
 	}
 }
 
+// Visit is called if a character visits a location.
 func (l *Location) Visit(p *Character) {
 	if l.Host == nil {
 		return
 	}
 
-	l.Host.Interact(p, l)
+	l.Host.Interact(p, l) // Interact with the host
 }
 
+// AssignChild adds a child location to the location.
 func (l *Location) AssignChild(c *Location) {
 	l.Children = append(l.Children, c)
 	c.Parent = l

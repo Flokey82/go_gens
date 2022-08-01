@@ -2,8 +2,26 @@ package simnpcs
 
 import (
 	"fmt"
-	"github.com/Flokey82/aifiver"
 	"log"
+
+	"github.com/Flokey82/aifiver"
+)
+
+type DayOfWeek int
+
+const (
+	DayMonday DayOfWeek = iota
+	DayTuesday
+	DayWednesday
+	DayThursday
+	DayFriday
+	DaySaturday
+	DaySunday
+)
+
+const (
+	DayTimeStart = 7
+	DayTimeEnd   = 22
 )
 
 type CharacterStatus int
@@ -57,6 +75,7 @@ type Character struct {
 	Inventory *Inventory // Personal inventory
 }
 
+// NewCharacter creates a new character.
 func NewCharacter(id uint64, firstName, lastName string, p aifiver.SmallModel) *Character {
 	return &Character{
 		ID:         id,
@@ -72,6 +91,7 @@ func NewCharacter(id uint64, firstName, lastName string, p aifiver.SmallModel) *
 	}
 }
 
+// Name of the character.
 func (c *Character) Name() string {
 	var prefix string
 	if c.Title != "" {
@@ -80,6 +100,7 @@ func (c *Character) Name() string {
 	return prefix + c.FirstName + " " + c.LastName
 }
 
+// AddSources adds a list of locations to the sources map so the character can find the item.
 func (c *Character) AddSources(item *Item, locs ...*Location) {
 	knownLocs := make(map[*Location]bool)
 	for _, loc := range c.Sources[item.ID] {
@@ -156,17 +177,20 @@ func (c *Character) ChangeOpinion(id uint64, imp Impact) Opinion {
 	return op
 }
 
+// WakeUp wakes up the character.
 func (c *Character) WakeUp() {
 	log.Println(fmt.Sprintf("%q woke up", c.Name()))
 	c.Status = CharStatIdle
 }
 
+// Sleep puts the character to sleep.
 func (c *Character) Sleep() {
 	c.GoTo(c.Home)
 	log.Println(fmt.Sprintf("%q fell asleep", c.Name()))
 	c.Status = CharStatSleeping
 }
 
+// Work causes the character to work.
 func (c *Character) Work() {
 	// Go to work location.
 	c.GoTo(c.Career.Location)
@@ -177,6 +201,7 @@ func (c *Character) Work() {
 	c.Career.Update()
 }
 
+// Idle sets the character to idle.
 func (c *Character) Idle() {
 	// TODO: Use "Passions" to determine spare time activity.
 	// TODO: What if they do not have a home?
@@ -187,6 +212,7 @@ func (c *Character) Idle() {
 	}
 }
 
+// DoYourThing causes the character to do watever is expected for the given day and hour.
 func (c *Character) DoYourThing(day int, hour int) {
 	dayOfWeek := day % 7
 	if hour == c.WakeAt {
@@ -228,6 +254,7 @@ func (c *Character) GetRoutine(dayOfWeek int, hour int) *Routine {
 	return c.Routines[dayOfWeek][hour]
 }
 
+// GoTo moves the character to the given location.
 func (c *Character) GoTo(loc *Location) {
 	if loc != nil && loc != c.Location {
 		log.Println(fmt.Sprintf("%q goes to %q", c.Name(), loc.Name))
@@ -235,6 +262,7 @@ func (c *Character) GoTo(loc *Location) {
 	}
 }
 
+// Plan creates a number of tasks for the character on the current day.
 func (c *Character) Plan() {
 	// Wake up at planned time.
 	// What do I have to do tomorrow?
@@ -250,8 +278,3 @@ func (c *Character) Plan() {
 		c.AddTask(0, item, TaskFind)
 	}
 }
-
-const (
-	DayTimeStart = 7
-	DayTimeEnd   = 22
-)

@@ -13,6 +13,7 @@ type Item struct {
 	ProducedBy   []*Profession
 }
 
+// newInstance creates a new instance of the item.
 func (item *Item) newInstance(id uint64) *ItemInstance {
 	return &ItemInstance{
 		ID:         id,
@@ -21,6 +22,7 @@ func (item *Item) newInstance(id uint64) *ItemInstance {
 	}
 }
 
+// ItemInstance represents an instance of an item.
 type ItemInstance struct {
 	ID         uint64 // Unique id
 	Item       *Item  // Base item

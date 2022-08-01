@@ -13,11 +13,19 @@ type Index struct {
 	IDCount   uint64
 }
 
-func (idx *Index) NewProfession(name string, req LocationType) *Profession {
-	prof := NewProfession(idx.GetID(), name, req)
-	return prof
+// New returns a new Index.
+func New() *Index {
+	return &Index{
+		Topics: NewTopicPool(),
+	}
 }
 
+// NewProfession adds a new profession to the index.
+func (idx *Index) NewProfession(name string, req LocationType) *Profession {
+	return NewProfession(idx.GetID(), name, req)
+}
+
+// NewLocation adds a new location to the index.
 func (idx *Index) NewLocation(name string, parent *Location, t LocationType, s LocationScale) *Location {
 	loc := NewLocation(idx.GetID(), name, t, s)
 	idx.Locations = append(idx.Locations, loc)
@@ -27,6 +35,7 @@ func (idx *Index) NewLocation(name string, parent *Location, t LocationType, s L
 	return loc
 }
 
+// StartCareer starts a new career for a character.
 func (idx *Index) StartCareer(c *Character, p *Profession, l *Location) {
 	// TODO: Account for change of workplace, retain experience.
 	car := &Career{
@@ -45,19 +54,13 @@ func (idx *Index) StartCareer(c *Character, p *Profession, l *Location) {
 	c.SetCareer(car)
 }
 
-func New() *Index {
-	idx := &Index{
-		Topics: NewTopicPool(),
-	}
-
-	return idx
-}
-
+// GetID returns a new unique ID.
 func (idx *Index) GetID() uint64 {
 	idx.IDCount++
 	return idx.IDCount
 }
 
+// Tick updates the index.
 func (idx *Index) Tick() {
 	// Move the simulation forward on tick.
 	idx.TickCount++
@@ -71,20 +74,24 @@ func (idx *Index) Tick() {
 	log.Println(fmt.Sprintf("tick %d (Day %d Hour %d)", idx.TickCount, (idx.TickCount/24)%7, idx.TickCount%24))
 	day := int(idx.TickCount / 24)
 	hour := int(idx.TickCount % 24)
-	locs := make(map[*Location][]*Character)
 
-	// Get active routines and group them by location.
+	// Pursue active routines.
 	for i := range idx.Entries {
 		c := idx.Entries[i]
-		// Update location based on routines and career.
-		c.DoYourThing(day, hour)
+		c.DoYourThing(day, hour) // Update location based on routines and career.
+	}
 
+	// Group people by location.
+	//
+	// Routines that overlap in location and purpose
+	// have a high chance of an encounter.
+	// Based on existing social bonds and psychological
+	// profile, knowledge might be exchanged, and/or
+	// new social bonds being formed.
+	locs := make(map[*Location][]*Character)
+	for i := range idx.Entries {
 		// Identify canidates for encounters.
-		//// Routines that overlap in location and purpose
-		//// have a high chance of an encounter.
-		//// Based on existing social bonds and psychological
-		//// profile, knowledge might be exchanged, and/or
-		//// new social bonds being formed.
+		c := idx.Entries[i]
 		if c.Location != nil {
 			// Group routines by location.
 			locs[c.Location] = append(locs[c.Location], c)
@@ -167,12 +174,14 @@ type Impact struct {
 	Information float64 // Value of information exchanged
 }
 
+// Opinion is a measure of how a character feels about a subject.
 type Opinion struct {
 	Count  int    // Number of values in average
 	Impact        // Recent impact
 	Total  Impact // Total impact
 }
 
+// Change the opinion of a character about a subject.
 func (o *Opinion) Change(imp Impact) {
 	o.Count++
 
@@ -195,6 +204,7 @@ func (o *Opinion) Change(imp Impact) {
 	o.Information = weightedAvrg(o.Information, imp.Information, 0.5)
 }
 
+// String returns a string representation of the opinion.
 func (o *Opinion) String() string {
 	if o.Emotional < 0 {
 		return "dislikes"
