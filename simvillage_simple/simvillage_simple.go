@@ -26,37 +26,39 @@ type Village struct {
 
 const firstNamePrefix = "!(bil|bal|ban|hil|ham|hal|hol|hob|wil|me|or|ol|od|gor|for|fos|tol|ar|fin|ere|leo|vi|bi|bren|thor)"
 
+// New returns a new village.
 func New() *Village {
 	v := new(Village)
 
-	// Female first names.
+	// Initialize name generation.
 	genFirstF, err := fantasyname.Compile(firstNamePrefix+"(|ga|orbise|apola|adure|mosi|ri|i|na|olea|ne)", fantasyname.Collapse(true), fantasyname.RandFn(rand.Intn))
 	if err != nil {
 		log.Fatal(err)
 	}
-	v.firstGen[0] = genFirstF
+	v.firstGen[0] = genFirstF // Female first names.
 
-	// Male first names.
 	genFirstM, err := fantasyname.Compile(firstNamePrefix+"(|go|orbis|apol|adur|mos|ole|n)", fantasyname.Collapse(true), fantasyname.RandFn(rand.Intn))
 	if err != nil {
 		log.Fatal(err)
 	}
-	v.firstGen[1] = genFirstM
+	v.firstGen[1] = genFirstM // Male first names.
 
 	genLast, err := fantasyname.Compile("!BsVc", fantasyname.Collapse(true), fantasyname.RandFn(rand.Intn))
 	if err != nil {
 		log.Fatal(err)
 	}
-	v.lastGen = genLast
+	v.lastGen = genLast // Last names.
 	return v
 }
 
+// getNextID returns the next unique ID.
 func (v *Village) getNextID() int {
 	id := v.maxID
 	v.maxID++
 	return id
 }
 
+// Tick advances the simulation by one day.
 func (v *Village) Tick() {
 	v.tick++
 	v.year += (v.day + 1) / 365
@@ -86,6 +88,7 @@ func (v *Village) Tick() {
 	v.popDeath()
 }
 
+// popAge ages the population.
 func (v *Village) popAge() {
 	for _, p := range v.People {
 		if p.bday == v.day {
@@ -95,6 +98,7 @@ func (v *Village) popAge() {
 	}
 }
 
+// popMatchMaker pairs up singles.
 func (v *Village) popMatchMaker() {
 	// Get eligible singles.
 	var single []*Person
@@ -141,6 +145,7 @@ func (v *Village) popMatchMaker() {
 	}
 }
 
+// popGrowth triggers pregnancies, births, and random settlers arriving at the village.
 func (v *Village) popGrowth() {
 	// Pregnancies.
 	var children []*Person
@@ -194,6 +199,7 @@ func (v *Village) popGrowth() {
 	}
 }
 
+// fixGenes makes sure that the gender is set properly.
 func fixGenes(p *Person) {
 	switch p.gender {
 	case GenderFemale:
@@ -205,6 +211,7 @@ func fixGenes(p *Person) {
 	}
 }
 
+// AddRandomPerson adds a random settler to the village.
 func (v *Village) AddRandomPerson() {
 	p := v.newPerson()
 	p.lastName = v.lastGen.String()
@@ -217,6 +224,7 @@ func (v *Village) AddRandomPerson() {
 	log.Println(p.String(), "arrived")
 }
 
+// popDeath causes the death random people based on their age.
 func (v *Village) popDeath() {
 	// TODO:
 	// - Increase chances of death with rising population through disease.
@@ -249,15 +257,6 @@ func (v *Village) popDeath() {
 		}
 	}
 	v.People = livingPeople
-}
-
-func (v *Village) newPerson() *Person {
-	p := &Person{
-		id:     v.getNextID(),
-		gender: randGender(),
-	}
-	p.firstName = v.firstGen[p.gender].String()
-	return p
 }
 
 type Gender int
@@ -297,6 +296,16 @@ type Person struct {
 	pregnant     int
 	pregnantWith *Person
 	g            genetics.Genes
+}
+
+// newPerson creates a new person.
+func (v *Village) newPerson() *Person {
+	p := &Person{
+		id:     v.getNextID(),
+		gender: randGender(),
+	}
+	p.firstName = v.firstGen[p.gender].String()
+	return p
 }
 
 func (p *Person) Name() string {
