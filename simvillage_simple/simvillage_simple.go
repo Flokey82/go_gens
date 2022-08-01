@@ -132,6 +132,7 @@ func (v *Village) popMatchMaker() {
 			}
 			p.spouse = pc
 			pc.spouse = p
+
 			// Update family name.
 			// TODO: This is not optimal... There should be a better way to do this.
 			if p.gender == GenderFemale {
@@ -184,7 +185,7 @@ func (v *Village) popGrowth() {
 				c.mother.children = append(c.mother.children, c)
 				c.father.children = append(c.father.children, c)
 				c.g = genetics.Mix(c.mother.g, c.father.g, 2)
-				fixGenes(c)
+				c.fixGenes()
 				c.bday = v.day // Birthday!
 				children = append(children, c)
 				log.Println(c.mother.String(), "\n", geneticshuman.String(c.mother.g), "\nand", c.father.String(), "\n", geneticshuman.String(c.father.g), "\nhad a baby\n", geneticshuman.String(c.g))
@@ -193,21 +194,9 @@ func (v *Village) popGrowth() {
 	}
 	v.People = append(v.People, children...)
 
-	// Random arrivals.
+	// Random arrival of settlers.
 	if rand.Intn(365) < 1 {
 		v.AddRandomPerson()
-	}
-}
-
-// fixGenes makes sure that the gender is set properly.
-func fixGenes(p *Person) {
-	switch p.gender {
-	case GenderFemale:
-		geneticshuman.SetGender(&p.g, geneticshuman.GenderFemale)
-	case GenderMale:
-		geneticshuman.SetGender(&p.g, geneticshuman.GenderMale)
-	default:
-		geneticshuman.SetGender(&p.g, 0)
 	}
 }
 
@@ -218,7 +207,7 @@ func (v *Village) AddRandomPerson() {
 	p.age = rand.Intn(20) + 16
 	p.bday = rand.Intn(365)
 	p.g = genetics.NewRandom()
-	fixGenes(p)
+	p.fixGenes()
 	v.People = append(v.People, p)
 
 	log.Println(p.String(), "arrived")
@@ -241,24 +230,27 @@ func (v *Village) popDeath() {
 		} else if p.age > 70 { // Elderly
 			p.dead = rand.Intn(5475) == 0
 		}
-		if p.dead {
-			// Kill villager.
-			if spouse := p.spouse; spouse != nil {
-				spouse.spouse = nil // Remove dead spouse from spouse.
-			}
-			// TODO: Remove child from parents?
-			log.Println(p.String(), "died and has", len(p.children), "children !!!!!!!!", p.numLivingChildren(), "alive")
-			for _, c := range p.children {
-				log.Println(c.String())
-			}
-		} else {
-			// Filter out dead people.
+
+		// Filter out dead people.
+		if !p.dead {
 			livingPeople = append(livingPeople, p)
+			continue
+		}
+
+		// Kill villager.
+		if spouse := p.spouse; spouse != nil {
+			spouse.spouse = nil // Remove dead spouse from spouse.
+		}
+		// TODO: Remove child from parents?
+		log.Println(p.String(), "died and has", len(p.children), "children !!!!!!!!", p.numLivingChildren(), "alive")
+		for _, c := range p.children {
+			log.Println(c.String())
 		}
 	}
 	v.People = livingPeople
 }
 
+// Gender represents a gender.
 type Gender int
 
 const (
@@ -266,6 +258,7 @@ const (
 	GenderMale
 )
 
+// String returns the string representation of the gender.
 func (g Gender) String() string {
 	switch g {
 	case GenderFemale:
@@ -277,10 +270,12 @@ func (g Gender) String() string {
 	}
 }
 
+// randGender returns a random gender.
 func randGender() Gender {
 	return Gender(rand.Intn(2))
 }
 
+// Person represents a person in the village.
 type Person struct {
 	id           int
 	firstName    string
@@ -290,7 +285,7 @@ type Person struct {
 	dead         bool
 	mother       *Person
 	father       *Person
-	spouse       *Person // TODO: keep track of former spouses?
+	spouse       *Person // TODO: keep track of spouses that might have perished?
 	children     []*Person
 	gender       Gender
 	pregnant     int
@@ -308,10 +303,12 @@ func (v *Village) newPerson() *Person {
 	return p
 }
 
+// Name returns the name of the person.
 func (p *Person) Name() string {
 	return p.firstName + " " + p.lastName
 }
 
+// String returns the string representation of the person.
 func (p *Person) String() string {
 	deadStr := ""
 	if p.dead {
@@ -320,6 +317,7 @@ func (p *Person) String() string {
 	return p.Name() + fmt.Sprintf(" (%d %s%s)", p.age, p.gender, deadStr)
 }
 
+// numLivingChildren returns the number of children that are still alive.
 func (p *Person) numLivingChildren() int {
 	var n int
 	for _, c := range p.children {
@@ -330,17 +328,33 @@ func (p *Person) numLivingChildren() int {
 	return n
 }
 
+// isElegibleSingle returns true if the person is old enough and single.
 func (p *Person) isEligibleSingle() bool {
 	// Old enough and single.
 	return p.age > 16 && p.spouse == nil
 }
 
+// canBePregnant returns true if the person is old enough and not pregnant.
 func (p *Person) canBePregnant() bool {
 	// Female, has a spouse (implies old enough), and is currently not pregnant.
 	// TODO: Set randomized upper age limit.
 	return p.gender == GenderFemale && p.spouse != nil && p.pregnantWith == nil
 }
 
+// fixGenes makes sure that the gender is set properly.
+// NOTE: This needs to be done due to the genetics package being a bit weird.
+func (p *Person) fixGenes() {
+	switch p.gender {
+	case GenderFemale:
+		geneticshuman.SetGender(&p.g, geneticshuman.GenderFemale)
+	case GenderMale:
+		geneticshuman.SetGender(&p.g, geneticshuman.GenderMale)
+	default:
+		geneticshuman.SetGender(&p.g, 0)
+	}
+}
+
+// isRelated returns true if a and b are related (first degree).
 func isRelated(a, b *Person) bool {
 	if a == b.father || a == b.mother || b == a.father || b == a.mother {
 		return true
