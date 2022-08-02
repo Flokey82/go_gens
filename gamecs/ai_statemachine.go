@@ -17,6 +17,7 @@ func newCAiScheduler() *CAiScheduler {
 }
 
 func (c *CAiScheduler) init(ai *CAi) {
+	// TODO: Add 'any' transitions in order of priority.
 	// Set up the two states we decide on if we are being threatened.
 	sFlee := NewStateFlee(ai)     // Flee from predator
 	sAttack := NewStateAttack(ai) // Attack

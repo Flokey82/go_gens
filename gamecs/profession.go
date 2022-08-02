@@ -45,7 +45,7 @@ func (s *Profession) Type() aistate.StateType {
 
 func (s *Profession) Tick(delta uint64) {
 	if len(s.Missing) > 0 {
-		return
+		return // TODO: Implement acquisition of missing materials.
 	}
 	if s.CurrentProject == nil {
 		s.selectNewProject()
@@ -62,7 +62,7 @@ func (s *Profession) Tick(delta uint64) {
 func (s *Profession) selectNewProject() {
 	// Do we have a current project?
 	if s.CurrentProject == nil {
-		//   No: Select a new project
+		// No: Select a new project
 		s.CurrentProject = newProject(s.CanCraft[rand.Intn(len(s.CanCraft))])
 	}
 

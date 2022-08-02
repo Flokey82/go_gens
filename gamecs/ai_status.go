@@ -25,7 +25,11 @@ func (c *CAiStatus) Update(s *CStatus, delta float64) {
 		s.Hunger = 0
 		c.eat = false
 	}
+
+	// TODO: Improve needs evaluation.
+	// Check 'aineeds' repo, add priority list
 	c.states[sExhausted] = s.Exhaustion > 10
+	// TODO: Evaluate if the entities we see are actually a threat.
 	c.states[sThreatened] = len(c.ape.Entities) > 0
 	// c.states[sInteracting] = len(c.ape.Entities) > 0
 	c.states[sHungry] = s.Hunger > 20

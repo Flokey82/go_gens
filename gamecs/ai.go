@@ -39,6 +39,7 @@ func newCAi(w *World, id int) *CAi {
 	return c
 }
 
+// Conflict returns true if the personality indicates low agreeableness.
 func (c *CAi) Conflict() bool {
 	return c.Get(aifiver.FactorAgreeableness) <= 0
 }
