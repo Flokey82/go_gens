@@ -2,11 +2,7 @@
 package gencellular
 
 import (
-	"image"
-	"image/color"
-	"image/gif"
 	"math/rand"
-	"os"
 )
 
 // SeedFunc is the type of function used to initialize the simulation.
@@ -31,15 +27,12 @@ func EvalDefault(currState bool, numNeighbors int) bool {
 
 // Culture was a very smart way to call whatever holds the cells.
 type Culture struct {
-	Cells      [2][][]bool       // Cell buffers.
-	Height     int               // Number of cells over x.
-	Width      int               // Number of cells over y.
-	Generation int               // Number of ticks.
-	Init       SeedFunc          // Function used to initialize the culture.
-	Eval       EvalFunc          // Function used to evaluate the state of a cell in the next generation.
-	images     []*image.Paletted // Generated frame used to construct the GIF.
-	palette    []color.Color     // Default color palette.
-	delays     []int             // Delay for each individual frame (0 for now).
+	Cells      [2][][]bool // Cell buffers.
+	Height     int         // Number of cells over x.
+	Width      int         // Number of cells over y.
+	Generation int         // Number of ticks.
+	Init       SeedFunc    // Function used to initialize the culture.
+	Eval       EvalFunc    // Function used to evaluate the state of a cell in the next generation.
 }
 
 // New returns a new cell culture with the given height and width.
@@ -54,12 +47,6 @@ func NewCustom(height, width int, sf SeedFunc, ef EvalFunc) *Culture {
 		Width:  width,
 		Init:   sf,
 		Eval:   ef,
-		palette: []color.Color{
-			color.RGBA{0x00, 0x00, 0x00, 0xff}, color.RGBA{0x00, 0x00, 0xff, 0xff},
-			color.RGBA{0x00, 0xff, 0x00, 0xff}, color.RGBA{0x00, 0xff, 0xff, 0xff},
-			color.RGBA{0xff, 0x00, 0x00, 0xff}, color.RGBA{0xff, 0x00, 0xff, 0xff},
-			color.RGBA{0xff, 0xff, 0x00, 0xff}, color.RGBA{0xff, 0xff, 0xff, 0xff},
-		},
 	}
 	c.Reset()
 	return c
@@ -71,8 +58,6 @@ func (c *Culture) Reset() {
 	c.Cells[1] = initCells(c.Width, c.Height)
 	c.Init(c.Cells[0], c.Width, c.Height)
 	c.Generation = 0
-	c.images = nil
-	c.delays = nil
 }
 
 // initCells initializes a two dimensional slice of bools with the given 'w'idth and 'h'eight.
@@ -93,8 +78,18 @@ func (c *Culture) Tick() {
 			next[x][y] = c.Eval(current[x][y], c.countNeighbours(current, x, y))
 		}
 	}
-	c.storeGifFrame(current)
 	c.Generation++
+}
+
+var directions [][2]int = [][2]int{
+	{1, 0},   // East
+	{0, 1},   // South
+	{1, 1},   // SouthEast
+	{0, -1},  // North
+	{1, -1},  // NorthEast
+	{-1, -1}, // NorthWest
+	{-1, 0},  // West
+	{-1, 1},  // SouthWest
 }
 
 // countNeighbours counts the neighbours of the given cell.
@@ -112,45 +107,4 @@ func (c *Culture) countNeighbours(cells [][]bool, x, y int) (sum int) {
 		sum++
 	}
 	return sum
-}
-
-var directions [][2]int = [][2]int{
-	{1, 0},   // East
-	{0, 1},   // South
-	{1, 1},   // SouthEast
-	{0, -1},  // North
-	{1, -1},  // NorthEast
-	{-1, -1}, // NorthWest
-	{-1, 0},  // West
-	{-1, 1},  // SouthWest
-}
-
-func (c *Culture) storeGifFrame(cells [][]bool) {
-	img := image.NewPaletted(image.Rect(0, 0, c.Width, c.Height), c.palette)
-	c.images = append(c.images, img)
-	c.delays = append(c.delays, 0)
-	for x := 0; x < c.Width; x++ {
-		for y := 0; y < c.Height; y++ {
-			if cells[x][y] {
-				img.Set(x, y, color.RGBA{0xFF, 0x00, 0x00, 255})
-			} else {
-				img.Set(x, y, color.RGBA{0x00, 0x00, 0x00, 255})
-			}
-		}
-	}
-}
-
-// Export all frames to a GIF under the given path.
-func (c *Culture) ExportGif(path string) error {
-	f, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE, 0600)
-	if err != nil {
-		return err
-	}
-	if err := gif.EncodeAll(f, &gif.GIF{
-		Image: c.images,
-		Delay: c.delays,
-	}); err != nil {
-		return err
-	}
-	return f.Close()
 }

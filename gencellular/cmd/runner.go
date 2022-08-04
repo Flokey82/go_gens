@@ -5,7 +5,7 @@ import (
 )
 
 func main() {
-	c := gencellular.New(128, 128)
+	c := gencellular.NewAnimator(128, 128)
 	for i := 0; i < 100; i++ {
 		c.Tick()
 	}

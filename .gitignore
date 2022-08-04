@@ -31,3 +31,4 @@ simvillage_simple/cmd/runner
 simnpcs/cmd/runner.exe
 gendungeon/cmd/runner
 simnpcs/cmd/runner
+gencellular/cmd/rgb.gif
