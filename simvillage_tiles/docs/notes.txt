@@ -1,0 +1,7 @@
+WebAssembly build:
+GOOS=js GOARCH=wasm go build -o village.wasm github.com/Flokey82/go_gens/simvillage_tiles/cmd
+cp $(go env GOROOT)/misc/wasm/wasm_exec.js .
+
+Run locally:
+cd docs
+go run main.go
