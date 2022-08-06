@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"image"
 	"log"
-	"math/rand"
 
 	"github.com/hajimehoshi/ebiten"
 	"github.com/hajimehoshi/ebiten/ebitenutil"
@@ -61,106 +60,39 @@ type Game struct {
 }
 
 func NewGame() *Game {
-	g := &Game{
-		layers: [][]int{
-			{
-				243, 243, 243, 243, 243, 243, 243, 243, 243, 243, 243, 243, 243, 243, 243,
-				243, 243, 243, 243, 243, 243, 243, 243, 243, 243, 243, 243, 243, 243, 243,
-				243, 243, 243, 243, 243, 243, 243, 243, 243, 243, 243, 243, 243, 243, 243,
-				243, 218, 243, 243, 243, 243, 243, 243, 243, 243, 243, 218, 243, 244, 243,
-				243, 243, 243, 243, 243, 243, 243, 243, 243, 243, 243, 243, 243, 243, 243,
-
-				243, 243, 243, 243, 243, 243, 243, 243, 243, 243, 243, 243, 243, 243, 243,
-				243, 243, 243, 243, 243, 243, 243, 243, 243, 243, 243, 243, 243, 243, 243,
-				243, 243, 244, 243, 243, 243, 243, 243, 243, 243, 243, 243, 243, 243, 243,
-				243, 243, 243, 243, 243, 243, 243, 243, 243, 219, 243, 243, 243, 219, 243,
-				243, 243, 243, 243, 243, 243, 243, 243, 243, 243, 243, 243, 243, 243, 243,
-
-				243, 243, 243, 243, 243, 243, 243, 243, 243, 243, 243, 243, 243, 243, 243,
-				243, 243, 243, 243, 243, 243, 243, 243, 243, 243, 243, 243, 243, 243, 243,
-				243, 243, 243, 243, 243, 243, 243, 243, 243, 243, 243, 243, 243, 243, 243,
-				243, 218, 243, 243, 243, 243, 243, 243, 243, 243, 243, 244, 243, 243, 243,
-				243, 243, 243, 243, 243, 243, 243, 243, 243, 243, 243, 243, 243, 243, 243,
-			},
-			{
-				0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-				0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-				0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-				0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-				0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-
-				0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-				0, 0, 0, 0, 0, 303, 303, 245, 242, 303, 303, 0, 0, 0, 0,
-				0, 0, 0, 0, 0, 0, 0, 245, 242, 0, 0, 0, 0, 0, 0,
-				0, 0, 0, 0, 0, 0, 0, 245, 242, 0, 0, 0, 0, 0, 0,
-				0, 0, 0, 0, 0, 0, 0, 245, 242, 0, 0, 0, 0, 0, 0,
-
-				0, 0, 0, 0, 0, 0, 0, 245, 242, 0, 0, 0, 0, 0, 0,
-				0, 0, 0, 0, 0, 0, 0, 245, 242, 0, 0, 0, 0, 0, 0,
-				0, 0, 0, 0, 0, 0, 0, 245, 242, 0, 0, 0, 0, 0, 0,
-				0, 0, 0, 0, 0, 0, 0, 245, 242, 0, 0, 0, 0, 0, 0,
-				0, 0, 0, 0, 0, 0, 0, 245, 242, 0, 0, 0, 0, 0, 0,
-			},
-			{
-				0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-				0, 0, 0, 0, 0, 26, 27, 28, 29, 30, 31, 0, 0, 0, 0,
-				0, 0, 0, 0, 0, 51, 52, 53, 54, 55, 56, 0, 0, 0, 0,
-				0, 0, 0, 0, 0, 76, 77, 78, 79, 80, 81, 0, 0, 0, 0,
-				0, 0, 0, 0, 0, 101, 102, 103, 104, 105, 106, 0, 0, 0, 0,
-
-				0, 0, 0, 0, 0, 126, 127, 128, 129, 130, 131, 0, 0, 0, 0,
-				0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-				0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-				0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-				0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-
-				0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-				0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-				0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-				0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-				0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-			},
-		},
+	return &Game{
+		layers: defaultLayers(),
 	}
-	return g
 }
 
 func (g *Game) Update() error {
-	var keyPressed bool
+	// Handle input.
+	var posDelta [2]int
 	if ebiten.IsKeyPressed(ebiten.KeyLeft) {
-		if g.canEnter(g.playerPos[0]-1, g.playerPos[1]) {
-			g.playerPos[0] -= 1
-			g.playerLooksLeft = true
-			keyPressed = true
-		}
+		posDelta[0]--
 	}
 	if ebiten.IsKeyPressed(ebiten.KeyRight) {
-		if g.canEnter(g.playerPos[0]+1, g.playerPos[1]) {
-			g.playerPos[0] += 1
-			g.playerLooksLeft = false
-			keyPressed = true
-		}
+		posDelta[0]++
 	}
 	if ebiten.IsKeyPressed(ebiten.KeyUp) {
-		if g.canEnter(g.playerPos[0], g.playerPos[1]-1) {
-			g.playerPos[1] -= 1
-			keyPressed = true
-		}
+		posDelta[1]--
 	}
 	if ebiten.IsKeyPressed(ebiten.KeyDown) {
-		if g.canEnter(g.playerPos[0], g.playerPos[1]+1) {
-			g.playerPos[1] += 1
-			keyPressed = true
-		}
+		posDelta[1]++
 	}
-	if ebiten.IsKeyPressed(ebiten.KeySpace) {
-		px, py := g.getPlayerXY()
-		g.layers[1][py*screenWidth/tileSize+px] = rand.Intn(255)
-		keyPressed = true
+	keyPressed := posDelta[0] != 0 || posDelta[1] != 0
+	if !keyPressed {
+		return nil
 	}
-	if keyPressed {
-		g.count++
+	g.playerLooksLeft = posDelta[0] < 0
+
+	// Now check if we can go where we'd end up.
+	// TODO: If one of both directions would be illegal, just move along one axis?
+	if g.canEnter(g.playerPos[0]+posDelta[0]*tileSize/2, g.playerPos[1]+posDelta[1]*tileSize/2) {
+		g.playerPos[0] += posDelta[0]
+		g.playerPos[1] += posDelta[1]
 	}
+	g.count++
 	return nil
 }
 
@@ -195,26 +127,32 @@ func (g *Game) Draw(screen *ebiten.Image) {
 	// Draws the player on the screen.
 	drawPlayer := func() {
 		op := &ebiten.DrawImageOptions{}
+		// Center the frame of the player.
 		op.GeoM.Translate(-float64(frameWidth)/2, -float64(frameHeight)/2)
 		if g.playerLooksLeft {
-			op.GeoM.Scale(-1, 1)
+			op.GeoM.Scale(-1, 1) // Mirror horizontally.
 		}
-		op.GeoM.Translate(screenWidth/2+float64(g.playerPos[0]), screenHeight/2+float64(g.playerPos[1]))
+		// Center the player on the screen.
+		op.GeoM.Translate(screenWidth/2, screenHeight/2)
+
+		// Get the animation frame.
 		i := (g.count / 5) % frameCount
+		g.count = g.count % (frameCount * 5)
 		sx, sy := frameOX+i*frameWidth, frameOY
 		screen.DrawImage(runnerImage.SubImage(image.Rect(sx, sy, sx+frameWidth, sy+frameHeight)).(*ebiten.Image), op)
 	}
 
 	// Draws the given layer on the screen.
+	// TODO: Draw only the visible tiles and fetch them according to the player's position.
 	drawLayer := func(l []int, drawP bool) {
 		pX, pY := g.getPlayerXY()
 		for i, t := range l {
 			tX, tY := i%xCount, i/xCount
 			if pX == tX && pY == tY && drawP {
-				drawPlayer()
+				drawPlayer() // If the player is on the tile, draw the player.
 			}
 			op := &ebiten.DrawImageOptions{}
-			op.GeoM.Translate(float64((i%xCount)*tileSize), float64((i/xCount)*tileSize))
+			op.GeoM.Translate(float64((i%xCount)*tileSize)-float64(g.playerPos[0]), float64((i/xCount)*tileSize)-float64(g.playerPos[1]))
 
 			sx := (t % tileXCount) * tileSize
 			sy := (t / tileXCount) * tileSize
@@ -224,7 +162,6 @@ func (g *Game) Draw(screen *ebiten.Image) {
 
 	// Iterate through the layers and draw them.
 	for i, l := range g.layers {
-		// TODO: Make sure we draw all tiles behind the player first.
 		drawLayer(l, i == len(g.layers)-1)
 	}
 
