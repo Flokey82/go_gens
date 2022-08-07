@@ -9,10 +9,10 @@ import (
 
 func main() {
 	m := simmotive.NewMotive()
-	m.InitMotives()
+	m.Init()
 	m.Log("Your sim was born into the world")
 	for {
-		m.SimMotives(1)
+		m.SimMotives()
 		m.Clear()
 		log.Printf("Day %d : [%02d:%02d]\n\n", m.ClockD, m.ClockH, m.ClockM)
 		m.PrintMotives()

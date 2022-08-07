@@ -14,25 +14,29 @@ func SRand(upper int) float64 {
 	return float64(rand.Intn(upper) + 1)
 }
 
+// Motive holds the "mental state" of a Sim.
 type Motive struct {
-	Motive    [mMax]float64
-	oldMotive [mMax]float64
-	ClockH    int
-	ClockM    int
-	ClockD    int
-	Logs      []string
+	Motive    [mMax]float64 // current state
+	oldMotive [mMax]float64 // previous state
+	ClockH    int           // hour
+	ClockM    int           // minute
+	ClockD    int           // day
+	Logs      []string      // recent events
 }
 
+// NewMotive returns a new motive.
 func NewMotive() *Motive {
 	return &Motive{
 		ClockH: 8,
 	}
 }
 
+// Clear the console output.
 func (m *Motive) Clear() {
 	os.Stdout.Write([]byte{0x1B, 0x5B, 0x33, 0x3B, 0x4A, 0x1B, 0x5B, 0x48, 0x1B, 0x5B, 0x32, 0x4A})
 }
 
+// Log adds another log message and truncates the entries if there are more than 12.
 func (m *Motive) Log(msg string) {
 	m.Logs = append(m.Logs, fmt.Sprintf("[Day %d at %02d:%02d]  %s", m.ClockD, m.ClockH, m.ClockM, msg))
 	if len(m.Logs) > 12 {
@@ -40,6 +44,7 @@ func (m *Motive) Log(msg string) {
 	}
 }
 
+// The various motives defining the mental state of a Sim.
 const (
 	mHappyLife   = 0
 	mHappyWeek   = 1
@@ -66,7 +71,8 @@ const (
 	weekTicks = 5040
 )
 
-func (m *Motive) InitMotives() {
+// Init initializes the motive.
+func (m *Motive) Init() {
 	// Clear motive.
 	for i := 0; i < mMax; i++ {
 		m.Motive[i] = 0
@@ -78,7 +84,7 @@ func (m *Motive) InitMotives() {
 }
 
 // Simulates internal m.motive changes
-func (m *Motive) SimMotives(count int) {
+func (m *Motive) SimMotives() {
 	var tem float64
 
 	// Increase game clock (Jamie, remove this) :)
@@ -287,7 +293,8 @@ func (m *Motive) SimMotives(count int) {
 	}
 }
 
-// use this to change m.motives (checks overflow)
+// ChangeMotive changes the given motive by the given value.
+// Use this to change m.motives (checks overflow)
 func (m *Motive) ChangeMotive(motive int, value float64) {
 	m.Motive[motive] += value
 
@@ -299,7 +306,8 @@ func (m *Motive) ChangeMotive(motive int, value float64) {
 	}
 }
 
-// use this to change m.motives (checks overflow)
+// SimJob simulates an 9 hour workday.
+// Use this to change m.motives (checks overflow).
 func (m *Motive) SimJob() {
 	m.ClockH += 9
 	if m.ClockH > 24 {
@@ -314,6 +322,7 @@ func (m *Motive) SimJob() {
 	m.Motive[mStress] = -50 + SRand(50)
 }
 
+// PrintMotive prints the current state of the given motive.
 func (m *Motive) PrintMotive(motive int) {
 	var str string
 	str += "["
@@ -327,6 +336,7 @@ func (m *Motive) PrintMotive(motive int) {
 	log.Printf(str + "]\n")
 }
 
+// PrintMotives prints the current state of all motives.
 func (m *Motive) PrintMotives() {
 	log.Printf("Happiness\n")
 	log.Printf("=========\n")
