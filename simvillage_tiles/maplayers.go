@@ -31,10 +31,7 @@ type MapChunk struct {
 // newMapChunk returns a new map chunk with the given width and height.
 func newMapChunk(width, height int) *MapChunk {
 	return &MapChunk{
-		Dimensions: Dimensions{
-			Width:  width,
-			Height: height,
-		},
+		Dimensions:    Dimensions{width, height},
 		Ground:        newLayer(width, height),
 		GroundOverlay: newLayer(width, height),
 		Objects:       newLayer(width, height),
@@ -83,11 +80,8 @@ type Layer struct {
 // newLayer returns a new layer with the given width and height.
 func newLayer(width, height int) *Layer {
 	return &Layer{
-		Dimensions: Dimensions{
-			Width:  width,
-			Height: height,
-		},
-		Tiles: make([]int, width*height),
+		Dimensions: Dimensions{width, height},
+		Tiles:      make([]int, width*height),
 	}
 }
 
@@ -99,7 +93,7 @@ func (l Layer) isValid(x, y int) bool {
 // getTile returns the tile at the given position (if the position is valid).
 func (l Layer) getTile(x, y int) int {
 	if l.isValid(x, y) {
-		return l.Tiles[x+y*l.Width]
+		return l.Tiles[l.xyToIndex(x, y)]
 	}
 	return 0
 }
@@ -107,25 +101,21 @@ func (l Layer) getTile(x, y int) int {
 // setTile sets the tile at the given position (if the position is valid).
 func (l *Layer) setTile(x, y, tile int) {
 	if l.isValid(x, y) {
-		l.Tiles[x+y*l.Width] = tile
+		l.Tiles[l.xyToIndex(x, y)] = tile
 	}
 }
 
 // fill fills the map with a single tile type.
 func (l *Layer) fill(tile int) {
-	for y := 0; y < l.Height; y++ {
-		for x := 0; x < l.Width; x++ {
-			l.setTile(x, y, tile)
-		}
+	for i := range l.Tiles {
+		l.Tiles[i] = tile
 	}
 }
 
 // fillRandom fills the map with a random selction of given tiles.
 func (l *Layer) fillRandom(tiles []int, r *rand.Rand) {
-	for y := 0; y < l.Height; y++ {
-		for x := 0; x < l.Width; x++ {
-			l.setTile(x, y, tiles[r.Intn(len(tiles))]) // TODO: supply random number generator
-		}
+	for i := range l.Tiles {
+		l.Tiles[i] = tiles[r.Intn(len(tiles))]
 	}
 }
 

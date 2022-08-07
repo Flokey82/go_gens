@@ -4,6 +4,53 @@ import (
 	"math/rand"
 )
 
+var (
+	flowerTiles = []int{301, 302, 303, 304}                          // Tiles that are flowers
+	grassTiles  = []int{243, 243, 243, 243, 243, 243, 243, 218, 244} // Tiles that are grass
+)
+
+func genChunk(x, y, width, height int) *MapChunk {
+	// Create a new, empty chunk.
+	chunk := newMapChunk(width, height)
+
+	// Initialize the random number generator with a unique seed for the given coordinates.
+	r := rand.New(rand.NewSource(cash(x, y)))
+	// Fill the ground layer with grass tiles.
+	// NOTE: We've repeated the 243 tile a few times in the grassTiles slice
+	// to skew the probability in favor of the plain grass tile.
+	chunk.Ground.fillRandom(grassTiles, r)
+	for x := 0; x < width; x++ {
+		for y := 0; y < height; y++ {
+			// Randomly add some flowers on the ground object layer.
+			if r.Intn(100) < 2 {
+				chunk.GroundOverlay.setTile(x, y, flowerTiles[r.Intn(len(flowerTiles))])
+			}
+		}
+	}
+
+	// Randomly put some houses and other objects on the chunk.
+	// NOTE: We currently have hardcoded the offset for the houses to (1, 1).
+	switch r.Intn(10) {
+	case 0:
+		chunk.drawObject(house1, 1, 1)
+	case 1:
+		chunk.drawObject(house2, 1, 1)
+	case 2:
+		chunk.drawObject(house3, 1, 1)
+	case 3:
+		chunk.drawObject(hedge, 1, 1)
+	}
+	return chunk
+}
+
+// cash stands for chaos hash :D
+// See: https://stackoverflow.com/a/37221804
+func cash(x, y int) int64 {
+	h := x*374761393 + y*668265263 //all constants are prime
+	h = (h ^ (h >> 13)) * 1274126177
+	return int64(h ^ (h >> 16))
+}
+
 // defaultChunk returns the default MapChunk.
 func defaultChunk() *MapChunk {
 	m := newMapChunk(screenWidth/tileSize, screenHeight/tileSize)
@@ -67,51 +114,6 @@ func defaultChunk() *MapChunk {
 	return m
 }
 
-var (
-	flowerTiles = []int{301, 302, 303, 304}                          // Tiles that are flowers
-	grassTiles  = []int{243, 243, 243, 243, 243, 243, 243, 218, 244} // Tiles that are grass
-)
-
-func genChunk(x, y, width, height int) *MapChunk {
-	// Create a new, empty chunk.
-	chunk := newMapChunk(width, height)
-
-	// Initialize the random number generator with a unique seed for the given coordinates.
-	r := rand.New(rand.NewSource(cash(x, y)))
-	// Fill the ground layer with grass tiles.
-	// NOTE: We've repeated the 243 tile a few times in the grassTiles slice
-	// to skew the probability in favor of the plain grass tile.
-	chunk.Ground.fillRandom(grassTiles, r)
-	for x := 0; x < width; x++ {
-		for y := 0; y < height; y++ {
-			// Randomly add some flowers on the ground object layer.
-			if r.Intn(100) < 2 {
-				chunk.GroundOverlay.setTile(x, y, flowerTiles[r.Intn(len(flowerTiles))])
-			}
-		}
-	}
-
-	// Randomly put some houses and other objects on the chunk.
-	// NOTE: We currently have hardcoded the offset for the houses to (1, 1).
-	switch r.Intn(10) {
-	case 0:
-		chunk.drawObject(house1, 1, 1)
-	case 1:
-		chunk.drawObject(house2, 1, 1)
-	case 2:
-		chunk.drawObject(hedge, 1, 1)
-	}
-	return chunk
-}
-
-// cash stands for chaos hash :D
-// See: https://stackoverflow.com/a/37221804
-func cash(x, y int) int64 {
-	h := x*374761393 + y*668265263 //all constants are prime
-	h = (h ^ (h >> 13)) * 1274126177
-	return int64(h ^ (h >> 16))
-}
-
 // drawable is a collection of tiles that can be drawn on a chunk.
 // TODO: Use named layers instead of a fixed number of expected layers.
 type drawable struct {
@@ -134,10 +136,7 @@ func (d *drawable) Structures() *Layer {
 }
 
 var house1 = drawable{
-	Dimensions: Dimensions{
-		Height: 4,
-		Width:  4,
-	},
+	Dimensions: Dimensions{4, 4},
 	ground: []int{
 		0, 0, 0, 0,
 		0, 0, 0, 0,
@@ -157,11 +156,9 @@ var house1 = drawable{
 		133, 134, 135, 136,
 	},
 }
+
 var house2 = drawable{
-	Dimensions: Dimensions{
-		Height: 4,
-		Width:  6,
-	},
+	Dimensions: Dimensions{4, 6},
 	ground: []int{
 		0, 0, 0, 0, 0, 0,
 		0, 0, 0, 0, 0, 0,
@@ -181,11 +178,34 @@ var house2 = drawable{
 		138, 139, 140, 141, 142, 143,
 	},
 }
-var hedge = drawable{
-	Dimensions: Dimensions{
-		Height: 5,
-		Width:  9,
+
+var house3 = drawable{
+	Dimensions: Dimensions{5, 6},
+	ground: []int{
+		0, 0, 0, 0, 0, 0,
+		0, 0, 0, 0, 0, 0,
+		0, 0, 0, 0, 0, 0,
+		0, 0, 0, 0, 0, 0,
+		0, 0, 0, 0, 0, 0,
 	},
+	groundOverlay: []int{
+		0, 0, 0, 0, 0, 0,
+		0, 0, 0, 0, 0, 0,
+		0, 0, 0, 0, 0, 0,
+		0, 0, 0, 0, 0, 0,
+		0, 0, 0, 0, 0, 0,
+	},
+	structures: []int{
+		26, 27, 28, 29, 30, 31,
+		51, 52, 53, 54, 55, 56,
+		76, 77, 78, 79, 80, 81,
+		101, 102, 103, 104, 105, 106,
+		126, 127, 128, 129, 130, 131,
+	},
+}
+
+var hedge = drawable{
+	Dimensions: Dimensions{5, 9},
 	ground: []int{
 		0, 0, 0, 0, 0, 0, 0, 0, 0,
 		0, 202, 203, 204, 205, 206, 207, 208, 0,
