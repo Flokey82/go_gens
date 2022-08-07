@@ -100,13 +100,14 @@ func (g *Game) Update() error {
 	return nil
 }
 
-// canEnter returns whether the player can enter the tile at (x, y).
-func (g *Game) canEnter(newX, newY int) bool {
+// canEnter returns whether the player can enter the tile at (x, y) in the chunk (cX, cY).
+func (g *Game) canEnter(cX, cY, newX, newY int) bool {
 	x, y := getTileXYFromPos(newX, newY)
 	if x < 0 || x >= screenWidth/tileSize || y < 0 || y >= screenHeight/tileSize {
 		return false
 	}
-	return g.layers[2][y*screenWidth/tileSize+x] == 0
+	layers := g.getChunk(cX, cY)
+	return layers[2][y*screenWidth/tileSize+x] == 0
 }
 
 // getViewportXY returns the x, y tile position of the top left corner of the viewport in the tile map.
@@ -115,8 +116,11 @@ func (g *Game) getViewportXY() (int, int) {
 }
 
 // getChunk returns the layers at the given chunk position.
-// Note: Right now we're faking loading in chunks and simply return the same chunk.
+// Note: Right now we're generating chunks on the fly... We should find a way to cache them.
 func (g *Game) getChunk(x, y int) [][]int {
+	if x != 0 || y != 0 {
+		return genChunk(x, y, screenWidth/tileSize, screenHeight/tileSize)
+	}
 	return g.layers
 }
 

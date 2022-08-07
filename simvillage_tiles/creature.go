@@ -53,17 +53,19 @@ func (c *Creature) move(delta [2]int) {
 	// Can this be done better?
 	newPosX -= (screenWidth - 1) * newChunkDelta[0]
 	newPosY -= (screenHeight - 1) * newChunkDelta[1]
+	newChunkX := c.chunk[0] + newChunkDelta[0]
+	newChunkY := c.chunk[1] + newChunkDelta[1]
 
 	// Now check if we can go where we'd end up.
 	// TODO: Check if we can enter newPosX, newPosY in the new chunk.
 	// NOTE: This doesn't check the chunk yet, but since all chunks are the same it sorta works.
-	if c.g.canEnter(newPosX, newPosY) {
+	if c.g.canEnter(newChunkX, newChunkY, newPosX, newPosY) {
 		// TODO: If only one of both directions would be an illegal move,
 		// should we just move along one axis?
 		c.pos[0] = newPosX
 		c.pos[1] = newPosY
-		c.chunk[0] += newChunkDelta[0]
-		c.chunk[1] += newChunkDelta[1]
+		c.chunk[0] = newChunkX
+		c.chunk[1] = newChunkY
 		c.updateTile()
 	}
 	c.count++
