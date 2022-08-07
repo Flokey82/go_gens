@@ -51,14 +51,14 @@ func init() {
 }
 
 type Game struct {
-	layers    [][]int
+	layers    *MapChunk
 	player    *Creature
 	creatures []*Creature
 }
 
 func NewGame() *Game {
 	g := &Game{
-		layers: defaultLayers(),
+		layers: defaultChunk(),
 	}
 	g.player = NewCreature(g, [2]int{0, 0})
 
@@ -119,9 +119,9 @@ func (g *Game) getViewportXY() (int, int) {
 // Note: Right now we're generating chunks on the fly... We should find a way to cache them.
 func (g *Game) getChunk(x, y int) [][]int {
 	if x != 0 || y != 0 {
-		return genChunk(x, y, screenWidth/tileSize, screenHeight/tileSize)
+		return genChunk(x, y, screenWidth/tileSize, screenHeight/tileSize).toLegacy() // Convert to legacy format for now.
 	}
-	return g.layers
+	return g.layers.toLegacy()
 }
 
 // addCreature adds a creature to the game.
