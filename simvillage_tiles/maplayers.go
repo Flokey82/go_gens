@@ -56,27 +56,20 @@ func (m *MapChunk) toLegacy() [][]int {
 // drawObject draws the given object at (dx, dy).
 func (m *MapChunk) drawObject(h drawable, dx, dy int) {
 	// Draw all object layers onto the the appropriate layers of the map chunk.
-	for lIdx, layer := range h.layers {
-		// Right now we have to convert the layers from the old index
-		// to the actual layer.
-		// TODO: Remove this once drawable has a better format.
-		var dstLayer *Layer
-		switch lIdx {
-		case 0:
-			dstLayer = m.Ground
-		case 1:
-			dstLayer = m.GroundOverlay
-		case 2:
-			dstLayer = m.Structures
-		}
-		for x := 0; x < h.width; x++ {
-			for y := 0; y < h.height; y++ {
-				if layer[x+y*h.width] != 0 {
-					dstLayer.setTile(x+dx, y+dy, layer[x+y*h.width])
+	// TODO: Maybe make this a property of *Layer.
+	drawOnLayer := func(dst *Layer, src *Layer, dx, dy int) {
+		for x := 0; x < src.Width; x++ {
+			for y := 0; y < src.Height; y++ {
+				if t := src.getTile(x, y); t != 0 {
+					dst.setTile(x+dx, y+dy, t)
 				}
 			}
 		}
+
 	}
+	drawOnLayer(m.Ground, h.Ground(), dx, dy)
+	drawOnLayer(m.GroundOverlay, h.GroundOverlay(), dx, dy)
+	drawOnLayer(m.Structures, h.Structures(), dx, dy)
 }
 
 // Layer represents a layer on the map.
