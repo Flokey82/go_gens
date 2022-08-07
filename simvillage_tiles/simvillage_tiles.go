@@ -167,8 +167,8 @@ func (g *Game) Draw(screen *ebiten.Image) {
 		cOffsY := float64(y*screenHeight) - float64(vpPos[1])
 		cxy[0] = x + vpChunk[0]
 		cxy[1] = y + vpChunk[1]
-		for i, l := range layers {
-			drawP := i == len(layers)-1
+
+		drawLayer := func(l []int, drawP bool) {
 			// TODO: Draw only the visible tiles and fetch them according to
 			// the player's position and the viewport.
 			for i, t := range l {
@@ -189,6 +189,10 @@ func (g *Game) Draw(screen *ebiten.Image) {
 				sy := (t / tileXCount) * tileSize
 				screen.DrawImage(tilesImage.SubImage(image.Rect(sx, sy, sx+tileSize, sy+tileSize)).(*ebiten.Image), op)
 			}
+		}
+
+		for i, l := range layers {
+			drawLayer(l, i == len(layers)-1)
 		}
 	}
 

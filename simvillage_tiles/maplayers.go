@@ -43,6 +43,42 @@ func newMapChunk(width, height int) *MapChunk {
 	}
 }
 
+// toLegacy returns the layers in the legacy format currently still used by the
+// main renderer.
+func (m *MapChunk) toLegacy() [][]int {
+	return [][]int{
+		m.Ground.Tiles,
+		m.GroundOverlay.Tiles,
+		m.Structures.Tiles,
+	}
+}
+
+// drawObject draws the given object at (dx, dy).
+func (m *MapChunk) drawObject(h drawable, dx, dy int) {
+	// Draw all object layers onto the the appropriate layers of the map chunk.
+	for lIdx, layer := range h.layers {
+		// Right now we have to convert the layers from the old index
+		// to the actual layer.
+		// TODO: Remove this once drawable has a better format.
+		var dstLayer *Layer
+		switch lIdx {
+		case 0:
+			dstLayer = m.Ground
+		case 1:
+			dstLayer = m.GroundOverlay
+		case 2:
+			dstLayer = m.Structures
+		}
+		for x := 0; x < h.width; x++ {
+			for y := 0; y < h.height; y++ {
+				if layer[x+y*h.width] != 0 {
+					dstLayer.setTile(x+dx, y+dy, layer[x+y*h.width])
+				}
+			}
+		}
+	}
+}
+
 // Layer represents a layer on the map.
 // Note: This code is in part inspired by cxong's fantastic map generator
 // https://github.com/cxong/gomapgen
@@ -92,10 +128,10 @@ func (l *Layer) fill(tile int) {
 }
 
 // fillRandom fills the map with a random selction of given tiles.
-func (l *Layer) fillRandom(tiles []int) {
+func (l *Layer) fillRandom(tiles []int, r *rand.Rand) {
 	for y := 0; y < l.Height; y++ {
 		for x := 0; x < l.Width; x++ {
-			l.setTile(x, y, tiles[rand.Intn(len(tiles))]) // TODO: supply random number generator
+			l.setTile(x, y, tiles[r.Intn(len(tiles))]) // TODO: supply random number generator
 		}
 	}
 }
