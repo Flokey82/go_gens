@@ -116,6 +116,10 @@ func defaultChunk() *MapChunk {
 
 // drawable is a collection of tiles that can be drawn on a chunk.
 // TODO: Use named layers instead of a fixed number of expected layers.
+//
+// NOTE:
+// - A tile value of -1 sets the tile type of the dst layer to 0
+// - A tile value of 0 does not affect the tile type of the dst layer
 type drawable struct {
 	Dimensions
 	ground        []int
@@ -123,20 +127,23 @@ type drawable struct {
 	structures    []int
 }
 
+// Ground returns the Ground tiles as *Layer.
 func (d *drawable) Ground() *Layer {
 	return &Layer{d.Dimensions, d.ground}
 }
 
+// GroundOverlay returns the GroundOverlay tiles as *Layer.
 func (d *drawable) GroundOverlay() *Layer {
 	return &Layer{d.Dimensions, d.groundOverlay}
 }
 
+// Structures returns the Structures tiles as *Layer.
 func (d *drawable) Structures() *Layer {
 	return &Layer{d.Dimensions, d.structures}
 }
 
 var house1 = drawable{
-	Dimensions: Dimensions{4, 4},
+	Dimensions: NewDimensions(4, 4),
 	ground: []int{
 		0, 0, 0, 0,
 		0, 0, 0, 0,
@@ -144,10 +151,10 @@ var house1 = drawable{
 		0, 0, 0, 0,
 	},
 	groundOverlay: []int{
-		0, 0, 0, 0,
-		0, 0, 0, 0,
-		0, 0, 0, 0,
-		0, 0, 0, 0,
+		-1, -1, -1, -1,
+		-1, -1, -1, -1,
+		-1, -1, -1, -1,
+		-1, -1, -1, -1,
 	},
 	structures: []int{
 		58, 59, 60, 61,
@@ -158,7 +165,7 @@ var house1 = drawable{
 }
 
 var house2 = drawable{
-	Dimensions: Dimensions{4, 6},
+	Dimensions: NewDimensions(6, 4),
 	ground: []int{
 		0, 0, 0, 0, 0, 0,
 		0, 0, 0, 0, 0, 0,
@@ -166,10 +173,10 @@ var house2 = drawable{
 		0, 0, 0, 0, 0, 0,
 	},
 	groundOverlay: []int{
-		0, 0, 0, 0, 0, 0,
-		0, 0, 0, 0, 0, 0,
-		0, 0, 0, 0, 0, 0,
-		0, 0, 0, 0, 0, 0,
+		-1, -1, -1, -1, -1, -1,
+		-1, -1, -1, -1, -1, -1,
+		-1, -1, -1, -1, -1, -1,
+		-1, -1, -1, -1, -1, -1,
 	},
 	structures: []int{
 		63, 64, 65, 66, 67, 68,
@@ -180,7 +187,7 @@ var house2 = drawable{
 }
 
 var house3 = drawable{
-	Dimensions: Dimensions{5, 6},
+	Dimensions: NewDimensions(6, 5),
 	ground: []int{
 		0, 0, 0, 0, 0, 0,
 		0, 0, 0, 0, 0, 0,
@@ -189,11 +196,11 @@ var house3 = drawable{
 		0, 0, 0, 0, 0, 0,
 	},
 	groundOverlay: []int{
-		0, 0, 0, 0, 0, 0,
-		0, 0, 0, 0, 0, 0,
-		0, 0, 0, 0, 0, 0,
-		0, 0, 0, 0, 0, 0,
-		0, 0, 0, 0, 0, 0,
+		-1, -1, -1, -1, -1, -1,
+		-1, -1, -1, -1, -1, -1,
+		-1, -1, -1, -1, -1, -1,
+		-1, -1, -1, -1, -1, -1,
+		-1, -1, -1, -1, -1, -1,
 	},
 	structures: []int{
 		26, 27, 28, 29, 30, 31,
@@ -205,7 +212,7 @@ var house3 = drawable{
 }
 
 var hedge = drawable{
-	Dimensions: Dimensions{5, 9},
+	Dimensions: NewDimensions(9, 5),
 	ground: []int{
 		0, 0, 0, 0, 0, 0, 0, 0, 0,
 		0, 202, 203, 204, 205, 206, 207, 208, 0,
@@ -214,11 +221,11 @@ var hedge = drawable{
 		0, 0, 0, 0, 0, 0, 0, 0, 0,
 	},
 	groundOverlay: []int{
-		0, 0, 0, 0, 0, 0, 0, 0, 0,
-		0, 0, 0, 0, 0, 0, 0, 0, 0,
-		0, 0, 0, 0, 0, 0, 0, 0, 0,
-		0, 0, 0, 0, 0, 0, 0, 0, 0,
-		0, 0, 0, 0, 280, 0, 0, 0, 0,
+		-1, -1, -1, -1, -1, -1, -1, -1, -1,
+		-1, -1, -1, -1, -1, -1, -1, -1, -1,
+		-1, -1, -1, -1, -1, -1, -1, -1, -1,
+		-1, -1, -1, -1, -1, -1, -1, -1, -1,
+		-1, -1, -1, -1, 280, -1, -1, -1, -1,
 	},
 	structures: []int{
 		176, 177, 178, 179, 180, 181, 182, 183, 184,

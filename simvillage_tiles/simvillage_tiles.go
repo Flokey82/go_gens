@@ -101,13 +101,15 @@ func (g *Game) Update() error {
 }
 
 // canEnter returns whether the player can enter the tile at (x, y) in the chunk (cX, cY).
+// TODO: Improve collision detection.
 func (g *Game) canEnter(cX, cY, newX, newY int) bool {
 	x, y := getTileXYFromPos(newX, newY)
 	if x < 0 || x >= screenWidth/tileSize || y < 0 || y >= screenHeight/tileSize {
 		return false
 	}
+	// TODO: Allow multiple layers to be checked for collision.
 	layers := g.getChunk(cX, cY)
-	return layers[2][y*screenWidth/tileSize+x] == 0
+	return layers.Structures.getTile(x, y) == 0
 }
 
 // getViewportXY returns the x, y tile position of the top left corner of the viewport in the tile map.
@@ -117,11 +119,11 @@ func (g *Game) getViewportXY() (int, int) {
 
 // getChunk returns the layers at the given chunk position.
 // Note: Right now we're generating chunks on the fly... We should find a way to cache them.
-func (g *Game) getChunk(x, y int) [][]int {
+func (g *Game) getChunk(x, y int) *MapChunk {
 	if x != 0 || y != 0 {
-		return genChunk(x, y, screenWidth/tileSize, screenHeight/tileSize).toLegacy() // Convert to legacy format for now.
+		return genChunk(x, y, screenWidth/tileSize, screenHeight/tileSize) // Convert to legacy format for now.
 	}
-	return g.layers.toLegacy()
+	return g.layers
 }
 
 // addCreature adds a creature to the game.
@@ -168,10 +170,10 @@ func (g *Game) Draw(screen *ebiten.Image) {
 		cxy[0] = x + vpChunk[0]
 		cxy[1] = y + vpChunk[1]
 
-		drawLayer := func(l []int, drawP bool) {
+		drawLayer := func(l *Layer, drawP bool) {
 			// TODO: Draw only the visible tiles and fetch them according to
 			// the player's position and the viewport.
-			for i, t := range l {
+			for i, t := range l.Tiles {
 				// Draws the given layer on the screen.
 				// Check if we should draw any creatures on the current layer and tile.
 				// TODO: Optimize this.
@@ -191,9 +193,13 @@ func (g *Game) Draw(screen *ebiten.Image) {
 			}
 		}
 
-		for i, l := range layers {
-			drawLayer(l, i == len(layers)-1)
-		}
+		// TODO: Once we have moved to a more generic layer naming system,
+		// move to iterating through layers in the set order again.
+		drawLayer(layers.Ground, false)
+		drawLayer(layers.GroundOverlay, false)
+		drawLayer(layers.Objects, false)
+		drawLayer(layers.Structures, true)
+		drawLayer(layers.Roof, false)
 	}
 
 	// Render current and sourrounding chunks.
@@ -211,10 +217,17 @@ func (g *Game) Draw(screen *ebiten.Image) {
 		drawChunk(dir[0], dir[1])
 	}
 
-	// Draw some information on the screen.
+	// Draw some debug information on the screen.
+	g.drawDebugInfo(screen)
+}
+
+// drawDebugInfo prints debug information on the screen.
+func (g *Game) drawDebugInfo(screen *ebiten.Image) {
 	px, py := g.player.getXY()                     // Current player tile
 	vx, vy := g.getViewportXY()                    // Current viewport tile
 	cx, cy := g.player.chunk[0], g.player.chunk[1] // Current chunk
+
+	// Draw ticks per second (TPS), current tile (T), viewport center tile (V), and current chunk (C).
 	ebitenutil.DebugPrint(screen, fmt.Sprintf("TPS: %0.2f (T %d, %d V %d, %d C %d, %d)", ebiten.ActualTPS(), px, py, vx, vy, cx, cy))
 }
 

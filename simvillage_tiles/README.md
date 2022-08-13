@@ -15,7 +15,12 @@ This package contains a very simple tile based renderer and will hopefully be a 
 
 * Decouple chunk size from viewport size (?)
 * Generation or loading of larger maps
-* Better layer system / named layers
+* [WIP] Better layer system / named layers
+  * [DONE] Create new structs for handling map chunks and layers
+  * [DONE] Migrate renderer to MapChunk and Layer types
+  * Allow arbitrary layer names
+  * Allow enabling per-layer collision detection via layer property
+* Per-Tile actions / events (doors, triggers, ...)
 * Indoor maps
 * Improve tile render order
 * Objects / resources / etc.

@@ -1,11 +1,21 @@
 package simvillage_tiles
 
-import "math/rand"
+import (
+	"math/rand"
+)
 
 // Dimensions represents the dimensions of a map.
 type Dimensions struct {
 	Width  int
 	Height int
+}
+
+// NewDimensions returns a new Dimensions struct.
+func NewDimensions(width, height int) Dimensions {
+	return Dimensions{
+		Width:  width,
+		Height: height,
+	}
 }
 
 // indexToXY returns the x and y position of the given index.
@@ -31,7 +41,7 @@ type MapChunk struct {
 // newMapChunk returns a new map chunk with the given width and height.
 func newMapChunk(width, height int) *MapChunk {
 	return &MapChunk{
-		Dimensions:    Dimensions{width, height},
+		Dimensions:    NewDimensions(width, height),
 		Ground:        newLayer(width, height),
 		GroundOverlay: newLayer(width, height),
 		Objects:       newLayer(width, height),
@@ -57,8 +67,10 @@ func (m *MapChunk) drawObject(h drawable, dx, dy int) {
 	drawOnLayer := func(dst *Layer, src *Layer, dx, dy int) {
 		for x := 0; x < src.Width; x++ {
 			for y := 0; y < src.Height; y++ {
-				if t := src.getTile(x, y); t != 0 {
-					dst.setTile(x+dx, y+dy, t)
+				if t := src.getTile(x, y); t > 0 {
+					dst.setTile(x+dx, y+dy, t) // set the tile
+				} else if t == -1 {
+					dst.setTile(x+dx, y+dy, 0) // clear the tile
 				}
 			}
 		}
@@ -70,6 +82,8 @@ func (m *MapChunk) drawObject(h drawable, dx, dy int) {
 }
 
 // Layer represents a layer on the map.
+// TODO: Provide a (bool) Collidable property which will determine if the
+// layer will be checked in the collision detection.
 // Note: This code is in part inspired by cxong's fantastic map generator
 // https://github.com/cxong/gomapgen
 type Layer struct {
@@ -80,7 +94,7 @@ type Layer struct {
 // newLayer returns a new layer with the given width and height.
 func newLayer(width, height int) *Layer {
 	return &Layer{
-		Dimensions: Dimensions{width, height},
+		Dimensions: NewDimensions(width, height),
 		Tiles:      make([]int, width*height),
 	}
 }

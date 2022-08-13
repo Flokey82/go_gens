@@ -6,23 +6,25 @@ import (
 	"github.com/hajimehoshi/ebiten"
 )
 
+// Creature represents a moving entity in the game.
 type Creature struct {
 	g         *Game
-	pos       [2]int
-	tile      [2]int
-	chunk     [2]int
-	tileIdx   int
-	looksLeft bool
-	count     int // For animation.
+	pos       [2]int // current creature position relative to the chunk center
+	tile      [2]int // current tile coordinates relative to the top left corner of the chunk
+	chunk     [2]int // current global chunk coordinates
+	tileIdx   int    // cached tile index
+	looksLeft bool   // creature looks / moves to the left
+	count     int    // for keeping track of the animation frames
 }
 
+// NewCreature returns a new creature with the given position.
 func NewCreature(g *Game, pos [2]int) *Creature {
 	c := &Creature{
 		g:         g,
 		pos:       pos,
 		looksLeft: false,
 	}
-	c.updateTile()
+	c.updateTile() // update the current cached tile position
 	return c
 }
 
@@ -46,15 +48,14 @@ func (c *Creature) move(delta [2]int) {
 	newPosY := c.pos[1] + delta[1]
 
 	// If we leave the current chunk, update where we are.
-	var newChunkDelta [2]int
-	newChunkDelta[0] = newPosX / (screenWidth / 2)
-	newChunkDelta[1] = newPosY / (screenHeight / 2)
+	newChunkDeltaX := newPosX / (screenWidth / 2)
+	newChunkDeltaY := newPosY / (screenHeight / 2)
 
 	// Can this be done better?
-	newPosX -= (screenWidth - 1) * newChunkDelta[0]
-	newPosY -= (screenHeight - 1) * newChunkDelta[1]
-	newChunkX := c.chunk[0] + newChunkDelta[0]
-	newChunkY := c.chunk[1] + newChunkDelta[1]
+	newPosX -= (screenWidth - 1) * newChunkDeltaX
+	newPosY -= (screenHeight - 1) * newChunkDeltaY
+	newChunkX := c.chunk[0] + newChunkDeltaX
+	newChunkY := c.chunk[1] + newChunkDeltaY
 
 	// Now check if we can go where we'd end up.
 	// TODO: Check if we can enter newPosX, newPosY in the new chunk.
