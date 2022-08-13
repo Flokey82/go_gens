@@ -26,5 +26,6 @@ This package contains a very simple tile based renderer and will hopefully be a 
 * Improve tile render order
 * Objects / resources / etc.
 * AI for creatures
+* Persistent world (since we use procgen, this'll be interesting)
 
 ![alt text](https://raw.githubusercontent.com/Flokey82/go_gens/master/simvillage_tiles/images/rgb.png "Screenshot!")

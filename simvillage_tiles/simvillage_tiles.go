@@ -51,11 +51,11 @@ func init() {
 }
 
 type Game struct {
-	layers     *MapChunk
-	player     *Creature
-	creatures  []*Creature
-	chunkCache [3][3]*MapChunk
-	curChunkXY [2]int
+	layers     *MapChunk       // chunk at 0, 0 (this is statically generated)
+	player     *Creature       // player
+	creatures  []*Creature     // NPCs (and player)
+	chunkCache [3][3]*MapChunk // cached chunks
+	curChunkXY [2]int          // location of the cache (x,y of chunkCache[1][1])
 }
 
 func NewGame() *Game {
@@ -92,17 +92,19 @@ func (g *Game) Update() error {
 	}
 	g.player.move(posDelta)
 
-	// TODO: Improve caching.
+	// If the currently cached center chunk does not match the
+	// player chunk position, we need to refresh the cache.
 	if g.player.chunk != g.curChunkXY {
 		g.refreshCache()
 	}
 
 	// Handle "AI".
-	// NOTE: This just makes the creatures move randomly.
 	for _, c := range g.creatures {
+		// Skip the player, they move on their own.
 		if c == g.player {
-			continue // Skip the player.
+			continue
 		}
+		// NOTE: This just makes the creatures move randomly.
 		c.move([2]int{rand.Intn(3) - 1, rand.Intn(3) - 1})
 	}
 	return nil
@@ -174,16 +176,21 @@ func (g *Game) refreshCache() {
 			//
 			// If the tile in the old cache at cdx,cdy is nil, we have likely not initialized
 			// the cache yet and need to fetch the chunk anyway.
-			if cdx > 0 && cdx < 3 && cdy > 0 && cdy < 3 && g.chunkCache[cdx][cdy] != nil {
+			if validCacheIdx(cdx, cdy) && g.chunkCache[cdx][cdy] != nil {
 				chunkCache[x][y] = g.chunkCache[cdx][cdy]
 			} else {
 				// If we are out of bounds of the old cache, we fetch the chunk.
-				chunkCache[x][y] = g.getChunk(pChunk[0]+x-1, pChunk[1]+y-1)
+				chunkCache[x][y] = g.fetchChunk(pChunk[0]+x-1, pChunk[1]+y-1)
 			}
 		}
 	}
 	g.chunkCache = chunkCache
 	g.curChunkXY = g.player.chunk
+}
+
+// validCacheIdx returns true if the indices are within the bounds of x[0..2], y[0..2].
+func validCacheIdx(x, y int) bool {
+	return x >= 0 && x < 3 && y >= 0 && y < 3
 }
 
 // canEnter returns whether the player can enter the tile at (x, y) in the chunk (cX, cY).
@@ -203,13 +210,23 @@ func (g *Game) getViewportXY() (int, int) {
 	return g.player.pos[0] / tileSize, g.player.pos[1] / tileSize
 }
 
-// getChunk returns the layers at the given chunk position.
-// Note: Right now we're generating chunks on the fly... We should find a way to cache them.
+// getChunk returns the MapChunk at the given chunk position either from cache or freshly from
+// the source (right now it is directly from the random number generator.
 func (g *Game) getChunk(x, y int) *MapChunk {
-	if x != 0 || y != 0 {
-		return genChunk(x, y, screenWidth/tileSize, screenHeight/tileSize) // Convert to legacy format for now.
+	// TODO: Add (g *Game) isInCache(x, y) bool
+	if cx, cy := g.curChunkXY[0]-x+1, g.curChunkXY[1]-y+1; validCacheIdx(cx, cy) && g.chunkCache[cx][cy] != nil {
+		return g.chunkCache[cx][cy]
 	}
-	return g.layers
+	return g.fetchChunk(x, y)
+}
+
+// fetchChunk returns the un-cached MapChunk from the generator.
+func (g *Game) fetchChunk(x, y int) *MapChunk {
+	if x != 0 || y != 0 {
+		// Generate the chunk at the given position with the given dimensions (in number of tiles).
+		return genChunk(x, y, screenWidth/tileSize, screenHeight/tileSize)
+	}
+	return g.layers // Position 0, 0 is special.
 }
 
 // addCreature adds a creature to the game.
