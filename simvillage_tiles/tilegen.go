@@ -21,7 +21,7 @@ func genChunk(x, y, width, height int) *MapChunk {
 	chunk.Ground.fillRandom(grassTiles, r)
 	for x := 0; x < width; x++ {
 		for y := 0; y < height; y++ {
-			// Randomly add some flowers on the ground object layer.
+			// Randomly add some flowers on the ground overlay layer.
 			if r.Intn(100) < 2 {
 				chunk.GroundOverlay.setTile(x, y, flowerTiles[r.Intn(len(flowerTiles))])
 			}

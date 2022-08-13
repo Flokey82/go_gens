@@ -10,6 +10,7 @@ This package contains a very simple tile based renderer and will hopefully be a 
 * Drawable prefab objects (rudimentary)
 * Collision detection (rudimentary)
 * Chunk loading / chunk generation
+* Chunk caching (sorta)
 
 ## TODO
 

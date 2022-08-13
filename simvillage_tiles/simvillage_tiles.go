@@ -51,9 +51,11 @@ func init() {
 }
 
 type Game struct {
-	layers    *MapChunk
-	player    *Creature
-	creatures []*Creature
+	layers     *MapChunk
+	player     *Creature
+	creatures  []*Creature
+	chunkCache [3][3]*MapChunk
+	curChunkXY [2]int
 }
 
 func NewGame() *Game {
@@ -61,6 +63,7 @@ func NewGame() *Game {
 		layers: defaultChunk(),
 	}
 	g.player = NewCreature(g, [2]int{0, 0})
+	g.refreshCache()
 
 	// Add the player to the creature index.
 	g.addCreature(g.player)
@@ -89,6 +92,11 @@ func (g *Game) Update() error {
 	}
 	g.player.move(posDelta)
 
+	// TODO: Improve caching.
+	if g.player.chunk != g.curChunkXY {
+		g.refreshCache()
+	}
+
 	// Handle "AI".
 	// NOTE: This just makes the creatures move randomly.
 	for _, c := range g.creatures {
@@ -98,6 +106,84 @@ func (g *Game) Update() error {
 		c.move([2]int{rand.Intn(3) - 1, rand.Intn(3) - 1})
 	}
 	return nil
+}
+
+func (g *Game) refreshCache() {
+	pChunk := g.player.chunk
+
+	// Calculate chunk delta
+	chunkDelta := [2]int{
+		pChunk[0] - g.curChunkXY[0],
+		pChunk[1] - g.curChunkXY[1],
+	}
+
+	// We move chunks in cache according to delta and copy the old chunks
+	// to their new position in a new cache.
+	//
+	// (o): old player location chunk
+	// (n): new player location chunk
+	// [d]: chunks discarded
+	// [f]: chunks fetched
+	// (*): chunks copied / re-used
+	//
+	// The chunk delta in this case is -1, 1 as we are
+	// moving to the left by one chunk and down by one.
+	//
+	// Note that 0, 0 is always considered the top-left
+	// corner.
+	//
+	// Therefore:
+	// - moving left is x-1, moving right is x+1
+	// - moving up is y-1, moving down is y+1
+	//
+	//    |-------| old 3x3 cache
+	//    [d][d][d]
+	// [f]( )(o)[d]
+	// [f](n)( )[d]
+	// [f][f][f]
+	// |-------| new 3x3 cache
+	//
+	// Example 1:
+	//
+	// The position x:0, y:2 in the new cache would be
+	// x:-1, y:3 in the old cache, given the delta of -1, 1.
+	//
+	// ... Since this is out of bounds (x[0..2], y[0..2])
+	// we will not find this position in the old cache and
+	// will have to fetch the chunk freshly.
+	//
+	// Example 2:
+	//
+	// The position x:1, y:1 in the new cache would be
+	// x:0, y:2 in the old cache, given the delta of -1, 1.
+	//
+	// ... Since this is within bounds (x[0..2], y[0..2])
+	// we can simply copy the chunk from the old cache at
+	// x:0, y:2 to the new position x:1, y:1 in the new cache.
+	var chunkCache [3][3]*MapChunk
+
+	// Iterate through the new cache slots.
+	for x := 0; x < 3; x++ {
+		for y := 0; y < 3; y++ {
+			// Calculate x,y chunk cache position in "old" cache.
+			cdx := x + chunkDelta[0]
+			cdy := y + chunkDelta[1]
+
+			// If we are within the bounds of the old cache, we re-use the chunk we have in the
+			// old cache, if one is present (e.g. not nil).
+			//
+			// If the tile in the old cache at cdx,cdy is nil, we have likely not initialized
+			// the cache yet and need to fetch the chunk anyway.
+			if cdx > 0 && cdx < 3 && cdy > 0 && cdy < 3 && g.chunkCache[cdx][cdy] != nil {
+				chunkCache[x][y] = g.chunkCache[cdx][cdy]
+			} else {
+				// If we are out of bounds of the old cache, we fetch the chunk.
+				chunkCache[x][y] = g.getChunk(pChunk[0]+x-1, pChunk[1]+y-1)
+			}
+		}
+	}
+	g.chunkCache = chunkCache
+	g.curChunkXY = g.player.chunk
 }
 
 // canEnter returns whether the player can enter the tile at (x, y) in the chunk (cX, cY).
@@ -161,7 +247,7 @@ func (g *Game) Draw(screen *ebiten.Image) {
 	vpPos := g.player.pos
 
 	drawChunk := func(x, y int) {
-		layers := g.getChunk(x+vpChunk[0], y+vpChunk[1])
+		layers := g.chunkCache[x+1][y+1] //g.getChunk(x+vpChunk[0], y+vpChunk[1])
 		// Calculate the offset of the current chunk relative
 		// to the player position / the center of the screen.
 		// TODO: Also tidy up the chunk offset transformation.
