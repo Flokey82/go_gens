@@ -51,7 +51,7 @@ func init() {
 }
 
 type Game struct {
-	layers     *MapChunk       // chunk at 0, 0 (this is statically generated)
+	*MapServe
 	player     *Creature       // player
 	creatures  []*Creature     // NPCs (and player)
 	chunkCache [3][3]*MapChunk // cached chunks
@@ -60,7 +60,7 @@ type Game struct {
 
 func NewGame() *Game {
 	g := &Game{
-		layers: defaultChunk(),
+		MapServe: newMapServe(),
 	}
 	g.player = NewCreature(g, [2]int{0, 0})
 	g.refreshCache()
@@ -218,15 +218,6 @@ func (g *Game) getChunk(x, y int) *MapChunk {
 		return g.chunkCache[cx][cy]
 	}
 	return g.fetchChunk(x, y)
-}
-
-// fetchChunk returns the un-cached MapChunk from the generator.
-func (g *Game) fetchChunk(x, y int) *MapChunk {
-	if x != 0 || y != 0 {
-		// Generate the chunk at the given position with the given dimensions (in number of tiles).
-		return genChunk(x, y, screenWidth/tileSize, screenHeight/tileSize)
-	}
-	return g.layers // Position 0, 0 is special.
 }
 
 // addCreature adds a creature to the game.
