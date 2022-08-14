@@ -228,13 +228,15 @@ func (m *Map) assignRegionElevation() {
 
 	var r_distance_a, r_distance_b, r_distance_c []float64
 	if useDistanceFieldWithCompression {
-		r_distance_a = m.assignDistanceFieldWithIntensity(mountain_r, convToMap(ocean_r), compression_r)
-		r_distance_b = m.assignDistanceFieldWithIntensity(ocean_r, convToMap(coastline_r), compression_r)
-		r_distance_c = m.assignDistanceFieldWithIntensity(coastline_r, stop_r, compression_r)
+		// Calculate distance fields using the compression values of each region.
+		r_distance_a = m.assignDistanceFieldWithIntensity(mountain_r, convToMap(ocean_r), compression_r)  // graph distance from mountains (stops at ocean regions)
+		r_distance_b = m.assignDistanceFieldWithIntensity(ocean_r, convToMap(coastline_r), compression_r) // graph distance from ocean (stops at coastline regions)
+		r_distance_c = m.assignDistanceFieldWithIntensity(coastline_r, stop_r, compression_r)             // graph distance from coastline (stops at all other regions)
 	} else {
-		r_distance_a = m.assignDistanceField(mountain_r, convToMap(ocean_r))
-		r_distance_b = m.assignDistanceField(ocean_r, convToMap(coastline_r))
-		r_distance_c = m.assignDistanceField(coastline_r, stop_r)
+		// Calculate distance fields.
+		r_distance_a = m.assignDistanceField(mountain_r, convToMap(ocean_r))  // graph distance from mountains (stops at ocean regions)
+		r_distance_b = m.assignDistanceField(ocean_r, convToMap(coastline_r)) // graph distance from ocean (stops at coastline regions)
+		r_distance_c = m.assignDistanceField(coastline_r, stop_r)             // graph distance from coastline (stops at all other regions)
 	}
 	// Get min/max compression.
 	// var compVals []float64

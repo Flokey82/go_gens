@@ -7,6 +7,16 @@ import (
 	"github.com/Flokey82/go_gens/vectors"
 )
 
+// getCentroidOfTriangle returns the centroid of a triangle defined by
+// the xyz coordinates a, b, c as a vectors.Vec3.
+func getCentroidOfTriangle(a, b, c []float64) vectors.Vec3 {
+	return vectors.Vec3{
+		X: (a[0] + b[0] + c[0]) / 3,
+		Y: (a[1] + b[1] + c[1]) / 3,
+		Z: (a[2] + b[2] + c[2]) / 3,
+	}.Normalize()
+}
+
 // dist2 returns the eucledian distance between two points.
 func dist2(a, b [2]float64) float64 {
 	xDiff := a[0] - b[0]

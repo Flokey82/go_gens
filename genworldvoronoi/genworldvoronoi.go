@@ -141,35 +141,39 @@ func (m *Map) generateMap() {
 
 // pickRandomRegions picks n random points/regions from the given mesh.
 func (m *Map) pickRandomRegions(mesh *TriangleMesh, n int) []int {
+	// Reset the random number generator.
 	m.resetRand()
-	chosen_r := make(map[int]bool) // new Set()
+
+	// Pick n random regions.
+	chosen_r := make(map[int]bool) // Equivalent of JS new Set()
 	for len(chosen_r) < n && len(chosen_r) < mesh.numRegions {
 		chosen_r[m.rand.Intn(mesh.numRegions)] = true
 	}
+
+	// Convert map back to a slice (yikes).
+	//
+	// TODO: Do something more clever and efficient than a map that
+	// we convert back to a map anyway.
 	return convToArray(chosen_r)
 }
-
-func getCentroidOfTriangle(a, b, c []float64) vectors.Vec3 {
-	return vectors.Vec3{
-		X: (a[0] + b[0] + c[0]) / 3,
-		Y: (a[1] + b[1] + c[1]) / 3,
-		Z: (a[2] + b[2] + c[2]) / 3,
-	}.Normalize()
-}
-
-// const Infinity = 1.0
 
 // assignDistanceField calculates the distance from any point in seeds_r to all other points, but
 // don't go past any point in stop_r.
 func (m *Map) assignDistanceField(seeds_r []int, stop_r map[int]bool) []float64 {
+	// Reset the random number generator.
 	m.resetRand()
+
 	mesh := m.mesh
 	numRegions := mesh.numRegions
+
+	// Initialize the distance values for all regions to -1.
 	r_distance := make([]float64, numRegions)
 	for i := range r_distance {
 		r_distance[i] = -1 // was: Infinity
 	}
 
+	// Initialize the queue for the breadth first search with
+	// the seed regions.
 	var queue []int
 	for _, r := range seeds_r {
 		queue = append(queue, r)
@@ -178,15 +182,22 @@ func (m *Map) assignDistanceField(seeds_r []int, stop_r map[int]bool) []float64 
 
 	// Random search adapted from breadth first search.
 	var out_r []int
+
+	// TODO: Improve the queue. Currently this is growing unchecked.
 	for queue_out := 0; queue_out < len(queue); queue_out++ {
 		pos := queue_out + m.rand.Intn(len(queue)-queue_out)
 		current_r := queue[pos]
 		queue[pos] = queue[queue_out]
 		for _, neighbor_r := range mesh.r_circulate_r(out_r, current_r) {
-			if r_distance[neighbor_r] == -1 && !stop_r[neighbor_r] {
-				r_distance[neighbor_r] = r_distance[current_r] + 1
-				queue = append(queue, neighbor_r)
+			if r_distance[neighbor_r] != -1 || stop_r[neighbor_r] {
+				continue
 			}
+
+			// If the current distance value for neighbor_r is unset (-1)
+			// and if neighbor_r is not a "stop region", we set the distance
+			// value to the distance value of current_r, incremented by 1.
+			r_distance[neighbor_r] = r_distance[current_r] + 1
+			queue = append(queue, neighbor_r)
 		}
 	}
 
@@ -196,24 +207,34 @@ func (m *Map) assignDistanceField(seeds_r []int, stop_r map[int]bool) []float64 
 	return r_distance
 }
 
+// assignDistanceFieldWithIntensity is almost identical to assignDistanceField.
+// The main difference is that the distance value of each region is reduced by the compression value.
 func (m *Map) assignDistanceFieldWithIntensity(seeds_r []int, stop_r map[int]bool, compression map[int]float64) []float64 {
 	enableNegativeCompression := true
 	enablePositiveCompression := true
 
+	// Reset the random number generator.
 	m.resetRand()
+
 	mesh := m.mesh
 	numRegions := mesh.numRegions
+
+	// Initialize the distance values for all regions to -1.
 	r_distance := make([]float64, numRegions)
 	for i := range r_distance {
 		r_distance[i] = -1 // was: Infinity
 	}
 
+	// Initialize the queue for the breadth first search with
+	// the seed regions.
 	var queue []int
 	for _, r := range seeds_r {
 		queue = append(queue, r)
 		r_distance[r] = 0
 	}
 
+	// Get the min and max compression value so that we can
+	// normalize the compression value.
 	var maxComp, minComp float64
 	for _, comp := range compression {
 		if comp > maxComp {
@@ -226,6 +247,8 @@ func (m *Map) assignDistanceFieldWithIntensity(seeds_r []int, stop_r map[int]boo
 
 	// Random search adapted from breadth first search.
 	var out_r []int
+
+	// TODO: Improve the queue. Currently this is growing unchecked.
 	for queue_out := 0; queue_out < len(queue); queue_out++ {
 		pos := queue_out + m.rand.Intn(len(queue)-queue_out)
 		current_r := queue[pos]
@@ -233,15 +256,30 @@ func (m *Map) assignDistanceFieldWithIntensity(seeds_r []int, stop_r map[int]boo
 		current_dist := r_distance[current_r]
 		queue[pos] = queue[queue_out]
 		for _, neighbor_r := range mesh.r_circulate_r(out_r, current_r) {
-			if r_distance[neighbor_r] == -1 && !stop_r[neighbor_r] {
-				r_distance[neighbor_r] = current_dist + 1
-				if current_comp > 0 && enablePositiveCompression {
-					r_distance[neighbor_r] -= current_comp / maxComp
-				} else if current_comp < 0 && enableNegativeCompression {
-					r_distance[neighbor_r] += current_comp / minComp
-				}
-				queue = append(queue, neighbor_r)
+			if r_distance[neighbor_r] != -1 || stop_r[neighbor_r] {
+				continue
 			}
+
+			// If the current distance value for neighbor_r is unset (-1)
+			// and if neighbor_r is not a "stop region", we set the distance
+			// value to the distance value of current_r, incremented by 1.
+			r_distance[neighbor_r] = current_dist + 1
+
+			// Apply the compression of the current region to the distance
+			// value of neighbor_r.
+			if current_comp > 0 && enablePositiveCompression {
+				// If positive compression is enabled and the compression is... well
+				// positive, we subtract the normalized compression value from the
+				// distance value for neighbor_r.
+				r_distance[neighbor_r] -= current_comp / maxComp
+			} else if current_comp < 0 && enableNegativeCompression {
+				// If negative compression is enabled and the compression is... well
+				// negative, we add the normalized compression value to the distance
+				// value for neighbor_r.
+				r_distance[neighbor_r] += current_comp / minComp
+			}
+			// Add neighbor_r to the queue.
+			queue = append(queue, neighbor_r)
 		}
 	}
 
