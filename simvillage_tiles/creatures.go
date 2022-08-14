@@ -100,7 +100,7 @@ func getTileXYFromPos(x, y int) (int, int) {
 	return (x + screenWidth/2) / tileSize, (y + screenHeight/2) / tileSize
 }
 
-// getXY returns the x, y tile position of the creature in the tile map.
-func (c *Creature) getXY() (int, int) {
+// getTileXY returns the x, y tile position of the creature in the tile map.
+func (c *Creature) getTileXY() (int, int) {
 	return getTileXYFromPos(c.pos[0], c.pos[1])
 }

@@ -51,19 +51,17 @@ func init() {
 }
 
 type Game struct {
-	*MapServe
-	player     *Creature       // player
-	creatures  []*Creature     // NPCs (and player)
-	chunkCache [3][3]*MapChunk // cached chunks
-	curChunkXY [2]int          // location of the cache (x,y of chunkCache[1][1])
+	*MapCache
+	player    *Creature   // player
+	creatures []*Creature // NPCs (and player)
 }
 
 func NewGame() *Game {
 	g := &Game{
-		MapServe: newMapServe(),
+		MapCache: newMapCache(),
 	}
 	g.player = NewCreature(g, [2]int{0, 0})
-	g.refreshCache()
+	g.refreshCache([2]int{0, 0})
 
 	// Add the player to the creature index.
 	g.addCreature(g.player)
@@ -95,7 +93,7 @@ func (g *Game) Update() error {
 	// If the currently cached center chunk does not match the
 	// player chunk position, we need to refresh the cache.
 	if g.player.chunk != g.curChunkXY {
-		g.refreshCache()
+		g.refreshCache(g.player.chunk)
 	}
 
 	// Handle "AI".
@@ -110,89 +108,6 @@ func (g *Game) Update() error {
 	return nil
 }
 
-func (g *Game) refreshCache() {
-	pChunk := g.player.chunk
-
-	// Calculate chunk delta
-	chunkDelta := [2]int{
-		pChunk[0] - g.curChunkXY[0],
-		pChunk[1] - g.curChunkXY[1],
-	}
-
-	// We move chunks in cache according to delta and copy the old chunks
-	// to their new position in a new cache.
-	//
-	// (o): old player location chunk
-	// (n): new player location chunk
-	// [d]: chunks discarded
-	// [f]: chunks fetched
-	// (*): chunks copied / re-used
-	//
-	// The chunk delta in this case is -1, 1 as we are
-	// moving to the left by one chunk and down by one.
-	//
-	// Note that 0, 0 is always considered the top-left
-	// corner.
-	//
-	// Therefore:
-	// - moving left is x-1, moving right is x+1
-	// - moving up is y-1, moving down is y+1
-	//
-	//    |-------| old 3x3 cache
-	//    [d][d][d]
-	// [f]( )(o)[d]
-	// [f](n)( )[d]
-	// [f][f][f]
-	// |-------| new 3x3 cache
-	//
-	// Example 1:
-	//
-	// The position x:0, y:2 in the new cache would be
-	// x:-1, y:3 in the old cache, given the delta of -1, 1.
-	//
-	// ... Since this is out of bounds (x[0..2], y[0..2])
-	// we will not find this position in the old cache and
-	// will have to fetch the chunk freshly.
-	//
-	// Example 2:
-	//
-	// The position x:1, y:1 in the new cache would be
-	// x:0, y:2 in the old cache, given the delta of -1, 1.
-	//
-	// ... Since this is within bounds (x[0..2], y[0..2])
-	// we can simply copy the chunk from the old cache at
-	// x:0, y:2 to the new position x:1, y:1 in the new cache.
-	var chunkCache [3][3]*MapChunk
-
-	// Iterate through the new cache slots.
-	for x := 0; x < 3; x++ {
-		for y := 0; y < 3; y++ {
-			// Calculate x,y chunk cache position in "old" cache.
-			cdx := x + chunkDelta[0]
-			cdy := y + chunkDelta[1]
-
-			// If we are within the bounds of the old cache, we re-use the chunk we have in the
-			// old cache, if one is present (e.g. not nil).
-			//
-			// If the tile in the old cache at cdx,cdy is nil, we have likely not initialized
-			// the cache yet and need to fetch the chunk anyway.
-			if validCacheIdx(cdx, cdy) && g.chunkCache[cdx][cdy] != nil {
-				chunkCache[x][y] = g.chunkCache[cdx][cdy]
-			} else {
-				// If we are out of bounds of the old cache, we fetch the chunk.
-				chunkCache[x][y] = g.fetchChunk(pChunk[0]+x-1, pChunk[1]+y-1)
-			}
-		}
-	}
-	g.chunkCache = chunkCache
-	g.curChunkXY = g.player.chunk
-}
-
-// validCacheIdx returns true if the indices are within the bounds of x[0..2], y[0..2].
-func validCacheIdx(x, y int) bool {
-	return x >= 0 && x < 3 && y >= 0 && y < 3
-}
-
 // canEnter returns whether the player can enter the tile at (x, y) in the chunk (cX, cY).
 // TODO: Improve collision detection.
 func (g *Game) canEnter(cX, cY, newX, newY int) bool {
@@ -203,37 +118,6 @@ func (g *Game) canEnter(cX, cY, newX, newY int) bool {
 	// TODO: Allow multiple layers to be checked for collision.
 	layers := g.getChunk(cX, cY)
 	return layers.Structures.getTile(x, y) == 0
-}
-
-// getViewportXY returns the x, y tile position of the top left corner of the viewport in the tile map.
-func (g *Game) getViewportXY() (int, int) {
-	return g.player.pos[0] / tileSize, g.player.pos[1] / tileSize
-}
-
-// getChunk returns the MapChunk at the given chunk position either from cache or freshly from
-// the source (right now it is directly from the random number generator.
-func (g *Game) getChunk(x, y int) *MapChunk {
-	// TODO: Add (g *Game) isInCache(x, y) bool
-	if cx, cy := g.curChunkXY[0]-x+1, g.curChunkXY[1]-y+1; validCacheIdx(cx, cy) && g.chunkCache[cx][cy] != nil {
-		return g.chunkCache[cx][cy]
-	}
-	return g.fetchChunk(x, y)
-}
-
-// addCreature adds a creature to the game.
-func (g *Game) addCreature(c *Creature) {
-	g.creatures = append(g.creatures, c)
-}
-
-// getCreatures returns the creatures at the given tile in the given chunk.
-func (g *Game) getCreatures(tileIdx int, chunk [2]int) []*Creature {
-	var creatures []*Creature
-	for _, c := range g.creatures {
-		if c.tileIdx == tileIdx && c.chunk == chunk {
-			creatures = append(creatures, c)
-		}
-	}
-	return creatures
 }
 
 func (g *Game) Draw(screen *ebiten.Image) {
@@ -317,14 +201,29 @@ func (g *Game) Draw(screen *ebiten.Image) {
 
 // drawDebugInfo prints debug information on the screen.
 func (g *Game) drawDebugInfo(screen *ebiten.Image) {
-	px, py := g.player.getXY()                     // Current player tile
-	vx, vy := g.getViewportXY()                    // Current viewport tile
+	px, py := g.player.getTileXY()                 // Current player tile
 	cx, cy := g.player.chunk[0], g.player.chunk[1] // Current chunk
 
 	// Draw ticks per second (TPS), current tile (T), viewport center tile (V), and current chunk (C).
-	ebitenutil.DebugPrint(screen, fmt.Sprintf("TPS: %0.2f (T %d, %d V %d, %d C %d, %d)", ebiten.ActualTPS(), px, py, vx, vy, cx, cy))
+	ebitenutil.DebugPrint(screen, fmt.Sprintf("TPS: %0.2f (T %d, %d C %d, %d)", ebiten.ActualTPS(), px, py, cx, cy))
 }
 
 func (g *Game) Layout(outsideWidth, outsideHeight int) (int, int) {
 	return screenWidth, screenHeight
+}
+
+// addCreature adds a creature to the game.
+func (g *Game) addCreature(c *Creature) {
+	g.creatures = append(g.creatures, c)
+}
+
+// getCreatures returns the creatures at the given tile in the given chunk.
+func (g *Game) getCreatures(tileIdx int, chunk [2]int) []*Creature {
+	var creatures []*Creature
+	for _, c := range g.creatures {
+		if c.tileIdx == tileIdx && c.chunk == chunk {
+			creatures = append(creatures, c)
+		}
+	}
+	return creatures
 }
