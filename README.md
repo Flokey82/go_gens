@@ -41,6 +41,9 @@ See: https://github.com/weigert/SimpleHydrology
 ### genmapvoronoi: Voronoi map generator
 This is based on https://mewo2.com/notes/terrain/ and partially a port of https://github.com/mewo2/terrain/ to Go.
 
+### genpotions: Potion generator / Alchemy
+This package implements a simple alchemy system similar to the potion crafting systems found in the Elder Scrolls games.
+
 ### genworldvoronoi: Graph based planetary map generator
 It simulates (somewhat) global winds and attempts to calculate precipitation and temperature for more intricate simulations in the future.
 It features SVG, PNG, and Wavefront OBJ output.
