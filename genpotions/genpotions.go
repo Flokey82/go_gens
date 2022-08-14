@@ -6,6 +6,10 @@ import (
 )
 
 // Ingredient represents an alchemy ingredient with various effects.
+//
+// TODO:
+// - Add the strength of each effect to the ingredient.
+// - Add the price of the ingredient.
 type Ingredient struct {
 	Name    string
 	Effects []string
@@ -52,8 +56,9 @@ func (in *Ingredient) hasSomeEffects(effects []string) bool {
 
 // CanCraftPotion returns true if a potion can be successfully crafted from the
 // given ingredients.
-// For a successful potion, each ingredient must share at least one effect with
-// at least one other ingredient.
+//
+// NOTE: For a successful potion, each ingredient must share at least one effect
+// with at least one other ingredient.
 func CanCraftPotion(ingredients ...*Ingredient) bool {
 	// Each ingredient must have at least one overlapping effect with another.
 	for _, in1 := range ingredients {
@@ -77,6 +82,9 @@ func CanCraftPotion(ingredients ...*Ingredient) bool {
 }
 
 // Potion represents an alchemical potion expressing different effects.
+// TODO:
+// - Add strength of each effect by summing up the effect strength of each ingredient.
+// - Add price of potion based on ingredient prices.
 type Potion struct {
 	Name        string        // Name of the potion
 	Ingredients []*Ingredient // List of ingredients
@@ -90,12 +98,14 @@ func CraftPotion(ingredients ...*Ingredient) (*Potion, bool) {
 	if !CanCraftPotion(ingredients...) {
 		return nil, false
 	}
+
+	// Create a new potion.
 	potion := &Potion{
 		Ingredients: ingredients,
 	}
 
-	// Iterate through all ingredient effects and count the
-	// number of occurrences.
+	// Iterate through all ingredient effects and count the number
+	// of occurrences.
 	var effects []string
 	effectCount := make(map[string]int)
 	for _, in := range ingredients {
@@ -109,14 +119,18 @@ func CraftPotion(ingredients ...*Ingredient) (*Potion, bool) {
 		}
 	}
 
-	// Now iterate through the effects and assign
-	// each all effects that were a
+	// Now iterate through the effects and assign all effects that were
+	// encountered more than once.
 	for _, e := range effects {
 		// Skip unique effects.
-		if effectCount[e] > 1 {
-			potion.Effects = append(potion.Effects, e)
+		if effectCount[e] <= 1 {
+			continue
 		}
+		potion.Effects = append(potion.Effects, e)
 	}
+
+	// Generate the name of the potion.
+	// TODO: This sould be done a little bit more cleverly.
 	potion.Name = fmt.Sprintf("Potion of %s", strings.Join(potion.Effects, ", "))
 	return potion, true
 }
