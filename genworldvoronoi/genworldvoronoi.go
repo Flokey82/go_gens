@@ -84,32 +84,32 @@ func NewMap(seed int64, numPlates, numPoints int, jitter float64) (*Map, error) 
 }
 
 func (m *Map) generateMap() {
-	// Plates.
+	// Generate tectonic plates.
 	start := time.Now()
 	m.generatePlates()
 	m.assignOceanPlates()
 	log.Println("Done plates in ", time.Since(start).String())
 
-	// Elevation.
+	// Calculate elevation.
 	start = time.Now()
 	m.assignRegionElevation()
 	log.Println("Done elevation in ", time.Since(start).String())
 
+	// Identify continents / landmasses.
 	start = time.Now()
 	m.identifyLandmasses()
 	log.Println("Done identify landmasses in ", time.Since(start).String())
 
-	// River / moisture.
+	// Assign rainfall, moisture.
 	start = time.Now()
-	// m.assignRegionMoisture()
 	m.assignRainfallBasic()
-	//m.assignRainfall(1, moistTransferIndirect, moistOrderWind)
+	// m.assignRainfall(1, moistTransferIndirect, moistOrderWind)
 	// m.assignFlux()
 	log.Println("Done rainfall in ", time.Since(start).String())
 
 	// Hydrology (based on regions) - EXPERIMENTAL
 	start = time.Now()
-	//m.assignHydrologyWithFlooding()
+	// m.assignHydrologyWithFlooding()
 	m.assignHydrology()
 	// m.getRivers(9000.1)
 	// m.r_elevation = m.rErode(0.05)
@@ -125,19 +125,20 @@ func (m *Map) generateMap() {
 	log.Println("Done territories in ", time.Since(start).String())
 
 	// Hydrology (based on triangles)
+	// Amit's hydrology code.
 	start = time.Now()
 	m.assignTriangleValues()
-	log.Println("Done triangles in ", time.Since(start).String())
 	// m.assignDownflow()
 	// m.assignFlow()
+	log.Println("Done triangles in ", time.Since(start).String())
 
-	// Quad geometry updete.
+	// Quad geometry update.
+	// This is really only useful for rendering the map but we don't
+	// really use this right now.
 	start = time.Now()
 	m.QuadGeom.setMap(m.mesh, m)
 	log.Println("Done quadgeom in ", time.Since(start).String())
 }
-
-// Plates
 
 // pickRandomRegions picks n random points/regions from the given mesh.
 func (m *Map) pickRandomRegions(mesh *TriangleMesh, n int) []int {
@@ -289,17 +290,18 @@ func (m *Map) assignDistanceFieldWithIntensity(seeds_r []int, stop_r map[int]boo
 	return r_distance
 }
 
-const persistence = 2.0 / 3.0
-
+// Initialize the noise amplitudes for use in our heightmap.
 var amplitudes []float64
 
 func init() {
+	const persistence = 2.0 / 3.0
 	amplitudes = make([]float64, 5)
 	for i := range amplitudes {
 		amplitudes[i] = math.Pow(persistence, float64(i))
 	}
 }
 
+// fbm_noise returns a noise value for the given xyz coordinate.
 func (m *Map) fbm_noise(nx, ny, nz float64) float64 {
 	sum := 0.0
 	sumOfAmplitudes := 0.0
