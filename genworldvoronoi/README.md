@@ -16,7 +16,7 @@ Here some old pictures what it does...
 ![alt text](https://raw.githubusercontent.com/Flokey82/go_gens/master/genworldvoronoi/images/svg.png "Screenshot of SVG!")
 
 ## Does political maps.
-![alt text](https://raw.githubusercontent.com/Flokey82/go_gens/master/genworldvoronoi/images/svg.png "Political Maps!")
+![alt text](https://raw.githubusercontent.com/Flokey82/go_gens/master/genworldvoronoi/images/political.png "Political Maps!")
 
 ## Simulates climate (-ish)
 ![alt text](https://raw.githubusercontent.com/Flokey82/go_gens/master/genworldvoronoi/images/climate.png "Screenshot of Biomes!")
