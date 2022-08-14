@@ -32,3 +32,4 @@ simnpcs/cmd/runner.exe
 gendungeon/cmd/runner
 simnpcs/cmd/runner
 gencellular/cmd/rgb.gif
+genpotions/cmd/runner
