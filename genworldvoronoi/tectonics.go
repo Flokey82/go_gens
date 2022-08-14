@@ -5,7 +5,7 @@ import (
 )
 
 // generatePlates generates a number of plate seed points and starts growing the plates
-// starting from those seeds in a ranom order.
+// starting from those seeds in a random order.
 func (m *Map) generatePlates() {
 	m.resetRand()
 	mesh := m.mesh
