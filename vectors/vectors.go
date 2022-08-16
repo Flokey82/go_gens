@@ -6,7 +6,7 @@ import (
 	"math/rand"
 )
 
-// IVec2 represents an integer vector.
+// IVec2 represents an integer vector of type int64.
 type IVec2 struct {
 	X int64
 	Y int64
@@ -67,12 +67,12 @@ func (v1 *Vec2) MulWithThis(c float64) {
 	v1.Y *= c
 }
 
-// Len returns the length of the vector.
+// Len returns the length (or magnitude) of the vector.
 func (v1 Vec2) Len() float64 {
-	return float64(math.Hypot(float64(v1.X), float64(v1.Y)))
+	return math.Hypot(v1.X, v1.Y)
 }
 
-// Normalize returns the normalized vector.
+// Normalize returns the normalized vector (with a length/magnitude of 1).
 func Normalize(vec Vec2) (dest Vec2) {
 	x := vec.X
 	y := vec.Y
@@ -85,7 +85,7 @@ func Normalize(vec Vec2) (dest Vec2) {
 	return dest
 }
 
-// Vec3 represents a three dimensional vector
+// Vec3 represents a three dimensional vector.
 type Vec3 struct {
 	X float64
 	Y float64
@@ -101,15 +101,15 @@ func NewVec3(x, y, z float64) Vec3 {
 	}
 }
 
-// Len returns the vector's length. Note that this is NOT the dimension of
-// the vector (len(v)), but the mathematical length. This is equivalent to the square
-// root of the sum of the squares of all elements. E.G. for a Vec2 it's
-// math.Hypot(v[0], v[1]).
+// Len returns the vector's length (or magnitude).
+//
+// NOTE: This is equivalent to the square root of the sum of the squares
+// of all elements. E.G. for a Vec2 it's math.Hypot(v[0], v[1]).
 func (v1 Vec3) Len() float64 {
-	return float64(math.Sqrt(float64(v1.X*v1.X + v1.Y*v1.Y + v1.Z*v1.Z)))
+	return math.Sqrt(v1.X*v1.X + v1.Y*v1.Y + v1.Z*v1.Z)
 }
 
-// Normalize returns the normalized vector.
+// Normalize returns the normalized vector (with a length/magnitude of 1).
 func (v1 Vec3) Normalize() Vec3 {
 	l := 1.0 / v1.Len()
 	return Vec3{
@@ -145,7 +145,7 @@ func (v1 *Vec3) AddToThis(v2 Vec3) {
 	v1.Z += v2.Z
 }
 
-// Add3 adds
+// Add3 adds two Vec3 vectors and returns the result.
 func Add3(v1, v2 Vec3) Vec3 {
 	return Vec3{
 		X: v1.X + v2.X,
@@ -154,7 +154,7 @@ func Add3(v1, v2 Vec3) Vec3 {
 	}
 }
 
-// Sub3 subtracts
+// Sub3 subtracts v2 from v1 and returns the result.
 func Sub3(v1, v2 Vec3) Vec3 {
 	return Vec3{
 		X: v1.X - v2.X,
@@ -168,7 +168,12 @@ func Dist3(a, b Vec3) float64 {
 	xDiff := a.X - b.X
 	yDiff := a.Y - b.Y
 	zDiff := a.Z - b.Z
-	return float64(math.Sqrt(float64(xDiff*xDiff + yDiff*yDiff + zDiff*zDiff)))
+	return math.Sqrt(xDiff*xDiff + yDiff*yDiff + zDiff*zDiff)
+}
+
+// Dot3 returns the dotproduct of two vectors.
+func Dot3(v1, v2 Vec3) float64 {
+	return v1.Y*v2.Y + v1.X*v2.X + v1.Z*v2.Z
 }
 
 // Cross3 returns the crossproduct of two vectors.
@@ -178,11 +183,6 @@ func Cross3(v1, v2 Vec3) Vec3 {
 		Y: v1.Z*v2.X - v1.X*v2.Z,
 		Z: v1.X*v2.Y - v1.Y*v2.X,
 	}
-}
-
-// Dot3 returns the dotproduct of two vectors.
-func Dot3(v1, v2 Vec3) float64 {
-	return v1.Y*v2.Y + v1.X*v2.X + v1.Z*v2.Z
 }
 
 // Cross3XYZ returns the cross product of two sets of coordinates.
