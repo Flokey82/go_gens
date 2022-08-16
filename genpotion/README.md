@@ -1,4 +1,4 @@
-# genpotions: Potion generator / Alchemy
+# genpotion: Potion generator / Alchemy
 
 This package implements a simple alchemy system similar to the potion crafting systems found in the Elder Scrolls games.
 

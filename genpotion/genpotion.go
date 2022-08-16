@@ -1,4 +1,4 @@
-package genpotions
+package genpotion
 
 import (
 	"fmt"
