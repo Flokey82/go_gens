@@ -90,6 +90,7 @@ func erosionRate2(h *vmesh.Heightmap) *vmesh.Heightmap {
 }
 
 /*
+// Garbage code that attempts to get the erosion to carve "meandering" paths.
 func erosionRate2(h *vmesh.Heightmap) *vmesh.Heightmap {
 	const maxErosionDistance = 3 * 0.03
 	const minExp = 1.0
