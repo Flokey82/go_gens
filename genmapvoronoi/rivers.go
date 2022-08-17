@@ -5,17 +5,24 @@ import (
 	"github.com/pzsz/voronoi"
 )
 
+// getRiverPaths returns the merged river segments whose flux exceeds the provided limit.
+// Each river is represented as a sequence of vertices.
 func getRiverPaths(h *vmesh.Heightmap, limit float64) [][]voronoi.Vertex {
 	dh := h.Downhill()
 	flux := getFlux(h)
 
 	var links [][2]voronoi.Vertex
+
+	// Sum up how many vertices are above sea level.
 	var above int
 	for i := 0; i < h.Len(); i++ {
 		if h.Values[i] > 0 {
 			above++
 		}
 	}
+
+	// Adjust the limit based on the ratio of vertices
+	// above sea level to the total number of vertices.
 	limit *= float64(above) / float64(h.Len())
 	for i := 0; i < len(dh); i++ {
 		//if isnearedge(h.Mesh, i){
@@ -32,14 +39,17 @@ func getRiverPaths(h *vmesh.Heightmap, limit float64) [][]voronoi.Vertex {
 		}
 	}
 
+	// Merge all segments to river paths.
 	mergedSegs := mergeSegments(links)
 	for i := range mergedSegs {
+		// Relax the paths a little.
 		mergedSegs[i] = relaxPath(mergedSegs[i])
 	}
-	// return mergeSegments(links).map(relaxPath)
 	return mergedSegs
 }
 
+// getRivers returns a map from vertex index to "river ID", where the river
+// ID is a simple enumeration of all continuous river paths.
 func getRivers(h *vmesh.Heightmap, limit float64) []int {
 	rivers := make([]int, h.Len())
 
@@ -52,12 +62,17 @@ func getRivers(h *vmesh.Heightmap, limit float64) []int {
 	flux := getFlux(h)
 
 	var links [][2]int
+
+	// Sum up how many vertices are above sea level.
 	var above int
 	for i := 0; i < h.Len(); i++ {
 		if h.Values[i] > 0 {
 			above++
 		}
 	}
+
+	// Adjust the limit based on the ratio of vertices
+	// above sea level to the total number of vertices.
 	limit *= float64(above) / float64(h.Len())
 	for i := 0; i < len(dh); i++ {
 		//if isnearedge(h.Mesh, i){
@@ -70,8 +85,10 @@ func getRivers(h *vmesh.Heightmap, limit float64) []int {
 		}
 	}
 
+	// Merge the river segments.
 	mergedSegs := mergeIndexSegments(links)
 	for i := range mergedSegs {
+		// Assign the "river ID" to each of its vertices.
 		for _, idx := range mergedSegs[i] {
 			rivers[idx] = i
 		}
@@ -79,6 +96,11 @@ func getRivers(h *vmesh.Heightmap, limit float64) []int {
 	return rivers
 }
 
+// mergeIndexSegments matches up the ends of the segments (vertex indices) and returns
+// a slice containing all continuous, connected segments as sequence of connected vertex indices.
+//
+// NOTE: This is identical to mergeSegments, except that the indices are used instead of the actual vertices.
+// TODO: Deduplicate code.
 func mergeIndexSegments(segs [][2]int) [][]int {
 	adj := make(map[int][]int)
 	for i := 0; i < len(segs); i++ {
@@ -139,6 +161,8 @@ func unshiftIndexPath(path []int, p int) []int {
 	return append([]int{p}, path...)
 }
 
+// mergeSegments matches up the ends of the segments (vertex pairs) and returns
+// a slice containing all continuous, connected segments as sequence of connected vertices.
 func mergeSegments(segs [][2]voronoi.Vertex) [][]voronoi.Vertex {
 	adj := make(map[voronoi.Vertex][]voronoi.Vertex)
 	for i := 0; i < len(segs); i++ {
@@ -199,12 +223,14 @@ func unshiftPath(path []voronoi.Vertex, p voronoi.Vertex) []voronoi.Vertex {
 	return append([]voronoi.Vertex{p}, path...)
 }
 
+// relaxPath averages the vertex coordinates in the path with their neighbours (to an extent)
+// and returns a "smoothed"/relaxed path.
 func relaxPath(path []voronoi.Vertex) []voronoi.Vertex {
 	newpath := []voronoi.Vertex{path[0]}
 	for i := 1; i < len(path)-1; i++ {
 		newpt := voronoi.Vertex{
-			0.25*path[i-1].X + 0.5*path[i].X + 0.25*path[i+1].X,
-			0.25*path[i-1].Y + 0.5*path[i].Y + 0.25*path[i+1].Y,
+			X: 0.25*path[i-1].X + 0.5*path[i].X + 0.25*path[i+1].X,
+			Y: 0.25*path[i-1].Y + 0.5*path[i].Y + 0.25*path[i+1].Y,
 		}
 		newpath = append(newpath, newpt)
 	}

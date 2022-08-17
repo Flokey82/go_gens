@@ -5,6 +5,9 @@ import (
 	"github.com/pzsz/voronoi"
 )
 
+// contour returns the outline of all vertices above the supplied "waterlevel" by
+// returning the voronoi cell sites of all neighbors where one is above and one is
+// below the level (which represent the coast where the land dips into the water).
 func contour(h *vmesh.Heightmap, level float64) [][]voronoi.Vertex {
 	var edges [][2]voronoi.Vertex
 	for i := 0; i < len(h.Edges); i++ {
@@ -21,5 +24,6 @@ func contour(h *vmesh.Heightmap, level float64) [][]voronoi.Vertex {
 		}
 	}
 
+	// Merge all segments into continuous outlines of landmasses.
 	return mergeSegments(edges)
 }
