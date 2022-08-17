@@ -35,14 +35,23 @@ func erosionRate(h *vmesh.Heightmap) *vmesh.Heightmap {
 	slope := getSlope(h)
 	newh := vmesh.NewHeightmap(h.Mesh)
 	for i := 0; i < h.Len(); i++ {
+		// NOTE: This was directly taken from mewo2's code.
+		//
+		// Honestly, I have no idea how this works, especially how the river
+		// creep is supposed to work or where these constants come from.
 		river := math.Sqrt(flux.Values[i]) * slope.Values[i]
 		creep := slope.Values[i] * slope.Values[i]
 		total := 1000*river + creep
 		if total > 200 {
 			total = 200
 		}
+
+		// Apply the a fraction of the erosion partially to the neighbours.
 		nbs := h.Neighbours(i)
 		for _, nb := range nbs {
+			// TODO: Not sure if we should add to the existing erosion rate
+			// or rather set it to whatever is the higher value?
+			// ... alternatively we could average it out.
 			newh.Values[nb] += total * 0.25
 		}
 

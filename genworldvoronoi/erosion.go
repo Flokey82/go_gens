@@ -201,7 +201,7 @@ func (m *Map) getRErosion2() []float64 {
 		// HACK: That's about 3 neighbors away at 400.000 points. This should not be hardcoded.
 		maxErosionDistance = 3 * 0.006
 		minExp             = 1.0 // Minimum exponent (see below)
-		varExp             = 3.0 // Maximum exponent (see further below)
+		varExp             = 3.0 // Variable exponent (see further below)
 	)
 
 	// Get the steepness of each region to its downhill neighbor.
