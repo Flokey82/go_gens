@@ -52,6 +52,8 @@ This is based on https://www.redblobgames.com/x/1843-planet-generation/ and a po
 ### genvillage: Village economy generator
 This package attempts to generate a stable, self sustaining economy given some initial buildings that serve as seed. The user can define building types that consume and produce resources, which the simulation will use to add new buildings until the sum of produced resources outweighs the sum of consumed resources. Please note that the output of this process is only meant to be used as input for a more sophisticated generator, only ensuring that besides required import of unavailable resources, the village/settlement can be in theory self-sustaining.
 
+Don't get your expectations up, it's really basic. :P
+
 ### simmotive: Sims motive
 This package is a crude port of https://github.com/alexcu/motive-simulator which is adapted from Don Hopkins' article The Soul of The Sims which shows an prototype of the 'soul' of what became The Sims 1, written January 23, 1997.
 
