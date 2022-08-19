@@ -21,21 +21,35 @@ func MarchSquares(pixels [][]bool, dimX, dimY int) [][]byte {
 	// +-+-+-+
 	for x := 0; x < dimX-1; x++ {
 		for y := 0; y < dimY-1; y++ {
-			var val byte
-			if pixels[x][y] {
-				val |= 1 << 0
-			}
-			if pixels[x+1][y] {
-				val |= 1 << 1
-			}
-			if pixels[x+1][y+1] {
-				val |= 1 << 2
-			}
-			if pixels[x][y+1] {
-				val |= 1 << 3
-			}
-			squares[x][y] = val
+			squares[x][y] = encodeTile(
+				pixels[x][y],     // nw -> 8
+				pixels[x+1][y],   // ne -> 4
+				pixels[x+1][y+1], // se -> 2
+				pixels[x][y+1],   // sw -> 1
+			)
 		}
 	}
 	return squares
+}
+
+// Encoded tile:
+//
+// 8-4    nw-ne
+// | | <- |   |
+// 1-2    sw-se
+func encodeTile(nw, ne, se, sw bool) byte {
+	var val byte
+	if nw {
+		val |= 1 << 3
+	}
+	if ne {
+		val |= 1 << 2
+	}
+	if se {
+		val |= 1 << 1
+	}
+	if sw {
+		val |= 1 << 0
+	}
+	return val
 }
