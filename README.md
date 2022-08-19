@@ -41,6 +41,10 @@ See: https://github.com/weigert/SimpleHydrology
 ### genmapvoronoi: Voronoi map generator
 This is based on https://mewo2.com/notes/terrain/ and partially a port of https://github.com/mewo2/terrain/ to Go.
 
+### genmarchingsquares: Marching squares (WIP)
+
+This package provides a simple implementation of the marching squares algorithm for illustrative purposes for now.
+
 ### genpotion: Potion generator / Alchemy
 This package implements a simple alchemy system similar to the potion crafting systems found in the Elder Scrolls games.
 
