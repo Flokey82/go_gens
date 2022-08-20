@@ -14,6 +14,7 @@ Create a package that takes a pixel field and outputs a 2d grid of tiles represe
 * 2d boolean input field
 * 2d output grid of tiles encoded as 4 bit values
 * Simple export to PNG in garish colors
+* Rotate the tile templates for different orientations
 
 ### TODO
 * Scalar input field
@@ -23,6 +24,7 @@ Create a package that takes a pixel field and outputs a 2d grid of tiles represe
 * Simplify tile drawing
 * Documentation
 * Draw the pixel states on the exported PNG
+* Make code nicer
 
 ## Reference
 * https://en.wikipedia.org/wiki/Marching_squares

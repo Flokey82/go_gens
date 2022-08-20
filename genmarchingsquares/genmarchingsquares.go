@@ -6,6 +6,7 @@ import (
 	"image"
 	"image/color"
 	"image/png"
+	"math"
 	"os"
 
 	"github.com/llgcode/draw2d/draw2dimg"
@@ -94,35 +95,24 @@ func drawTile(gc *draw2dimg.GraphicContext, tileSize, tileX, tileY int, encTile 
 		// No points, nothing to do.
 	case 1, 2, 4, 8:
 		// Draw triangle, single point.
-		var offsets [3][2]float64
+		baseOffset := [3][2]float64{
+			{0, 0.5},
+			{0.5, 1},
+			{0, 1},
+		}
+		var angle float64
 		switch encTile {
 		case 1:
-			offsets = [3][2]float64{
-				{0, 0.5},
-				{0.5, 1},
-				{0, 1},
-			}
+			angle = 0
 		case 2:
-			offsets = [3][2]float64{
-				{0.5, 1},
-				{1, 1},
-				{1, 0.5},
-			}
+			angle = -90
 		case 4:
-			offsets = [3][2]float64{
-				{1, 0.5},
-				{1, 0},
-				{0.5, 0},
-			}
+			angle = -180
 		case 8:
-			offsets = [3][2]float64{
-				{0.5, 0},
-				{0, 0},
-				{0, 0.5},
-			}
+			angle = -270
 		}
 		var points [][2]float64
-		for _, offset := range offsets {
+		for _, offset := range rotatePoints(baseOffset[:], angle) {
 			points = append(points, [2]float64{
 				offsX + offset[0]*float64(tileSize),
 				offsY + offset[1]*float64(tileSize),
@@ -131,31 +121,24 @@ func drawTile(gc *draw2dimg.GraphicContext, tileSize, tileX, tileY int, encTile 
 		drawPolygon(gc, points)
 	case 3, 6, 9, 12:
 		// Draw half tile.
-		var offsets [2][2]float64
+		baseOffset := [2][2]float64{
+			{0, 0.5},
+			{1, 1},
+		}
+		var angle float64
 		switch encTile {
 		case 3:
-			offsets = [2][2]float64{
-				{0, 0.5},
-				{1, 1},
-			}
+			angle = 0
 		case 6:
-			offsets = [2][2]float64{
-				{0.5, 0},
-				{1, 1},
-			}
+			angle = -90
 		case 9:
-			offsets = [2][2]float64{
-				{0, 0},
-				{0.5, 1},
-			}
+			angle = 90
 		case 12:
-			offsets = [2][2]float64{
-				{0, 0},
-				{1, 0.5},
-			}
+			angle = 180
 		}
-		drawRectangle(gc, [2]float64{offsX + offsets[0][0]*float64(tileSize), offsY + offsets[0][1]*float64(tileSize)},
-			[2]float64{offsX + offsets[1][0]*float64(tileSize), offsY + offsets[1][1]*float64(tileSize)})
+		resOffset := rotatePoints(baseOffset[:], angle)
+		drawRectangle(gc, [2]float64{offsX + resOffset[0][0]*float64(tileSize), offsY + resOffset[0][1]*float64(tileSize)},
+			[2]float64{offsX + resOffset[1][0]*float64(tileSize), offsY + resOffset[1][1]*float64(tileSize)})
 	case 5, 10:
 		// Draw diagonal.
 		var offsets [6][2]float64
@@ -189,43 +172,26 @@ func drawTile(gc *draw2dimg.GraphicContext, tileSize, tileX, tileY int, encTile 
 		drawPolygon(gc, points)
 	case 7, 11, 13, 14:
 		// Draw tile minus triangle, 3 points
-		var offsets [5][2]float64
+		baseOffset := [5][2]float64{
+			{0.5, 0},
+			{1, 0},
+			{1, 1},
+			{0, 1},
+			{0, 0.5},
+		}
+		var angle float64
 		switch encTile {
 		case 7:
-			offsets = [5][2]float64{
-				{0.5, 0},
-				{1, 0},
-				{1, 1},
-				{0, 1},
-				{0, 0.5},
-			}
+			angle = 0
 		case 11:
-			offsets = [5][2]float64{
-				{0, 0},
-				{0.5, 0},
-				{1, 0.5},
-				{1, 1},
-				{0, 1},
-			}
+			angle = 90
 		case 13:
-			offsets = [5][2]float64{
-				{0, 0},
-				{1, 0},
-				{1, 0.5},
-				{0.5, 1},
-				{0, 1},
-			}
+			angle = 180
 		case 14:
-			offsets = [5][2]float64{
-				{0, 0},
-				{1, 0},
-				{1, 1},
-				{0.5, 1},
-				{0, 0.5},
-			}
+			angle = 270
 		}
 		var points [][2]float64
-		for _, offset := range offsets {
+		for _, offset := range rotatePoints(baseOffset[:], angle) {
 			points = append(points, [2]float64{
 				offsX + offset[0]*float64(tileSize),
 				offsY + offset[1]*float64(tileSize),
@@ -257,4 +223,31 @@ func drawPolygon(gc *draw2dimg.GraphicContext, points [][2]float64) {
 	}
 	gc.Close()
 	gc.Fill()
+}
+
+func rotatePoints(points [][2]float64, angle float64) [][2]float64 {
+	angle *= math.Pi / 180
+	var res [][2]float64
+	for _, srcPt := range points {
+		res = append(res, rotatePoint(0.5, 0.5, angle, srcPt))
+	}
+	return res
+}
+
+// cx, cy defines the point around which we rotate.
+// Based on: https://stackoverflow.com/questions/2259476/rotating-a-point-about-another-point-2d
+func rotatePoint(cx, cy, angle float64, p [2]float64) [2]float64 {
+	s := math.Sin(angle)
+	c := math.Cos(angle)
+
+	// Translate point back to origin.
+	p[0] -= cx
+	p[1] -= cy
+
+	// Rotate point.
+	xnew := p[0]*c - p[1]*s
+	ynew := p[0]*s + p[1]*c
+
+	// Translate point back and return.
+	return [2]float64{xnew + cx, ynew + cy}
 }
