@@ -90,12 +90,25 @@ func ExportToPNG(squares [][]byte, dimX, dimY, tileSize int, filename string) {
 func drawTile(gc *draw2dimg.GraphicContext, tileSize, tileX, tileY int, encTile byte) {
 	offsX := float64(tileX * tileSize)
 	offsY := float64(tileY * tileSize)
+
+	// offsetPoints rotates and translates the points to the tile location.
+	offsetPoints := func(baseOffset [][2]float64, angle float64) [][2]float64 {
+		var points [][2]float64
+		for _, offset := range rotatePoints(baseOffset, angle) {
+			points = append(points, [2]float64{
+				offsX + offset[0]*float64(tileSize),
+				offsY + offset[1]*float64(tileSize),
+			})
+		}
+		return points
+	}
+
 	switch encTile {
 	case 0:
 		// No points, nothing to do.
 	case 1, 2, 4, 8:
 		// Draw triangle, single point.
-		baseOffset := [3][2]float64{
+		baseOffset := [][2]float64{
 			{0, 0.5},
 			{0.5, 1},
 			{0, 1},
@@ -111,17 +124,10 @@ func drawTile(gc *draw2dimg.GraphicContext, tileSize, tileX, tileY int, encTile 
 		case 8:
 			angle = -270
 		}
-		var points [][2]float64
-		for _, offset := range rotatePoints(baseOffset[:], angle) {
-			points = append(points, [2]float64{
-				offsX + offset[0]*float64(tileSize),
-				offsY + offset[1]*float64(tileSize),
-			})
-		}
-		drawPolygon(gc, points)
+		drawPolygon(gc, offsetPoints(baseOffset, angle))
 	case 3, 6, 9, 12:
 		// Draw half tile.
-		baseOffset := [2][2]float64{
+		baseOffset := [][2]float64{
 			{0, 0.5},
 			{1, 1},
 		}
@@ -136,43 +142,30 @@ func drawTile(gc *draw2dimg.GraphicContext, tileSize, tileX, tileY int, encTile 
 		case 12:
 			angle = 180
 		}
-		resOffset := rotatePoints(baseOffset[:], angle)
+		resOffset := rotatePoints(baseOffset, angle)
 		drawRectangle(gc, [2]float64{offsX + resOffset[0][0]*float64(tileSize), offsY + resOffset[0][1]*float64(tileSize)},
 			[2]float64{offsX + resOffset[1][0]*float64(tileSize), offsY + resOffset[1][1]*float64(tileSize)})
 	case 5, 10:
 		// Draw diagonal.
-		var offsets [6][2]float64
+		baseOffset := [][2]float64{
+			{0.5, 0},
+			{1, 0},
+			{1, 0.5},
+			{0.5, 1},
+			{0, 1},
+			{0, 0.5},
+		}
+		var angle float64
 		switch encTile {
 		case 5:
-			offsets = [6][2]float64{
-				{0.5, 0},
-				{1, 0},
-				{1, 0.5},
-				{0.5, 1},
-				{0, 1},
-				{0, 0.5},
-			}
+			angle = 0
 		case 10:
-			offsets = [6][2]float64{
-				{0, 0.5},
-				{0.5, 1},
-				{1, 1},
-				{1, 0.5},
-				{0.5, 0},
-				{0, 0},
-			}
+			angle = 90
 		}
-		var points [][2]float64
-		for _, offset := range offsets {
-			points = append(points, [2]float64{
-				offsX + offset[0]*float64(tileSize),
-				offsY + offset[1]*float64(tileSize),
-			})
-		}
-		drawPolygon(gc, points)
+		drawPolygon(gc, offsetPoints(baseOffset, angle))
 	case 7, 11, 13, 14:
 		// Draw tile minus triangle, 3 points
-		baseOffset := [5][2]float64{
+		baseOffset := [][2]float64{
 			{0.5, 0},
 			{1, 0},
 			{1, 1},
@@ -190,14 +183,7 @@ func drawTile(gc *draw2dimg.GraphicContext, tileSize, tileX, tileY int, encTile 
 		case 14:
 			angle = 270
 		}
-		var points [][2]float64
-		for _, offset := range rotatePoints(baseOffset[:], angle) {
-			points = append(points, [2]float64{
-				offsX + offset[0]*float64(tileSize),
-				offsY + offset[1]*float64(tileSize),
-			})
-		}
-		drawPolygon(gc, points)
+		drawPolygon(gc, offsetPoints(baseOffset, angle))
 	case 15:
 		// Full tile
 		drawRectangle(gc,
