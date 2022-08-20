@@ -1,6 +1,8 @@
 package main
 
 import (
+	"log"
+
 	"github.com/Flokey82/go_gens/genmarchingsquares"
 )
 
@@ -15,5 +17,7 @@ func main() {
 	pixels[2] = []bool{true, false, false, true}
 	pixels[3] = []bool{true, true, true, false}
 	squares := genmarchingsquares.MarchSquares(pixels, dimX, dimY)
-	genmarchingsquares.ExportToPNG(squares, dimX-1, dimY-1, 128, "squares.png")
+	if err := genmarchingsquares.ExportToPNG(squares, dimX-1, dimY-1, 128, "squares.png"); err != nil {
+		log.Println(err)
+	}
 }

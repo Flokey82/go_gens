@@ -47,6 +47,14 @@ func MarchSquares(pixels [][]bool, dimX, dimY int) [][]byte {
 // 8-4    nw-ne
 // | | <- |   |
 // 1-2    sw-se
+//
+//	 ____nw 1 << 3
+//	| ___ne 1 << 2
+//	|| __se 1 << 1
+//	||| _sw 1 << 0
+//	||||
+//
+// b1111
 func encodeTile(nw, ne, se, sw bool) byte {
 	var val byte
 	if nw {
@@ -65,7 +73,7 @@ func encodeTile(nw, ne, se, sw bool) byte {
 }
 
 // ExportToPNG exports the given encoded tiles to PNG.
-func ExportToPNG(squares [][]byte, dimX, dimY, tileSize int, filename string) {
+func ExportToPNG(squares [][]byte, dimX, dimY, tileSize int, filename string) error {
 	img := image.NewRGBA(image.Rect(0, 0, dimX*tileSize, dimY*tileSize))
 	gc := draw2dimg.NewGraphicContext(img)
 
@@ -80,11 +88,55 @@ func ExportToPNG(squares [][]byte, dimX, dimY, tileSize int, filename string) {
 	}
 	f, err := os.Create(filename)
 	if err != nil {
-		panic(err)
+		return err
 	}
 	defer f.Close()
-	png.Encode(f, img)
+	return png.Encode(f, img)
 }
+
+var (
+	// Vector points for one active pixel (configuration 1)
+	baseOffsetOneTile_1 = [][2]float64{
+		{0, 0.5},
+		{0.5, 1},
+		{0, 1},
+	}
+
+	// Vector points for two active pixels / half tile (configuration 3)
+	baseOffsetHalfTile_3 = [][2]float64{
+		{0, 0.5},
+		{1, 0.5},
+		{1, 1},
+		{0, 1},
+	}
+
+	// Vector points for two active pixels / diagonal tile (configuration 5)
+	baseOffsetDiagonalTile_5 = [][2]float64{
+		{0.5, 0},
+		{1, 0},
+		{1, 0.5},
+		{0.5, 1},
+		{0, 1},
+		{0, 0.5},
+	}
+
+	// Vector points for three active pixels / three quarter tile (configuration 7)
+	baseOffsetThreeQuarterTile_7 = [][2]float64{
+		{0.5, 0},
+		{1, 0},
+		{1, 1},
+		{0, 1},
+		{0, 0.5},
+	}
+
+	// Vector points for four active pixels / full tile (configuration 15)
+	baseOffsetFull = [][2]float64{
+		{0, 0},
+		{1, 0},
+		{1, 1},
+		{0, 1},
+	}
+)
 
 // drawTile draws the given encoded tile at the x/y grid coordinate.
 func drawTile(gc *draw2dimg.GraphicContext, tileSize, tileX, tileY int, encTile byte) {
@@ -103,105 +155,64 @@ func drawTile(gc *draw2dimg.GraphicContext, tileSize, tileX, tileY int, encTile 
 		return points
 	}
 
+	var (
+		baseOffset [][2]float64
+		angle      float64
+	)
 	switch encTile {
 	case 0:
 		// No points, nothing to do.
-	case 1, 2, 4, 8:
-		// Draw triangle, single point.
-		baseOffset := [][2]float64{
-			{0, 0.5},
-			{0.5, 1},
-			{0, 1},
-		}
-		var angle float64
-		switch encTile {
-		case 1:
-			angle = 0
-		case 2:
-			angle = -90
-		case 4:
-			angle = -180
-		case 8:
-			angle = -270
-		}
-		drawPolygon(gc, offsetPoints(baseOffset, angle))
-	case 3, 6, 9, 12:
-		// Draw half tile.
-		baseOffset := [][2]float64{
-			{0, 0.5},
-			{1, 1},
-		}
-		var angle float64
-		switch encTile {
-		case 3:
-			angle = 0
-		case 6:
-			angle = -90
-		case 9:
-			angle = 90
-		case 12:
-			angle = 180
-		}
-		resOffset := rotatePoints(baseOffset, angle)
-		drawRectangle(gc, [2]float64{offsX + resOffset[0][0]*float64(tileSize), offsY + resOffset[0][1]*float64(tileSize)},
-			[2]float64{offsX + resOffset[1][0]*float64(tileSize), offsY + resOffset[1][1]*float64(tileSize)})
-	case 5, 10:
-		// Draw diagonal.
-		baseOffset := [][2]float64{
-			{0.5, 0},
-			{1, 0},
-			{1, 0.5},
-			{0.5, 1},
-			{0, 1},
-			{0, 0.5},
-		}
-		var angle float64
-		switch encTile {
-		case 5:
-			angle = 0
-		case 10:
-			angle = 90
-		}
-		drawPolygon(gc, offsetPoints(baseOffset, angle))
-	case 7, 11, 13, 14:
-		// Draw tile minus triangle, 3 points
-		baseOffset := [][2]float64{
-			{0.5, 0},
-			{1, 0},
-			{1, 1},
-			{0, 1},
-			{0, 0.5},
-		}
-		var angle float64
-		switch encTile {
-		case 7:
-			angle = 0
-		case 11:
-			angle = 90
-		case 13:
-			angle = 180
-		case 14:
-			angle = 270
-		}
-		drawPolygon(gc, offsetPoints(baseOffset, angle))
-	case 15:
-		// Full tile
-		drawRectangle(gc,
-			[2]float64{float64(tileX * tileSize), float64(tileY * tileSize)},
-			[2]float64{float64(tileX*tileSize) + float64(tileSize), float64(tileY*tileSize) + float64(tileSize)},
-		)
+		return
+	case 1: // Draw triangle, single point (configuration 1).
+		baseOffset = baseOffsetOneTile_1
+		angle = 0
+	case 2: // Draw triangle, single point (configuration 2).
+		baseOffset = baseOffsetOneTile_1
+		angle = -90
+	case 4: // Draw triangle, single point (configuration 4).
+		baseOffset = baseOffsetOneTile_1
+		angle = -180
+	case 8: // Draw triangle, single point (configuration 8).
+		baseOffset = baseOffsetOneTile_1
+		angle = -270
+	case 3: // Draw half tile (configuration 3).
+		baseOffset = baseOffsetHalfTile_3
+		angle = 0
+	case 6: // Draw half tile (configuration 6).
+		baseOffset = baseOffsetHalfTile_3
+		angle = -90
+	case 9: // Draw half tile (configuration 9).
+		baseOffset = baseOffsetHalfTile_3
+		angle = 90
+	case 12: // Draw half tile (configuration 12).
+		baseOffset = baseOffsetHalfTile_3
+		angle = 180
+	case 5: // Draw diagonal (configuration 5).
+		baseOffset = baseOffsetDiagonalTile_5
+		angle = 0
+	case 10: // Draw diagonal (configuration 10).
+		baseOffset = baseOffsetDiagonalTile_5
+		angle = 90
+	case 7: // Draw tile minus triangle, 3 points (configuration 7).
+		baseOffset = baseOffsetThreeQuarterTile_7
+		angle = 0
+	case 11: // Draw tile minus triangle, 3 points (configuration 11).
+		baseOffset = baseOffsetThreeQuarterTile_7
+		angle = 90
+	case 13: // Draw tile minus triangle, 3 points (configuration 13).
+		baseOffset = baseOffsetThreeQuarterTile_7
+		angle = 180
+	case 14: // Draw tile minus triangle, 3 points (configuration 14).
+		baseOffset = baseOffsetThreeQuarterTile_7
+		angle = 270
+	case 15: // Full tile (configuration 15)
+		baseOffset = baseOffsetFull
+		angle = 0
 	}
+	drawPolygon(gc, offsetPoints(baseOffset, angle))
 }
 
-func drawRectangle(gc *draw2dimg.GraphicContext, p1, p2 [2]float64) {
-	gc.MoveTo(p1[0], p1[1])
-	gc.LineTo(p2[0], p1[1])
-	gc.LineTo(p2[0], p2[1])
-	gc.LineTo(p1[0], p2[1])
-	gc.Close()
-	gc.Fill()
-}
-
+// drawPolygon draws a polygon from the given points.
 func drawPolygon(gc *draw2dimg.GraphicContext, points [][2]float64) {
 	gc.MoveTo(points[0][0], points[0][1])
 	for _, p := range points[1:] {
@@ -211,20 +222,22 @@ func drawPolygon(gc *draw2dimg.GraphicContext, points [][2]float64) {
 	gc.Fill()
 }
 
-func rotatePoints(points [][2]float64, angle float64) [][2]float64 {
-	angle *= math.Pi / 180
+// RotatePoints rotates a number of given polygon points by a specified angle.
+func rotatePoints(points [][2]float64, angleDeg float64) [][2]float64 {
+	angleRad := angleDeg * math.Pi / 180 // Convert angle to rad.
 	var res [][2]float64
 	for _, srcPt := range points {
-		res = append(res, rotatePoint(0.5, 0.5, angle, srcPt))
+		// Rotate point around center of tile (0.5, 0.5).
+		res = append(res, rotatePoint(0.5, 0.5, angleRad, srcPt))
 	}
 	return res
 }
 
 // cx, cy defines the point around which we rotate.
 // Based on: https://stackoverflow.com/questions/2259476/rotating-a-point-about-another-point-2d
-func rotatePoint(cx, cy, angle float64, p [2]float64) [2]float64 {
-	s := math.Sin(angle)
-	c := math.Cos(angle)
+func rotatePoint(cx, cy, angleRad float64, p [2]float64) [2]float64 {
+	s := math.Sin(angleRad)
+	c := math.Cos(angleRad)
 
 	// Translate point back to origin.
 	p[0] -= cx
