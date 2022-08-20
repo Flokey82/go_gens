@@ -10,6 +10,7 @@ import (
 	"os"
 
 	"github.com/llgcode/draw2d/draw2dimg"
+	"github.com/llgcode/draw2d/draw2dkit"
 )
 
 // MarchSquares returns a grid of tiles encoded as 4 bit values that are generated from the given pixel grid.
@@ -78,12 +79,19 @@ func ExportToPNG(squares [][]byte, dimX, dimY, tileSize int, filename string) er
 	gc := draw2dimg.NewGraphicContext(img)
 
 	// Set some properties
+	gc.SetLineWidth(5)
 	gc.SetFillColor(color.RGBA{0x44, 0xff, 0x44, 0xff})
 	gc.SetStrokeColor(color.RGBA{0x44, 0x44, 0x44, 0xff})
-	gc.SetLineWidth(5)
 	for x := 0; x < dimX; x++ {
 		for y := 0; y < dimY; y++ {
 			drawTile(gc, tileSize, x, y, squares[x][y])
+		}
+	}
+	gc.SetFillColor(color.RGBA{0xff, 0x00, 0x00, 0xff})
+	gc.SetStrokeColor(color.RGBA{0xff, 0x00, 0x00, 0xff})
+	for x := 0; x < dimX; x++ {
+		for y := 0; y < dimY; y++ {
+			drawCode(gc, x, y, tileSize, squares[x][y])
 		}
 	}
 	f, err := os.Create(filename)
@@ -210,6 +218,27 @@ func drawTile(gc *draw2dimg.GraphicContext, tileSize, tileX, tileY int, encTile 
 		angle = 0
 	}
 	drawPolygon(gc, offsetPoints(baseOffset, angle))
+}
+
+// drawCode draws circles at the tile corners which are encoded in the tile.
+// A red circle indicates a set bit.
+func drawCode(gc *draw2dimg.GraphicContext, tileX, tileY, tileSize int, enctile byte) {
+	offsX := float64(tileX * tileSize)
+	offsY := float64(tileY * tileSize)
+	radius := 10.0
+	if enctile&(1<<0) != 0 {
+		draw2dkit.Circle(gc, offsX, offsY+float64(tileSize), radius)
+	}
+	if enctile&(1<<1) != 0 {
+		draw2dkit.Circle(gc, offsX+float64(tileSize), offsY+float64(tileSize), radius)
+	}
+	if enctile&(1<<2) != 0 {
+		draw2dkit.Circle(gc, offsX+float64(tileSize), offsY, radius)
+	}
+	if enctile&(1<<3) != 0 {
+		draw2dkit.Circle(gc, offsX, offsY, radius)
+	}
+	gc.Fill()
 }
 
 // drawPolygon draws a polygon from the given points.
