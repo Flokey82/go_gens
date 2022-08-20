@@ -34,3 +34,5 @@ simnpcs/cmd/runner
 gencellular/cmd/rgb.gif
 genpotions/cmd/runner
 genpotion/cmd/runner
+genmarchingsquares/cmd/runner
+genmarchingsquares/cmd/squares.png
