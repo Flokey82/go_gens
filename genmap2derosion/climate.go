@@ -8,61 +8,79 @@ import (
 	opensimplex "github.com/ojrac/opensimplex-go"
 )
 
-func (w *World) genClimate() *World2 {
+func (w *World) genClimate() *Climate {
+	dimX := w.params.Size.X
+	dimY := w.params.Size.Y
+
+	// TODO: Get rid of the terrain struct.
+
+	// Initialize terrain.
+	t := newTerrain(dimX, dimY, int(w.params.Seed))
+
+	// Generate and save a heightmap for all blocks, all regions
+	t.genHeight()
+
+	// Override generated heightmap with actual heightmap.
+	for i := range t.heightmap {
+		t.heightmap[i] = w.heightmap[i]*4000 - 300
+	}
+
+	// Erode the Landscape based on iterative average climate
+	// t.erode(100)
+
+	// Initialize climate.
+	climate := NewClimate(int(dimX), int(dimY), 0, int(w.params.Seed), t)
+
+	// Calculate the climate system of the eroded landscape
+	climate.calcAverage()
+
+	// Generate the surface composition.
+	t.genBiome(climate)
+
 	// Generate climate. This is really suboptimal.
 	now := time.Now()
-	w2 := newWorld2(w.params.Size.X, w.params.Size.Y, w.params.Seed)
-	w2.generate(w.heightmap)
-	w.ExportPng("b_image_terrain.png", w2.terrain.heightmap)
+	w.ExportPng("b_image_terrain.png", t.heightmap)
 
+	var day int
 	// Run the simulation for 365 days.
 	for i := 0; i < 365; i++ {
 		log.Println(i)
-		w2.day++
+		day++
 
-		// Calculate new wind speeds.
-		w2.climate.calcWind(w2.day)
-
-		// Calculate the temperature map.
-		w2.climate.calcTempMap()
-
-		// Calculate the humidity map.
-		w2.climate.calcHumidityMap()
-
-		// Calculate the cloud map.
-		w2.climate.calcRainMap()
+		// Run the simulation.
+		climate.runSimulation(day)
 
 		// Build a hacky float map that is supposed to represent
 		// rain and clouds that we can export as a GIF frame.
 		// TODO: Remove or improve.
-		rm := make([]float64, len(w2.climate.RainMap))
-		for i, v := range w2.climate.CloudMap {
+		rm := make([]float64, len(climate.RainMap))
+		for i, v := range climate.CloudMap {
 			if v {
 				rm[i] = 0.2
 			} else {
 				rm[i] = w.heightmap[i]
 			}
 		}
-		for i, v := range w2.climate.RainMap {
+		for i, v := range climate.RainMap {
 			if v {
 				rm[i] = 0.7
 			}
 		}
 		rm[0] = 0
 		rm[1] = 1
-		w.storeGifFrame(rm, w2.terrain.heightmap, w2.terrain.heightmap)
+		w.storeGifFrame(rm, t.heightmap, t.heightmap)
 	}
-	log.Println(w2.climate.WindMap)
-	log.Println(w2.climate.HumidityMap)
-	log.Println(w2.climate.RainMap)
-	log.Println(w2.climate.CloudMap)
-	w.ExportPng("b_image_avterrain.png", w2.terrain.heightmap)
-	w.ExportPng("b_image_avgrain.png", w2.climate.AvgRainMap)
-	w.ExportPng("b_image_avgtemp.png", w2.climate.AvgTempMap)
-	w.ExportPng("b_image_avgwind.png", w2.climate.AvgWindMap)
-	w.ExportPng("b_image_avgcloud.png", w2.climate.AvgCloudMap)
+	log.Println(climate.WindMap)
+	log.Println(climate.HumidityMap)
+	log.Println(climate.RainMap)
+	log.Println(climate.CloudMap)
+	w.ExportPng("b_image_avterrain.png", t.heightmap)
+	w.ExportPng("b_image_avgrain.png", climate.AvgRainMap)
+	w.ExportPng("b_image_avgtemp.png", climate.AvgTempMap)
+	w.ExportPng("b_image_avgwind.png", climate.AvgWindMap)
+	w.ExportPng("b_image_avgcloud.png", climate.AvgCloudMap)
 	log.Println(time.Since(now))
-	return w2
+	return climate
 }
 
 type Climate struct {
@@ -113,22 +131,66 @@ func (c *Climate) init(day int) {
 	if c.perlin == nil {
 		c.perlin = opensimplex.New(int64(c.seed))
 	}
-	c.WindDirection[0] = 1
-	c.WindDirection[1] = 1
+
+	// Initialize and calculate winds for the given day.
 	c.calcWind(day)
-	c.initTempMap()
-	c.initHumidityMap()
-	c.initRainMap()
-	c.initCloudMap()
+
+	// Initialize temperature map.
+	for i := range c.TempMap {
+		// Add for height.
+		if h := c.terrain.heightmap[i]; h > 200 {
+			// NOTE: I'd much prefer to calculate the temperature using a proper
+			// temperature falloff formula.
+			c.TempMap[i] = 1 - h/2000
+		} else {
+			// Sealevel temperature.
+			// In Degrees Celsius (NOTE: Is that right? Seems awfully low.)
+			c.TempMap[i] = 0.7
+		}
+	}
+
+	// Initialize humidity map.
+	for i := range c.HumidityMap {
+		// Humidty increases above water bodies (regions below sea level).
+		if c.terrain.heightmap[i] < 200 {
+			c.HumidityMap[i] = 0.4
+		} else {
+			c.HumidityMap[i] = 0.2
+		}
+	}
+
+	// Initialize rain map.
+	for i := range c.RainMap {
+		c.RainMap[i] = false
+	}
+
+	// Initialize cloud map.
+	for i := range c.CloudMap {
+		c.CloudMap[i] = false
+	}
+}
+
+func (c *Climate) runSimulation(day int) {
+	// Calculate new wind speeds.
+	c.calcWind(day)
+
+	// Calculate the temperature map.
+	c.calcTempMap()
+
+	// Calculate the humidity map.
+	c.calcHumidityMap()
+
+	// Calculate the cloud map.
+	c.calcRainMap()
 }
 
 // calcAverage calculates the average of the climate over a number of years.
 func (c *Climate) calcAverage() {
-	// Climate simulation over n years
+	// Climate simulation over n years.
 	years := 1
 	startDay := 0
 
-	// Initiate average climate maps
+	// Initiate average climate maps.
 	for i := range c.terrain.heightmap {
 		// Start at 0
 		c.AvgRainMap[i] = 0
@@ -138,12 +200,12 @@ func (c *Climate) calcAverage() {
 		c.AvgHumidityMap[i] = 0
 	}
 
-	// Initiate Simulation at a starting point
+	// Initiate simulation at a starting point.
 	simulation := NewClimate(c.dimX, c.dimY, startDay, c.seed, c.terrain)
 
 	// Simulate every day for a number of years.
 	for i, days := 0, years*365; i < days; i++ {
-		//Calculate new Climate
+		// Calculate new climate state.
 		simulation.calcWind(i)
 		simulation.calcTempMap()
 		simulation.calcHumidityMap()
@@ -155,18 +217,10 @@ func (c *Climate) calcAverage() {
 			c.AvgWindMap[idx] = calcMovingAverage(c.AvgWindMap[idx], simulation.WindMap[idx], i)
 
 			// Average rain.
-			if simulation.RainMap[idx] {
-				c.AvgRainMap[idx] = calcMovingAverage(c.AvgRainMap[idx], 1, i)
-			} else {
-				c.AvgRainMap[idx] = calcMovingAverage(c.AvgRainMap[idx], 0, i)
-			}
+			c.AvgRainMap[idx] = calcMovingAverageBool(c.AvgRainMap[idx], simulation.RainMap[idx], i)
 
 			// Average cloud cover.
-			if simulation.CloudMap[idx] {
-				c.AvgCloudMap[idx] = calcMovingAverage(c.AvgCloudMap[idx], 1, i)
-			} else {
-				c.AvgCloudMap[idx] = calcMovingAverage(c.AvgCloudMap[idx], 0, i)
-			}
+			c.AvgCloudMap[idx] = calcMovingAverageBool(c.AvgCloudMap[idx], simulation.CloudMap[idx], i)
 
 			// Average temperature.
 			c.AvgTempMap[idx] = calcMovingAverage(c.AvgTempMap[idx], simulation.TempMap[idx], i)
@@ -176,6 +230,13 @@ func (c *Climate) calcAverage() {
 
 		}
 	}
+}
+
+func calcMovingAverageBool(v float64, newv bool, i int) float64 {
+	if newv {
+		return calcMovingAverage(v, 1, i)
+	}
+	return calcMovingAverage(v, 0, i)
 }
 
 func calcMovingAverage(v, newv float64, i int) float64 {
@@ -210,19 +271,6 @@ func (c *Climate) calcWind(day int) {
 			}
 
 			c.WindMap[idx] = 5 * (1 - (c.terrain.heightmap[idx]-c.terrain.heightmap[k*dy+l])/1000)
-		}
-	}
-}
-
-// initHumidityMap initializes the humidity map.
-func (c *Climate) initHumidityMap() {
-	// Initialize the humidity map.
-	for i := range c.HumidityMap {
-		// Humidty increases above water bodies (regions below sea level).
-		if c.terrain.heightmap[i] < 200 {
-			c.HumidityMap[i] = 0.4
-		} else {
-			c.HumidityMap[i] = 0.2
 		}
 	}
 }
@@ -296,21 +344,6 @@ func (c *Climate) calcHumidityMap() {
 	}
 }
 
-func (c *Climate) initTempMap() {
-	for i := range c.TempMap {
-		// Add for Height
-		if h := c.terrain.heightmap[i]; h > 200 {
-			// NOTE: I'd much prefer to calculate the temperature using a proper
-			// temperature falloff formula.
-			c.TempMap[i] = 1 - h/2000
-		} else {
-			// Sealevel temperature.
-			// In Degrees Celsius (NOTE: Is that right? Seems awfully low.)
-			c.TempMap[i] = 0.7
-		}
-	}
-}
-
 func (c *Climate) calcTempMap() {
 	// Copy current temperatures to a temporary map.
 	oldTempMap := make([]float64, c.dimX*c.dimY)
@@ -373,18 +406,6 @@ func (c *Climate) calcTempMap() {
 			}
 			c.TempMap[idx] = newTemp
 		}
-	}
-}
-
-func (c *Climate) initCloudMap() {
-	for i := range c.CloudMap {
-		c.CloudMap[i] = false
-	}
-}
-
-func (c *Climate) initRainMap() {
-	for i := range c.RainMap {
-		c.RainMap[i] = false
 	}
 }
 
@@ -577,12 +598,10 @@ func (t *Terrain) genLocal(seed int, player Player) {
 		}
 	}
 }
-*/
 
 type Vegetation struct {
 }
 
-/*
 func (v *Vegetation) getTree(territory World, player Player, i, j int) bool {
 	//Code to Calculate wether or not we have a tree
 	 Ideally this generates a vegetation map, spitting out
@@ -620,41 +639,3 @@ func (v *Vegetation) getTree(territory World, player Player, i, j int) bool {
 
 	return tree > 0
 }*/
-
-type World2 struct {
-	seed       int
-	day        int
-	climate    *Climate
-	terrain    *Terrain
-	vegetation *Vegetation
-}
-
-func newWorld2(dimX, dimY, seed int64) *World2 {
-	t := newTerrain(dimX, dimY, int(seed))
-	return &World2{
-		seed:       int(seed),
-		day:        0,
-		climate:    NewClimate(int(dimX), int(dimY), 0, int(seed), t),
-		terrain:    t,
-		vegetation: new(Vegetation),
-	}
-}
-
-func (w *World2) generate(h []float64) {
-	// Geography
-	// Generate and save a heightmap for all blocks, all regions
-	w.terrain.genHeight()
-	for i := range w.terrain.heightmap {
-		w.terrain.heightmap[i] = h[i]*4000 - 300
-	}
-
-	// Erode the Landscape based on iterative average climate
-	// w.terrain.erode(100)
-
-	// Calculate the climate system of the eroded landscape
-	w.climate.init(w.day)
-	w.climate.calcAverage()
-
-	// Generate the surface composition.
-	w.terrain.genBiome(w.climate)
-}

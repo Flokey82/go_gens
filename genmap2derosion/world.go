@@ -91,6 +91,8 @@ func NewWorld(params *Params) *World {
 
 	// Generate basic heightmap.
 	w.genTerrain()
+
+	// Generate climate.
 	w.genClimate()
 
 	fmt.Println("generated")
