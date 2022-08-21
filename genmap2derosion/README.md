@@ -12,9 +12,11 @@ This is not a complete port of the code mentioned above and includes some experi
 
 ## TODO
 * Fix up climate simulation
-  * Get rid of terrain struct
-  * Move biomes to climate struct
   * Use primary heightmap directly
 * Finalize flood algorithm documentation
 * Either complete or remove flux based hydrology
 * Add vegetation
+
+## Done
+* Get rid of terrain struct
+* Move biomes to climate struct

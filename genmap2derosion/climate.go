@@ -12,24 +12,19 @@ func (w *World) genClimate() *Climate {
 	dimX := w.params.Size.X
 	dimY := w.params.Size.Y
 
-	// Initialize terrain.
-	t := newTerrain(dimX, dimY, int(w.params.Seed))
-
-	// Generate and save a heightmap for all blocks, all regions
-	t.genHeight()
-
-	// Override generated heightmap with actual heightmap.
-	for i := range t.heightmap {
-		t.heightmap[i] = w.heightmap[i]*4000 - 300
+	// Initialize terrain heightmap.
+	//
+	// Generate new heightmap from actual heightmap, scaled to
+	// the expected height values.
+	heightmap := make([]float64, len(w.heightmap))
+	for i := range heightmap {
+		heightmap[i] = w.heightmap[i]*4000 - 300
 	}
 
-	// Erode the Landscape based on iterative average climate
-	// t.erode(100)
-
 	// Initialize climate.
-	climate := NewClimate(int(dimX), int(dimY), 0, int(w.params.Seed), t)
+	climate := NewClimate(int(dimX), int(dimY), 0, int(w.params.Seed), heightmap)
 
-	// Calculate the climate system of the eroded landscape
+	// Calculate the climate system.
 	climate.calcAverage()
 
 	// Generate the surface composition.
@@ -37,7 +32,10 @@ func (w *World) genClimate() *Climate {
 
 	// Generate climate. This is really suboptimal.
 	now := time.Now()
-	w.ExportPng("b_image_terrain.png", t.heightmap)
+
+	if w.params.StorePNGCycles {
+		w.ExportPng("b_image_terrain.png", heightmap)
+	}
 
 	// Run the simulation for 365 days.
 	for day := 0; day < 365; day++ {
@@ -45,36 +43,37 @@ func (w *World) genClimate() *Climate {
 		log.Println(day)
 		climate.runSimulation(day)
 
-		// Build a hacky float map that is supposed to represent
-		// rain and clouds that we can export as a GIF frame.
-		// TODO: Remove or improve.
-		rm := make([]float64, len(climate.RainMap))
-		for i, v := range climate.CloudMap {
-			if v {
-				rm[i] = 0.2
-			} else {
-				rm[i] = w.heightmap[i]
+		if w.params.StoreGIFFrames {
+			// Build a hacky float map that is supposed to represent
+			// rain and clouds that we can export as a GIF frame.
+			// TODO: Remove or improve.
+			rm := make([]float64, len(climate.RainMap))
+			for i, v := range climate.CloudMap {
+				if v {
+					rm[i] = 0.2
+				} else {
+					rm[i] = w.heightmap[i]
+				}
 			}
-		}
-		for i, v := range climate.RainMap {
-			if v {
-				rm[i] = 0.7
+			for i, v := range climate.RainMap {
+				if v {
+					rm[i] = 0.7
+				}
 			}
+			rm[0] = 0
+			rm[1] = 1
+			w.storeGifFrame(rm, heightmap, heightmap)
 		}
-		rm[0] = 0
-		rm[1] = 1
-		w.storeGifFrame(rm, t.heightmap, t.heightmap)
 	}
 
-	log.Println(climate.WindMap)
-	log.Println(climate.HumidityMap)
-	log.Println(climate.RainMap)
-	log.Println(climate.CloudMap)
-	w.ExportPng("b_image_avterrain.png", t.heightmap)
-	w.ExportPng("b_image_avgrain.png", climate.AvgRainMap)
-	w.ExportPng("b_image_avgtemp.png", climate.AvgTempMap)
-	w.ExportPng("b_image_avgwind.png", climate.AvgWindMap)
-	w.ExportPng("b_image_avgcloud.png", climate.AvgCloudMap)
+	if w.params.StorePNGCycles {
+		w.ExportPng("b_image_avterrain.png", heightmap)
+		w.ExportPng("b_image_avgrain.png", climate.AvgRainMap)
+		w.ExportPng("b_image_avgtemp.png", climate.AvgTempMap)
+		w.ExportPng("b_image_avgwind.png", climate.AvgWindMap)
+		w.ExportPng("b_image_avgcloud.png", climate.AvgCloudMap)
+	}
+
 	log.Println(time.Since(now))
 	return climate
 }
@@ -103,10 +102,10 @@ type Climate struct {
 	biomeMap []int
 
 	// Heightmap.
-	terrain *Terrain
+	heightmap []float64
 }
 
-func NewClimate(dimX, dimY, day, seed int, terrain *Terrain) *Climate {
+func NewClimate(dimX, dimY, day, seed int, heightmap []float64) *Climate {
 	idxSize := dimX * dimY
 	c := &Climate{
 		dimX:           dimX,
@@ -122,8 +121,8 @@ func NewClimate(dimX, dimY, day, seed int, terrain *Terrain) *Climate {
 		AvgCloudMap:    make([]float64, idxSize),
 		AvgTempMap:     make([]float64, idxSize),
 		AvgHumidityMap: make([]float64, idxSize),
-		terrain:        terrain,
 		biomeMap:       make([]int, idxSize),
+		heightmap:      heightmap,
 	}
 	c.init(day)
 	return c
@@ -140,7 +139,7 @@ func (c *Climate) init(day int) {
 	// Initialize temperature map.
 	for i := range c.TempMap {
 		// Add for height.
-		if h := c.terrain.heightmap[i]; h > 200 {
+		if h := c.heightmap[i]; h > 200 {
 			// NOTE: I'd much prefer to calculate the temperature using a proper
 			// temperature falloff formula.
 			c.TempMap[i] = 1 - h/2000
@@ -154,7 +153,7 @@ func (c *Climate) init(day int) {
 	// Initialize humidity map.
 	for i := range c.HumidityMap {
 		// Humidty increases above water bodies (regions below sea level).
-		if c.terrain.heightmap[i] < 200 {
+		if c.heightmap[i] < 200 {
 			c.HumidityMap[i] = 0.4
 		} else {
 			c.HumidityMap[i] = 0.2
@@ -193,7 +192,7 @@ func (c *Climate) calcAverage() {
 	startDay := 0
 
 	// Initiate climate maps for averaging.
-	for i := range c.terrain.heightmap {
+	for i := range c.heightmap {
 		c.AvgRainMap[i] = 0
 		c.AvgWindMap[i] = 0
 		c.AvgCloudMap[i] = 0
@@ -202,7 +201,7 @@ func (c *Climate) calcAverage() {
 	}
 
 	// Initiate simulation at a starting point.
-	simulation := NewClimate(c.dimX, c.dimY, startDay, c.seed, c.terrain)
+	simulation := NewClimate(c.dimX, c.dimY, startDay, c.seed, c.heightmap)
 
 	// Simulate every day for a number of years.
 	for i, days := 0, years*365; i < days; i++ {
@@ -213,7 +212,7 @@ func (c *Climate) calcAverage() {
 		simulation.calcRainMap()
 
 		// Calculate moving average.
-		for idx := range c.terrain.heightmap {
+		for idx := range c.heightmap {
 			// Average wind.
 			c.AvgWindMap[idx] = calcMovingAverage(c.AvgWindMap[idx], simulation.WindMap[idx], i)
 
@@ -271,7 +270,7 @@ func (c *Climate) calcWind(day int) {
 				l = j
 			}
 
-			c.WindMap[idx] = 5 * (1 - (c.terrain.heightmap[idx]-c.terrain.heightmap[k*dy+l])/1000)
+			c.WindMap[idx] = 5 * (1 - (c.heightmap[idx]-c.heightmap[k*dy+l])/1000)
 		}
 	}
 }
@@ -321,7 +320,7 @@ func (c *Climate) calcHumidityMap() {
 			// evaporation.
 			var addHumidity float64
 			if !c.CloudMap[idx] {
-				if c.terrain.heightmap[idx] <= 200 {
+				if c.heightmap[idx] <= 200 {
 					addHumidity = 0.05 * c.TempMap[idx]
 				} else {
 					addHumidity = 0.01
@@ -387,7 +386,7 @@ func (c *Climate) calcTempMap() {
 			// Sunlight on surface warms up.
 			var addSun float64
 			if !c.CloudMap[idx] {
-				addSun = (1 - c.terrain.heightmap[idx]/2000) * 0.008
+				addSun = (1 - c.heightmap[idx]/2000) * 0.008
 			}
 
 			// Rain reduces temperature.
@@ -472,8 +471,8 @@ func (c *Climate) genBiome() {
 	// 9: Mountain Tundra
 	// 10: Mountain Peak
 	// Compare the Parameters and decide what kind of ground we have.
-	for i := range c.terrain.heightmap {
-		switch d := c.terrain.heightmap[i]; {
+	for i := range c.heightmap {
+		switch d := c.heightmap[i]; {
 		case d <= 200:
 			c.biomeMap[i] = 0 // 0: Water
 		case d <= 204:
@@ -506,100 +505,7 @@ func (c *Climate) genBiome() {
 	}
 }
 
-// Terrain holds the heightmap for the climate simulation.
-// TODO: Get rid of the terrain struct.
-type Terrain struct {
-	seed        int
-	worldDepth  int
-	worldHeight int
-	worldWidth  int
-
-	// Terrain Parameters
-	heightmap []float64
-}
-
-func newTerrain(dimX, dimY int64, seed int) *Terrain {
-	idxSize := dimX * dimY
-	return &Terrain{
-		seed:        seed,
-		worldDepth:  4000,
-		worldHeight: int(dimY),
-		worldWidth:  int(dimX),
-		heightmap:   make([]float64, idxSize),
-	}
-}
-
-// erode is a an erosion function plainly based on local precipitation.
-//
-// NOTE: I didn't remove this function because it is used in the original
-// implementation.
-func (t *Terrain) erode(years int) {
-	// Climate simulation.
-	average := NewClimate(t.worldWidth, t.worldHeight, 0, t.seed, t)
-
-	//Simulate the Years
-	for yr := 0; yr < years; yr++ {
-		log.Println(yr)
-
-		// Initialize the climate.
-		average.init(0)
-
-		// Simulate one year for average weather conditions.
-		average.calcAverage()
-
-		// Add erosion of the climate after one year.
-		var erosion float64
-		for i := range t.heightmap {
-			erosion = (average.AvgRainMap[i] + 0.5*average.AvgWindMap[i])
-			curH := t.heightmap[i]
-			t.heightmap[i] = curH - 5*(curH/2000)*(1-curH/2000)*erosion
-		}
-	}
-}
-
-// genHeight is a heightmap generator specific to the climate simulation.
-// NOTE: I personally would like to de-dupe the code with the other heightmap
-// generation code.
-func (t *Terrain) genHeight() {
-	// Global depth map is fine, unaffected by rivers.
-	perlin := opensimplex.New(int64(t.seed))
-
-	// Generate the perlin noise world map.
-	for i := range t.heightmap {
-		// Generate the height map with perlin noise.
-		x := float64(i/t.worldHeight) / float64(t.worldWidth)
-		y := float64(i%t.worldHeight) / float64(t.worldHeight)
-		t.heightmap[i] = (perlin.Eval2(x, y))/5 + 0.25
-
-		// Multiply with the height factor
-		t.heightmap[i] *= float64(t.worldDepth)
-	}
-	log.Println(t.heightmap)
-}
-
 /*
-func (t *Terrain) genLocal(seed int, player Player) {
-	//Perlin Noise Module
-	perlin := opensimplex.New(seed)
-	//var perlin Perlin
-
-	//perlin.SetOctaveCount(12)
-	//perlin.SetFrequency(2)
-	//perlin.SetPersistence(0.6)
-
-	//Generate the Perlin Noise World Map
-	for i := 0; i < 50; i++ {
-		for j := 0; j < 50; j++ {
-			//Generate the Height Map with Perlin Noise
-			x := float64(player.xTotal-25+i) / 100000
-			y := float64(player.yTotal-25+j) / 100000
-			t.localMap[i][j] = (perlin.Eval2(x, y, seed))/5 + 0.25
-			//Multiply with the Height Factor
-			t.localMap[i][j] = t.localMap[i][j] * t.worldDepth
-		}
-	}
-}
-
 type Vegetation struct {
 }
 
