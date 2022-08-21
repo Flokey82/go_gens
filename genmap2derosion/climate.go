@@ -15,15 +15,26 @@ func (w *World) genClimate() *World2 {
 	w2.generate(w.heightmap)
 	w.ExportPng("b_image_terrain.png", w2.terrain.heightmap)
 
+	// Run the simulation for 365 days.
 	for i := 0; i < 365; i++ {
 		log.Println(i)
 		w2.day++
+		// Calculate new wind speeds.
 		w2.climate.calcWind(w2.day)
-		w2.climate.calcTempMap()
-		w2.climate.calcHumidityMap()
-		w2.climate.calcRainMap()
-		rm := make([]float64, len(w2.climate.RainMap))
 
+		// Calculate the temperature map.
+		w2.climate.calcTempMap()
+
+		// Calculate the humidity map.
+		w2.climate.calcHumidityMap()
+
+		// Calculate the cloud map.s
+		w2.climate.calcRainMap()
+
+		// Build a hacky float map that is supposed to represent
+		// rain and clouds that we can export as a GIF frame.
+		// TODO: Remove or improve.
+		rm := make([]float64, len(w2.climate.RainMap))
 		for i, v := range w2.climate.CloudMap {
 			rm[i] = w.heightmap[i]
 			if v {
@@ -53,23 +64,24 @@ func (w *World) genClimate() *World2 {
 }
 
 type Climate struct {
-	perlin     opensimplex.Noise
-	seed       int
-	dimX, dimY int
-	//Curent Climate Maps
-	TempMap       []float64
-	HumidityMap   []float64
-	CloudMap      []bool
-	RainMap       []bool
-	WindMap       []float64
-	WindDirection [2]float64 //from 0-1
+	perlin     opensimplex.Noise // Open simplex which we pretend to be perlin
+	seed       int               // Seed for Perlin Noise
+	dimX, dimY int               // Dimensions of the map
 
-	//Average Climate Maps
-	AvgRainMap     []float64
-	AvgWindMap     []float64
-	AvgCloudMap    []float64
-	AvgTempMap     []float64
-	AvgHumidityMap []float64
+	// Curent Climate Maps
+	TempMap       []float64  // local temperature
+	HumidityMap   []float64  // local humidity
+	CloudMap      []bool     // cloud cover (true = cloudy)
+	RainMap       []bool     // rain is falling (true = raining)
+	WindMap       []float64  // local wind speeds
+	WindDirection [2]float64 // global wind vector (from 0-1)
+
+	// Average Climate Maps (collected over the course of the simulation)
+	AvgRainMap     []float64 // average raininess over time
+	AvgWindMap     []float64 // average wind speed over time
+	AvgCloudMap    []float64 // average cloud cover over time
+	AvgTempMap     []float64 // average temperature over time
+	AvgHumidityMap []float64 // average humidity over time
 	terrain        *Terrain
 }
 
@@ -108,6 +120,7 @@ func (c *Climate) init(day int) {
 	c.initCloudMap()
 }
 
+// calcAverage calculates the average of the climate over a number of years.
 func (c *Climate) calcAverage() {
 	// Climate Simulation over n years
 	years := 1
@@ -138,32 +151,26 @@ func (c *Climate) calcAverage() {
 		for idx := range c.terrain.heightmap {
 			// Average wind.
 			c.AvgWindMap[idx] = calcMovingAverage(c.AvgWindMap[idx], simulation.WindMap[idx], i)
-			//c.AvgWindMap[j][k] = (c.AvgWindMap[j][k]*float64(i) + simulation.WindMap[j][k]) / float64(i+1)
+
 			// Average rain.
 			if simulation.RainMap[idx] {
 				c.AvgRainMap[idx] = calcMovingAverage(c.AvgRainMap[idx], 1, i)
-				//c.AvgRainMap[j][k] = (c.AvgRainMap[j][k]*float64(i) + 1) / float64(i+1)
 			} else {
 				c.AvgRainMap[idx] = calcMovingAverage(c.AvgRainMap[idx], 0, i)
-				//c.AvgRainMap[j][k] = (c.AvgRainMap[j][k] * float64(i)) / float64(i+1)
 			}
 
 			// Average cloud cover.
 			if simulation.CloudMap[idx] {
 				c.AvgCloudMap[idx] = calcMovingAverage(c.AvgCloudMap[idx], 1, i)
-				//c.AvgCloudMap[j][k] = (c.AvgCloudMap[j][k]*float64(i) + 1) / float64(i+1)
 			} else {
 				c.AvgCloudMap[idx] = calcMovingAverage(c.AvgCloudMap[idx], 0, i)
-				//c.AvgCloudMap[j][k] = (c.AvgCloudMap[j][k] * float64(i)) / float64(i+1)
 			}
 
 			// Average temperature.
 			c.AvgTempMap[idx] = calcMovingAverage(c.AvgTempMap[idx], simulation.TempMap[idx], i)
-			//c.AvgTempMap[j][k] = (c.AvgTempMap[j][k]*float64(i) + simulation.TempMap[j][k]) / float64(i+1)
 
 			// Average humidity.
 			c.AvgHumidityMap[idx] = calcMovingAverage(c.AvgHumidityMap[idx], simulation.HumidityMap[idx], i)
-			//c.AvgHumidityMap[j][k] = (c.AvgHumidityMap[j][k]*float64(i) + simulation.HumidityMap[j][k]) / float64(i+1)
 
 		}
 	}
@@ -173,12 +180,8 @@ func calcMovingAverage(v, newv float64, i int) float64 {
 	return (v*float64(i) + newv) / float64(i+1)
 }
 
+// calcWind sets the wind direction and calculates local wind speed for the given day.
 func (c *Climate) calcWind(day int) {
-	//Perlin Noise Module
-	//var perlin Perlin
-	//perlin.SetOctaveCount(2)
-	//perlin.SetFrequency(4)
-
 	timeInterval := float64(day) / 365
 
 	// Winddirection shifts every Day
@@ -208,15 +211,18 @@ func (c *Climate) calcWind(day int) {
 	}
 }
 
+// initHumidityMap initializes the humidity map.
 func (c *Climate) initHumidityMap() {
 	// Calculate the Humidity Grid
 	for i := range c.HumidityMap {
-		//Sea Level Temperature
-		//c.HumidityMap[i] = 0 //In Degrees Celsius
+		// Sea Level Temperature
+		// c.HumidityMap[i] = 0 // In Degrees Celsius (NOTE: Is that right? Seems awfully low.)
 
-		//Humidty Increases for
+		// Humidty Increases for.. stuff.
+		// NOTE: I'd much prefer to calculate the temperature using a proper
+		// temperature falloff formula.
 		if c.terrain.heightmap[i] < 200 {
-			//In Degrees Celsius
+			// In Degrees Celsius (NOTE: Is that right? Seems awfully low.)
 			c.HumidityMap[i] = 0.4
 		} else {
 			c.HumidityMap[i] = 0.2
@@ -252,12 +258,21 @@ func (c *Climate) calcHumidityMap() {
 			// Transfer to New Tile
 			c.HumidityMap[idx] = oldHumidMap[k*dy+l]
 
-			//Average
-			newHumidity := (c.HumidityMap[idx-dy-1] + c.HumidityMap[idx+dy-1] + c.HumidityMap[idx+dy+1] + c.HumidityMap[idx-dy+1] + c.HumidityMap[idx] + c.HumidityMap[idx+1] + c.HumidityMap[idx-1] + c.HumidityMap[idx+dy] + c.HumidityMap[idx-dy]) / 9
+			// Average with neighbor values.
+			newHumidity := (c.HumidityMap[idx-dy-1] +
+				c.HumidityMap[idx+dy-1] +
+				c.HumidityMap[idx+dy+1] +
+				c.HumidityMap[idx-dy+1] +
+				c.HumidityMap[idx] +
+				c.HumidityMap[idx+1] +
+				c.HumidityMap[idx-1] +
+				c.HumidityMap[idx+dy] +
+				c.HumidityMap[idx-dy]) / 9
+			// newHumidity := (c.HumidityMap[idx-dy-1] + c.HumidityMap[idx+dy-1] + c.HumidityMap[idx+dy+1] + c.HumidityMap[idx-dy+1]) / 4
 
-			//newHumidity := (c.HumidityMap[idx-dy-1] + c.HumidityMap[idx+dy-1] + c.HumidityMap[idx+dy+1] + c.HumidityMap[idx-dy+1]) / 4
-
-			// We are over a body of water, temperature accelerates
+			// We are over a body of water, increased temperature due to
+			// sunshine (unimpeded by cloud cover) adds humidity through
+			// evaporation.
 			var addHumidity float64
 			if !c.CloudMap[idx] {
 				if c.terrain.heightmap[idx] <= 200 {
@@ -323,27 +338,33 @@ func (c *Climate) calcTempMap() {
 			// Transfer to New Tile
 			c.TempMap[idx] = oldTempMap[k*dy+l]
 
-			// Average
-			newTemp := (c.TempMap[idx-dy-1] + c.TempMap[idx+dy-1] + c.TempMap[idx+dy+1] + c.TempMap[idx-dy+1] + c.TempMap[idx]) / 5
+			// Average with neighbor values.
+			newTemp := (c.TempMap[idx-dy-1] +
+				c.TempMap[idx+dy-1] +
+				c.TempMap[idx+dy+1] +
+				c.TempMap[idx-dy+1] +
+				c.TempMap[idx]) / 5
 
-			// Various Contributions to the TempMap
-			// Rising Air Cools
+			// Various contributions to the TempMap
+			// Rising air cools down.
 			addCool := 0.5 * (c.WindMap[idx] - 5)
 
-			// Sunlight on Surface
+			// Sunlight on surface warms up.
 			var addSun float64
 			if !c.CloudMap[idx] {
 				addSun = (1 - c.terrain.heightmap[idx]/2000) * 0.008
 			}
 
-			// Rain reduces temperature
+			// Rain reduces temperature.
 			var addRain float64
 			if c.RainMap[idx] && newTemp > 0 {
 				addRain = -0.01
 			}
 
-			// Add Contributions
+			// Add contributing factors.
 			newTemp = newTemp + 0.8*(1-newTemp)*addSun + 0.6*(newTemp)*(addRain+addCool)
+
+			// Clamp temperature between 0 and 1.
 			if newTemp > 1 {
 				newTemp = 1
 			} else if newTemp < 0 {
@@ -385,6 +406,7 @@ func (c *Climate) calcRainMap() {
 	for i := 1; i < dx-1; i++ {
 		for j := 1; j < dy-1; j++ {
 			idx := i*dy + j
+
 			// Old Coordinates
 			k := i + int(2*c.WindMap[idx]*wdx)
 			if k < 0 || k >= dx {
@@ -395,15 +417,15 @@ func (c *Climate) calcRainMap() {
 				l = j
 			}
 
-			// Rain Condition
+			// Rain Condition.
+			// Check if the humidity exceeds the seturation limit for the current
+			// index. If so, it will start to rain.
 			if c.HumidityMap[idx] >= 0.35+0.5*c.TempMap[idx] {
 				c.RainMap[idx] = true
-				// Transfer to New Tile
-				c.CloudMap[idx] = oldCloudMap[k*dy+l]
+				c.CloudMap[idx] = oldCloudMap[k*dy+l] // Transfer to New Tile
 			} else if c.HumidityMap[idx] >= 0.3+0.3*c.TempMap[idx] {
 				c.CloudMap[idx] = true
-				// Transfer to New Tile
-				c.RainMap[idx] = oldRainMap[k*dy+l]
+				c.RainMap[idx] = oldRainMap[k*dy+l] // Transfer to New Tile
 			} else {
 				c.CloudMap[idx] = false
 				c.RainMap[idx] = false
@@ -507,24 +529,17 @@ func (t *Terrain) erode(years int) {
 }
 
 func (t *Terrain) genHeight() {
-	//Perlin Noise Module
-
-	//Global Depth Map is Fine, unaffected by rivers.
+	// Global Depth Map is Fine, unaffected by rivers.
 	perlin := opensimplex.New(int64(t.seed))
-	//var perlin Perlin
 
-	//perlin.SetOctaveCount(12)
-	//perlin.SetFrequency(2)
-	//perlin.SetPersistence(0.6)
-
-	//Generate the Perlin Noise World Map
+	// Generate the Perlin Noise World Map
 	for i := range t.heightmap {
-		//Generate the Height Map with Perlin Noise
+		// Generate the Height Map with Perlin Noise
 		x := float64(i/t.worldHeight) / float64(t.worldWidth)
 		y := float64(i%t.worldHeight) / float64(t.worldHeight)
 		t.heightmap[i] = (perlin.Eval2(x, y))/5 + 0.25
 
-		//Multiply with the Height Factor
+		// Multiply with the Height Factor
 		t.heightmap[i] *= float64(t.worldDepth)
 	}
 	log.Println(t.heightmap)

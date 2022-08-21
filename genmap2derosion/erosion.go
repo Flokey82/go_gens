@@ -314,6 +314,8 @@ func (d *Drop) flood(w *World) {
 
 	// Get current surface height (heightmap + waterpool height).
 	d.index = int64(d.pos.X)*dim.Y + int64(d.pos.Y)
+
+	// We use 'plane' as the initial height to identify potential drains.
 	plane := w.heightmap[d.index] + w.waterpool[d.index]
 	initialplane := plane
 
@@ -413,6 +415,8 @@ func (d *Drop) flood(w *World) {
 			d.pos.Y = float64(int64(drain) % dim.Y)
 
 			// Set the new waterlevel / surface plane (slowly, using the drainage factor).
+			// NOTE: I am not sure why we do this istead of just setting the waterlevel to the
+			// surface plane at the drainage point directly.
 			plane = (1.0-drainage)*initialplane + drainage*(w.heightmap[drain]+w.waterpool[drain])
 
 			// Compute the new height for all flooded cells / indices / locations
