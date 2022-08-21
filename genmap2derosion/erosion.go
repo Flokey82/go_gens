@@ -90,7 +90,8 @@ func (w *World) erode(drops int) {
 // erodeRain is an experimental variation of the "erode" function which initializes
 // drops based on the precipitation values we have calculated for each location.
 //
-// NOTE: This is untested and probably not working very well.
+// NOTE: This is untested and probably not working very well due to the climate
+// simulation and the probably low-quality precipitation data it produces.
 func (w *World) erodeRain(cycles int, rmap []float64) {
 	// Reset all recorded drains.
 	for i := range w.waterdrains {
@@ -206,7 +207,7 @@ const (
 	depositionRate = 0.1   // The rate of sediment deposition
 	minVol         = 0.01  // Minimum water volume
 	friction       = 0.1   // Friction coefficient influencing the speed of the drop
-	volumeFactor   = 100.0 // "Water Deposition Rate" / water volume multiplier for the flood algorithm
+	volumeFactor   = 100.0 // Factor of water volume to height. A volume of 100 equals a height of 1.
 )
 
 func (d *Drop) descend(w *World, track []int) {
@@ -345,18 +346,31 @@ func (d *Drop) flood(w *World) {
 		tried[i] = true
 
 		// Wall / Boundary
+		//
+		// Calculate current height of this cell / index / location
 		currHeight := w.heightmap[i] + w.waterpool[i]
 		if plane < currHeight {
+			// If this cell / index / location has a surface height
+			// above the target flood plane, it is considered a wall or
+			// a boundary of the sink we try to flood up to the height
+			// of 'plane' and we return early.
+			//
+			// currentHeight -.
+			//                 \------- <- plane
+			//                  \______
+			//
 			return
 		}
 
 		// Drainage Point
+		// If this cell / index / location has a surface height that is below the
+		// initial plane that we started width, we have found a drainage point.
 		if initialplane > currHeight {
+			// Only set the drainage point if no drain has been found yet or if the
+			// new drainage point is below the surface height of the previous drain.
 			if !drainfound || currHeight < w.waterpool[drain]+w.heightmap[drain] {
-				// No Drain yet or lower drain.
-				drain = int(i)
+				drain = int(i) // No Drain yet or lower drain.
 			}
-
 			drainfound = true
 			return
 		}
@@ -454,9 +468,32 @@ func (d *Drop) flood(w *World) {
 		// planes actually work and what the logic behind adjusting
 		// is.
 		if plane > initialplane {
+			// Since we have failed to find a drain, we will set the initial
+			// plane to the current plane, effectively increasing the new
+			// initial surface height.
 			initialplane = plane
 		}
-		plane += 0.5 * (d.volume - totalVol) / float64(len(set)) / volumeFactor
+
+		// We increase the flood plane height by increasing the height by a
+		// factor calculated from the difference between drop volume and total
+		// flood volume spread over the number of cells in the floodset.
+		volRemaining := d.volume - totalVol
+
+		// Divide the remaining volume by the number of flooded cells.
+		volRemainingPerCell := volRemaining / float64(len(set))
+
+		// Once we have calculated the new plane, we will retry to fill the sink
+		// given the new flood plane height.
+		//
+		// NOTE: The potential height per cell is the volume divided by the volume
+		// factor.
+		//
+		// NOTE: By adding half of the remaining volume height during each iteration
+		// we are getting closer and closer to the maximum possible plane height
+		// given the water volume of the drop.
+		//
+		// 0.5 -> 0.75 -> 0.875 -> 0.9375 -> 0.96875 -> 0.984375 ...
+		plane += 0.5 * volRemainingPerCell / volumeFactor
 	}
 
 	// Couldn't place the volume (for some reason), so ignore this drop and set
