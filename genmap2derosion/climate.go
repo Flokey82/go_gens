@@ -12,8 +12,6 @@ func (w *World) genClimate() *Climate {
 	dimX := w.params.Size.X
 	dimY := w.params.Size.Y
 
-	// TODO: Get rid of the terrain struct.
-
 	// Initialize terrain.
 	t := newTerrain(dimX, dimY, int(w.params.Seed))
 
@@ -35,19 +33,16 @@ func (w *World) genClimate() *Climate {
 	climate.calcAverage()
 
 	// Generate the surface composition.
-	t.genBiome(climate)
+	climate.genBiome()
 
 	// Generate climate. This is really suboptimal.
 	now := time.Now()
 	w.ExportPng("b_image_terrain.png", t.heightmap)
 
-	var day int
 	// Run the simulation for 365 days.
-	for i := 0; i < 365; i++ {
-		log.Println(i)
-		day++
-
+	for day := 0; day < 365; day++ {
 		// Run the simulation.
+		log.Println(day)
 		climate.runSimulation(day)
 
 		// Build a hacky float map that is supposed to represent
@@ -70,6 +65,7 @@ func (w *World) genClimate() *Climate {
 		rm[1] = 1
 		w.storeGifFrame(rm, t.heightmap, t.heightmap)
 	}
+
 	log.Println(climate.WindMap)
 	log.Println(climate.HumidityMap)
 	log.Println(climate.RainMap)
@@ -102,7 +98,12 @@ type Climate struct {
 	AvgCloudMap    []float64 // average cloud cover over time
 	AvgTempMap     []float64 // average temperature over time
 	AvgHumidityMap []float64 // average humidity over time
-	terrain        *Terrain
+
+	// Biome mapping.
+	biomeMap []int
+
+	// Heightmap.
+	terrain *Terrain
 }
 
 func NewClimate(dimX, dimY, day, seed int, terrain *Terrain) *Climate {
@@ -122,6 +123,7 @@ func NewClimate(dimX, dimY, day, seed int, terrain *Terrain) *Climate {
 		AvgTempMap:     make([]float64, idxSize),
 		AvgHumidityMap: make([]float64, idxSize),
 		terrain:        terrain,
+		biomeMap:       make([]int, idxSize),
 	}
 	c.init(day)
 	return c
@@ -190,9 +192,8 @@ func (c *Climate) calcAverage() {
 	years := 1
 	startDay := 0
 
-	// Initiate average climate maps.
+	// Initiate climate maps for averaging.
 	for i := range c.terrain.heightmap {
-		// Start at 0
 		c.AvgRainMap[i] = 0
 		c.AvgWindMap[i] = 0
 		c.AvgCloudMap[i] = 0
@@ -457,30 +458,7 @@ func (c *Climate) calcRainMap() {
 	}
 }
 
-type Terrain struct {
-	seed        int
-	worldDepth  int
-	worldHeight int
-	worldWidth  int
-
-	// Terrain Parameters
-	heightmap []float64
-	biomeMap  []int
-}
-
-func newTerrain(dimX, dimY int64, seed int) *Terrain {
-	idxSize := dimX * dimY
-	return &Terrain{
-		seed:        seed,
-		worldDepth:  4000,
-		worldHeight: int(dimY),
-		worldWidth:  int(dimX),
-		heightmap:   make([]float64, idxSize),
-		biomeMap:    make([]int, idxSize),
-	}
-}
-
-func (t *Terrain) genBiome(climate *Climate) {
+func (c *Climate) genBiome() {
 	// Determine the Surface Biome:
 	// 0: Water
 	// 1: Sandy Beach
@@ -494,37 +472,60 @@ func (t *Terrain) genBiome(climate *Climate) {
 	// 9: Mountain Tundra
 	// 10: Mountain Peak
 	// Compare the Parameters and decide what kind of ground we have.
-	for i := range t.heightmap {
-		switch d := t.heightmap[i]; {
+	for i := range c.terrain.heightmap {
+		switch d := c.terrain.heightmap[i]; {
 		case d <= 200:
-			t.biomeMap[i] = 0 // 0: Water
+			c.biomeMap[i] = 0 // 0: Water
 		case d <= 204:
-			t.biomeMap[i] = 1 // 1: Sandy Beach
+			c.biomeMap[i] = 1 // 1: Sandy Beach
 		case d <= 210:
-			t.biomeMap[i] = 2 // 2: Gravel Beach
+			c.biomeMap[i] = 2 // 2: Gravel Beach
 		case d <= 220:
-			t.biomeMap[i] = 3 // 3: Stony Beach Cliffs
+			c.biomeMap[i] = 3 // 3: Stony Beach Cliffs
 		case d <= 600:
-			if climate.AvgRainMap[i] >= 0.02 {
-				t.biomeMap[i] = 4 // 4: Wet Plains (Grassland)
+			if c.AvgRainMap[i] >= 0.02 {
+				c.biomeMap[i] = 4 // 4: Wet Plains (Grassland)
 			} else {
-				t.biomeMap[i] = 5 // 5: Dry Plains (Shrubland)
+				c.biomeMap[i] = 5 // 5: Dry Plains (Shrubland)
 			}
 		case d <= 1300:
-			x := i / t.worldHeight
-			y := i % t.worldHeight
-			if climate.AvgRainMap[i] < 0.001 && x+rand.Int()%4-2 > 5 && x+rand.Int()%4-2 < 95 && y+rand.Int()%4-2 > 5 && y+rand.Int()%4-2 < 95 {
-				t.biomeMap[i] = 6 //6: Rocky Hills
+			x := i / c.dimY
+			y := i % c.dimY
+			if c.AvgRainMap[i] < 0.001 && x+rand.Int()%4-2 > 5 && x+rand.Int()%4-2 < 95 && y+rand.Int()%4-2 > 5 && y+rand.Int()%4-2 < 95 {
+				c.biomeMap[i] = 6 //6: Rocky Hills
 			} else if d <= 1100 {
-				t.biomeMap[i] = 7 //7: Temperate Forest
+				c.biomeMap[i] = 7 //7: Temperate Forest
 			} else {
-				t.biomeMap[i] = 8 //8: Boreal Forest
+				c.biomeMap[i] = 8 //8: Boreal Forest
 			}
 		case d <= 1500:
-			t.biomeMap[i] = 9
+			c.biomeMap[i] = 9
 		default:
-			t.biomeMap[i] = 10 //Otherwise just Temperate Forest
+			c.biomeMap[i] = 10 //Otherwise just Temperate Forest
 		}
+	}
+}
+
+// Terrain holds the heightmap for the climate simulation.
+// TODO: Get rid of the terrain struct.
+type Terrain struct {
+	seed        int
+	worldDepth  int
+	worldHeight int
+	worldWidth  int
+
+	// Terrain Parameters
+	heightmap []float64
+}
+
+func newTerrain(dimX, dimY int64, seed int) *Terrain {
+	idxSize := dimX * dimY
+	return &Terrain{
+		seed:        seed,
+		worldDepth:  4000,
+		worldHeight: int(dimY),
+		worldWidth:  int(dimX),
+		heightmap:   make([]float64, idxSize),
 	}
 }
 
