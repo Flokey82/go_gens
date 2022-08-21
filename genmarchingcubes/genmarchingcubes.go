@@ -1,8 +1,11 @@
 // Package genmarchingcubes implements the marching cubes algorithm.
+//
+// Algorithm:
+// * https://en.wikipedia.org/wiki/Marching_cubes
+//
 // This implementation is based on:
-// https://en.wikipedia.org/wiki/Marching_cubes
-// https://github.com/soypat/sdf/blob/main/render/marchingcubes.go
-// https://github.com/fogleman/mc/blob/master/mc.go
+// * https://github.com/soypat/sdf/blob/main/render/marchingcubes.go
+// * https://github.com/fogleman/mc/blob/master/mc.go
 package genmarchingcubes
 
 import (
@@ -147,7 +150,6 @@ func Interpolate(p1, p2 vectors.Vec3, v1, v2, x float64) vectors.Vec3 {
 }
 
 // These are the vertex pairs for the edges
-// From: https://github.com/fogleman/mc/blob/master/mc.go
 var pairTable = [12][2]int{
 	{0, 1},
 	{1, 2},
@@ -166,7 +168,6 @@ var pairTable = [12][2]int{
 // 8 vertices -> 256 possible inside/outside combinations
 // A 1 bit in the value indicates an edge with a line end point.
 // 12 edges -> 12 bit values, note the fwd/rev symmetry
-// From: https://github.com/fogleman/mc/blob/master/mc.go
 var edgeTable = [256]int{
 	0x0000, 0x0109, 0x0203, 0x030a, 0x0406, 0x050f, 0x0605, 0x070c,
 	0x080c, 0x0905, 0x0a0f, 0x0b06, 0x0c0a, 0x0d03, 0x0e09, 0x0f00,
@@ -204,7 +205,6 @@ var edgeTable = [256]int{
 
 // specify the edges used to create the triangle(s)
 // Max number of edges is 15.
-// From: https://github.com/fogleman/mc/blob/master/mc.go
 var triangleTable = [256][]int{
 	{},
 	{0, 8, 3},
