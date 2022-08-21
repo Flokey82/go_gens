@@ -51,9 +51,7 @@ func (w *World) ApplyGen(f genheightmap.GenFunc) {
 	for i, h := range hm {
 		w.heightmap[i] += h
 	}
-
-	// Normalize
-	w.heightNormalize()
+	w.heightNormalize() // Normalize
 }
 
 func MapF(f genheightmap.Modify, hm []float64) {
@@ -78,9 +76,7 @@ func (w *World) heightRelax() {
 	for i, h := range hm {
 		w.heightmap[i] = h
 	}
-
-	// Normalize
-	w.heightNormalize()
+	w.heightNormalize() // Normalize
 }
 
 func (w *World) heightNormalize() {
@@ -94,9 +90,7 @@ func heightNormalize(hm []float64) {
 
 func (w *World) heightPeaky() {
 	MapF(genheightmap.ModPeaky(), w.heightmap)
-
-	// Normalize
-	w.heightNormalize()
+	w.heightNormalize() // Normalize
 }
 
 func (w *World) getNeighbors(i int) []int {

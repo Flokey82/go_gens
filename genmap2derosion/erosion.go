@@ -21,8 +21,8 @@ func (w *World) doErosion(cycles, drops int) {
 		w.waterdrains[i] = -1
 	}
 
-	now := time.Now()
 	// Do a series of iterations!
+	now := time.Now()
 	for i := 0; i < cycles; i++ {
 		fmt.Println(fmt.Sprintf("Erode... (Cycle %d/%d)", i, cycles))
 		w.erode(drops)
@@ -175,7 +175,6 @@ func (w *World) erodeRain(cycles int, rmap []float64) {
 }
 
 type Drop struct {
-	// Properties
 	index    int64        // Current position (expressed as index into the heightmap)
 	pos      vectors.Vec2 // Current position (expressed as x,y)
 	speed    vectors.Vec2 // Speed vector
@@ -199,8 +198,9 @@ func NewDropWithVolume(pos vectors.Vec2, v float64) Drop {
 	}
 }
 
+// Constants for hydrology and erosion.
+// TODO: Move this somewhere else.
 const (
-	// Parameters (move this somewhere else)
 	dt             = 1.2   // Delta T / time factor
 	density        = 1.0   // This gives varying amounts of inertia and stuff...
 	evapRate       = 0.001 // The rate of evaporation
