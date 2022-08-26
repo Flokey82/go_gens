@@ -41,6 +41,9 @@ See: https://github.com/weigert/SimpleHydrology
 ### genmapvoronoi: Voronoi map generator
 This is based on https://mewo2.com/notes/terrain/ and partially a port of https://github.com/mewo2/terrain/ to Go.
 
+### genmapvoxel: Voxel map generator
+This package implements a simple voxel based terrain generator. Like... really simple. Don't get excited.
+
 ### genmarchingcubes: Marching cubes (WIP)
 
 This package is an implementation of the marching cubes algorithm, which takes a voxel field and generates a surface mesh. Right now it is an almost straight fork of https://github.com/soypat/sdf/blob/main/render/marchingcubes.go and https://github.com/fogleman/mc/blob/master/mc.go but will be heavily modified in future versions. (It might already be, depending how lazy I am updating the READMEs)

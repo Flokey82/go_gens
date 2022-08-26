@@ -37,3 +37,5 @@ genpotion/cmd/runner
 genmarchingsquares/cmd/runner
 genmarchingsquares/cmd/squares.png
 genmarchingcubes/cmd/runner
+genmapvoxel/cmd/tmp.obj
+genmapvoxel/cmd/runner
