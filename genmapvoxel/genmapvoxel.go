@@ -15,7 +15,7 @@ type World struct {
 	dimX   int64
 	dimY   int64
 	dimZ   int64
-	voxels [][][]bool
+	Voxels [][][]bool
 }
 
 // New returns a new voxel world.
@@ -38,7 +38,7 @@ func New(dimX, dimY, dimZ, seed int64) *World {
 			noiseVal := noise.Eval2(float64(x)/float64(w.dimX), float64(y)/float64(w.dimY))
 			zMax := int64(((noiseVal + 1) / 2) * float64(w.dimZ))
 			for z := int64(0); z < zMax; z++ {
-				w.voxels[x][y][z] = true // Set the voxel.
+				w.Voxels[x][y][z] = true // Set the voxel.
 			}
 		}
 	}
@@ -47,11 +47,11 @@ func New(dimX, dimY, dimZ, seed int64) *World {
 
 // initGrid initializes the voxel grid.
 func (w *World) initGrid() {
-	w.voxels = make([][][]bool, w.dimX)
-	for x := range w.voxels {
-		w.voxels[x] = make([][]bool, w.dimY)
-		for y := range w.voxels[x] {
-			w.voxels[x][y] = make([]bool, w.dimZ)
+	w.Voxels = make([][][]bool, w.dimX)
+	for x := range w.Voxels {
+		w.Voxels[x] = make([][]bool, w.dimY)
+		for y := range w.Voxels[x] {
+			w.Voxels[x][y] = make([]bool, w.dimZ)
 		}
 	}
 }
@@ -78,7 +78,7 @@ func (w *World) ExportOBJ(filename string) error {
 	for x := int64(0); x < w.dimX; x++ {
 		for y := int64(0); y < w.dimY; y++ {
 			for z := int64(0); z < w.dimZ; z++ {
-				if !w.voxels[x][y][z] {
+				if !w.Voxels[x][y][z] {
 					continue
 				}
 				// Check which faces are visible and encode them in the index.
@@ -123,27 +123,27 @@ func (w *World) ExportOBJ(filename string) error {
 func (w *World) getEncodedIndex(x, y, z int64) byte {
 	// Check which faces are visible and encode them in the index.
 	var faceIndex byte
-	if x > 0 && w.voxels[x-1][y][z] {
+	if x > 0 && w.Voxels[x-1][y][z] {
 		// Face 0: west.
 		faceIndex |= 1 << 0
 	}
-	if x < w.dimX-1 && w.voxels[x+1][y][z] {
+	if x < w.dimX-1 && w.Voxels[x+1][y][z] {
 		// Face 1: east.
 		faceIndex |= 1 << 1
 	}
-	if y > 0 && w.voxels[x][y-1][z] {
+	if y > 0 && w.Voxels[x][y-1][z] {
 		// Face 2: north.
 		faceIndex |= 1 << 2
 	}
-	if y < w.dimY-1 && w.voxels[x][y+1][z] {
+	if y < w.dimY-1 && w.Voxels[x][y+1][z] {
 		// Face 3: south.
 		faceIndex |= 1 << 3
 	}
-	if z < w.dimZ-1 && w.voxels[x][y][z+1] {
+	if z < w.dimZ-1 && w.Voxels[x][y][z+1] {
 		// Face 4: top.
 		faceIndex |= 1 << 4
 	}
-	if z > 0 && w.voxels[x][y][z-1] {
+	if z > 0 && w.Voxels[x][y][z-1] {
 		// Face 5: bottom.
 		faceIndex |= 1 << 5
 	}

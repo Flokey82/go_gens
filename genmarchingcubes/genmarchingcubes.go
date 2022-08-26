@@ -9,8 +9,10 @@
 package genmarchingcubes
 
 import (
-	"log"
+	"bufio"
+	"fmt"
 	"math"
+	"os"
 
 	"github.com/Flokey82/go_gens/vectors"
 )
@@ -19,6 +21,10 @@ const eps = 1e-12
 
 type Triangle struct {
 	V1, V2, V3 vectors.Vec3
+}
+
+func (t *Triangle) toList() []vectors.Vec3 {
+	return []vectors.Vec3{t.V1, t.V2, t.V3}
 }
 
 // MarchingCubesGrid traverses the data grid with the given width, height, and depth,
@@ -67,6 +73,51 @@ func MarchingCubesGrid(w, h, d int, data []float64, value float64) []Triangle {
 	return triangles
 }
 
+func ExportToOBJ(filename string, tri []Triangle) error {
+	// Open/create the destination file.
+	f, err := os.Create(filename)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+
+	// Initialize a new bufio writer.
+	wr := bufio.NewWriter(f)
+
+	// Make sure to flush the buffer on exit.
+	defer wr.Flush()
+
+	var vertices []vectors.Vec3
+	var faces [][]int
+
+	for _, t := range tri {
+		var faceIndices []int
+		for _, v := range t.toList() {
+			vertices = append(vertices, v)
+			faceIndices = append(faceIndices, len(vertices))
+		}
+		// Append the face vertex indices to the list of faces.
+		faces = append(faces, faceIndices)
+	}
+
+	// Write all the vertices to the file.
+	for _, v := range vertices {
+		// NOTE: I switched Y and Z since importing into Blender would have the Y axis as the up axis.
+		if _, err := wr.WriteString(fmt.Sprintf("v %f %f %f \n", v.X, v.Z, v.Y)); err != nil {
+			return err
+		}
+	}
+
+	// Write all the faces to the file.
+	for _, f := range faces {
+		if _, err := wr.WriteString(fmt.Sprintf("f %d %d %d \n", f[0], f[1], f[2])); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
 // Polygonize returns the triangles that represent the given cube represented by
 // the given vectors and values.
 func Polygonize(p [8]vectors.Vec3, v [8]float64, x float64) []Triangle {
@@ -83,7 +134,6 @@ func Polygonize(p [8]vectors.Vec3, v [8]float64, x float64) []Triangle {
 	// If the edge table entry for the index is set to zero, there's
 	// nothing left to do.
 	if edgeTable[index] == 0 {
-		log.Println(index)
 		return nil
 	}
 

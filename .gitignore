@@ -39,3 +39,4 @@ genmarchingsquares/cmd/squares.png
 genmarchingcubes/cmd/runner
 genmapvoxel/cmd/tmp.obj
 genmapvoxel/cmd/runner
+genmarchingcubes/cmd/tmp.obj

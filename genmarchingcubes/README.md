@@ -8,5 +8,9 @@ Right now it is almost a straight fork of
 
 ... but will be modified more heavily in future versions.
 
+![alt text](https://raw.githubusercontent.com/Flokey82/go_gens/master/genmarchingcubes/images/voxel.png "Example of source voxel terrain")
+
+![alt text](https://raw.githubusercontent.com/Flokey82/go_gens/master/genmarchingcubes/images/marched.png "Example of marched voxel terrain")
+
 ## References
 * https://en.wikipedia.org/wiki/Marching_cubes
