@@ -6,6 +6,15 @@ Please be aware that this is just code for experimentation and is pretty rubbish
 
 Honestly, I don't really feel motivated to write more right now.
 
+## Done
+
+* binary / bool voxel terrain
+* Wavefront OBJ export
+
+## TODO
+
+* float values for voxel data
+
 Here, have a picture:
 
 ![alt text](https://raw.githubusercontent.com/Flokey82/go_gens/master/genmapvoxel/images/map.png "Example of rendered voxel terrain")
