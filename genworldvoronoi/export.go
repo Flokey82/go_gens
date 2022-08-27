@@ -140,8 +140,6 @@ func (m *Map) ExportSVG(path string) error {
 	// }
 	// end hack
 	min, max := minMax(m.t_elevation)
-	// TODO: Fix maxElev caching!!!
-	_, maxR := minMax(m.r_elevation)
 	minMois, maxMois := minMax(m.t_moisture)
 	for i := 0; i < len(em.mesh.Triangles); i += 3 {
 		tmpLine := ""
@@ -251,6 +249,8 @@ func (m *Map) ExportSVG(path string) error {
 
 	// Rivers (based on regions)
 	if drawRiversA {
+		// TODO: Fix maxElev caching!!!
+		//_, maxR := minMax(m.r_elevation)
 		for _, riv := range m.getRivers(0.001) {
 			var path [][2]float64
 			for _, rivseg := range riv {
@@ -259,10 +259,13 @@ func (m *Map) ExportSVG(path string) error {
 				// if m.getRTemperature(rivseg, maxR) < 0 {
 				//	continue
 				// }
-				valMois := em.r_moisture[rivseg] / maxMois
-				if GetWhittakerModBiome(int(m.getRTemperature(rivseg, maxR)), int(valMois*45)) == WhittakerModBiomeSnow {
-					continue
-				}
+				//
+				// Alternative:
+				//
+				// valMois := em.r_moisture[rivseg] / maxMois
+				// if GetWhittakerModBiome(int(m.getRTemperature(rivseg, maxR)), int(valMois*45)) == WhittakerModBiomeSnow {
+				// 	continue
+				// }
 				x, y := latLonToPixels(m.r_latLon[rivseg][0], m.r_latLon[rivseg][1], zoom)
 				if len(path) >= 1 && dist2(path[len(path)-1], [2]float64{x, y}) > filterPathDist {
 					svg.Path(svgGenD(path), "stroke=\"blue\" fill=\"none\" stroke-width=\"0.5\"")

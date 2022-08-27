@@ -552,7 +552,7 @@ func (m *Map) fillSinksPlanchonDarboux() []float64 {
 // water pools.
 func (m *Map) assignHydrology() {
 	maxAttempts := 3
-	erosionAmount := 0.001
+	erosionAmount := 0.01 // Erode 1% of delta-h per pass.
 
 	// Try to flood all sinks.
 	var attempts int
@@ -593,6 +593,7 @@ func (m *Map) assignHydrology() {
 
 		// Regenerate flux.
 		m.assignFlux(false)
+
 		// Erode a little.
 		m.r_elevation = m.rErode(erosionAmount) // NOTE: Flux would change as downhill values would change.
 	}
