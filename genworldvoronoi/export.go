@@ -251,7 +251,7 @@ func (m *Map) ExportSVG(path string) error {
 
 	// Rivers (based on regions)
 	if drawRiversA {
-		for _, riv := range m.getRivers(0.05) {
+		for _, riv := range m.getRivers(0.001) {
 			var path [][2]float64
 			for _, rivseg := range riv {
 				// Skip frozen regions

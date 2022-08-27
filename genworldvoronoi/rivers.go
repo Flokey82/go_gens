@@ -27,10 +27,16 @@ func (m *BaseObject) getRivers(limit float64) [][]int {
 func (m *Map) getRivers2(limit float64) [][]int {
 	dh := m.r_downhill
 	flux := m.r_flux
+
+	// Adjust the limit to be a fraction of the max flux.
+	// This will save us a lot of cycles when comparing
+	// flux values to the limit.
 	_, maxFlux := minMax(flux)
+	limit *= maxFlux
+
 	var links [][2]int
 	for r := 0; r < m.mesh.numRegions; r++ {
-		if flux[r]/maxFlux > limit && m.r_elevation[r] > 0 && dh[r] >= 0 && flux[dh[r]]/maxFlux > limit {
+		if flux[r] > limit && m.r_elevation[r] > 0 && dh[r] >= 0 && flux[dh[r]] > limit {
 			// up := r, down := dh[r]
 			links = append(links, [2]int{r, dh[r]})
 		}
@@ -51,6 +57,12 @@ func (m *BaseObject) getRiverSegments(limit float64) [][2]int {
 	// Get (cached) flux values.
 	flux := m.r_flux
 
+	// Adjust the limit to be a fraction of the max flux.
+	// This will save us a lot of cycles when comparing
+	// flux values to the limit.
+	_, maxFlux := minMax(flux)
+	limit *= maxFlux
+
 	// Find all link segments that have a high enough flux value.
 	var links [][2]int
 	for r := 0; r < m.mesh.numRegions; r++ {
@@ -69,9 +81,9 @@ func (m *BaseObject) getRiverSegments(limit float64) [][2]int {
 			continue
 		}
 
-		// NOTE: Right now we only skip segments if both flux values are
+		// NOTE: Right now we skip segments if both flux values are
 		// below the limit.
-		if flux[r] >= limit || flux[dh[r]] >= limit {
+		if flux[r] >= limit && flux[dh[r]] >= limit {
 			// NOTE: The river segment always flows from seg[0] to seg[1].
 			links = append(links, [2]int{r, dh[r]})
 		}
@@ -282,6 +294,15 @@ const (
 // fillSinks attempts to remove sinks in the terrain using different approaches.
 // NOTE: This is very much WIP, so forgive me for the mess.
 func (m *Map) fillSinks() []float64 {
+	// This will define which algorithm to use.
+	usePlanchonDarboux := true
+
+	// Use alternative fill sink algorithm?
+	if usePlanchonDarboux {
+		// Return sinks filled with Plançon-Darboux.
+		return m.fillSinksPlanchonDarboux()
+	}
+
 	epsilon := 1e-13
 
 	// Gather all regions that are below sealevel.
@@ -438,8 +459,11 @@ func (m *Map) fillSinks() []float64 {
 // noise. It's very fast and less destructive than my other, home-grown algorithm.
 // Maybe it's worth to combine the two in some way?
 func (m *Map) fillSinksPlanchonDarboux() []float64 {
+	// Reset the RNG.
+	m.resetRand()
+
 	const infinity = 999999999.0
-	epsilon := 1.0 / (float64(m.mesh.numRegions) * 1000.0)
+	baseEpsilon := 1.0 / (float64(m.mesh.numRegions) * 1000.0)
 	newHeight := make([]float64, m.mesh.numRegions)
 	for i := range newHeight {
 		if m.r_elevation[i] <= 0 {
@@ -451,22 +475,35 @@ func (m *Map) fillSinksPlanchonDarboux() []float64 {
 			newHeight[i] = infinity
 		}
 	}
+
 	// Loop until no more changes are made.
+	var epsilon float64
 	for {
-		// TODO: Variation.
+		// Variation.
+		//
 		// In theory we could use noise or random values to slightly
 		// alter epsilon here. It should still work, albeit a bit slower.
 		// The idea is to make the algorithm less destructive and more
 		// natural looking.
+		//
+		// NOTE: I've decided to use m.rand.Float64() instead of noise.
+		epsilon = baseEpsilon * m.rand.Float64()
+
 		changed := false
-		for r := range m.r_elevation {
+
+		// By shuffling the order in which we parse regions,
+		// we ensure a more natural look.
+		for _, r := range m.rand.Perm(len(m.r_elevation)) {
 			// Skip all regions that have the same elevation as in
 			// the current heightmap.
 			if newHeight[r] == m.r_elevation[r] {
 				continue
 			}
-			// Iterate over all neighbors.
-			for _, nb := range m.rNeighbors(r) {
+
+			// Iterate over all neighbors in a random order.
+			nbs := m.rNeighbors(r)
+			for _, i := range m.rand.Perm(len(nbs)) {
+				nb := nbs[i]
 				// Since we have set all inland regions to infinity,
 				// we will only succeed here if the newHeight of the neighbor
 				// is either below sea level or if the newHeight has already
@@ -497,7 +534,7 @@ func (m *Map) fillSinksPlanchonDarboux() []float64 {
 				// new neighbor height plus epsilon.
 				//
 				// TODO: Simplify this comment word salad.
-				var oh = newHeight[nb] + epsilon
+				oh := newHeight[nb] + epsilon
 				if newHeight[r] > oh && oh > m.r_elevation[r] {
 					newHeight[r] = oh
 					changed = true
@@ -515,7 +552,7 @@ func (m *Map) fillSinksPlanchonDarboux() []float64 {
 // water pools.
 func (m *Map) assignHydrology() {
 	maxAttempts := 3
-	erosionAmount := 0.0001
+	erosionAmount := 0.001
 
 	// Try to flood all sinks.
 	var attempts int
