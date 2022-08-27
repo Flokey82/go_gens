@@ -428,6 +428,89 @@ func (m *Map) fillSinks() []float64 {
 	return m.r_elevation
 }
 
+// fillSinksPlanchonDarboux is an implementation of the algorithm described in
+// https://www.researchgate.net/publication/240407597_A_fast_simple_and_versatile_algorithm_to_fill_the_depressions_of_digital_elevation_models
+// and a partial port of the implementation in:
+// https://github.com/Rob-Voss/Learninator/blob/master/js/lib/Terrain.js
+//
+// NOTE: This algorithm produces a too uniform result at the moment, resulting
+// in very artificially looking rivers. It lacks some kind of variation like
+// noise. It's very fast and less destructive than my other, home-grown algorithm.
+// Maybe it's worth to combine the two in some way?
+func (m *Map) fillSinksPlanchonDarboux() []float64 {
+	const infinity = 999999999.0
+	epsilon := 1.0 / (float64(m.mesh.numRegions) * 1000.0)
+	newHeight := make([]float64, m.mesh.numRegions)
+	for i := range newHeight {
+		if m.r_elevation[i] <= 0 {
+			// Set the elevation at or below sea level to the current
+			// elevation.
+			newHeight[i] = m.r_elevation[i]
+		} else {
+			// Set the elevation above sea level to infinity.
+			newHeight[i] = infinity
+		}
+	}
+	// Loop until no more changes are made.
+	for {
+		// TODO: Variation.
+		// In theory we could use noise or random values to slightly
+		// alter epsilon here. It should still work, albeit a bit slower.
+		// The idea is to make the algorithm less destructive and more
+		// natural looking.
+		changed := false
+		for r := range m.r_elevation {
+			// Skip all regions that have the same elevation as in
+			// the current heightmap.
+			if newHeight[r] == m.r_elevation[r] {
+				continue
+			}
+			// Iterate over all neighbors.
+			for _, nb := range m.rNeighbors(r) {
+				// Since we have set all inland regions to infinity,
+				// we will only succeed here if the newHeight of the neighbor
+				// is either below sea level or if the newHeight has already
+				// been set AND if the elevation is higher than the neighbors.
+				//
+				// This means that we're working our way inland, starting from
+				// the coast, comparing each region with the processed / set
+				// neighbors (that aren't set to infinity) in the new heightmap
+				// until we run out of regions that need change.
+				if m.r_elevation[r] >= newHeight[nb]+epsilon {
+					newHeight[r] = m.r_elevation[r]
+					changed = true
+					break
+				}
+
+				// If we reach this point, the neighbor in the new heightmap
+				// is higher than the current elevation of 'r'.
+				// This can mean two things. Either the neighbor is set to infinity
+				// or the current elevation might indicate a sink.
+
+				// So we check if the newHeight of r is larger than the
+				// newHeight of the neighbor (plus epsilon), which will ensure that
+				// the newHeight of neighbor is not set to infinity.
+				//
+				// Additionally we check if the newHeight of the neighbor
+				// is higher than the current height of r, which ensures that if the
+				// current elevation indicates a sink, we will fill up the sink to the
+				// new neighbor height plus epsilon.
+				//
+				// TODO: Simplify this comment word salad.
+				var oh = newHeight[nb] + epsilon
+				if newHeight[r] > oh && oh > m.r_elevation[r] {
+					newHeight[r] = oh
+					changed = true
+				}
+			}
+		}
+		if !changed {
+			break
+		}
+	}
+	return newHeight
+}
+
 // assignHydrology will calculate river systems and fill sinks instead of trying to generate
 // water pools.
 func (m *Map) assignHydrology() {
