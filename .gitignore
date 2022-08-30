@@ -40,3 +40,4 @@ genmarchingcubes/cmd/runner
 genmapvoxel/cmd/tmp.obj
 genmapvoxel/cmd/runner
 genmarchingcubes/cmd/tmp.obj
+genflora/cmd/runner
