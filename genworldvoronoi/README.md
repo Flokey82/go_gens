@@ -1,4 +1,4 @@
-### genworldvoronoi: Graph based planetary map generator
+# genworldvoronoi: Graph based planetary map generator
 
 It simulates (somewhat) global winds and attempts to calculate precipitation and temperature for more intricate simulations in the future.
 It features SVG, PNG, and Wavefront OBJ output.
@@ -9,6 +9,10 @@ I draw further inspiration from various other projects such as https://github.co
 
 ... if you haven't noticed yet, this is a placeholder for when I feel less lazy and add more information :D
 
+## TODO
+
+* Re-evaluate rainfall and moisture distribution
+* Climate is surprisingly humid along equator?
 
 Here some old pictures what it does...
 

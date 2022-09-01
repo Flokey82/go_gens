@@ -30,16 +30,18 @@ func getMeanAnnualTemp(lat float64) float64 {
 	return (math.Sin(degToRad(90-math.Abs(lat))))*66 - 35
 }
 
+const maxAltitudeFactor = 8850 / 2 // How tall is the tallest mountain with an elevation of 1.0?
+
 // getRTemperature returns the average yearly temperature of the given region at the surface.
 func (m *Map) getRTemperature(r int, maxElev float64) float64 {
 	// TODO: Fix maxElev caching!!!
-	return getMeanAnnualTemp(m.r_latLon[r][0]) - getTempFalloffFromAltitude(8850*m.r_elevation[r]/maxElev)
+	return getMeanAnnualTemp(m.r_latLon[r][0]) - getTempFalloffFromAltitude(maxAltitudeFactor*m.r_elevation[r]/maxElev)
 }
 
 // getRTemperature returns the average yearly temperature of the given triangle at the surface.
 func (m *Map) getTTemperature(t int) float64 {
 	_, maxH := minMax(m.t_elevation) // TODO: Cache somewhere?
-	return getMeanAnnualTemp(m.t_latLon[t][0]) - getTempFalloffFromAltitude(8850*m.t_elevation[t]/maxH)
+	return getMeanAnnualTemp(m.t_latLon[t][0]) - getTempFalloffFromAltitude(maxAltitudeFactor*m.t_elevation[t]/maxH)
 }
 
 // assignWindVectors constructs faux global wind cells reminiscent of a simplified earth model.
@@ -576,7 +578,7 @@ func (m *Map) assignRainfallBasic() {
 			m.r_moisture[r] = humidity
 		}
 	}
-	m.interpolateRainfallMoisture(30)
+	m.interpolateRainfallMoisture(15)
 }
 
 func (m *Map) interpolateRainfallMoisture(interpolationSteps int) {

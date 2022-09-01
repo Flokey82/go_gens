@@ -10,6 +10,7 @@ import (
 	"math"
 	"os"
 
+	"github.com/Flokey82/go_gens/genbiome"
 	svgo "github.com/ajstarks/svgo"
 	"github.com/davvo/mercator"
 	"github.com/mazznoer/colorgrad"
@@ -95,11 +96,11 @@ func genGreen(intensity float64) color.NRGBA {
 // ExportSVG exports the terrain as SVG to the given path.
 // NOTE: This produces broken somewhat incomplete output due to the wraparound of the mesh.
 func (m *Map) ExportSVG(path string) error {
-	drawRiversA := true
+	drawRiversA := false
 	drawRiversB := false
 	drawFlux := false
 	drawDrains := false
-	drawCities := true
+	drawCities := false
 	drawSinks := false
 	drawPools := false
 	drawErosion := false
@@ -107,12 +108,13 @@ func (m *Map) ExportSVG(path string) error {
 	drawHumidity := false
 	drawWindOrder := false
 	drawRainfall := false
-	drawBorders := true
-	drawLakeBorders := true
+	drawBorders := false
+	drawLakeBorders := false
 	drawBelow := false
 	drawContour := true
 	drawWindDir := false
 	drawPlateCompression := false
+	drawAltitude := false
 
 	zoom := 3
 	filterPathDist := 20.0
@@ -181,7 +183,7 @@ func (m *Map) ExportSVG(path string) error {
 			valMois := (em.t_moisture[i/3] - minMois) / (maxMois - minMois)
 			valMois = em.t_moisture[i/3] / maxMois
 			// col = GetRedblobBiomeColor(int(valElev*4)+1, int(valMois*6)+1, val)
-			col = GetWhittakerModBiomeColor(int(getMeanAnnualTemp(triLat)-getTempFalloffFromAltitude(8850*valElev)), int(valMois*45), val)
+			col = genbiome.GetWhittakerModBiomeColor(int(getMeanAnnualTemp(triLat)-getTempFalloffFromAltitude(maxAltitudeFactor*valElev)), int(valMois*45), val)
 		}
 
 		svg.Path(svgGenD(path), fmt.Sprintf("fill: rgb(%d, %d, %d)", col.R, col.G, col.B)+tmpLine)
@@ -263,7 +265,7 @@ func (m *Map) ExportSVG(path string) error {
 				// Alternative:
 				//
 				// valMois := em.r_moisture[rivseg] / maxMois
-				// if GetWhittakerModBiome(int(m.getRTemperature(rivseg, maxR)), int(valMois*45)) == WhittakerModBiomeSnow {
+				// if genbiome.GetWhittakerModBiome(int(m.getRTemperature(rivseg, maxR)), int(valMois*45)) == WhittakerModBiomeSnow {
 				// 	continue
 				// }
 				x, y := latLonToPixels(m.r_latLon[rivseg][0], m.r_latLon[rivseg][1], zoom)
@@ -436,6 +438,22 @@ func (m *Map) ExportSVG(path string) error {
 			}
 		}
 	}
+
+	if drawAltitude {
+		er := m.r_elevation
+		minHeight, maxHeight := minMax(er)
+		minHeight = 0
+		for r, rdh := range m.r_elevation {
+			if rdh > 0 && r%2 == 0 {
+				x, y := latLonToPixels(m.r_latLon[r][0], m.r_latLon[r][1], zoom)
+				r := 1
+				col := genBlue((rdh - minHeight) / (maxHeight - minHeight))
+				svg.Circle(int(x), int(y), r, fmt.Sprintf("fill: rgb(%d, %d, %d)", col.R, col.G, col.G))
+
+			}
+		}
+	}
+
 	if drawBelow {
 		for r, pVal := range m.r_elevation {
 			if pVal <= 0 {
@@ -531,12 +549,12 @@ func (m *Map) ExportPng(name string) {
 			// valElev := math.Max(math.Min((elev/max)+(math.Sqrt(math.Abs(lat)/90.0)-0.5), max), 0)
 			valMois := (m.r_rainfall[r] - minMois) / (maxMois - minMois)
 			valMois = m.r_rainfall[r] / maxMois
-			col = GetRedblobBiomeColor(int(valElev*4)+1, int(valMois*6)+1, val)
+			col = genbiome.GetRedblobBiomeColor(int(valElev*4)+1, int(valMois*6)+1, val)
 			col.R = uint8(255 * valMois)
 			col.G = 0
 			col.B = uint8(255 * (1 - valMois))
 			if m.r_territory[r] == 0 {
-				col = GetWhittakerModBiomeColor(int(getMeanAnnualTemp(lat)-getTempFalloffFromAltitude(8850*valElev)), int(valMois*45), val)
+				col = genbiome.GetWhittakerModBiomeColor(int(getMeanAnnualTemp(lat)-getTempFalloffFromAltitude(maxAltitudeFactor*valElev)), int(valMois*45), val)
 			} else {
 				cr, cg, cb, _ := cols[terrToCol[m.r_territory[r]]].RGBA()
 				col.R = uint8(float64(255) * float64(cr) / float64(0xffff))

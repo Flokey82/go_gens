@@ -10,6 +10,10 @@ DO NOT USE YET!
 ### gamecs: Simulation with agents
 This is a very basic simulation with agents using state machines and behavior trees.
 
+### genbiome: Biome helper functions
+
+This package provides functions for looking up the biome (e.g. forest, grassland, etc.) for the given precipitation and average temperature.
+
 ### gencellular: Simple cellular automata in Golang
 This package currently only implements Conway's Game of Life.
 
