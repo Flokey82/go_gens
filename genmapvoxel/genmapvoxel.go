@@ -19,9 +19,9 @@ type World struct {
 	Values [][][]float64 // Voxels values (full voxel height = 1.0).
 }
 
-// New returns a new voxel world.
+// New returns a new voxel world generated with the given seed.
 func New(dimX, dimY, dimZ, seed int64) *World {
-	// Generate the world.
+	// Initialize a new world struct.
 	w := &World{
 		dimX: dimX,
 		dimY: dimY,
@@ -32,7 +32,7 @@ func New(dimX, dimY, dimZ, seed int64) *World {
 	w.initGrid()
 
 	// Now initialize the opensimplex noise generator and generate the world.
-	noise := NewNoise(seed)
+	noise := opensimplex.New(seed)
 	for x := int64(0); x < w.dimX; x++ {
 		for y := int64(0); y < w.dimY; y++ {
 			// Get the Z dimension by using the noise generator.
@@ -266,13 +266,9 @@ func getFaces(faceIndex byte, heightVal float64) []Side {
 		return sides
 	}
 
-	// Now shrink the sides vertically by the given factor.
+	// Now shrink the sides vertically by the given height factor.
 	for i := range sides {
 		sides[i] = sides[i].Shrink(heightVal)
 	}
 	return sides
-}
-
-func NewNoise(seed int64) opensimplex.Noise {
-	return opensimplex.New(seed)
 }
