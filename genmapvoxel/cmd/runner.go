@@ -8,7 +8,7 @@ import (
 
 func main() {
 	w := genmapvoxel.New(32, 32, 32, 12345)
-	if err := w.ExportOBJ("tmp.obj"); err != nil {
+	if err := w.ExportOBJ("tmp.obj", true); err != nil {
 		log.Println(err)
 	}
 }

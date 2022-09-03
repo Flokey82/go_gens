@@ -12,5 +12,7 @@ Right now it is almost a straight fork of
 
 ![alt text](https://raw.githubusercontent.com/Flokey82/go_gens/master/genmarchingcubes/images/marched.png "Example of marched voxel terrain")
 
+![alt text](https://raw.githubusercontent.com/Flokey82/go_gens/master/genmarchingcubes/images/marched_float.png "Example of marched voxel terrain using float for fractional voxels")
+
 ## References
 * https://en.wikipedia.org/wiki/Marching_cubes

@@ -13,12 +13,10 @@ func main() {
 	)
 	wld := genmapvoxel.New(h, w, d, 12345)
 	values := make([]float64, h*w*d)
-	for x := range wld.Voxels {
-		for y := range wld.Voxels[x] {
-			for z, val := range wld.Voxels[x][y] {
-				if val {
-					values[x+y*w+z*w*h] = 1
-				}
+	for x := range wld.Values {
+		for y := range wld.Values[x] {
+			for z, val := range wld.Values[x][y] {
+				values[x+y*w+z*w*h] = val
 			}
 		}
 	}

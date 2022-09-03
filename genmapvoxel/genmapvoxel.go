@@ -15,7 +15,8 @@ type World struct {
 	dimX   int64
 	dimY   int64
 	dimZ   int64
-	Voxels [][][]bool
+	Voxels [][][]bool    // The voxel grid.
+	Values [][][]float64 // Voxels values (full voxel height = 1.0).
 }
 
 // New returns a new voxel world.
@@ -36,9 +37,13 @@ func New(dimX, dimY, dimZ, seed int64) *World {
 		for y := int64(0); y < w.dimY; y++ {
 			// Get the Z dimension by using the noise generator.
 			noiseVal := noise.Eval2(float64(x)/float64(w.dimX), float64(y)/float64(w.dimY))
-			zMax := int64(((noiseVal + 1) / 2) * float64(w.dimZ))
+			zVal := ((noiseVal + 1) / 2) * float64(w.dimZ)
+
+			// Round up zVal to the next higher integer.
+			zMax := int64(zVal + 0.99999)
 			for z := int64(0); z < zMax; z++ {
-				w.Voxels[x][y][z] = true // Set the voxel.
+				w.Voxels[x][y][z] = true              // Set the voxel.
+				w.Values[x][y][z] = zVal - float64(z) // Set the voxel value.
 			}
 		}
 	}
@@ -54,10 +59,18 @@ func (w *World) initGrid() {
 			w.Voxels[x][y] = make([]bool, w.dimZ)
 		}
 	}
+
+	w.Values = make([][][]float64, w.dimX)
+	for x := range w.Values {
+		w.Values[x] = make([][]float64, w.dimY)
+		for y := range w.Values[x] {
+			w.Values[x][y] = make([]float64, w.dimZ)
+		}
+	}
 }
 
 // ExportOBJ exports the world to an OBJ file.
-func (w *World) ExportOBJ(filename string) error {
+func (w *World) ExportOBJ(filename string, smooth bool) error {
 	// Open/create the destination file.
 	f, err := os.Create(filename)
 	if err != nil {
@@ -84,8 +97,14 @@ func (w *World) ExportOBJ(filename string) error {
 				// Check which faces are visible and encode them in the index.
 				faceIndex := w.getEncodedIndex(x, y, z)
 
+				// If we should smooth the terrain by using the float values, do so.
+				value := 1.0
+				if smooth {
+					value = w.Values[x][y][z]
+				}
+
 				// Get the faces to render for this voxel.
-				fcs := getFaces(faceIndex)
+				fcs := getFaces(faceIndex, value)
 
 				// Add the vertices to the list.
 				for _, f := range fcs {
@@ -162,6 +181,16 @@ func (s Side) Translate(x, y, z float64) Side {
 	return s
 }
 
+// Shrink the side vertically by the given factor.
+func (s Side) Shrink(factor float64) Side {
+	for i := range s {
+		if s[i].Z != 0 {
+			s[i].Z = ((s[i].Z + 0.5) * factor) - 0.5
+		}
+	}
+	return s
+}
+
 var baseSideEastWest = Side{
 	{X: 0, Y: -0.5, Z: -0.5},
 	{X: 0, Y: 0.5, Z: -0.5},
@@ -184,7 +213,10 @@ var baseSideTopBottom = Side{
 }
 
 // getFaces returns the faces to render given the encoded faceIndex.
-func getFaces(faceIndex byte) []Side {
+//
+// TODO: Allow shrinking the faces for voxels with a value < 1.0 to
+// generate "shorter" cubes.
+func getFaces(faceIndex byte, height float64) []Side {
 	// If the index is 0, then all faces are invisible.
 	if faceIndex == 0 {
 		return nil
@@ -215,6 +247,16 @@ func getFaces(faceIndex byte) []Side {
 	if faceIndex&1<<5 != 0 {
 		// Face 5: bottom.
 		sides = append(sides, baseSideTopBottom.Translate(0, 0, -0.5))
+	}
+
+	// Check if we need to shrink the sides.
+	if height == 1.0 {
+		return sides
+	}
+
+	// Now shrink the sides vertically by the given factor.
+	for i := range sides {
+		sides[i] = sides[i].Shrink(height)
 	}
 	return sides
 }

@@ -17,4 +17,7 @@ Honestly, I don't really feel motivated to write more right now.
 
 Here, have a picture:
 
-![alt text](https://raw.githubusercontent.com/Flokey82/go_gens/master/genmapvoxel/images/map.png "Example of rendered voxel terrain")
+![alt text](https://raw.githubusercontent.com/Flokey82/go_gens/master/genmapvoxel/images/blocky.png "Example of rendered voxel terrain (blocky)")
+
+
+![alt text](https://raw.githubusercontent.com/Flokey82/go_gens/master/genmapvoxel/images/smooth.png "Example of rendered voxel terrain (smooth)")
