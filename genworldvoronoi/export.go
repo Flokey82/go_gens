@@ -194,97 +194,71 @@ func (m *Map) ExportSVG(path string) error {
 		svg.Circle(int(x), int(y), r, color)
 	}
 
+	// drawPath draws a bunch of paths with the given style attributes.
+	drawPath := func(paths [][]int, style []string, useTriangles bool) {
+		latLon := m.r_latLon
+		if useTriangles {
+			latLon = m.t_latLon
+		}
+		for _, border := range paths {
+			var path [][2]float64
+			for _, borderSeg := range border {
+				x, y := latLonToPixels(latLon[borderSeg][0], latLon[borderSeg][1], zoom)
+
+				// This check prevents long lines across the SVG if the path happens to wrap around
+				// 180° longitude.
+				if len(path) >= 1 && dist2(path[len(path)-1], [2]float64{x, y}) > filterPathDist {
+					svg.Path(svgGenD(path), style...)
+					path = nil
+				}
+				path = append(path, [2]float64{x, y})
+			}
+			svg.Path(svgGenD(path), style...)
+		}
+	}
+
 	if drawLatitudeDots {
-		x, y := latLonToPixels(43.0, -80.0, zoom)
-		r := 4
-		svg.Circle(int(x), int(y), r, "fill: rgb(123, 255, 23)")
-		x, y = latLonToPixels(-43.0, 80.0, zoom)
-		svg.Circle(int(x), int(y), r, "fill: rgb(123, 255, 23)")
-		x, y = latLonToPixels(60.0, 0.0, zoom)
-		svg.Circle(int(x), int(y), r, "fill: rgb(123, 255, 223)")
-		x, y = latLonToPixels(30.0, 0.0, zoom)
-		svg.Circle(int(x), int(y), r, "fill: rgb(123, 255, 223)")
-		x, y = latLonToPixels(0.0, 0.0, zoom)
-		svg.Circle(int(x), int(y), r, "fill: rgb(123, 255, 223)")
-		x, y = latLonToPixels(-30.0, 0.0, zoom)
-		svg.Circle(int(x), int(y), r, "fill: rgb(0, 255, 223)")
-		x, y = latLonToPixels(-60.0, 0.0, zoom)
-		svg.Circle(int(x), int(y), r, "fill: rgb(0, 255, 223)")
+		drawCircle(43.0, -80.0, 4, "fill: rgb(123, 255, 23)")
+		drawCircle(-43.0, 80.0, 4, "fill: rgb(123, 255, 23)")
+		drawCircle(60.0, 0.0, 4, "fill: rgb(123, 255, 223)")
+		drawCircle(30.0, 0.0, 4, "fill: rgb(123, 255, 223)")
+		drawCircle(0.0, 0.0, 4, "fill: rgb(123, 255, 223)")
+		drawCircle(-30.0, 0.0, 4, "fill: rgb(0, 255, 223)")
+		drawCircle(-60.0, 0.0, 4, "fill: rgb(0, 255, 223)")
 	}
 
 	if drawBorders {
-		for _, border := range m.getBorders() {
-			var path [][2]float64
-			for _, borderSeg := range border {
-				x, y := latLonToPixels(m.t_latLon[borderSeg][0], m.t_latLon[borderSeg][1], zoom)
-				if len(path) >= 1 && dist2(path[len(path)-1], [2]float64{x, y}) > filterPathDist {
-					svg.Path(svgGenD(path), "stroke=\"red\"", "fill=\"none\"", "stroke-width=\"0.5\"")
-					path = nil
-				}
-				path = append(path, [2]float64{x, y})
-			}
-			svg.Path(svgGenD(path), "stroke=\"red\"", "fill=\"none\"", "stroke-width=\"0.5\"")
-		}
+		drawPath(m.getBorders(),
+			[]string{"stroke=\"red\"", "fill=\"none\"", "stroke-width=\"0.5\""}, true)
 	}
 
 	if drawLakeBorders {
-		for _, border := range m.getLakeBorders() {
-			var path [][2]float64
-			for _, borderSeg := range border {
-				x, y := latLonToPixels(m.t_latLon[borderSeg][0], m.t_latLon[borderSeg][1], zoom)
-				if len(path) >= 1 && dist2(path[len(path)-1], [2]float64{x, y}) > filterPathDist {
-					svg.Path(svgGenD(path), "stroke=\"blue\"", "fill=\"blue\"", "fill-opacity=\"0.5\"", "stroke-width=\"0.5\"")
-					path = nil
-				}
-				path = append(path, [2]float64{x, y})
-			}
-			svg.Path(svgGenD(path), "stroke=\"blue\"", "fill=\"blue\"", "fill-opacity=\"0.5\"", "stroke-width=\"0.5\"")
-		}
+		drawPath(m.getLakeBorders(),
+			[]string{"stroke=\"blue\"", "fill=\"blue\"", "fill-opacity=\"0.5\"", "stroke-width=\"0.5\""}, true)
 	}
 
 	if drawContour {
-		for _, border := range m.contour() {
-			var path [][2]float64
-			for _, borderSeg := range border {
-				x, y := latLonToPixels(m.t_latLon[borderSeg][0], m.t_latLon[borderSeg][1], zoom)
-				if len(path) >= 1 && dist2(path[len(path)-1], [2]float64{x, y}) > filterPathDist {
-					svg.Path(svgGenD(path), "stroke=\"black\"", "fill=\"none\"", "stroke-width=\"0.5\"")
-					path = nil
-				}
-				path = append(path, [2]float64{x, y})
-			}
-			svg.Path(svgGenD(path), "stroke=\"black\"", "fill=\"none\"", "stroke-width=\"0.5\"")
-		}
+		drawPath(m.contour(),
+			[]string{"stroke=\"black\"", "fill=\"none\"", "stroke-width=\"0.5\""}, true)
 	}
 
 	// Rivers (based on regions)
 	if drawRiversA {
+		drawPath(m.getRivers(0.001),
+			[]string{"stroke=\"blue\" fill=\"none\" stroke-width=\"0.5\""}, false)
+
+		// Skip frozen regions
 		// TODO: Fix maxElev caching!!!
-		//_, maxR := minMax(m.r_elevation)
-		for _, riv := range m.getRivers(0.001) {
-			var path [][2]float64
-			for _, rivseg := range riv {
-				// Skip frozen regions
-				// TODO: Fix maxElev caching!!!
-				// if m.getRTemperature(rivseg, maxR) < 0 {
-				//	continue
-				// }
-				//
-				// Alternative:
-				//
-				// valMois := em.r_moisture[rivseg] / maxMois
-				// if genbiome.GetWhittakerModBiome(int(m.getRTemperature(rivseg, maxR)), int(valMois*45)) == WhittakerModBiomeSnow {
-				// 	continue
-				// }
-				x, y := latLonToPixels(m.r_latLon[rivseg][0], m.r_latLon[rivseg][1], zoom)
-				if len(path) >= 1 && dist2(path[len(path)-1], [2]float64{x, y}) > filterPathDist {
-					svg.Path(svgGenD(path), "stroke=\"blue\" fill=\"none\" stroke-width=\"0.5\"")
-					path = nil
-				}
-				path = append(path, [2]float64{x, y})
-			}
-			svg.Path(svgGenD(path), "stroke=\"blue\" fill=\"none\" stroke-width=\"0.5\"")
-		}
+		// if m.getRTemperature(rivseg, maxR) < 0 {
+		//	continue
+		// }
+		//
+		// Alternative:
+		//
+		// valMois := em.r_moisture[rivseg] / maxMois
+		// if genbiome.GetWhittakerModBiome(int(m.getRTemperature(rivseg, maxR)), int(valMois*45)) == WhittakerModBiomeSnow {
+		// 	continue
+		// }
 	}
 
 	// Rivers (based on triangles)
@@ -332,8 +306,7 @@ func (m *Map) ExportSVG(path string) error {
 			windAng[i] = math.Atan2(vec[0], vec[1])
 		}
 		minFlux, maxFlux := minMax(windAng)
-		for r := range windAng {
-			rdh := windAng[r]
+		for r, rdh := range windAng {
 			col := genGreen((rdh - minFlux) / (maxFlux - minFlux))
 			drawCircle(m.r_latLon[r][0], m.r_latLon[r][1], 1, fmt.Sprintf("fill: rgb(%d, %d, %d)", col.R, col.R, col.R))
 		}
@@ -360,11 +333,10 @@ func (m *Map) ExportSVG(path string) error {
 			drawCircle(m.r_latLon[r][0], m.r_latLon[r][1], 2, "fill: rgb(128, 128, 255)")
 		}
 		for r := 0; r < m.mesh.numSides; r++ {
-			if compression_r[r] == 0 {
-				continue
+			if compression_r[r] != 0 {
+				col := genGreen((compression_r[r] - minComp) / (maxComp - minComp))
+				drawCircle(m.r_latLon[r][0], m.r_latLon[r][1], 1, fmt.Sprintf("fill: rgb(%d, %d, %d)", col.R, col.R, col.R))
 			}
-			col := genGreen((compression_r[r] - minComp) / (maxComp - minComp))
-			drawCircle(m.r_latLon[r][0], m.r_latLon[r][1], 1, fmt.Sprintf("fill: rgb(%d, %d, %d)", col.R, col.R, col.R))
 		}
 	}
 
