@@ -28,11 +28,12 @@ const (
 )
 
 // getMeanAnnualTemp returns the temperature at a given latitude within the range of
-// -35 °C to +31 °C.
+// -15 °C to +30°C because that's the range in which the Whittaker biomes are defined.
 // For this I assume that light hits the globe exactly from a 90° angle with respect
 // to the planitary axis.
 // See: https://www.scratchapixel.com/lessons/3d-basic-rendering/introduction-to-shading/shading-normals (facing ratio)
 // See: http://www-das.uwyo.edu/~geerts/cwx/notes/chap16/geo_clim.html
+// NOTE: -35 °C to +31 °C would be ideally the temp gradient (according to real-life data), but we don't have (yet) any biomes defined for this.
 func getMeanAnnualTemp(lat float64) float64 {
 	return (math.Sin(degToRad(90-math.Abs(lat))))*rangeTemp + minTemp
 }
@@ -46,9 +47,9 @@ func (m *Map) getRTemperature(r int, maxElev float64) float64 {
 }
 
 // getRTemperature returns the average yearly temperature of the given triangle at the surface.
-func (m *Map) getTTemperature(t int) float64 {
-	_, maxH := minMax(m.t_elevation) // TODO: Cache somewhere?
-	return getMeanAnnualTemp(m.t_latLon[t][0]) - getTempFalloffFromAltitude(maxAltitudeFactor*m.t_elevation[t]/maxH)
+func (m *Map) getTTemperature(t int, maxElev float64) float64 {
+	// TODO: Fix maxElev caching!!!
+	return getMeanAnnualTemp(m.t_latLon[t][0]) - getTempFalloffFromAltitude(maxAltitudeFactor*m.t_elevation[t]/maxElev)
 }
 
 // assignWindVectors constructs faux global wind cells reminiscent of a simplified earth model.

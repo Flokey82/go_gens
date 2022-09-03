@@ -25,4 +25,6 @@ I've started to extend the Whittaker model to be more complete and have added th
   * savannah
   * ... everything
 * missing biome in extended Whittaker (cool, humid)
-* re-do extended Whittaker (seems to be off).
+* re-do extended Whittaker (seems to be off)
+  * wetlands covers a too broad range
+  * swamps need to be looked at

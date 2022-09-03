@@ -30,6 +30,7 @@ var RedblobLookupTable = [][]int{
 	{0xD, 0xC, 0x1, 0xB, 0xB, 0xB},
 }
 
+// The RedBlobGames biomes.
 const (
 	RedblobBiomeUnknown                 = 0x0
 	RedblobBiomeTundra                  = 0x1
@@ -47,12 +48,14 @@ const (
 	RedblobBiomeScorched                = 0xD // not in whittaker
 )
 
+// GetWhittakerBiome returns the RedBlobGames biome for the given height and moisture zones.
 func GetRedblobBiome(height, moisture int) int {
 	height = RedblobClampHeightToIndex(height)
 	moisture = RedblobClampMoistureToIndex(moisture)
 	return RedblobLookupTable[height][moisture]
 }
 
+// RedblobBiomeColor maps the (RedBlobGames) biome types to their color representation.
 var RedblobBiomeColor = map[int]color.NRGBA{
 	RedblobBiomeSnow:                    {0xFF, 0xFF, 0xFF, 0},
 	RedblobBiomeTundra:                  {0xDD, 0xDD, 0xBB, 0},
@@ -69,6 +72,11 @@ var RedblobBiomeColor = map[int]color.NRGBA{
 	RedblobBiomeSubtropicalDesert:       {0xE9, 0xDD, 0xC7, 0},
 }
 
+// GetRedblobBiomeColor returns a color representing the (RedBlobGames) biome
+// with the given height and moisture zones.
+//
+// The intensity (ranging from 0.0-1.0) allows darkening / brightening for (for example)
+// indicating elevation. ... lower might be darker (0.0), higher might be brighter (1.0).
 func GetRedblobBiomeColor(height, moisture int, intensity float64) color.NRGBA {
 	c := RedblobBiomeColor[GetRedblobBiome(height, moisture)]
 	return color.NRGBA{
@@ -150,6 +158,7 @@ var WhittakerLookupTable = [][]int{
 	{0x0, 0x0, 0x0, 0x0, 0x1, 0x1, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0}, // 45dm precipitation
 }
 
+// The Whittaker biomes.
 const (
 	WhittakerBiomeUnknown                       = 0x0
 	WhittakerBiomeTropicalRainForest            = 0x1
@@ -163,12 +172,14 @@ const (
 	WhittakerBiomeTundra                        = 0x9
 )
 
+// GetWhittakerBiome returns the Whittaker biome for the given temperature and precipitation.
 func GetWhittakerBiome(temperature, precipitation int) int {
 	temperature = WhittakerClampTemperatureToIndex(temperature)
 	precipitation = WhittakerClampPrecipitationToIndex(precipitation)
 	return WhittakerLookupTable[precipitation][temperature]
 }
 
+// WhittakerBiomeColor maps the (Whittaker) biome types to their color representation.
 var WhittakerBiomeColor = map[int]color.NRGBA{
 	WhittakerBiomeTropicalRainForest:            {0x9C, 0xBB, 0xA9, 0},
 	WhittakerBiomeTropicalSeasonalForestSavanna: {0xA9, 0xCC, 0xA4, 0},
@@ -181,6 +192,11 @@ var WhittakerBiomeColor = map[int]color.NRGBA{
 	WhittakerBiomeTundra:                        {0xDD, 0xDD, 0xBB, 0},
 }
 
+// GetWhittakerModBiomeColor returns a color representing the (Whittaker) biome
+// with the given temperature and precipitation.
+//
+// The intensity (ranging from 0.0-1.0) allows darkening / brightening for (for example)
+// indicating elevation. ... lower might be darker (0.0), higher might be brighter (1.0).
 func GetWhittakerBiomeColor(temperature, precipitation int, intensity float64) color.NRGBA {
 	c := WhittakerBiomeColor[GetWhittakerBiome(temperature, precipitation)]
 	return color.NRGBA{
@@ -240,6 +256,7 @@ var WhittakerLookupTableModified = [][]int{
 	{0xC, 0xC, 0xC, 0xC, 0x1, 0x1, 0xC, 0xC, 0xC, 0xC, 0xC, 0xC, 0xC, 0xC, 0xC, 0xD, 0xD, 0xD, 0xD, 0xD, 0xD, 0xD, 0xD, 0xD, 0xD, 0xD, 0xD, 0xD, 0xD, 0xD, 0xD, 0x8, 0x8, 0xB, 0xB, 0xB, 0xB, 0xB, 0xB, 0xB, 0xB, 0xB, 0xB, 0xB, 0xB}, // 45dm precipitation
 }
 
+// The modified Whittaker biomes.
 const (
 	WhittakerModBiomeUnknown                 = 0x0
 	WhittakerModBiomeTropicalRainForest      = 0x1
@@ -258,6 +275,7 @@ const (
 	WhittakerModBiomeSavannah                = 0xE
 )
 
+// GetWhittakerModBiome returns the (modified) Whittaker biome for the given temperature and precipitation.
 func GetWhittakerModBiome(temperature, precipitation int) int {
 	temperature = WhittakerClampTemperatureToIndex(temperature)
 	precipitation = WhittakerClampPrecipitationToIndex(precipitation)
@@ -269,6 +287,7 @@ var (
 	ColorSeasonalForest = color.NRGBA{R: 0x28, G: 0xAC, B: 0x2A, A: 0}
 )
 
+// WhittakerModBiomeColor maps the (modified Whittaker) biome types to their color representation.
 var WhittakerModBiomeColor = map[int]color.NRGBA{
 	WhittakerModBiomeUnknown:                 {0, 0, 0, 0}, // {0xA9, 0, 0, 0}, // TODO: Find better solution. It's wet and with relative cool temperature.
 	WhittakerModBiomeTropicalRainForest:      ColorRainForest,
@@ -287,6 +306,11 @@ var WhittakerModBiomeColor = map[int]color.NRGBA{
 	WhittakerModBiomeSnow:                    {0xFF, 0xFF, 0xFF, 0},
 }
 
+// GetWhittakerModBiomeColor returns a color representing the (modified Whittaker) biome
+// with the given temperature and precipitation.
+//
+// The intensity (ranging from 0.0-1.0) allows darkening / brightening for (for example)
+// indicating elevation. ... lower might be darker (0.0), higher might be brighter (1.0).
 func GetWhittakerModBiomeColor(temperature, precipitation int, intensity float64) color.NRGBA {
 	c := WhittakerModBiomeColor[GetWhittakerModBiome(temperature, precipitation)]
 	return color.NRGBA{
