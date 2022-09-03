@@ -6,14 +6,18 @@ Please be aware that this is just code for experimentation and is pretty rubbish
 
 Honestly, I don't really feel motivated to write more right now.
 
+NOTE: The stupid idea to have the origin be the center of the cube at 0,0 makes it more cumbersome to shrink the cubes vertically, since the Z axis for a standard cube ranges from -0.5 to +0.5. Yikes. I might change that.
+
 ## Done
 
 * binary / bool voxel terrain
-* Wavefront OBJ export
+* float values for voxel data (-ish)
+* hide faces that aren't visible
+* wavefront OBJ export
 
 ## TODO
 
-* float values for voxel data
+* merge faces of connected voxels
 
 Here, have a picture:
 

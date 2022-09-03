@@ -28,7 +28,7 @@ func New(dimX, dimY, dimZ, seed int64) *World {
 		dimZ: dimZ,
 	}
 
-	// Initialize the voxel grid
+	// Initialize the voxel grid and values.
 	w.initGrid()
 
 	// Now initialize the opensimplex noise generator and generate the world.
@@ -42,16 +42,24 @@ func New(dimX, dimY, dimZ, seed int64) *World {
 			// Round up zVal to the next higher integer.
 			zMax := int64(zVal + 0.99999)
 			for z := int64(0); z < zMax; z++ {
-				w.Voxels[x][y][z] = true              // Set the voxel.
-				w.Values[x][y][z] = zVal - float64(z) // Set the voxel value.
+				// Set the voxel.
+				w.Voxels[x][y][z] = true
+
+				// Set the voxel value.
+				val := 1.0
+				if rem := zVal - float64(z); rem < 1.0 {
+					val = rem // We have a partial voxel.
+				}
+				w.Values[x][y][z] = val
 			}
 		}
 	}
 	return w
 }
 
-// initGrid initializes the voxel grid.
+// initGrid initializes the voxel grid and values.
 func (w *World) initGrid() {
+	// Initialize the voxel grid.
 	w.Voxels = make([][][]bool, w.dimX)
 	for x := range w.Voxels {
 		w.Voxels[x] = make([][]bool, w.dimY)
@@ -60,6 +68,7 @@ func (w *World) initGrid() {
 		}
 	}
 
+	// Initialize the voxel values.
 	w.Values = make([][][]float64, w.dimX)
 	for x := range w.Values {
 		w.Values[x] = make([][]float64, w.dimY)
@@ -70,6 +79,8 @@ func (w *World) initGrid() {
 }
 
 // ExportOBJ exports the world to an OBJ file.
+// NOTE: If 'smooth' is true, partial voxels (the remainder of the respective
+// noise value at the given coordinates) will be rendered with fractional height.
 func (w *World) ExportOBJ(filename string, smooth bool) error {
 	// Open/create the destination file.
 	f, err := os.Create(filename)
@@ -98,13 +109,13 @@ func (w *World) ExportOBJ(filename string, smooth bool) error {
 				faceIndex := w.getEncodedIndex(x, y, z)
 
 				// If we should smooth the terrain by using the float values, do so.
-				value := 1.0
+				heightVal := 1.0
 				if smooth {
-					value = w.Values[x][y][z]
+					heightVal = w.Values[x][y][z]
 				}
 
 				// Get the faces to render for this voxel.
-				fcs := getFaces(faceIndex, value)
+				fcs := getFaces(faceIndex, heightVal)
 
 				// Add the vertices to the list.
 				for _, f := range fcs {
@@ -142,28 +153,31 @@ func (w *World) ExportOBJ(filename string, smooth bool) error {
 func (w *World) getEncodedIndex(x, y, z int64) byte {
 	// Check which faces are visible and encode them in the index.
 	var faceIndex byte
-	if x > 0 && w.Voxels[x-1][y][z] {
+
+	// NOTE: We could in theory check only the value, as a value of 0.0
+	// implies that no voxel is present.
+	if x == 0 || !w.Voxels[x-1][y][z] || w.Values[x-1][y][z] < 1.0 {
 		// Face 0: west.
 		faceIndex |= 1 << 0
 	}
-	if x < w.dimX-1 && w.Voxels[x+1][y][z] {
+	if x == w.dimX-1 || !w.Voxels[x+1][y][z] || w.Values[x+1][y][z] < 1.0 {
 		// Face 1: east.
 		faceIndex |= 1 << 1
 	}
-	if y > 0 && w.Voxels[x][y-1][z] {
+	if y == 0 || !w.Voxels[x][y-1][z] || w.Values[x][y-1][z] < 1.0 {
 		// Face 2: north.
 		faceIndex |= 1 << 2
 	}
-	if y < w.dimY-1 && w.Voxels[x][y+1][z] {
+	if y == w.dimY-1 || !w.Voxels[x][y+1][z] || w.Values[x][y+1][z] < 1.0 {
 		// Face 3: south.
 		faceIndex |= 1 << 3
 	}
-	if z < w.dimZ-1 && w.Voxels[x][y][z+1] {
-		// Face 4: top.
+	if z == 0 || !w.Voxels[x][y][z-1] || w.Values[x][y][z-1] < 1.0 {
+		// Face 4: bottom.
 		faceIndex |= 1 << 4
 	}
-	if z > 0 && w.Voxels[x][y][z-1] {
-		// Face 5: bottom.
+	if z == w.dimZ-1 || !w.Voxels[x][y][z+1] || w.Values[x][y][z+1] < 1.0 {
+		// Face 5: top.
 		faceIndex |= 1 << 5
 	}
 	return faceIndex
@@ -213,10 +227,8 @@ var baseSideTopBottom = Side{
 }
 
 // getFaces returns the faces to render given the encoded faceIndex.
-//
-// TODO: Allow shrinking the faces for voxels with a value < 1.0 to
-// generate "shorter" cubes.
-func getFaces(faceIndex byte, height float64) []Side {
+// 'heightVal' indicates the height factor of the cube (0.0-1.0).
+func getFaces(faceIndex byte, heightVal float64) []Side {
 	// If the index is 0, then all faces are invisible.
 	if faceIndex == 0 {
 		return nil
@@ -224,39 +236,39 @@ func getFaces(faceIndex byte, height float64) []Side {
 
 	// Get the face vertices to render for this voxel.
 	var sides []Side
-	if faceIndex&1<<0 != 0 {
+	if faceIndex&(1<<0) != 0 {
 		// Face 0: west.
 		sides = append(sides, baseSideEastWest.Translate(-0.5, 0, 0))
 	}
-	if faceIndex&1<<1 != 0 {
+	if faceIndex&(1<<1) != 0 {
 		// Face 1: east.
 		sides = append(sides, baseSideEastWest.Translate(0.5, 0, 0))
 	}
-	if faceIndex&1<<2 != 0 {
+	if faceIndex&(1<<2) != 0 {
 		// Face 2: north.
 		sides = append(sides, baseSideNorthSouth.Translate(0, -0.5, 0))
 	}
-	if faceIndex&1<<3 != 0 {
+	if faceIndex&(1<<3) != 0 {
 		// Face 3: south.
 		sides = append(sides, baseSideNorthSouth.Translate(0, 0.5, 0))
 	}
-	if faceIndex&1<<4 != 0 {
-		// Face 4: top.
-		sides = append(sides, baseSideTopBottom.Translate(0, 0, 0.5))
-	}
-	if faceIndex&1<<5 != 0 {
-		// Face 5: bottom.
+	if faceIndex&(1<<4) != 0 {
+		// Face 4: bottom.
 		sides = append(sides, baseSideTopBottom.Translate(0, 0, -0.5))
+	}
+	if faceIndex&(1<<5) != 0 {
+		// Face 5: top.
+		sides = append(sides, baseSideTopBottom.Translate(0, 0, 0.5))
 	}
 
 	// Check if we need to shrink the sides.
-	if height == 1.0 {
+	if heightVal == 1.0 {
 		return sides
 	}
 
 	// Now shrink the sides vertically by the given factor.
 	for i := range sides {
-		sides[i] = sides[i].Shrink(height)
+		sides[i] = sides[i].Shrink(heightVal)
 	}
 	return sides
 }
