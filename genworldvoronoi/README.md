@@ -11,8 +11,12 @@ I draw further inspiration from various other projects such as https://github.co
 
 ## TODO
 
-* Re-evaluate rainfall and moisture distribution
 * Climate is surprisingly humid along equator?
+  * Note: That is actually correct... the dryest climate is around +30° latitude, which is the subtropical desert. The equator is not dry at all.
+* Winds
+  * Make winds push temperature around, not just humidity
+  * Re-evaluate rainfall and moisture distribution
+  * Check if we also push dry air around, not just humid air
 
 Here some old pictures what it does...
 

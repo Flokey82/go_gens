@@ -188,6 +188,12 @@ func (m *Map) ExportSVG(path string) error {
 		svg.Path(svgGenD(path), fmt.Sprintf("fill: rgb(%d, %d, %d)", col.R, col.G, col.B)+tmpLine)
 	}
 
+	// drawCircle draws a circle at the given lat/lon coordinates.
+	drawCircle := func(lat, lon float64, r int, color string) {
+		x, y := latLonToPixels(lat, lon, zoom)
+		svg.Circle(int(x), int(y), r, color)
+	}
+
 	if drawLatitudeDots {
 		x, y := latLonToPixels(43.0, -80.0, zoom)
 		r := 4
@@ -305,10 +311,7 @@ func (m *Map) ExportSVG(path string) error {
 	if drawSinks {
 		for r, rdh := range m.r_downhill {
 			if rdh < 0 && m.r_drainage[r] < 0 && m.r_elevation[r] > 0 {
-				x, y := latLonToPixels(m.r_latLon[r][0], m.r_latLon[r][1], zoom)
-				r := 2
-				svg.Circle(int(x), int(y), r, "fill: rgb(0, 255, 0)")
-
+				drawCircle(m.r_latLon[r][0], m.r_latLon[r][1], 2, "fill: rgb(0, 255, 0)")
 			}
 		}
 	}
@@ -318,11 +321,8 @@ func (m *Map) ExportSVG(path string) error {
 		minFlux, maxFlux := minMax(wind_sort)
 		for _, r := range ord {
 			rdh := wind_sort[r]
-			log.Println(rdh)
-			x, y := latLonToPixels(m.r_latLon[r][0], m.r_latLon[r][1], zoom)
-			r := 1
 			col := genGreen((rdh - minFlux) / (maxFlux - minFlux))
-			svg.Circle(int(x), int(y), r, fmt.Sprintf("fill: rgb(%d, %d, %d)", col.R, col.R, col.R))
+			drawCircle(m.r_latLon[r][0], m.r_latLon[r][1], 1, fmt.Sprintf("fill: rgb(%d, %d, %d)", col.R, col.R, col.R))
 		}
 	}
 
@@ -334,11 +334,8 @@ func (m *Map) ExportSVG(path string) error {
 		minFlux, maxFlux := minMax(windAng)
 		for r := range windAng {
 			rdh := windAng[r]
-			log.Println(rdh)
-			x, y := latLonToPixels(m.r_latLon[r][0], m.r_latLon[r][1], zoom)
-			r := 1
 			col := genGreen((rdh - minFlux) / (maxFlux - minFlux))
-			svg.Circle(int(x), int(y), r, fmt.Sprintf("fill: rgb(%d, %d, %d)", col.R, col.R, col.R))
+			drawCircle(m.r_latLon[r][0], m.r_latLon[r][1], 1, fmt.Sprintf("fill: rgb(%d, %d, %d)", col.R, col.R, col.R))
 		}
 	}
 
@@ -354,25 +351,20 @@ func (m *Map) ExportSVG(path string) error {
 			}
 		}
 		for _, r := range mountain_r {
-			x, y := latLonToPixels(m.r_latLon[r][0], m.r_latLon[r][1], zoom)
-			svg.Circle(int(x), int(y), 2, "fill: rgb(255, 128, 128)")
+			drawCircle(m.r_latLon[r][0], m.r_latLon[r][1], 2, "fill: rgb(255, 128, 128)")
 		}
 		for _, r := range coastline_r {
-			x, y := latLonToPixels(m.r_latLon[r][0], m.r_latLon[r][1], zoom)
-			svg.Circle(int(x), int(y), 2, "fill: rgb(128, 255, 128)")
+			drawCircle(m.r_latLon[r][0], m.r_latLon[r][1], 2, "fill: rgb(128, 255, 128)")
 		}
 		for _, r := range ocean_r {
-			x, y := latLonToPixels(m.r_latLon[r][0], m.r_latLon[r][1], zoom)
-			svg.Circle(int(x), int(y), 2, "fill: rgb(128, 128, 255)")
+			drawCircle(m.r_latLon[r][0], m.r_latLon[r][1], 2, "fill: rgb(128, 128, 255)")
 		}
 		for r := 0; r < m.mesh.numSides; r++ {
 			if compression_r[r] == 0 {
 				continue
 			}
-			x, y := latLonToPixels(m.r_latLon[r][0], m.r_latLon[r][1], zoom)
-			r := 1
 			col := genGreen((compression_r[r] - minComp) / (maxComp - minComp))
-			svg.Circle(int(x), int(y), r, fmt.Sprintf("fill: rgb(%d, %d, %d)", col.R, col.R, col.R))
+			drawCircle(m.r_latLon[r][0], m.r_latLon[r][1], 1, fmt.Sprintf("fill: rgb(%d, %d, %d)", col.R, col.R, col.R))
 		}
 	}
 
@@ -380,11 +372,9 @@ func (m *Map) ExportSVG(path string) error {
 		minFlux, maxFlux := minMax(m.r_flux)
 		for r, rdh := range m.r_flux {
 			if rdh > 0 {
-				x, y := latLonToPixels(m.r_latLon[r][0], m.r_latLon[r][1], zoom)
-				r := 1
 				col := genGreen((rdh - minFlux) / (maxFlux - minFlux))
 				col = genGreen(rdh / maxFlux)
-				svg.Circle(int(x), int(y), r, fmt.Sprintf("fill: rgb(%d, %d, %d)", col.R, col.R, col.R))
+				drawCircle(m.r_latLon[r][0], m.r_latLon[r][1], 1, fmt.Sprintf("fill: rgb(%d, %d, %d)", col.R, col.R, col.R))
 			}
 		}
 	}
@@ -393,11 +383,8 @@ func (m *Map) ExportSVG(path string) error {
 		minHumid, maxHumid := minMax(m.r_moisture)
 		for r, rdh := range m.r_moisture {
 			if rdh > 0 {
-				x, y := latLonToPixels(m.r_latLon[r][0], m.r_latLon[r][1], zoom)
-				r := 1
 				col := genGreen((rdh - minHumid) / (maxHumid - minHumid))
-				svg.Circle(int(x), int(y), r, fmt.Sprintf("fill: rgb(%d, %d, %d)", col.R, col.R, col.R))
-
+				drawCircle(m.r_latLon[r][0], m.r_latLon[r][1], 1, fmt.Sprintf("fill: rgb(%d, %d, %d)", col.R, col.R, col.R))
 			}
 		}
 	}
@@ -406,11 +393,8 @@ func (m *Map) ExportSVG(path string) error {
 		minRain, maxRain := minMax(m.r_rainfall)
 		for r, rdh := range m.r_rainfall {
 			if rdh > 0 {
-				x, y := latLonToPixels(m.r_latLon[r][0], m.r_latLon[r][1], zoom)
-				r := 1
 				col := genGreen((rdh - minRain) / (maxRain - minRain))
-				svg.Circle(int(x), int(y), r, fmt.Sprintf("fill: rgb(%d, %d, %d)", col.R, col.R, col.R))
-
+				drawCircle(m.r_latLon[r][0], m.r_latLon[r][1], 1, fmt.Sprintf("fill: rgb(%d, %d, %d)", col.R, col.R, col.R))
 			}
 		}
 	}
@@ -420,11 +404,8 @@ func (m *Map) ExportSVG(path string) error {
 		minFlux, maxFlux := minMax(er)
 		for r, rdh := range m.r_flux {
 			if rdh > 0 {
-				x, y := latLonToPixels(m.r_latLon[r][0], m.r_latLon[r][1], zoom)
-				r := 1
 				col := genBlue((rdh - minFlux) / (maxFlux - minFlux))
-				svg.Circle(int(x), int(y), r, fmt.Sprintf("fill: rgb(%d, %d, %d)", col.R, col.G, col.G))
-
+				drawCircle(m.r_latLon[r][0], m.r_latLon[r][1], 1, fmt.Sprintf("fill: rgb(%d, %d, %d)", col.R, col.G, col.G))
 			}
 		}
 	}
@@ -434,11 +415,8 @@ func (m *Map) ExportSVG(path string) error {
 		minFlux, maxFlux := minMax(er)
 		for r, rdh := range m.r_flux {
 			if rdh > 0 {
-				x, y := latLonToPixels(m.r_latLon[r][0], m.r_latLon[r][1], zoom)
-				r := 1
 				col := genBlue((rdh - minFlux) / (maxFlux - minFlux))
-				svg.Circle(int(x), int(y), r, fmt.Sprintf("fill: rgb(%d, %d, %d)", col.R, col.G, col.G))
-
+				drawCircle(m.r_latLon[r][0], m.r_latLon[r][1], 1, fmt.Sprintf("fill: rgb(%d, %d, %d)", col.R, col.G, col.G))
 			}
 		}
 	}
@@ -449,11 +427,8 @@ func (m *Map) ExportSVG(path string) error {
 		minHeight = 0
 		for r, rdh := range m.r_elevation {
 			if rdh > 0 && r%2 == 0 {
-				x, y := latLonToPixels(m.r_latLon[r][0], m.r_latLon[r][1], zoom)
-				r := 1
 				col := genBlue((rdh - minHeight) / (maxHeight - minHeight))
-				svg.Circle(int(x), int(y), r, fmt.Sprintf("fill: rgb(%d, %d, %d)", col.R, col.G, col.G))
-
+				drawCircle(m.r_latLon[r][0], m.r_latLon[r][1], 1, fmt.Sprintf("fill: rgb(%d, %d, %d)", col.R, col.G, col.G))
 			}
 		}
 	}
@@ -464,11 +439,8 @@ func (m *Map) ExportSVG(path string) error {
 		for r, rdh := range m.r_elevation {
 			if rdh > 0 && r%2 == 0 {
 				t := m.getRTemperature(r, maxHeight)
-				x, y := latLonToPixels(m.r_latLon[r][0], m.r_latLon[r][1], zoom)
-				r := 1
 				col := genBlue((t - minTemp) / (maxTemp - minTemp))
-				svg.Circle(int(x), int(y), r, fmt.Sprintf("fill: rgb(%d, %d, %d)", col.R, col.G, col.G))
-
+				drawCircle(m.r_latLon[r][0], m.r_latLon[r][1], 1, fmt.Sprintf("fill: rgb(%d, %d, %d)", col.R, col.G, col.G))
 			}
 		}
 	}
@@ -476,8 +448,7 @@ func (m *Map) ExportSVG(path string) error {
 	if drawBelow {
 		for r, pVal := range m.r_elevation {
 			if pVal <= 0 {
-				x, y := latLonToPixels(m.r_latLon[r][0], m.r_latLon[r][1], zoom)
-				svg.Circle(int(x), int(y), 2, "fill: rgb(0, 0, 255)")
+				drawCircle(m.r_latLon[r][0], m.r_latLon[r][1], 2, "fill: rgb(0, 0, 255)")
 			}
 		}
 	}
@@ -486,8 +457,7 @@ func (m *Map) ExportSVG(path string) error {
 	if drawPools {
 		for r, pVal := range m.r_pool {
 			if pVal > 0 {
-				x, y := latLonToPixels(m.r_latLon[r][0], m.r_latLon[r][1], zoom)
-				svg.Circle(int(x), int(y), 2, "fill: rgb(0, 0, 255)")
+				drawCircle(m.r_latLon[r][0], m.r_latLon[r][1], 2, "fill: rgb(0, 0, 255)")
 			}
 		}
 	}
@@ -496,31 +466,26 @@ func (m *Map) ExportSVG(path string) error {
 		drains := make(map[int]bool)
 		for r, drain := range m.r_drainage {
 			if drain >= 0 {
-				x, y := latLonToPixels(m.r_latLon[r][0], m.r_latLon[r][1], zoom)
-				r := 1
-				svg.Circle(int(x), int(y), r, "fill: rgb(255, 0, 255)")
+				drawCircle(m.r_latLon[r][0], m.r_latLon[r][1], 1, "fill: rgb(255, 0, 255)")
 			}
 			if drain != -1 {
 				drains[drain] = true
 			}
 		}
 		for r := range drains {
-			x, y := latLonToPixels(m.r_latLon[r][0], m.r_latLon[r][1], zoom)
-			r := 1
-			svg.Circle(int(x), int(y), r, "fill: rgb(255, 255, 0)")
+			drawCircle(m.r_latLon[r][0], m.r_latLon[r][1], 1, "fill: rgb(255, 255, 0)")
 		}
 	}
 
 	// Cities
 	if drawCities {
 		for i, r := range m.cities_r {
-			x, y := latLonToPixels(m.r_latLon[r][0], m.r_latLon[r][1], zoom)
-			r := 2
+			radius := 2
 			// Capital cities are bigger!
 			if i < m.NumTerritories {
-				r = 4
+				radius = 4
 			}
-			svg.Circle(int(x), int(y), r, "fill: rgb(255, 0, 0)")
+			drawCircle(m.r_latLon[r][0], m.r_latLon[r][1], radius, "fill: rgb(255, 0, 0)")
 		}
 	}
 
