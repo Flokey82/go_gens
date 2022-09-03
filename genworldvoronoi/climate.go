@@ -52,59 +52,73 @@ func (m *Map) getTTemperature(t int, maxElev float64) float64 {
 	return getMeanAnnualTemp(m.t_latLon[t][0]) - getTempFalloffFromAltitude(maxAltitudeFactor*m.t_elevation[t]/maxElev)
 }
 
+// getGlobalWindVector returns a vector for the global wind at the given latitude.
+// NOTE: This is based on the trade winds on... well, earth.
+// See: https://en.wikipedia.org/wiki/Trade_winds
+func getGlobalWindVector(rLat float64) Vertex {
+	// Based on latitude, we calculate the wind vector angle.
+	var degree float64
+	if rLatAbs := math.Abs(rLat); rLatAbs >= 0 && rLatAbs <= 30 {
+		// +30° ... 0°, 0° ... -30° -> Primitive Hadley Cell.
+		// In a Hadley cell, we turn the wind vector until we are exactly parallel with the equator once we reach 0° Lat.
+		// TODO: This is probably not perfectly parallel at the equator.
+		change := 90 * rLatAbs / 30
+		if rLat > 0 {
+			degree = 180 + change // Northern hemisphere.
+		} else {
+			degree = 180 - change // Southern hemisphere.
+		}
+	} else if rLatAbs > 30 && rLatAbs <= 60 {
+		// +60° ... +30°, -30° ... -60° -> Primitive Mid Latitude Cell.
+		// In a mid latitude cell, we turn the wind vector until we are exactly parallel with the 60° Lat.
+		// TODO: This is probably not a full 90° turn. Fix this
+		change := 90 * (rLatAbs - 30) / 30
+		if rLat > 0 {
+			degree = 90 - change // Northern hemisphere.
+		} else {
+			degree = 270 + change // Southern hemisphere.
+		}
+	} else {
+		// NOTE: This is buggy or at least "not nice".
+		// +90° ... +60°, -60° ... -90° -> Primitive Hadley Cell.
+		// In a polar cell, we turn the wind vector until we are exactly parallel with the equator once we reach 60° Lat.
+		change := 90 * (rLatAbs - 60) / 30
+		if rLat > 0 {
+			degree = 180 + change // Northern hemisphere.
+		} else {
+			degree = 180 - change // Southern hemisphere.
+		}
+	}
+	rad := degToRad(degree)
+	return Vertex{math.Cos(rad), math.Sin(rad)}
+}
+
 // assignWindVectors constructs faux global wind cells reminiscent of a simplified earth model.
 // NOTE: This function includes an experimental part that calculates local winds that are influenced
 // by the topography / elevation changes. Please note that the code for local winds is incomplete.
 func (m *Map) assignWindVectors() {
 	r_windvec := make([]Vertex, m.mesh.numRegions)
+	// Based on latitude of each region, we calculate the wind vector.
 	for i := range r_windvec {
-		// Determine latitude of current region.
-		rLat := m.r_latLon[i][0]
-		// Based on latitude, we calculate the wind vector angle.
-		var degree float64
-		if rLatAbs := math.Abs(rLat); rLatAbs >= 0 && rLatAbs <= 30 {
-			// +30° ... 0°, 0° ... -30° -> Primitive Hadley Cell.
-			// In a Hadley cell, we turn the wind vector until we are exactly parallel with the equator once we reach 0° Lat.
-			// TODO: This is probably not perfectly parallel at the equator.
-			change := 90 * rLatAbs / 30
-			if rLat > 0 {
-				degree = 180 + change // Northern hemisphere.
-			} else {
-				degree = 180 - change // Southern hemisphere.
-			}
-		} else if rLatAbs > 30 && rLatAbs <= 60 {
-			// +60° ... +30°, -30° ... -60° -> Primitive Mid Latitude Cell.
-			// In a mid latitude cell, we turn the wind vector until we are exactly parallel with the 60° Lat.
-			// TODO: This is probably not a full 90° turn. Fix this
-			change := 90 * (rLatAbs - 30) / 30
-			if rLat > 0 {
-				degree = 90 - change // Northern hemisphere.
-			} else {
-				degree = 270 + change // Southern hemisphere.
-			}
-		} else {
-			// NOTE: This is buggy or at least "not nice".
-			// +90° ... +60°, -60° ... -90° -> Primitive Hadley Cell.
-			// In a polar cell, we turn the wind vector until we are exactly parallel with the equator once we reach 60° Lat.
-			change := 90 * (rLatAbs - 60) / 30
-			if rLat > 0 {
-				degree = 180 + change // Northern hemisphere.
-			} else {
-				degree = 180 - change // Southern hemisphere.
-			}
-		}
-		rad := degToRad(degree)
-		r_windvec[i] = Vertex{math.Cos(rad), math.Sin(rad)}
-		//log.Println("lat ", rLat, "vec", Vertex{math.Cos(rad), math.Sin(rad)})
-		// log.Println(rLat, degree, r_windvec[i])
+		r_windvec[i] = getGlobalWindVector(m.r_latLon[i][0])
 	}
 
 	r_windvec_local := make([]Vertex, m.mesh.numRegions)
 	_, maxElev := minMax(m.r_elevation)
 
-	/*
-		// TODO: Add wind vectors based on local temperature gradients.
-		// NOTE: This is currently overridden by the altitude changes below.
+	useTempGradient := false
+
+	// NOTE: This is currently overridden by the altitude changes below.
+	if useTempGradient {
+		// Add local wind vectors based on local temperature gradients.
+		//
+		// NOTE: You won't be happy about the results of the temp gradient anyway
+		// since everything becomes quite "patchy".
+		//
+		// In plain English: This is garbage code :(
+		// I suspect that the wind is deflected too much by minimal temperature changes
+		// and I am too lazy to really look into it.
+
 		// Determine all sea regions.
 		var sea_r []int
 		for r := 0; r < m.mesh.numRegions; r++ {
@@ -114,78 +128,82 @@ func (m *Map) assignWindVectors() {
 		}
 		r_distance_sea := m.assignDistanceField(sea_r, make(map[int]bool))
 		for r := range r_windvec_local {
+			rVec := r_windvec[r]
 			lat := m.r_latLon[r][0]
 			lon := m.r_latLon[r][1]
 			temp_r := getMeanAnnualTemp(lat) - getTempFalloffFromAltitude(8850*m.r_elevation[r]/maxElev)
-			// if m.r_elevation[r] < 0 {
-			// TODO: Use actual distance from ocean to calculate temperature falloff.
-			temp_r -= 1 / (r_distance_sea[r] + 1)
-			// }
+			if m.r_elevation[r] < 0 {
+				// TODO: Use actual distance from ocean to calculate temperature falloff.
+				temp_r -= 1 / (r_distance_sea[r] + 1)
+			}
 			// Get temperature for r.
-			var v vectors.Vec2
+			v := vectors.Normalize(vectors.Vec2{
+				X: rVec[0],
+				Y: rVec[1],
+			})
 			for _, nb := range m.rNeighbors(r) {
 				nbLat := m.r_latLon[nb][0]
 				nbLon := m.r_latLon[nb][1]
 				temp_nb := getMeanAnnualTemp(nbLat) - getTempFalloffFromAltitude(8850*m.r_elevation[nb]/maxElev)
-				// if m.r_elevation[nb] < 0 {
-				// TODO: Use actual distance from ocean to calculate temperature falloff.
-				temp_nb -= 1 / (r_distance_sea[nb] + 1)
-				// }
+				if m.r_elevation[nb] < 0 {
+					// TODO: Use actual distance from ocean to calculate temperature falloff.
+					temp_nb -= 1 / (r_distance_sea[nb] + 1)
+				}
 				ve := calcVecFromLatLong(lat, lon, nbLat, nbLon)
 				v = v.Add(vectors.Normalize(vectors.NewVec2(ve[0], ve[1])).Mul(temp_nb - temp_r))
 			}
 			v = vectors.Normalize(v)
 			r_windvec_local[r] = Vertex{v.X, v.Y}
 		}
-	*/
+	} else {
+		// Add wind deflection based on altitude changes.
+		for r := range r_windvec_local {
+			rVec := r_windvec[r]
+			// Get XYZ Position of r.
+			rXYZ := convToVec3(m.r_xyz[r*3 : r*3+3])
+			// Convert to polar coordinates.
+			rLat := m.r_latLon[r][0]
+			rLon := m.r_latLon[r][1]
+			h := m.r_elevation[r]
+			// Add wind vector to neighbor lat/lon to get the "wind vector lat long" or something like that..
+			rwXYZ := convToVec3(latLonToCartesian(rLat+r_windvec[r][1], rLon+r_windvec[r][0])).Normalize()
+			v := vectors.Normalize(vectors.Vec2{
+				X: rVec[0],
+				Y: rVec[1],
+			}) //v.Mul(h / maxElev)
+			for _, neighbor_r := range m.rNeighbors(r) {
+				// if is_sea[neighbor_r] {
+				//	continue
+				// }
+				// Calculate dot product of wind vector to vector r -> neighbor_r.
+				// Get XYZ Position of r_neighbor.
+				rnXYZ := convToVec3(m.r_xyz[neighbor_r*3 : neighbor_r*3+3])
 
-	// TODO: Add wind deflection based on altitude changes.
-	for r := range r_windvec_local {
-		rVec := r_windvec[r]
-		// Get XYZ Position of r.
-		rXYZ := convToVec3(m.r_xyz[r*3 : r*3+3])
-		// Convert to polar coordinates.
-		rLat := m.r_latLon[r][0]
-		rLon := m.r_latLon[r][1]
-		h := m.r_elevation[r]
-		// Add wind vector to neighbor lat/lon to get the "wind vector lat long" or something like that..
-		rwXYZ := convToVec3(latLonToCartesian(rLat+r_windvec[r][1], rLon+r_windvec[r][0])).Normalize()
-		v := vectors.Normalize(vectors.Vec2{
-			X: rVec[0],
-			Y: rVec[1],
-		}) //v.Mul(h / maxElev)
-		for _, neighbor_r := range m.rNeighbors(r) {
-			// if is_sea[neighbor_r] {
-			//	continue
-			// }
-			// Calculate dot product of wind vector to vector r -> neighbor_r.
-			// Get XYZ Position of r_neighbor.
-			rnXYZ := convToVec3(m.r_xyz[neighbor_r*3 : neighbor_r*3+3])
+				// Calculate Vector between r and neighbor_r.
+				va := vectors.Sub3(rnXYZ, rXYZ).Normalize()
 
-			// Calculate Vector between r and neighbor_r.
-			va := vectors.Sub3(rnXYZ, rXYZ).Normalize()
+				// Calculate Vector between r and wind_r.
+				vb := vectors.Sub3(rwXYZ, rXYZ).Normalize()
 
-			// Calculate Vector between r and wind_r.
-			vb := vectors.Sub3(rwXYZ, rXYZ).Normalize()
-
-			// Calculate dot product between va and vb.
-			// This will give us how much the current region lies within the wind direction of the
-			// current neighbor.
-			// See: https://www.scratchapixel.com/lessons/3d-basic-rendering/introduction-to-shading/shading-normals
-			dotV := vectors.Dot3(va, vb)
-			hnb := m.r_elevation[neighbor_r]
-			if dotV > 0 && hnb != h && h >= 0 && hnb >= 0 {
-				nbLat := m.r_latLon[neighbor_r][0]
-				nbLon := m.r_latLon[neighbor_r][1]
-				ve := calcVecFromLatLong(rLat, rLon, nbLat, nbLon)
-				// The higher the dot product (the more direct the neighbor is in wind direction), the higher
-				// the influence of an elevation change. So a steep mountain ahead will slow the wind down.
-				// If a steep mountain is too the left, the wind vector will be pushed to the right.
-				v = v.Add(vectors.Normalize(vectors.NewVec2(ve[0], ve[1])).Mul((h - hnb) * dotV / maxElev))
+				// Calculate dot product between va and vb.
+				// This will give us how much the current region lies within the wind direction of the
+				// current neighbor.
+				// See: https://www.scratchapixel.com/lessons/3d-basic-rendering/introduction-to-shading/shading-normals
+				dotV := vectors.Dot3(va, vb)
+				hnb := m.r_elevation[neighbor_r]
+				if dotV > 0 && hnb != h && h >= 0 && hnb >= 0 {
+					nbLat := m.r_latLon[neighbor_r][0]
+					nbLon := m.r_latLon[neighbor_r][1]
+					ve := calcVecFromLatLong(rLat, rLon, nbLat, nbLon)
+					// The higher the dot product (the more direct the neighbor is in wind direction), the higher
+					// the influence of an elevation change. So a steep mountain ahead will slow the wind down.
+					// If a steep mountain is too the left, the wind vector will be pushed to the right.
+					v = v.Add(vectors.Normalize(vectors.NewVec2(ve[0], ve[1])).Mul((h - hnb) * dotV / maxElev))
+				}
 			}
+			v = vectors.Normalize(v)
+			r_windvec_local[r] = Vertex{v.X, v.Y}
 		}
-		v = vectors.Normalize(v)
-		r_windvec_local[r] = Vertex{v.X, v.Y}
 	}
 	// Average wind vectors using neighbor vectors.
 	interpolationSteps := 0
@@ -441,18 +459,6 @@ func (m *Map) assignRainfall(numSteps, transferMode, sortOrder int) {
 
 		// 4. Average moisture and rainfall.
 		// m.interpolateRainfallMoisture(1)
-	}
-}
-
-func len2(a [2]float64) float64 {
-	return math.Sqrt(a[0]*a[0] + a[1]*a[1])
-}
-
-func normal2(v [2]float64) [2]float64 {
-	l := 1.0 / len2(v)
-	return [2]float64{
-		v[0] * l,
-		v[1] * l,
 	}
 }
 

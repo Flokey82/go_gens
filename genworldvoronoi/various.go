@@ -28,6 +28,18 @@ func dot2(a, b [2]float64) float64 {
 	return a[0]*b[0] + a[1]*b[1]
 }
 
+func len2(a [2]float64) float64 {
+	return math.Sqrt(a[0]*a[0] + a[1]*a[1])
+}
+
+func normal2(v [2]float64) [2]float64 {
+	l := 1.0 / len2(v)
+	return [2]float64{
+		v[0] * l,
+		v[1] * l,
+	}
+}
+
 // min is the int equivalent of math.Min(a, b).
 func min(a, b int) int {
 	if a < b {
@@ -72,7 +84,11 @@ func convToArray(in map[int]bool) []int {
 
 // convToVec3 converts a float slice containing 3 values into a vectors.Vec3.
 func convToVec3(xyz []float64) vectors.Vec3 {
-	return vectors.Vec3{xyz[0], xyz[1], xyz[2]}
+	return vectors.Vec3{
+		X: xyz[0],
+		Y: xyz[1],
+		Z: xyz[2],
+	}
 }
 
 func degToRad(deg float64) float64 {
