@@ -20,6 +20,13 @@ func getTempFalloffFromAltitude(height float64) float64 {
 	return falloffFactor * height
 }
 
+const (
+	minTemp          = -15.0
+	maxTemp          = 30.0
+	rangeTemp        = maxTemp - minTemp
+	maxPrecipitation = 45.0 // 450dm
+)
+
 // getMeanAnnualTemp returns the temperature at a given latitude within the range of
 // -35 °C to +31 °C.
 // For this I assume that light hits the globe exactly from a 90° angle with respect
@@ -27,7 +34,7 @@ func getTempFalloffFromAltitude(height float64) float64 {
 // See: https://www.scratchapixel.com/lessons/3d-basic-rendering/introduction-to-shading/shading-normals (facing ratio)
 // See: http://www-das.uwyo.edu/~geerts/cwx/notes/chap16/geo_clim.html
 func getMeanAnnualTemp(lat float64) float64 {
-	return (math.Sin(degToRad(90-math.Abs(lat))))*66 - 35
+	return (math.Sin(degToRad(90-math.Abs(lat))))*rangeTemp + minTemp
 }
 
 const maxAltitudeFactor = 8850 / 2 // How tall is the tallest mountain with an elevation of 1.0?

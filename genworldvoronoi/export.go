@@ -115,6 +115,8 @@ func (m *Map) ExportSVG(path string) error {
 	drawWindDir := false
 	drawPlateCompression := false
 	drawAltitude := false
+	drawTemperature := false
+	drawLatitudeDots := false
 
 	zoom := 3
 	filterPathDist := 20.0
@@ -142,7 +144,7 @@ func (m *Map) ExportSVG(path string) error {
 	// }
 	// end hack
 	min, max := minMax(m.t_elevation)
-	minMois, maxMois := minMax(m.t_moisture)
+	_, maxMois := minMax(m.t_moisture)
 	for i := 0; i < len(em.mesh.Triangles); i += 3 {
 		tmpLine := ""
 
@@ -180,29 +182,29 @@ func (m *Map) ExportSVG(path string) error {
 			valElev := elev / max
 			// Hacky: Modify elevation based on latitude to compensate for colder weather at the poles and warmer weather at the equator.
 			// valElev := math.Max(math.Min((elev/max)+(math.Sqrt(math.Abs(triLat)/90.0)-0.5), max), 0)
-			valMois := (em.t_moisture[i/3] - minMois) / (maxMois - minMois)
-			valMois = em.t_moisture[i/3] / maxMois
-			// col = GetRedblobBiomeColor(int(valElev*4)+1, int(valMois*6)+1, val)
-			col = genbiome.GetWhittakerModBiomeColor(int(getMeanAnnualTemp(triLat)-getTempFalloffFromAltitude(maxAltitudeFactor*valElev)), int(valMois*45), val)
+			valMois := em.t_moisture[i/3] / maxMois
+			col = genbiome.GetWhittakerModBiomeColor(int(getMeanAnnualTemp(triLat)-getTempFalloffFromAltitude(maxAltitudeFactor*valElev)), int(valMois*maxPrecipitation), val)
 		}
-
 		svg.Path(svgGenD(path), fmt.Sprintf("fill: rgb(%d, %d, %d)", col.R, col.G, col.B)+tmpLine)
 	}
-	x, y := latLonToPixels(43.0, -80.0, zoom)
-	r := 4
-	svg.Circle(int(x), int(y), r, "fill: rgb(123, 255, 23)")
-	x, y = latLonToPixels(-43.0, 80.0, zoom)
-	svg.Circle(int(x), int(y), r, "fill: rgb(123, 255, 23)")
-	x, y = latLonToPixels(60.0, 0.0, zoom)
-	svg.Circle(int(x), int(y), r, "fill: rgb(123, 255, 223)")
-	x, y = latLonToPixels(30.0, 0.0, zoom)
-	svg.Circle(int(x), int(y), r, "fill: rgb(123, 255, 223)")
-	x, y = latLonToPixels(0.0, 0.0, zoom)
-	svg.Circle(int(x), int(y), r, "fill: rgb(123, 255, 223)")
-	x, y = latLonToPixels(-30.0, 0.0, zoom)
-	svg.Circle(int(x), int(y), r, "fill: rgb(0, 255, 223)")
-	x, y = latLonToPixels(-60.0, 0.0, zoom)
-	svg.Circle(int(x), int(y), r, "fill: rgb(0, 255, 223)")
+
+	if drawLatitudeDots {
+		x, y := latLonToPixels(43.0, -80.0, zoom)
+		r := 4
+		svg.Circle(int(x), int(y), r, "fill: rgb(123, 255, 23)")
+		x, y = latLonToPixels(-43.0, 80.0, zoom)
+		svg.Circle(int(x), int(y), r, "fill: rgb(123, 255, 23)")
+		x, y = latLonToPixels(60.0, 0.0, zoom)
+		svg.Circle(int(x), int(y), r, "fill: rgb(123, 255, 223)")
+		x, y = latLonToPixels(30.0, 0.0, zoom)
+		svg.Circle(int(x), int(y), r, "fill: rgb(123, 255, 223)")
+		x, y = latLonToPixels(0.0, 0.0, zoom)
+		svg.Circle(int(x), int(y), r, "fill: rgb(123, 255, 223)")
+		x, y = latLonToPixels(-30.0, 0.0, zoom)
+		svg.Circle(int(x), int(y), r, "fill: rgb(0, 255, 223)")
+		x, y = latLonToPixels(-60.0, 0.0, zoom)
+		svg.Circle(int(x), int(y), r, "fill: rgb(0, 255, 223)")
+	}
 
 	if drawBorders {
 		for _, border := range m.getBorders() {
@@ -323,6 +325,7 @@ func (m *Map) ExportSVG(path string) error {
 			svg.Circle(int(x), int(y), r, fmt.Sprintf("fill: rgb(%d, %d, %d)", col.R, col.R, col.R))
 		}
 	}
+
 	if drawWindDir {
 		windAng := make([]float64, m.mesh.numRegions)
 		for i, vec := range m.r_windvec {
@@ -338,6 +341,7 @@ func (m *Map) ExportSVG(path string) error {
 			svg.Circle(int(x), int(y), r, fmt.Sprintf("fill: rgb(%d, %d, %d)", col.R, col.R, col.R))
 		}
 	}
+
 	if drawPlateCompression {
 		mountain_r, coastline_r, ocean_r, compression_r := m.findCollisions()
 		var minComp, maxComp float64
@@ -454,6 +458,21 @@ func (m *Map) ExportSVG(path string) error {
 		}
 	}
 
+	if drawTemperature {
+		er := m.r_elevation
+		_, maxHeight := minMax(er)
+		for r, rdh := range m.r_elevation {
+			if rdh > 0 && r%2 == 0 {
+				t := m.getRTemperature(r, maxHeight)
+				x, y := latLonToPixels(m.r_latLon[r][0], m.r_latLon[r][1], zoom)
+				r := 1
+				col := genBlue((t - minTemp) / (maxTemp - minTemp))
+				svg.Circle(int(x), int(y), r, fmt.Sprintf("fill: rgb(%d, %d, %d)", col.R, col.G, col.G))
+
+			}
+		}
+	}
+
 	if drawBelow {
 		for r, pVal := range m.r_elevation {
 			if pVal <= 0 {
@@ -533,7 +552,7 @@ func (m *Map) ExportPng(name string) {
 	// Create a colored image of the given width and height.
 	img := image.NewNRGBA(image.Rect(0, 0, size, size))
 	min, max := minMax(m.r_elevation)
-	minMois, maxMois := minMax(m.r_rainfall)
+	_, maxMois := minMax(m.r_rainfall)
 	for r := 0; r < m.mesh.numRegions; r++ {
 		lat := m.r_latLon[r][0]
 		lon := m.r_latLon[r][1]
@@ -547,14 +566,9 @@ func (m *Map) ExportPng(name string) {
 			valElev := elev / max
 			// Hacky: Modify elevation based on latitude to compensate for colder weather at the poles and warmer weather at the equator.
 			// valElev := math.Max(math.Min((elev/max)+(math.Sqrt(math.Abs(lat)/90.0)-0.5), max), 0)
-			valMois := (m.r_rainfall[r] - minMois) / (maxMois - minMois)
-			valMois = m.r_rainfall[r] / maxMois
-			col = genbiome.GetRedblobBiomeColor(int(valElev*4)+1, int(valMois*6)+1, val)
-			col.R = uint8(255 * valMois)
-			col.G = 0
-			col.B = uint8(255 * (1 - valMois))
+			valMois := m.r_rainfall[r] / maxMois
 			if m.r_territory[r] == 0 {
-				col = genbiome.GetWhittakerModBiomeColor(int(getMeanAnnualTemp(lat)-getTempFalloffFromAltitude(maxAltitudeFactor*valElev)), int(valMois*45), val)
+				col = genbiome.GetWhittakerModBiomeColor(int(getMeanAnnualTemp(lat)-getTempFalloffFromAltitude(maxAltitudeFactor*valElev)), int(valMois*maxPrecipitation), val)
 			} else {
 				cr, cg, cb, _ := cols[terrToCol[m.r_territory[r]]].RGBA()
 				col.R = uint8(float64(255) * float64(cr) / float64(0xffff))
