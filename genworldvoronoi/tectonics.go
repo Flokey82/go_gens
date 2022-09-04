@@ -261,7 +261,6 @@ func (m *Map) assignRegionElevation() {
 	// distance to the faultline with some variation for a more natural look.
 	const epsilon = 1e-3
 	r_xyz := m.r_xyz
-	inf := math.Inf(0)
 	for r := 0; r < m.mesh.numRegions; r++ {
 		a := r_distance_a[r] + epsilon // Distance from mountains
 		b := r_distance_b[r] + epsilon // Distance from oceans
@@ -270,7 +269,7 @@ func (m *Map) assignRegionElevation() {
 			// Ocean plates are slightly lower than other plates.
 			m.r_elevation[r] = -0.1
 		}
-		if r_distance_a[r] == inf && r_distance_b[r] == inf {
+		if math.IsInf(r_distance_a[r], 0) && math.IsInf(r_distance_b[r], 0) {
 			// If the distance from mountains and oceans is unset (infinity),
 			// we increase the elevation by 0.1 since we wouldn't be able to
 			// calculate the harmonic mean.

@@ -191,7 +191,7 @@ func (m *Map) assignDistanceField(seeds_r []int, stop_r map[int]bool) []float64 
 		current_r := queue[pos]
 		queue[pos] = queue[queue_out]
 		for _, neighbor_r := range mesh.r_circulate_r(out_r, current_r) {
-			if r_distance[neighbor_r] != inf || stop_r[neighbor_r] {
+			if !math.IsInf(r_distance[neighbor_r], 0) || stop_r[neighbor_r] {
 				continue
 			}
 
@@ -259,7 +259,7 @@ func (m *Map) assignDistanceFieldWithIntensity(seeds_r []int, stop_r map[int]boo
 		current_dist := r_distance[current_r]
 		queue[pos] = queue[queue_out]
 		for _, neighbor_r := range mesh.r_circulate_r(out_r, current_r) {
-			if r_distance[neighbor_r] != inf || stop_r[neighbor_r] {
+			if !math.IsInf(r_distance[neighbor_r], 0) || stop_r[neighbor_r] {
 				continue
 			}
 
