@@ -2,6 +2,7 @@ package genworldvoronoi
 
 import (
 	"log"
+	"math"
 )
 
 // rCityScore calculates the fitness value for settlements for all regions.
@@ -14,7 +15,11 @@ func (m *Map) rCityScore() []float64 {
 	// This will favor placing cities along (and at the end of)
 	// large rivers.
 	for i, fl := range m.r_flux {
-		score[i] = fl / maxFlux // originally: math.Sqrt(fl / maxFlux)
+		// Skip all regions below sea level.
+		if m.r_elevation[i] < 0 {
+			continue
+		}
+		score[i] = math.Sqrt(fl / maxFlux) // originally: math.Sqrt(fl / maxFlux)
 	}
 
 	// TODO: Create different fitness functions for different types of settlement.
@@ -26,14 +31,20 @@ func (m *Map) rCityScore() []float64 {
 	//   - ...
 
 	// Get distance to other cities.
-	r_distance_c := m.assignDistanceField(cities, make(map[int]bool))
+	stopOcean := make(map[int]bool)
+	for r, elev := range m.r_elevation {
+		if elev < 0.0 {
+			stopOcean[r] = true
+		}
+	}
+	r_distance_c := m.assignDistanceField(cities, stopOcean)
 
 	// Calculate the fitness score for each region
 	for i := 0; i < m.mesh.numRegions; i++ {
 		// If we are below (or at) sea level, or we are in a pool of water,
 		// assign lowest score and continue.
 		if m.r_elevation[i] <= 0 || m.r_pool[i] > 0 {
-			score[i] = -999999.0
+			score[i] = -1.0
 			continue
 		}
 
@@ -45,16 +56,17 @@ func (m *Map) rCityScore() []float64 {
 				// depending on the size of the lake or ocean it is part of.
 				//
 				// TODO: Improve this.
-				score[i] += 0.09
+				scoreDelta := 0.09
 				if m.r_waterbodies[nbs] >= 0 {
 					// If nbs is part of a waterbody (ocean), we reduce the score by a constant factor.
 					// The larger the waterbody, the smaller the penalty, which will favor larger waterbodies.
-					score[i] -= 0.05 / (float64(m.r_waterbody_size[m.r_waterbodies[nbs]]) + 1e-9)
+					scoreDelta -= 0.09 / (float64(m.r_waterbody_size[m.r_waterbodies[nbs]]) + 1e-9)
 				} else if m.r_drainage[nbs] >= 0 {
 					// If a drainage is set for nbs, it is part of a lake.
 					// So we reduce the score by a constant factor, which is smaller, the larger the lake.
-					score[i] -= 0.05 / (float64(m.r_lake_size[m.r_drainage[nbs]]) + 1e-9)
+					scoreDelta -= 0.09 / (float64(m.r_lake_size[m.r_drainage[nbs]]) + 1e-9)
 				}
+				score[i] += scoreDelta
 				break
 			}
 
@@ -72,6 +84,9 @@ func (m *Map) rCityScore() []float64 {
 		// NOTE: Originally this was done with some constant values, which might be better
 		// since we are here dependent on the current score we have assigned and cannot
 		// recover an initially bad score caused by a low water flux.
+		if math.IsInf(r_distance_c[i], 0) {
+			continue
+		}
 		score[i] *= (float64(r_distance_c[i]) + 1e-9) // originally: -= 0.02 / (float64(r_distance_c[i]) + 1e-9)
 	}
 	return score

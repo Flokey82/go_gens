@@ -597,6 +597,13 @@ func (m *Map) assignHydrology() {
 		// Erode a little.
 		m.r_elevation = m.rErode(erosionAmount) // NOTE: Flux would change as downhill values would change.
 	}
+
+	// TODO: Move this somewhere else.
+	m.r_lake_size = m.getLakeSizes()
+	// TODO: Make note of oceans.
+	//   - Note ocean sizes (and small waterbodies below sea level)
+	m.r_waterbodies = m.getWaterBodies()
+	m.r_waterbody_size = m.getWaterBodySizes()
 }
 
 // assignHydrologyWithFlooding will calculate river systems and water pools.

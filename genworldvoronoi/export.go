@@ -96,11 +96,11 @@ func genGreen(intensity float64) color.NRGBA {
 // ExportSVG exports the terrain as SVG to the given path.
 // NOTE: This produces broken somewhat incomplete output due to the wraparound of the mesh.
 func (m *Map) ExportSVG(path string) error {
-	drawRiversA := false
+	drawRiversA := true
 	drawRiversB := false
 	drawFlux := false
 	drawDrains := false
-	drawCities := false
+	drawCities := true
 	drawSinks := false
 	drawPools := false
 	drawErosion := false
@@ -117,6 +117,7 @@ func (m *Map) ExportSVG(path string) error {
 	drawAltitude := false
 	drawTemperature := false
 	drawLatitudeDots := false
+	drawCityscore := false
 
 	zoom := 3
 	filterPathDist := 20.0
@@ -461,6 +462,15 @@ func (m *Map) ExportSVG(path string) error {
 		}
 	}
 
+	if drawCityscore {
+		scores := m.rCityScore()
+		minScore, maxScore := minMax(scores)
+		for r, score := range scores {
+			col := genBlue((score - minScore) / (maxScore - minScore))
+			drawCircle(m.r_latLon[r][0], m.r_latLon[r][1], 1, fmt.Sprintf("fill: rgb(%d, %d, %d)", col.R, col.G, col.G))
+		}
+	}
+
 	svg.End()
 	return nil
 }
@@ -511,6 +521,7 @@ func (m *Map) ExportPng(name string) {
 				col.R = uint8(float64(255) * float64(cr) / float64(0xffff))
 				col.G = uint8(float64(255) * float64(cg) / float64(0xffff))
 				col.B = uint8(float64(255) * float64(cb) / float64(0xffff))
+				col.A = 255
 			}
 			// col = GetWhittakerModBiomeColor(int(getMeanAnnualTemp(lat)-getTempFalloffFromAltitude(8850*valElev)), int(valMois*45), val)
 		}
