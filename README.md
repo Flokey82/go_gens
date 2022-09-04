@@ -10,6 +10,10 @@ DO NOT USE YET!
 ### gamecs: Simulation with agents
 This is a very basic simulation with agents using state machines and behavior trees.
 
+### gamedice: Dice roller for games
+
+This package implements a simple dice roller for games like Dungeons & Dragons and other RPGs that use all kinds of dice (D4, D8, ..., D20, etc.).
+
 ### genbiome: Biome helper functions
 
 This package provides functions for looking up the biome (e.g. forest, grassland, etc.) for the given precipitation and average temperature.
