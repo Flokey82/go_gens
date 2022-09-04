@@ -1,7 +1,9 @@
-# Simple Game Loop in Golang
+# gameloop: Simple Game Loop in Golang
 This is a very, very basic game loop... nothing fancy about it.
 
 This implementation is a bare bones variant inspired by kutase's excellent [go-gameloop](https://github.com/kutase/go-gameloop).
+
+If you want to use a more advanced game loop, please consider using kutase's package :)
 
 ## Example
 

@@ -1,5 +1,5 @@
 // Package gameloop implements a very simple game loop.
-// This code was inspired by: github.com/kutase/go-gameloop
+// This code is based on: github.com/kutase/go-gameloop
 package gameloop
 
 import (
