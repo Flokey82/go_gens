@@ -1,6 +1,8 @@
 package genworldvoronoi
 
 import (
+	"math"
+
 	"github.com/Flokey82/go_gens/vectors"
 )
 
@@ -93,6 +95,7 @@ func (m *Map) findCollisions() ([]int, []int, []int, map[int]float64) {
 	plateVectors := m.PlateVectors
 	numRegions := m.mesh.numRegions
 	compression_r := make(map[int]float64)
+	nInf := math.Inf(-1)
 
 	const deltaTime = 1e-7 // simulate movement
 
@@ -104,7 +107,7 @@ func (m *Map) findCollisions() ([]int, []int, []int, map[int]float64) {
 	var best_r int
 	var bestCompression float64
 	for current_r := 0; current_r < numRegions; current_r++ {
-		bestCompression = -1.0 // NOTE: Was Infinity
+		bestCompression = nInf // NOTE: Was Infinity
 		best_r = -1
 		r_out = m.mesh.r_circulate_r(r_out, current_r)
 		for _, neighbor_r := range r_out {
@@ -229,42 +232,54 @@ func (m *Map) assignRegionElevation() {
 	var r_distance_a, r_distance_b, r_distance_c []float64
 	if useDistanceFieldWithCompression {
 		// Calculate distance fields using the compression values of each region.
-		r_distance_a = m.assignDistanceFieldWithIntensity(mountain_r, convToMap(ocean_r), compression_r)  // graph distance from mountains (stops at ocean regions)
-		r_distance_b = m.assignDistanceFieldWithIntensity(ocean_r, convToMap(coastline_r), compression_r) // graph distance from ocean (stops at coastline regions)
-		r_distance_c = m.assignDistanceFieldWithIntensity(coastline_r, stop_r, compression_r)             // graph distance from coastline (stops at all other regions)
+
+		// Graph distance from mountains (stops at ocean regions).
+		r_distance_a = m.assignDistanceFieldWithIntensity(mountain_r, convToMap(ocean_r), compression_r)
+		// Graph distance from ocean (stops at coastline regions).
+		r_distance_b = m.assignDistanceFieldWithIntensity(ocean_r, convToMap(coastline_r), compression_r)
+		// Graph distance from coastline (stops at all other regions).
+		r_distance_c = m.assignDistanceFieldWithIntensity(coastline_r, stop_r, compression_r)
 	} else {
 		// Calculate distance fields.
-		r_distance_a = m.assignDistanceField(mountain_r, convToMap(ocean_r))  // graph distance from mountains (stops at ocean regions)
-		r_distance_b = m.assignDistanceField(ocean_r, convToMap(coastline_r)) // graph distance from ocean (stops at coastline regions)
-		r_distance_c = m.assignDistanceField(coastline_r, stop_r)             // graph distance from coastline (stops at all other regions)
+
+		// Graph distance from mountains (stops at ocean regions).
+		r_distance_a = m.assignDistanceField(mountain_r, convToMap(ocean_r))
+		// Graph distance from ocean (stops at coastline regions).
+		r_distance_b = m.assignDistanceField(ocean_r, convToMap(coastline_r))
+		// Graph distance from coastline (stops at all other regions).
+		r_distance_c = m.assignDistanceField(coastline_r, stop_r)
 	}
-	// Get min/max compression.
-	// var compVals []float64
-	// for _, v := range compression_r {
-	//   compVals = append(compVals, v)
-	// }
-	// minComp, maxComp := minMax(compVals)
 
-	// enableRipples := true
-
+	// This code below calculates the height of a given region based on a linear
+	// interpolation of the three distance values above.
+	//
+	// Ideally, we would use some form of noise using the distance to a mountain / faultline
+	// to generate a more natural looking landscape with mountain ridges resulting from the
+	// folding of the plates.
+	//
+	// Since we want a "wave" like appearance, we could use one dimensional noise based on the
+	// distance to the faultline with some variation for a more natural look.
 	const epsilon = 1e-3
 	r_xyz := m.r_xyz
+	inf := math.Inf(0)
 	for r := 0; r < m.mesh.numRegions; r++ {
-		a := r_distance_a[r] + epsilon
-		b := r_distance_b[r] + epsilon
-		c := r_distance_c[r] + epsilon
+		a := r_distance_a[r] + epsilon // Distance from mountains
+		b := r_distance_b[r] + epsilon // Distance from oceans
+		c := r_distance_c[r] + epsilon // Distance from coastline
 		if m.PlateIsOcean[m.r_plate[r]] {
+			// Ocean plates are slightly lower than other plates.
 			m.r_elevation[r] = -0.1
 		}
-		if r_distance_a[r] == -1 && r_distance_b[r] == -1 { // if a == Infinity && b == Infinity {
+		if r_distance_a[r] == inf && r_distance_b[r] == inf {
+			// If the distance from mountains and oceans is unset (infinity),
+			// we increase the elevation by 0.1 since we wouldn't be able to
+			// calculate the harmonic mean.
 			m.r_elevation[r] += 0.1
 		} else {
+			// The height is calculated as weighted harmonic mean of the
+			// three distance values.
 			f := (1/a - 1/b) / (1/a + 1/b + 1/c)
 			m.r_elevation[r] += f
-			// if a > epsilon && enableRipples && a < b && a < c {
-			//	m.r_elevation[r] -= (1 / a) * math.Sin(a) * f * (m.noise.Eval2(b, a) + 1) / 3
-			// }
-			// m.r_elevation[r] *= (compression_r[r] - minComp) / (maxComp - minComp)
 		}
 		m.r_elevation[r] += m.fbm_noise(r_xyz[3*r], r_xyz[3*r+1], r_xyz[3*r+2])
 	}

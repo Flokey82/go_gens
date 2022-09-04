@@ -164,13 +164,14 @@ func (m *Map) assignDistanceField(seeds_r []int, stop_r map[int]bool) []float64 
 	// Reset the random number generator.
 	m.resetRand()
 
+	inf := math.Inf(0)
 	mesh := m.mesh
 	numRegions := mesh.numRegions
 
 	// Initialize the distance values for all regions to -1.
 	r_distance := make([]float64, numRegions)
 	for i := range r_distance {
-		r_distance[i] = -1 // was: Infinity
+		r_distance[i] = inf
 	}
 
 	// Initialize the queue for the breadth first search with
@@ -190,7 +191,7 @@ func (m *Map) assignDistanceField(seeds_r []int, stop_r map[int]bool) []float64 
 		current_r := queue[pos]
 		queue[pos] = queue[queue_out]
 		for _, neighbor_r := range mesh.r_circulate_r(out_r, current_r) {
-			if r_distance[neighbor_r] != -1 || stop_r[neighbor_r] {
+			if r_distance[neighbor_r] != inf || stop_r[neighbor_r] {
 				continue
 			}
 
@@ -217,13 +218,14 @@ func (m *Map) assignDistanceFieldWithIntensity(seeds_r []int, stop_r map[int]boo
 	// Reset the random number generator.
 	m.resetRand()
 
+	inf := math.Inf(0)
 	mesh := m.mesh
 	numRegions := mesh.numRegions
 
 	// Initialize the distance values for all regions to -1.
 	r_distance := make([]float64, numRegions)
 	for i := range r_distance {
-		r_distance[i] = -1 // was: Infinity
+		r_distance[i] = inf
 	}
 
 	// Initialize the queue for the breadth first search with
@@ -257,7 +259,7 @@ func (m *Map) assignDistanceFieldWithIntensity(seeds_r []int, stop_r map[int]boo
 		current_dist := r_distance[current_r]
 		queue[pos] = queue[queue_out]
 		for _, neighbor_r := range mesh.r_circulate_r(out_r, current_r) {
-			if r_distance[neighbor_r] != -1 || stop_r[neighbor_r] {
+			if r_distance[neighbor_r] != inf || stop_r[neighbor_r] {
 				continue
 			}
 
