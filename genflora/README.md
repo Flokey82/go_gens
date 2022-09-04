@@ -51,6 +51,7 @@ Plants that grow in shaded areas or under trees have to be able to survive with 
 
 Dry climate might result in:
  - small leaves to minimize water loss
+   - NOTE: (This article)[https://www.frontiersin.org/articles/10.3389/fpls.2019.00058/full] suggests the opposite. In temperate forests, smaller leaves seem to lose water faster. Weird stuff.
  - small flowers to minimize water loss
  - hardy stems that can withstand drought
  - thick stems that can hold a lot of water
