@@ -17,14 +17,17 @@ This map is based on https://github.com/JoeyR/FastBiome and provides a more exte
 
 I've started to extend the Whittaker model to be more complete and have added the missing biomes, as well as additional biomes such as "snow", "wetlands", and "hot swamp". I am not sure if I will keep the swamp though, since it is a bit... meh. Let's say I don't really trust my skills as a climate biome science person.
 
+## Done
+
+* missing biome in extended Whittaker (cool, humid)
 
 ## TODO
 
-* find better colors:
-  * wetlands
-  * savannah
-  * ... everything
-* missing biome in extended Whittaker (cool, humid)
+* improve function names
+* min/max values should be ranges
+* find better colors for biomes
+  * wetlands, savannah, ... everything?
+  * create a color palette?
 * re-do extended Whittaker (seems to be off)
   * wetlands covers a too broad range
   * swamps need to be looked at

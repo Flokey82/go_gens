@@ -57,7 +57,7 @@ func GetRedblobBiome(height, moisture int) int {
 
 // RedblobBiomeColor maps the (RedBlobGames) biome types to their color representation.
 var RedblobBiomeColor = map[int]color.NRGBA{
-	RedblobBiomeSnow:                    {0xFF, 0xFF, 0xFF, 0},
+	RedblobBiomeSnow:                    ColorSnowIce,
 	RedblobBiomeTundra:                  {0xDD, 0xDD, 0xBB, 0},
 	RedblobBiomeBare:                    {0xBB, 0xBB, 0xBB, 0},
 	RedblobBiomeScorched:                {0x99, 0x99, 0x99, 0},
@@ -268,11 +268,13 @@ const (
 	WhittakerModBiomeTemperateGrassland      = 0x7
 	WhittakerModBiomeBorealForestTaiga       = 0x8
 	WhittakerModBiomeTundra                  = 0x9
-	WhittakerModBiomeColdDesert              = 0xA
-	WhittakerModBiomeSnow                    = 0xB
-	WhittakerModBiomeHotSwamp                = 0xC // Tropical swamps!
-	WhittakerModBiomeWetlands                = 0xD // This covers a lot (marshes, cold swamps, etc.)
-	WhittakerModBiomeSavannah                = 0xE
+	WhittakerModBiomeColdDesert              = 0xA // Cold, dry winters, possibly warm, dry summers.
+	WhittakerModBiomeSavannah                = 0xE // Hot, dry, grassland.
+
+	// Not covered by Whittaker:
+	WhittakerModBiomeSnow     = 0xB // Precipitation (any), temperature below freezing (includes glaciers).
+	WhittakerModBiomeHotSwamp = 0xC // Hot, lots of precipitation, tropical swamps!
+	WhittakerModBiomeWetlands = 0xD // Temperate but lots of precipitation (marshes, cold swamps, etc.).
 )
 
 // GetWhittakerModBiome returns the (modified) Whittaker biome for the given temperature and precipitation.
@@ -285,6 +287,7 @@ func GetWhittakerModBiome(temperature, precipitation int) int {
 var (
 	ColorRainForest     = color.NRGBA{R: 0x1d, G: 0xBA, B: 0x37, A: 0}
 	ColorSeasonalForest = color.NRGBA{R: 0x28, G: 0xAC, B: 0x2A, A: 0}
+	ColorSnowIce        = color.NRGBA{R: 0xFF, G: 0xFF, B: 0xFF, A: 0}
 )
 
 // WhittakerModBiomeColor maps the (modified Whittaker) biome types to their color representation.
@@ -303,7 +306,7 @@ var WhittakerModBiomeColor = map[int]color.NRGBA{
 	WhittakerModBiomeHotSwamp:                {0x96, 0x4B, 0x00, 0},
 	WhittakerModBiomeWetlands:                {0x0B, 0xB0, 0x1B, 0}, // TODO: Find a better color
 	WhittakerModBiomeSavannah:                {0xff, 0xd1, 0x45, 0},
-	WhittakerModBiomeSnow:                    {0xFF, 0xFF, 0xFF, 0},
+	WhittakerModBiomeSnow:                    ColorSnowIce,
 }
 
 // GetWhittakerModBiomeColor returns a color representing the (modified Whittaker) biome
@@ -321,13 +324,18 @@ func GetWhittakerModBiomeColor(temperature, precipitation int, intensity float64
 	}
 }
 
+// Whittaker constants.
 const (
-	MinTemperatureC    = -15
-	MaxTemperatureC    = 30
+	// Temperature range.
+	MinTemperatureC = -15
+	MaxTemperatureC = 30
+
+	// Precipitation range.
 	MinPrecipitationDM = 0
 	MaxPrecipitationDM = 45
 )
 
+// WhittakerClampTemperatureToIndex clamps the given temperature (yearly average) to the range of the lookup table.
 func WhittakerClampTemperatureToIndex(temp int) int {
 	if temp <= MinTemperatureC {
 		return 44
@@ -338,6 +346,7 @@ func WhittakerClampTemperatureToIndex(temp int) int {
 	return 44 - (temp + 15)
 }
 
+// WhittakerClampPrecipitationToIndex clamps the precipitation (in dm/year) to the range of the lookup table.
 func WhittakerClampPrecipitationToIndex(prec int) int {
 	if prec >= MaxPrecipitationDM {
 		return 44
