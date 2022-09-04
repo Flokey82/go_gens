@@ -10,10 +10,6 @@ DO NOT USE YET!
 ### gamecs: Simulation with agents
 This is a very basic simulation with agents using state machines and behavior trees.
 
-### gamedice: Dice roller for games
-
-This package implements a simple dice roller for games like Dungeons & Dragons and other RPGs that use all kinds of dice (D4, D8, ..., D20, etc.).
-
 ### genbiome: Biome helper functions
 
 This package provides functions for looking up the biome (e.g. forest, grassland, etc.) for the given precipitation and average temperature.
@@ -91,6 +87,10 @@ A very basic village simulator which has settlers settle, procreate, live, love,
 Currently, this only provides a very basic tile based renderer with some basic collision detection, etc. In future, it will be a village simulation on a tile based map. (Uses https://ebiten.org/)
 
 ## Game components
+
+### gamedice: Dice roller for games
+
+This package implements a simple dice roller for games like Dungeons & Dragons and other RPGs that use all kinds of dice (D4, D8, ..., D20, etc.).
 
 ### gameloop: Simple Game Loop
 This is a very, very basic game loop... nothing fancy about it.
