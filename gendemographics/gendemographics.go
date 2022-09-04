@@ -1,10 +1,12 @@
 // Package gendemographics is based on Medieval Demographics Made Easy by S. John Ross.
 package gendemographics
 
+// Client is a demographic generating client thingy. :P
 type Client struct {
-	BT []*BusinessType
+	BT []*BusinessType // business types
 }
 
+// New returns a new client for generating businesses based on demographics.
 func New() *Client {
 	return &Client{
 		BT: BusinessTypes,
@@ -22,6 +24,5 @@ func (c *Client) NewNation(size, density int) *Nation {
 
 // NewSettlement returns a new settlement with the given population size.
 func (c *Client) NewSettlement(population int) *Settlement {
-	s := NewSettlement(population)
-	return s
+	return NewSettlement(population)
 }

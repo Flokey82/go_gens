@@ -1,11 +1,11 @@
 package gendemographics
 
 // GenBusinesses returns a map of business to number of businesses for the given population size.
+// NOTE: Meh, not happy about it being a map.
 func GenBusinesses(population int) map[string]int {
 	res := make(map[string]int)
 	for _, bt := range BusinessTypes {
 		if population > bt.Serves {
-			//log.Println(fmt.Sprintf("%q: %d", bt.Name, population/bt.Serves))
 			res[bt.Name] = population / bt.Serves
 		}
 	}
@@ -19,8 +19,8 @@ type Business struct {
 
 // BusinessType represents a type of business.
 type BusinessType struct {
-	Name   string
-	Serves int
+	Name   string // business type name (profession)
+	Serves int    // people served by a single business
 }
 
 // New returns a new business of the given business types.
@@ -30,66 +30,191 @@ func (bt *BusinessType) New() *Business {
 	}
 }
 
-var BusinessTypes = []*BusinessType{
-	{"Shoemaker", 150},
-	{"Furrier", 250},
-	{"Maidservant", 250},
-	{"Tailor", 250},
-	{"Barber", 350},
-	{"Jeweler", 400},
-	{"Taverns/Restaurant", 400},
-	{"Old-clothes", 400},
-	{"Pastrycook", 500},
-	{"Mason", 500},
-	{"Carpenter", 550},
-	{"Weaver", 600},
-	{"Chandler", 700},
-	{"Mercer", 700},
-	{"Cooper", 700},
-	{"Baker", 800},
-	{"Watercarrier", 850},
-	{"Scabbardmaker", 850},
-	{"Wine-seller", 900},
-	{"Hatmaker", 950},
-	{"Saddler", 1000},
-	{"Chicken Butcher", 1000},
-	{"Pursemaker", 1100},
-	{"Woodseller", 2400},
-	{"Magic-shop", 2800},
-	{"Bookbinder", 3000},
-	{"Butcher", 1200},
-	{"Fishmonger", 1200},
-	{"Beer-seller", 1400},
-	{"Buckle Maker", 1400},
-	{"Plasterer", 1400},
-	{"Spice Merchant", 1400},
-	{"Blacksmith", 1500},
-	{"Painter", 1500},
-	{"Doctor", 1700},
-	{"Roofer", 1800},
-	{"Locksmith", 1900},
-	{"Bather", 1900},
-	{"Ropemaker", 1900},
-	{"Inn", 2000},
-	{"Tanner", 2000},
-	{"Copyist", 2000},
-	{"sculptor", 2000},
-	{"Rugmaker", 2000},
-	{"Harness-Maker", 2000},
-	{"Bleacher", 2100},
-	{"Hay Merchant", 2300},
-	{"Cutler", 2300},
-	{"Glovemaker", 2400},
-	{"Woodcarver", 2400},
-	{"Bookseller", 6300},
-	{"Illuminator", 3900},
-	{"Place Of Worship", 400},
+// BusinessTypes is a list of all business types.
+//
+// NOTE: Wouldn't this be better in a CSV or something?
+// On the other hand, it'd be good to have some form of
+// identifier that users of the package can refer to.
+// IDK.
+//
+// ... should it be a map?
+var BusinessTypes = []*BusinessType{{
+	Name:   "Shoemaker",
+	Serves: 150,
+}, {
+	Name:   "Furrier",
+	Serves: 250,
+}, {
+	Name:   "Maidservant",
+	Serves: 250,
+}, {
+	Name:   "Tailor",
+	Serves: 250,
+}, {
+	Name:   "Barber",
+	Serves: 350,
+}, {
+	Name:   "Jeweler",
+	Serves: 400,
+}, {
+	Name:   "Taverns/Restaurant",
+	Serves: 400,
+}, {
+	Name:   "Old-clothes",
+	Serves: 400,
+}, {
+	Name:   "Pastrycook",
+	Serves: 500,
+}, {
+	Name:   "Mason",
+	Serves: 500,
+}, {
+	Name:   "Carpenter",
+	Serves: 550,
+}, {
+	Name:   "Weaver",
+	Serves: 600,
+}, {
+	Name:   "Chandler",
+	Serves: 700,
+}, {
+	Name:   "Mercer",
+	Serves: 700,
+}, {
+	Name:   "Cooper",
+	Serves: 700,
+}, {
+	Name:   "Baker",
+	Serves: 800,
+}, {
+	Name:   "Watercarrier",
+	Serves: 850,
+}, {
+	Name:   "Scabbardmaker",
+	Serves: 850,
+}, {
+	Name:   "Wine-seller",
+	Serves: 900,
+}, {
+	Name:   "Hatmaker",
+	Serves: 950,
+}, {
+	Name:   "Saddler",
+	Serves: 1000,
+}, {
+	Name:   "Chicken Butcher",
+	Serves: 1000,
+}, {
+	Name:   "Pursemaker",
+	Serves: 1100,
+}, {
+	Name:   "Woodseller",
+	Serves: 2400,
+}, {
+	Name:   "Magic-shop",
+	Serves: 2800,
+}, {
+	Name:   "Bookbinder",
+	Serves: 3000,
+}, {
+	Name:   "Butcher",
+	Serves: 1200,
+}, {
+	Name:   "Fishmonger",
+	Serves: 1200,
+}, {
+	Name:   "Beer-seller",
+	Serves: 1400,
+}, {
+	Name:   "Buckle Maker",
+	Serves: 1400,
+}, {
+	Name:   "Plasterer",
+	Serves: 1400,
+}, {
+	Name:   "Spice Merchant",
+	Serves: 1400,
+}, {
+	Name:   "Blacksmith",
+	Serves: 1500,
+}, {
+	Name:   "Painter",
+	Serves: 1500,
+}, {
+	Name:   "Doctor",
+	Serves: 1700,
+}, {
+	Name:   "Roofer",
+	Serves: 1800,
+}, {
+	Name:   "Locksmith",
+	Serves: 1900,
+}, {
+	Name:   "Bather",
+	Serves: 1900,
+}, {
+	Name:   "Ropemaker",
+	Serves: 1900,
+}, {
+	Name:   "Inn",
+	Serves: 2000,
+}, {
+	Name:   "Tanner",
+	Serves: 2000,
+}, {
+	Name:   "Copyist",
+	Serves: 2000,
+}, {
+	Name:   "sculptor",
+	Serves: 2000,
+}, {
+	Name:   "Rugmaker",
+	Serves: 2000,
+}, {
+	Name:   "Harness-Maker",
+	Serves: 2000,
+}, {
+	Name:   "Bleacher",
+	Serves: 2100,
+}, {
+	Name:   "Hay Merchant",
+	Serves: 2300,
+}, {
+	Name:   "Cutler",
+	Serves: 2300,
+}, {
+	Name:   "Glovemaker",
+	Serves: 2400,
+}, {
+	Name:   "Woodcarver",
+	Serves: 2400,
+}, {
+	Name:   "Bookseller",
+	Serves: 6300,
+}, {
+	Name:   "Illuminator",
+	Serves: 3900,
+}, {
+	Name:   "Place Of Worship",
+	Serves: 400,
+},
 	// OTHER JOBS / NOT BUSINESS
-	{"Law Enforcement", 150},
-	{"Noble", 200},
-	{"Administrator", 650},
-	{"Clergy", 40},
-	{"Priest", 1000},
+	{
+		Name:   "Law Enforcement",
+		Serves: 150,
+	}, {
+		Name:   "Noble",
+		Serves: 200,
+	}, {
+		Name:   "Administrator",
+		Serves: 650,
+	}, {
+		Name:   "Clergy",
+		Serves: 40,
+	}, {
+		Name:   "Priest",
+		Serves: 1000,
+	},
 }
 
 /* ORIGINAL LIST

@@ -12,9 +12,10 @@ type Nation struct {
 	Settlements []*Settlement
 }
 
+// Various constants.
 const (
-	DensityLow         = 20 // population per sqmile
-	DensityMedium      = 40
+	DensityLow         = 20  // population per sqmile
+	DensityMedium      = 40  // population per sqmile
 	defaultAgriculture = 120 // 1 sqmile can feed 120 people
 )
 
@@ -26,6 +27,7 @@ func NewNation(size, density int) *Nation {
 	}
 }
 
+// Log prints information on the nation to the console.
 func (n *Nation) Log() {
 	log.Println(fmt.Sprintf("Population: %d", n.Population()))
 	for _, s := range n.Settlements {
