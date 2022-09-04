@@ -9,6 +9,8 @@ import (
 	opensimplex "github.com/ojrac/opensimplex-go"
 )
 
+// Terrain is an interface for a heightmap.
+// ... I can't remember if I use this somewhere.
 type Terrain interface {
 	//ApplyGen(f GenFunc)
 	MinMax() (float64, float64)
@@ -16,18 +18,25 @@ type Terrain interface {
 
 type GenFunc func(x, y float64) float64
 
+// GenSlope returns a generator function that produces a slope in the direction
+// of the given vector.
 func GenSlope(direction vectors.Vec2) GenFunc {
 	return func(x, y float64) float64 {
 		return x*direction.X + y*direction.Y
 	}
 }
 
+// GenCone returns a generator function for a cone at the center of the heightmap.
+// TODO: Allow the user to specify the center of the cone.
 func GenCone(slope float64) GenFunc {
 	return func(x, y float64) float64 {
 		return math.Pow(x*x+y*y, 0.5) * slope
 	}
 }
 
+// GenVolCone returns a generator function for a volcanic cone
+// at the center of the heightmap.
+// TODO: Allow the user to specify the center of the cone.
 func GenVolCone(slope float64) GenFunc {
 	return func(x, y float64) float64 {
 		dist := math.Pow(x*x+y*y, 0.5)
@@ -38,6 +47,14 @@ func GenVolCone(slope float64) GenFunc {
 	}
 }
 
+// GenMountains returns a generator function that will return the height of a
+// point on the heightmap given the point's coordinates, which will produce a
+// number of mountains.
+// TODO: The seed should be passed into the function as parameter.
+//
+// 'maxX', 'maxY' are the dimensions of the heightmap.
+// 'n' is the number of mountains.
+// 'r' is the radius of the mountains.
 func GenMountains(maxX, maxY float64, n int, r float64) GenFunc {
 	rand.Seed(1234)
 	var mounts [][2]float64
@@ -54,6 +71,8 @@ func GenMountains(maxX, maxY float64, n int, r float64) GenFunc {
 	}
 }
 
+// GenNoise returns a function that returns the noise/height value of a given point
+// on the heightmap. Not sure what the slope parameter was supposed to do.
 func GenNoise(seed int64, slope float64) GenFunc {
 	perlin := opensimplex.New(seed)
 
@@ -70,6 +89,7 @@ func GenNoise(seed int64, slope float64) GenFunc {
 	}
 }
 
+// CalcMean calculates the mean of a slice of floats.
 func CalcMean(nums []float64) float64 {
 	total := 0.0
 	for _, v := range nums {
@@ -78,6 +98,7 @@ func CalcMean(nums []float64) float64 {
 	return total / float64(len(nums))
 }
 
+// MinMax returns the min and max values of the heightmap.
 func MinMax(hm []float64) (float64, float64) {
 	if len(hm) == 0 {
 		return 0, 0
@@ -96,18 +117,25 @@ func MinMax(hm []float64) (float64, float64) {
 	return min, max
 }
 
+// Modify is a function that modifies a value in a heightmap.
 type Modify func(val float64) float64
 
+// ModNormalize normalizes the heightmap to the range [0, 1] given
+// the min and max values (the range of heightmap values).
 func ModNormalize(min, max float64) Modify {
 	return func(val float64) float64 {
 		return (val - min) / (max - min)
 	}
 }
 
+// ModPeaky returns the function applied to a point on a heightmap
+// in order to exaggerate the peaks of the map.
 func ModPeaky() Modify {
 	return math.Sqrt
 }
 
+// ModSeaLevel shifts the origin point to the sea level, resulting in
+// all points below sea level being negative.
 func ModSeaLevel(min, max, q float64) Modify {
 	delta := min + (max-min)*0.1
 	//delta := quantile(h, q)
@@ -116,11 +144,17 @@ func ModSeaLevel(min, max, q float64) Modify {
 	}
 }
 
+// ModifyWithIndex is a function that modifies a value in a heightmap given
+// its index and current value.
 type ModifyWithIndex func(idx int, val float64) float64
 
+// GetNeighbors returns all neighbor indices of an index on the heightmap.
 type GetNeighbors func(idx int) []int
+
+// GetHeight returns the height of a point on the heightmap given its index.
 type GetHeight func(idx int) float64
 
+// ModRelax applies a relaxation algorithm to the heightmap.
 func ModRelax(n GetNeighbors, h GetHeight) ModifyWithIndex {
 	return func(idx int, val float64) float64 {
 		vals := []float64{val}
