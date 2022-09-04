@@ -86,11 +86,6 @@ A very basic village simulator which has settlers settle, procreate, live, love,
 ### simvillage_tiles: Village simulation on a tile based map (WIP)
 Currently, this only provides a very basic tile based renderer with some basic collision detection, etc. In future, it will be a village simulation on a tile based map. (Uses https://ebiten.org/)
 
-## Game components
-
-### gameloop: Simple Game Loop
-This is a very, very basic game loop... nothing fancy about it.
-
 ## Utility
 
 ### vectors
