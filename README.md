@@ -88,10 +88,6 @@ Currently, this only provides a very basic tile based renderer with some basic c
 
 ## Game components
 
-### gamedice: Dice roller for games
-
-This package implements a simple dice roller for games like Dungeons & Dragons and other RPGs that use all kinds of dice (D4, D8, ..., D20, etc.).
-
 ### gameloop: Simple Game Loop
 This is a very, very basic game loop... nothing fancy about it.
 
