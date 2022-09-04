@@ -85,6 +85,11 @@ func Normalize(vec Vec2) (dest Vec2) {
 	return dest
 }
 
+// Dot2 returns the dotproduct of two vectors.
+func Dot2(v1, v2 Vec2) float64 {
+	return v1.Y*v2.Y + v1.X*v2.X
+}
+
 // Vec3 represents a three dimensional vector.
 type Vec3 struct {
 	X float64
