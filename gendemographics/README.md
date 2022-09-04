@@ -19,6 +19,10 @@ This package implements a simple demographic generator for games and is based on
 * General
   * Move constants to the same spot.
   * Move constants to config struct for customization?
+  * Consider population density based on heuristics
+    * Mountains, deserts, etc. reduces "livable land"
+    * Narrow valleys limit size of settlements
+    * What about cultures that live underground?
 
 ## Usage
 

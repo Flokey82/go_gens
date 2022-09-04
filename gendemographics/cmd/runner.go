@@ -6,7 +6,7 @@ import (
 
 func main() {
 	c := gendemographics.New()
-	n := c.NewNation(41000, gendemographics.DensityMedium)
+	n := c.NewNation(41000, gendemographics.PopulationDensityMedium)
 	n.Log()
 	//log.Println(gendemographics.GenSettlementSizes(100000))
 }

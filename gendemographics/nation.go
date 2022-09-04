@@ -7,16 +7,16 @@ import (
 
 // Nation represents a nation.
 type Nation struct {
-	Size        int
-	Density     int
-	Settlements []*Settlement
+	Size        int           // geographic size in square miles
+	Density     int           // population density in people per square mile
+	Settlements []*Settlement // settlements within the nation
 }
 
 // Various constants.
 const (
-	DensityLow         = 20  // population per sqmile
-	DensityMedium      = 40  // population per sqmile
-	defaultAgriculture = 120 // 1 sqmile can feed 120 people
+	PopulationDensityLow        = 20  // population per sqmile
+	PopulationDensityMedium     = 40  // population per sqmile
+	PopulationPerSqmAgriculture = 120 // 1 sqmile can feed 120 people
 )
 
 // NewNation returns a new nation with the given square milage and population density.
@@ -42,5 +42,5 @@ func (n *Nation) Population() int {
 
 // Agriculture returns the number of square miles required to feed the population.
 func (n *Nation) Agriculture() int {
-	return n.Population() / defaultAgriculture
+	return n.Population() / PopulationPerSqmAgriculture
 }

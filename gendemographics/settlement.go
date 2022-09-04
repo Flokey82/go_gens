@@ -7,11 +7,30 @@ import (
 	"math/rand"
 )
 
+// Range represents a range of values.
+type Range [2]int
+
+// InRange returns true if the given value is within the range.
+func (r Range) InRange(value int) bool {
+	return value >= r.Min() && value <= r.Max()
+}
+
+// Min returns the minimum value of the range.
+func (r Range) Min() int {
+	return r[0]
+}
+
+// Max returns the maximum value of the range.
+func (r Range) Max() int {
+	return r[1]
+}
+
 // Sizes of settlement types.
-const (
-	PopTown    = 1500
-	PopVillage = 150
-	PopHamlet  = 50
+var (
+	PopRangeCity    = Range{8000, 12000}
+	PopRangeTown    = Range{1000, 8000}
+	PopRangeVillage = Range{100, 1000}
+	PopRangeHamlet  = Range{10, 100}
 )
 
 // GenSettlementPopulations generates a number of cities, towns, settlements represented as population counts.
@@ -53,10 +72,11 @@ func GenSettlementPopulations(population int) []int {
 	// NOTE: This code doesn't really have an upper limit for city size... so if the
 	// capital is huge, we might very well exceed the size of 12,000 people.
 	prevPopulation := secondaryCityPopulation
+	minPopCity := PopRangeCity.Min()
 	for {
 		// We use a randomized fraction of 8% shrinking.
 		pop := int(float64(prevPopulation) * (1.0 - (0.08 * rand.Float64())))
-		if pop < 8000 {
+		if pop < minPopCity {
 			break
 		}
 		res = append(res, pop)
@@ -74,17 +94,17 @@ func GenSettlementPopulations(population int) []int {
 	// Cities and towns tend to have walls only if they’re politically
 	// important and/or frequently threatened.
 	numTowns := len(res) * 9
-	remTowns := numTowns
-	for remTowns > 0 {
+	minPopTown := PopRangeTown.Min()
+	for remTowns := numTowns; remTowns > 0; remTowns-- {
 		// We use a randomized fraction of 3% shrinking.
 		pop := int(float64(prevPopulation) * (1.0 - (0.03 * rand.Float64())))
-		if pop < 1000 {
+		if pop < minPopTown {
 			break
 		}
 		res = append(res, pop)
 		population -= pop
 		prevPopulation = pop
-		remTowns--
+
 	}
 
 	// Now we'd need to determine the number of villages and hamlets.
@@ -102,10 +122,11 @@ func GenSettlementPopulations(population int) []int {
 	// the number of villages and hamlets. But we'd need to know the
 	// average ratio of number of cities to number of villages and
 	// hamlets.
-	for population > 10 {
+	minPopHamlet := PopRangeHamlet.Min()
+	for population > minPopHamlet {
 		// We use a randomized fraction of 1% shrinking right now.
 		pop := int(float64(prevPopulation) * (1.0 - (0.01 * rand.Float64())))
-		if pop < 10 {
+		if pop < minPopHamlet {
 			break
 		}
 		res = append(res, pop)
