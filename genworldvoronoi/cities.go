@@ -50,6 +50,7 @@ func (m *Map) rCityScore() []float64 {
 
 		// Visit all neighbors and modify the score based on their properties.
 		for _, nbs := range m.rNeighbors(i) {
+			// Add bonus if near ocean or lake.
 			if m.r_elevation[nbs] <= 0 || m.r_pool[nbs] > 0 {
 				// If a neighbor is below (or at) sea level, or a lake,
 				// we increase the fitness value and reduce it by a fraction,
@@ -70,10 +71,10 @@ func (m *Map) rCityScore() []float64 {
 				break
 			}
 
-			// TODO: Add bonus if near ocean or lake.
-			// TODO: Consider biome
-			// TODO: Consider sediment/fertility of land.
-			// TODO: Add bonus for mountain proximity (mines, resources)
+			// TODO:
+			// - Consider biome
+			// - Consider sediment/fertility of land.
+			// - Add bonus for mountain proximity (mines, resources)
 		}
 
 		// Penalty for proximity / bonus for higher distance to other cities.
@@ -95,7 +96,7 @@ func (m *Map) rCityScore() []float64 {
 // rPlaceCity places another city at the region with the highest fitness score.
 func (m *Map) rPlaceCity() {
 	var newcity int
-	lastMax := -999999.0
+	lastMax := math.Inf(-1)
 	for i, val := range m.rCityScore() {
 		if val > lastMax {
 			newcity = i

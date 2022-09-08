@@ -3,6 +3,7 @@ package genworldvoronoi
 import (
 	"container/heap"
 	"log"
+	"math"
 	"sort"
 	"time"
 )
@@ -462,7 +463,7 @@ func (m *Map) fillSinksPlanchonDarboux() []float64 {
 	// Reset the RNG.
 	m.resetRand()
 
-	const infinity = 999999999.0
+	inf := math.Inf(0)
 	baseEpsilon := 1.0 / (float64(m.mesh.numRegions) * 1000.0)
 	newHeight := make([]float64, m.mesh.numRegions)
 	for i := range newHeight {
@@ -472,7 +473,7 @@ func (m *Map) fillSinksPlanchonDarboux() []float64 {
 			newHeight[i] = m.r_elevation[i]
 		} else {
 			// Set the elevation above sea level to infinity.
-			newHeight[i] = infinity
+			newHeight[i] = inf
 		}
 	}
 
@@ -553,6 +554,9 @@ func (m *Map) fillSinksPlanchonDarboux() []float64 {
 func (m *Map) assignHydrology() {
 	maxAttempts := 3
 	erosionAmount := 0.01 // Erode 1% of delta-h per pass.
+
+	// Start off by filling sinks.
+	m.r_elevation = m.fillSinks()
 
 	// Try to flood all sinks.
 	var attempts int
@@ -884,24 +888,32 @@ func (m *Map) getFlux(skipBelowSea bool) []float64 {
 //
 // Only thing I know is that it is based on Nick McDonald's old flood fill
 // he used in simple_hydrology.
+//
+// TODO: Return remaining volume
 func (m *Map) floodV1(r int, dVol float64) {
-	const volumeFactor = 100.0 // "Water Deposition Rate"
-	const epsilon = 1e-3
-	const minVol = 0.01
-	const drainage = 0.01
-	// TODO: Return remaining volume
+	const (
+		volumeFactor = 100.0 // "Water Deposition Rate"
+		epsilon      = 1e-3
+		minVol       = 0.01
+		drainage     = 0.01
+	)
+
 	plane := m.r_elevation[r] + m.r_pool[r]
 	initialplane := plane
 
-	// Floodset
+	// Floodset contains all regions that are part of a floodplain.
 	set := make([]int, 0, 1024)
+
+	// Abort after 200 attempts.
 	fail := 200
+
+	// Keep track of the regions we have visitad during a flood fill attempt.
 	tried := make([]bool, m.mesh.numRegions)
 	var drain int
 	var drainfound bool
 	var fill func(i int)
 	fill = func(i int) {
-		// Out of Bounds or position has been tried.
+		// Out of bounds, or region has been visited ("tried") previously.
 		if i < 0 || tried[i] {
 			return
 		}
@@ -927,9 +939,16 @@ func (m *Map) floodV1(r int, dVol float64) {
 		// Part of the Pool
 		set = append(set, i)
 		nbs := m.rNeighbors(i)
+
+		// Pre-sort neighbors by height (elevation + water pool).
+		//
+		// NOTE: The regions are sorted in ascending order, so the first
+		// region in the list will be the lowest one.
 		sort.Slice(nbs, func(si, sj int) bool {
 			return m.r_elevation[nbs[si]]+m.r_pool[nbs[si]] < m.r_elevation[nbs[sj]]+m.r_pool[nbs[sj]]
 		})
+
+		// Expand floodset by attempting to fill all neighbors.
 		for _, neighbor_r := range nbs {
 			fill(neighbor_r)
 		}
@@ -938,13 +957,17 @@ func (m *Map) floodV1(r int, dVol float64) {
 	// Iterate
 	for dVol > minVol && fail != 0 {
 		set = set[:0]
+
+		// Reset the visited regions.
 		for i := range tried {
 			tried[i] = false
 		}
+
+		// Reset the drain and drainfound flag.
 		drain = 0
 		drainfound = false
 
-		// Perform Flood
+		// Perform flooding of initial region.
 		fill(r)
 
 		// Drainage Point
@@ -990,7 +1013,7 @@ func (m *Map) floodV1(r int, dVol float64) {
 			fail-- // Plane was too high.
 		}
 
-		// Adjust Planes
+		// Adjust planes.
 		if plane > initialplane {
 			initialplane = plane
 		}
