@@ -3,6 +3,7 @@ package genworldvoronoi
 import (
 	"math"
 
+	"github.com/Flokey82/go_gens/utils"
 	"github.com/Flokey82/go_gens/vectors"
 )
 
@@ -17,7 +18,7 @@ func (m *Map) generatePlates() {
 	}
 
 	// Pick random regions as seed points for plate generation.
-	plate_r := m.pickRandomRegions(mesh, min(m.NumPlates, m.NumPoints))
+	plate_r := m.pickRandomRegions(mesh, utils.Min(m.NumPlates, m.NumPoints))
 
 	var queue []int
 	for _, r := range plate_r {

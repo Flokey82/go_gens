@@ -3,6 +3,8 @@ package simnpcs
 import (
 	"fmt"
 	"log"
+
+	"github.com/Flokey82/go_gens/utils"
 )
 
 type Index struct {
@@ -183,25 +185,27 @@ type Opinion struct {
 
 // Change the opinion of a character about a subject.
 func (o *Opinion) Change(imp Impact) {
-	o.Count++
 
 	// Update emotional impact.
-	o.Total.Emotional = incrementalAvrg(o.Total.Emotional, imp.Emotional, o.Count)
+	o.Total.Emotional = utils.IncrementalAvrg(o.Total.Emotional, imp.Emotional, o.Count)
 
 	// Update monitary impact.
-	o.Total.Monitary = incrementalAvrg(o.Total.Monitary, imp.Monitary, o.Count)
+	o.Total.Monitary = utils.IncrementalAvrg(o.Total.Monitary, imp.Monitary, o.Count)
 
 	// Update information impact.
-	o.Total.Information = incrementalAvrg(o.Total.Information, imp.Information, o.Count)
+	o.Total.Information = utils.IncrementalAvrg(o.Total.Information, imp.Information, o.Count)
+
+	// Increment the number of historic samples.
+	o.Count++
 
 	// Update emotional impact with a weighted change.
-	o.Emotional = weightedAvrg(o.Emotional, imp.Emotional, 0.5)
+	o.Emotional = utils.WeightedAvrg(o.Emotional, imp.Emotional, 0.5)
 
 	// Update monitary impact with a weighted change.
-	o.Monitary = weightedAvrg(o.Monitary, imp.Monitary, 0.5)
+	o.Monitary = utils.WeightedAvrg(o.Monitary, imp.Monitary, 0.5)
 
 	// Update information impact with a weighted change.
-	o.Information = weightedAvrg(o.Information, imp.Information, 0.5)
+	o.Information = utils.WeightedAvrg(o.Information, imp.Information, 0.5)
 }
 
 // String returns a string representation of the opinion.
@@ -212,12 +216,4 @@ func (o *Opinion) String() string {
 		return "doesn't mind"
 	}
 	return "likes"
-}
-
-func incrementalAvrg(oldVal, newVal float64, count int) float64 {
-	return oldVal + (newVal-oldVal)/(float64(count)-1)
-}
-
-func weightedAvrg(oldVal, newVal, weightFactor float64) float64 {
-	return oldVal + weightFactor*(newVal-oldVal)
 }

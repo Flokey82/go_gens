@@ -88,6 +88,10 @@ Currently, this only provides a very basic tile based renderer with some basic c
 
 ## Utility
 
+### utils
+
+This package contains a number of useful and commonly used functions and structures.
+
 ### vectors
 Various vector math functions.
 

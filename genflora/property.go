@@ -3,6 +3,8 @@ package genflora
 import (
 	"math"
 	"math/rand"
+
+	"github.com/Flokey82/go_gens/utils"
 )
 
 // PropertyRange represents a range of properties for a plant part.
@@ -18,12 +20,12 @@ import (
 //   - Frequency defines how often the plant part occurs per plant height.
 //   - Figure out if the ratios make sense and how things are being calculated.
 type PropertyRange struct {
-	Length    Range    // Length of the plant part
-	Diameter  Range    // Diameter of the plant part
-	Frequency Range    // Frequency of the plant part
-	Density   IntRange // Density of the plant part
-	Shapes    []int    // List of possible shapes
-	Effects   []int    // List of possible effects (e.g. poison, healing, etc.)
+	Length    utils.FloatRange // Length of the plant part
+	Diameter  utils.FloatRange // Diameter of the plant part
+	Frequency utils.FloatRange // Frequency of the plant part
+	Density   utils.IntRange   // Density of the plant part
+	Shapes    []int            // List of possible shapes
+	Effects   []int            // List of possible effects (e.g. poison, healing, etc.)
 }
 
 // Random returns a random property from the range.

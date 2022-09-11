@@ -5,32 +5,16 @@ import (
 	"log"
 	"math"
 	"math/rand"
+
+	"github.com/Flokey82/go_gens/utils"
 )
-
-// Range represents a range of values.
-type Range [2]int
-
-// InRange returns true if the given value is within the range.
-func (r Range) InRange(value int) bool {
-	return value >= r.Min() && value <= r.Max()
-}
-
-// Min returns the minimum value of the range.
-func (r Range) Min() int {
-	return r[0]
-}
-
-// Max returns the maximum value of the range.
-func (r Range) Max() int {
-	return r[1]
-}
 
 // Sizes of settlement types.
 var (
-	PopRangeCity    = Range{8000, 12000}
-	PopRangeTown    = Range{1000, 8000}
-	PopRangeVillage = Range{100, 1000}
-	PopRangeHamlet  = Range{10, 100}
+	PopRangeCity    = utils.IntRange{8000, 12000}
+	PopRangeTown    = utils.IntRange{1000, 8000}
+	PopRangeVillage = utils.IntRange{100, 1000}
+	PopRangeHamlet  = utils.IntRange{10, 100}
 )
 
 // GenSettlementPopulations generates a number of cities, towns, settlements represented as population counts.

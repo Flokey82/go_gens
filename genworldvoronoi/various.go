@@ -40,14 +40,6 @@ func normal2(v [2]float64) [2]float64 {
 	}
 }
 
-// min is the int equivalent of math.Min(a, b).
-func min(a, b int) int {
-	if a < b {
-		return a
-	}
-	return b
-}
-
 // minMax returns the smallest and largest value in hm.
 func minMax(hm []float64) (float64, float64) {
 	if len(hm) == 0 {

@@ -4,15 +4,19 @@
 // And: https://storage.googleapis.com/pirk.io/papers/Makowski.etal-2019-Synthetic-Silviculture.pdf
 package genflora
 
+import (
+	"github.com/Flokey82/go_gens/utils"
+)
+
 // Some interesting values.
 var (
-	Temperature             = Range{-10, 33}   // Avg. yearly temperature (in °C).
-	Precipitation           = Range{10, 4300}  // Avg. yearly precipitation (in mm).
-	SeedingFrequency        = IntRange{1, 10}  // Num. of seeds/seeding period. (in 1/year)
-	SeedingRadius           = Range{0.01, 100} // Radius of placing plant seeds (in m).
-	ShadeTolerance          = Range{0, 1}      // Plant adaptation to shade.
-	TemperatureAdaptation   = Range{-10, 33}   // Optimal habitat temperature (in °C).
-	PrecipitationAdaptation = Range{10, 4300}  // Optimal habitat precipitation (in mm).
+	Temperature             = utils.FloatRange{-10, 33}   // Avg. yearly temperature (in °C).
+	Precipitation           = utils.FloatRange{10, 4300}  // Avg. yearly precipitation (in mm).
+	SeedingFrequency        = utils.IntRange{1, 10}       // Num. of seeds/seeding period. (in 1/year)
+	SeedingRadius           = utils.FloatRange{0.01, 100} // Radius of placing plant seeds (in m).
+	ShadeTolerance          = utils.FloatRange{0, 1}      // Plant adaptation to shade.
+	TemperatureAdaptation   = utils.FloatRange{-10, 33}   // Optimal habitat temperature (in °C).
+	PrecipitationAdaptation = utils.FloatRange{10, 4300}  // Optimal habitat precipitation (in mm).
 )
 
 type PlantClass int
@@ -35,8 +39,8 @@ const (
 
 // plantClassConfig is a configuration for a plant class.
 type plantClassConfig struct {
-	MaxHeight Range
-	MaxAge    Range
+	MaxHeight utils.FloatRange
+	MaxAge    utils.FloatRange
 	Stem      *PropertyRange
 	Leaf      *PropertyRange
 	Flower    *PropertyRange
@@ -76,61 +80,61 @@ func GenRandomLineage() *PlantLineage {
 
 var PlantClassConfigs = map[PlantClass]plantClassConfig{
 	Tree: {
-		MaxHeight: Range{1, 130},
-		MaxAge:    Range{1, 100},
+		MaxHeight: utils.FloatRange{1, 130},
+		MaxAge:    utils.FloatRange{1, 100},
 		Stem: &PropertyRange{
-			Diameter: Range{1 / 80, 1 / 60},
-			Length:   Range{0.75, 1},
-			Density:  IntRange{1, 1},
+			Diameter: utils.FloatRange{1 / 80, 1 / 60},
+			Length:   utils.FloatRange{0.75, 1},
+			Density:  utils.IntRange{1, 1},
 		},
 		Leaf: &PropertyRange{
-			Diameter: Range{0.01, 0.05},
-			Length:   Range{0.01, 0.05},
-			Density:  IntRange{1, 10},
+			Diameter: utils.FloatRange{0.01, 0.05},
+			Length:   utils.FloatRange{0.01, 0.05},
+			Density:  utils.IntRange{1, 10},
 		},
 		Flower: &PropertyRange{
-			Diameter: Range{0.1, 0.5},
-			Length:   Range{0.5, 1},
-			Density:  IntRange{1, 1},
+			Diameter: utils.FloatRange{0.1, 0.5},
+			Length:   utils.FloatRange{0.5, 1},
+			Density:  utils.IntRange{1, 1},
 		},
 		Fruit: &PropertyRange{
-			Diameter: Range{0.1, 0.5},
-			Length:   Range{0.5, 1},
-			Density:  IntRange{1, 1},
+			Diameter: utils.FloatRange{0.1, 0.5},
+			Length:   utils.FloatRange{0.5, 1},
+			Density:  utils.IntRange{1, 1},
 		},
 		Seed: &PropertyRange{
-			Diameter: Range{0.1, 0.5},
-			Length:   Range{0.5, 1},
-			Density:  IntRange{1, 1},
+			Diameter: utils.FloatRange{0.1, 0.5},
+			Length:   utils.FloatRange{0.5, 1},
+			Density:  utils.IntRange{1, 1},
 		},
 	},
 	Treelike: {
-		MaxHeight: Range{0.5, 10.0},
-		MaxAge:    Range{1, 100},
+		MaxHeight: utils.FloatRange{0.5, 10.0},
+		MaxAge:    utils.FloatRange{1, 100},
 		Stem: &PropertyRange{
-			Diameter: Range{1 / 80, 1 / 60},
-			Length:   Range{0.75, 1},
-			Density:  IntRange{3, 10},
+			Diameter: utils.FloatRange{1 / 80, 1 / 60},
+			Length:   utils.FloatRange{0.75, 1},
+			Density:  utils.IntRange{3, 10},
 		},
 		Leaf: &PropertyRange{
-			Diameter: Range{0.01, 0.05},
-			Length:   Range{0.01, 0.05},
-			Density:  IntRange{1, 10},
+			Diameter: utils.FloatRange{0.01, 0.05},
+			Length:   utils.FloatRange{0.01, 0.05},
+			Density:  utils.IntRange{1, 10},
 		},
 		Flower: &PropertyRange{
-			Diameter: Range{0.1, 0.5},
-			Length:   Range{0.5, 1},
-			Density:  IntRange{1, 1},
+			Diameter: utils.FloatRange{0.1, 0.5},
+			Length:   utils.FloatRange{0.5, 1},
+			Density:  utils.IntRange{1, 1},
 		},
 		Fruit: &PropertyRange{
-			Diameter: Range{0.1, 0.5},
-			Length:   Range{0.5, 1},
-			Density:  IntRange{10, 20},
+			Diameter: utils.FloatRange{0.1, 0.5},
+			Length:   utils.FloatRange{0.5, 1},
+			Density:  utils.IntRange{10, 20},
 		},
 		Seed: &PropertyRange{
-			Diameter: Range{0.1, 0.5},
-			Length:   Range{0.5, 1},
-			Density:  IntRange{1, 1},
+			Diameter: utils.FloatRange{0.1, 0.5},
+			Length:   utils.FloatRange{0.5, 1},
+			Density:  utils.IntRange{1, 1},
 		},
 	},
 }

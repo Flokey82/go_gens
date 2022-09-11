@@ -8,6 +8,7 @@ import (
 
 	"github.com/Flokey82/genetics"
 	"github.com/Flokey82/genetics/geneticshuman"
+	"github.com/Flokey82/go_gens/utils"
 	"github.com/s0rg/fantasyname"
 )
 
@@ -127,7 +128,7 @@ func (v *Village) popMatchMaker() {
 			}
 
 			// At most 33% age difference.
-			if absInt(p.age-pc.age) > minInt(p.age, pc.age)/3 {
+			if utils.Abs(p.age-pc.age) > utils.Min(p.age, pc.age)/3 {
 				continue
 			}
 			p.spouse = pc
@@ -363,18 +364,4 @@ func isRelated(a, b *Person) bool {
 		return false
 	}
 	return a.mother == b.mother || a.father == b.father
-}
-
-func absInt(a int) int {
-	if a < 0 {
-		return -a
-	}
-	return a
-}
-
-func minInt(a, b int) int {
-	if a < b {
-		return a
-	}
-	return b
 }
