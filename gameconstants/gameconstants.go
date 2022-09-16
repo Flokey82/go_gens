@@ -51,4 +51,13 @@ const (
 	EarthElevationTemperatureFalloff = 0.0065      // °C/m
 	// EarthMinTemperature           = -89.2       // °C (extreme)
 	// EarthMaxTemperature           = 56.7        // °C (extreme)
+
+	// Ship speed.
+	// http://penelope.uchicago.edu/Thayer/E/Journals/TAPA/82/Speed_under_Sail_of_Ancient_Ships*.html
+	// TODO: Row boat?
+	SailShipSpeedOpenSeaMin = 4 * KnotsToMetersPerSec
+	SailShipSpeedOpenSeaMax = 6 * KnotsToMetersPerSec
+	SailShipSpeedCoastalMin = 3 * KnotsToMetersPerSec
+	SailShipSpeedCoastalMax = 4 * KnotsToMetersPerSec
+	KnotsToMetersPerSec     = 0.51444444444444444444444444444444 // m/s
 )
