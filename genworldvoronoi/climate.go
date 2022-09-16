@@ -5,6 +5,8 @@ import (
 	"math"
 	"sort"
 
+	"github.com/Flokey82/go_gens/gameconstants"
+	"github.com/Flokey82/go_gens/genbiome"
 	"github.com/Flokey82/go_gens/vectors"
 )
 
@@ -16,15 +18,14 @@ func getTempFalloffFromAltitude(height float64) float64 {
 	if height < 0 {
 		return 0.0
 	}
-	const falloffFactor = 0.98 / 100
-	return falloffFactor * height
+	return gameconstants.EarthElevationTemperatureFalloff * height
 }
 
 const (
-	minTemp          = -15.0
-	maxTemp          = 30.0
+	minTemp          = genbiome.MinTemperatureC
+	maxTemp          = genbiome.MaxTemperatureC
 	rangeTemp        = maxTemp - minTemp
-	maxPrecipitation = 45.0 // 450dm
+	maxPrecipitation = genbiome.MaxPrecipitationDM // 450cm
 )
 
 // getMeanAnnualTemp returns the temperature at a given latitude within the range of
@@ -38,7 +39,7 @@ func getMeanAnnualTemp(lat float64) float64 {
 	return (math.Sin(degToRad(90-math.Abs(lat))))*rangeTemp + minTemp
 }
 
-const maxAltitudeFactor = 8850 / 2 // How tall is the tallest mountain with an elevation of 1.0?
+const maxAltitudeFactor = gameconstants.EarthMaxElevation // How tall is the tallest mountain with an elevation of 1.0?
 
 // getRTemperature returns the average yearly temperature of the given region at the surface.
 func (m *Map) getRTemperature(r int, maxElev float64) float64 {
