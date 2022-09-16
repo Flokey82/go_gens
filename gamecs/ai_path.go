@@ -3,12 +3,8 @@ package gamecs
 import (
 	"math"
 
+	"github.com/Flokey82/go_gens/gameconstants"
 	"github.com/Flokey82/go_gens/vectors"
-)
-
-const (
-	walkSpeed   = 1.4 // m/s
-	runingSpeed = 5.0 // m/s
 )
 
 // CAiPath is a path planning component.
@@ -102,9 +98,9 @@ func (c *CAiPath) Update(m *CMovable, delta float64) {
 	// time elapsed, and distance to the target.
 	magnitude := delta // Magnitude of speed vector.
 	if c.running {
-		magnitude *= runingSpeed
+		magnitude *= gameconstants.RunningSpeed
 	} else {
-		magnitude *= walkSpeed
+		magnitude *= gameconstants.WalkingSpeed
 	}
 
 	// If we would overshoot the target, we limit the speed vector
