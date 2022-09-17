@@ -72,15 +72,20 @@ func (c *CharacterSheet) update() {
 	// sure that by level 100, we are not somewhere in
 	// crazy numbers like 65000.
 	//
+	//                    lvl * lvl * baseVal         primStat + (secStat/2)
+	// newVal = baseVal + ------------------- + lvl * ----------------------
+	//                        100 * 100                       127.5
+	//
+	// baseVal ......... starting value (0-255)
+	// lvl ............. current level  (0-100)
+	// primStat ........ primary stat   (0-255)
+	// secStat ......... secondary stat (0-255)
+	//
+	// This would give us a max value of 810.
+	//
 	// HP is influenced by strength and resilience.
 	//   A character can take more damage if he is
 	//   strong and resilient.
-	//
-	//               lvl * lvl * baseHp         str + (res/2)
-	// hp = baseHp + ------------------ + lvl * -------------
-	//                   100 * 100 			       127.5
-	//
-	// This would give us a max HP of 810
 	//
 	// AP is influenced by dexterity and resilience.
 	//   A character can take more actions if he is
