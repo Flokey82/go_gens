@@ -21,10 +21,10 @@ type CharacterSheet struct {
 	AP          Slider // Action points.
 
 	// Physical stats.
-	StatExhaustion Attribute
-	StatHunger     Attribute
-	StatThirst     Attribute
-	StatStress     Attribute
+	StatExhaustion Status
+	StatHunger     Status
+	StatThirst     Status
+	StatStress     Status
 
 	// Physical attributes.
 	AttrStrength     Attribute
@@ -32,6 +32,32 @@ type CharacterSheet struct {
 	AttrDexterity    Attribute
 	AttrResilience   Attribute
 }
+
+const dayToSecond = 24 * 60 * 60
+
+// Some constants related to stats.
+//
+// TODO: This should be on a per-creature basis.
+// - A camel needs less water than a human.
+// - A humpback whale survives 6 MONTHS without food!
+//
+// TODO: There should also be the recovery rate.
+//   - After 7 hours of sleep, the exhaustion stat should be reduced by
+//     a day's worth of exhaustion.
+//   - One hour of rest should reduce stress significantly.
+//   - While sleeping, hunger and thirst should increase much slower.
+//   - During strenuous activity, hunger, thirst, and exhaustion should
+//     increase much faster.
+//   - When in combat and in danger, stress should increase.
+//
+// NOTE TO SELF: Should we separate stress and fear?
+const (
+	DefaultStatusLimit    = 100.0
+	DefaultExhaustionRate = DefaultStatusLimit / (4 * dayToSecond)  // We die after 4 days without rest.
+	DefaultHungerRate     = DefaultStatusLimit / (10 * dayToSecond) // We die after 10 days without food (it might be way longer, but meh).
+	DefaultThirstRate     = DefaultStatusLimit / (3 * dayToSecond)  // We die after 3 days without water.
+	DefaultStressRate     = DefaultStatusLimit / (2 * dayToSecond)  // We die after 2 days of stress.
+)
 
 // New returns a new character sheet with the given base HP and AP.
 //
@@ -46,6 +72,10 @@ func New(baseHP, baseAP, level, str, itl, dex, res byte) *CharacterSheet {
 		SkillPoints:      levelUpSkillPoints * level,
 		HP:               NewSlider(uint16(baseHP)),
 		AP:               NewSlider(uint16(baseAP)),
+		StatExhaustion:   NewStatus(DefaultStatusLimit, DefaultExhaustionRate),
+		StatHunger:       NewStatus(DefaultStatusLimit, DefaultHungerRate),
+		StatThirst:       NewStatus(DefaultStatusLimit, DefaultThirstRate),
+		StatStress:       NewStatus(DefaultStatusLimit, DefaultStressRate),
 		AttrStrength:     Attribute(str),
 		AttrIntelligence: Attribute(itl),
 		AttrDexterity:    Attribute(dex),
@@ -74,6 +104,15 @@ func (c *CharacterSheet) AddExperience(xp uint16) {
 		// Increase available skill points.
 		c.SkillPoints += levelUpSkillPoints
 	}
+}
+
+// Advance the simulation by a step.
+func (c *CharacterSheet) Tick(delta int64) {
+	// Tick our stats.
+	c.StatExhaustion.Tick(delta)
+	c.StatHunger.Tick(delta)
+	c.StatThirst.Tick(delta)
+	c.StatStress.Tick(delta)
 }
 
 // Update recalculates stats like HP and AP based on the current
@@ -158,65 +197,4 @@ const (
 func (c *CharacterSheet) NextLevelXP() uint16 {
 	nextLvl := uint16(c.Level + 1)
 	return levelUpXPBase*nextLvl*nextLvl + levelUpXPVariation*nextLvl
-}
-
-// Attribute represents a character attribute.
-type Attribute byte
-
-// Add adds the given value to the attribute.
-func (a *Attribute) Add(val int) {
-	// Protect against overflow and underflow.
-	res := int(*a) + val
-	if res > 255 {
-		*a = 255
-		return
-	}
-	if res < 0 {
-		*a = 0
-		return
-	}
-	*a = Attribute(res)
-}
-
-// Slider represents a variable value with a variable upper bound.
-// Example: Health, mana, etc.
-type Slider [2]uint16
-
-// NewSlider returns a new slider with the given value and maximum.
-func NewSlider(max uint16) Slider {
-	return Slider{max, max}
-}
-
-// Add adds the given value to the slider.
-func (s *Slider) Add(val int) {
-	s.SetValue(int(s[0]) + val)
-}
-
-// Value returns the slider's value.
-func (s *Slider) Value() uint16 {
-	return s[0]
-}
-
-// SetValue sets the slider's value.
-func (s *Slider) SetValue(val int) {
-	// Protect against overflow and underflow.
-	if val > int(s[1]) {
-		s[0] = s[1]
-		return
-	}
-	if val < 0 {
-		s[0] = 0
-		return
-	}
-	s[0] = uint16(val)
-}
-
-// Max returns the slider's maximum value.
-func (s *Slider) Max() uint16 {
-	return s[1]
-}
-
-// SetMax sets the slider's maximum value.
-func (s *Slider) SetMax(val uint16) {
-	s[1] = val
 }

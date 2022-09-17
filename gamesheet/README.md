@@ -2,39 +2,50 @@
 
 This package defines a struct that can be used to store and manage a character's status and attributes.
 
-## Status effects
+I try to be as conservative as possible with the size of the struct to allow for a lot of instances without filling up the memory.
 
-A character has several attributes that deremine how effective it is in combat, and its overall health. 
+## Current scope
+- Leveling / XP requirement calculations
+- Skill point generation
+- AP / HP leveling
+- Rudimentary status support (hunger, thirst, exhaustion, stress)
+- Increase of stats over time (on tick?)
 
-These attributes are:
-* Exhaustion
-* Hunger
-* Thirst
-* Stress
+## Planned
+- Provide means to reduce status values (hunger, thirst, etc.)
+- Handle death (through exhaustion, injury)
+- Handle injury (causes stress and damage)
+- Adjust limits of Status values based on resilience, etc.
 
-### Hunger
+## TODO
 
-Hunger is increasing steadily, however less so while sleeping, more so while moving (or physical exertion).
-Hunger can be reduced by eating food.
+Add a "state", which will influence the growth factor for each status.
+This could be a struct that can be defined externally, which would allow for a lot of flexibility wherever this is being used. New states like "swimming" or "flying" could be added easily without the need to modify the gamesheet package.
 
-### Thirst
+Instead of making the "rate" part of the Status struct, the rate could be part of the state struct, and instead of individually changing each status's rate, we simply refer to the respective property of the state.
 
-Thirst is increasing steadily, however less so while sleeping, more so while moving (or physical exertion) (with increased speed in hot environments).
-Thirst can be reduced by drinking water (or other liquids).
+Alternative, state could be a number of states, which are summed up to the rates of each status.
 
-### Stress
+For example: 
+StatusAwake:  (exhaustion:  0.5, hunger: 0.05,  thirst: 0.1)
+StatusAsleep: (exhaustion: -1.0, hunger: 0.025, thirst: 0.05, stress: -0.5)
+StatusAfraid: (exhaustion:  0.1, stress: 0.2)
+StatusRunning:(exhaustion:  0.5, hunger: 0.01,  thirst: 0.1,  stress: 0.1)
+StatusCombat: (exhaustion:  0.5, hunger: 0.1,   thirst: 0.2,  stress: 0.1)
 
-Stress increases sharply when taking damage (or emotional stress) and decreases slowly when not taking damage. Stress decreases faster while resting and sleeping.
+So, if the state is []{StatusAwake, StatusAfraid}, the resulting rates would be:
+exhaustion:  0.5 + 0.1   = 0.6
+hunger:      0.05 + 0.01 = 0.06
+thirst:      0.1 + 0.1   = 0.2
+stress:      0.2         = 0.2
 
-### Exhaustion
 
-Exhaustion increases when moving (or physical exertion) and decreases when resting or sleeping.
+If the state is []{StatusAsleep}, the resulting rates would be:
+exhaustion: -1.0
+hunger:      0.025
+thirst:      0.05
+stress:     -0.5
 
-## Skills (TODO)
 
-Skills are used to determine the probability of success for a given action. A character may choose to improve a specific skill up to a limit which is determined by the level of a character.
 
-## Level (TODO)
-
-A character's level determines how many skill points are available to distribute among the character's skills.
 
