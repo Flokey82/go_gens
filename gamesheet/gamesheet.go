@@ -1,6 +1,8 @@
 // Package gamesheet provides a minimal character sheet for agents, or players.
 package gamesheet
 
+import "log"
+
 // CharacterSheet represents a character sheet.
 //
 // TODO:
@@ -19,6 +21,10 @@ type CharacterSheet struct {
 	BaseAP      byte   // Level 0 AP, will be used to calculate leveled AP.
 	HP          Slider // Hit points.
 	AP          Slider // Action points.
+	Dead        bool   // Is the character dead?
+
+	// Active states.
+	States []*State
 
 	// Physical stats.
 	StatExhaustion Status
@@ -33,32 +39,6 @@ type CharacterSheet struct {
 	AttrResilience   Attribute
 }
 
-const dayToSecond = 24 * 60 * 60
-
-// Some constants related to stats.
-//
-// TODO: This should be on a per-creature basis.
-// - A camel needs less water than a human.
-// - A humpback whale survives 6 MONTHS without food!
-//
-// TODO: There should also be the recovery rate.
-//   - After 7 hours of sleep, the exhaustion stat should be reduced by
-//     a day's worth of exhaustion.
-//   - One hour of rest should reduce stress significantly.
-//   - While sleeping, hunger and thirst should increase much slower.
-//   - During strenuous activity, hunger, thirst, and exhaustion should
-//     increase much faster.
-//   - When in combat and in danger, stress should increase.
-//
-// NOTE TO SELF: Should we separate stress and fear?
-const (
-	DefaultStatusLimit    = 100.0
-	DefaultExhaustionRate = DefaultStatusLimit / (4 * dayToSecond)  // We die after 4 days without rest.
-	DefaultHungerRate     = DefaultStatusLimit / (10 * dayToSecond) // We die after 10 days without food (it might be way longer, but meh).
-	DefaultThirstRate     = DefaultStatusLimit / (3 * dayToSecond)  // We die after 3 days without water.
-	DefaultStressRate     = DefaultStatusLimit / (2 * dayToSecond)  // We die after 2 days of stress.
-)
-
 // New returns a new character sheet with the given base HP and AP.
 //
 // NOTE: The base HP and AP are the unleveled values. Depending on the
@@ -72,10 +52,11 @@ func New(baseHP, baseAP, level, str, itl, dex, res byte) *CharacterSheet {
 		SkillPoints:      levelUpSkillPoints * level,
 		HP:               NewSlider(uint16(baseHP)),
 		AP:               NewSlider(uint16(baseAP)),
-		StatExhaustion:   NewStatus(DefaultStatusLimit, DefaultExhaustionRate),
-		StatHunger:       NewStatus(DefaultStatusLimit, DefaultHungerRate),
-		StatThirst:       NewStatus(DefaultStatusLimit, DefaultThirstRate),
-		StatStress:       NewStatus(DefaultStatusLimit, DefaultStressRate),
+		States:           []*State{StateAwake},
+		StatExhaustion:   NewStatus(),
+		StatHunger:       NewStatus(),
+		StatThirst:       NewStatus(),
+		StatStress:       NewStatus(),
 		AttrStrength:     Attribute(str),
 		AttrIntelligence: Attribute(itl),
 		AttrDexterity:    Attribute(dex),
@@ -83,6 +64,20 @@ func New(baseHP, baseAP, level, str, itl, dex, res byte) *CharacterSheet {
 	}
 	c.Update()
 	return c
+}
+
+func (c *CharacterSheet) Log() {
+	log.Printf("Level: %d, XP: %d/%d, SP: %d, HP: %d/%d, AP: %d/%d, Dead: %t",
+		c.Level, c.CurrentXP, c.NextLevelXP(), c.SkillPoints,
+		c.HP.Value(), c.HP.Max(), c.AP.Value(), c.AP.Max(), c.Dead)
+
+	printStat := func(name string, s Status) {
+		log.Printf("  %s: %.2f%%", name, s.Val)
+	}
+	printStat("Exhaustion", c.StatExhaustion)
+	printStat("Hunger", c.StatHunger)
+	printStat("Thirst", c.StatThirst)
+	printStat("Stress", c.StatStress)
 }
 
 // AddExperience adds experience to the character sheet.
@@ -107,20 +102,53 @@ func (c *CharacterSheet) AddExperience(xp uint16) {
 }
 
 // Advance the simulation by a step.
-func (c *CharacterSheet) Tick(delta int64) {
-	// Tick our stats.
-	c.StatExhaustion.Tick(delta)
-	c.StatHunger.Tick(delta)
-	c.StatThirst.Tick(delta)
-	c.StatStress.Tick(delta)
+func (c *CharacterSheet) Tick(delta float64) {
+	if c.Dead {
+		return
+	}
+
+	// Tick our stats and see if we're still alive.
+	if c.StatExhaustion.Tick(delta) ||
+		c.StatHunger.Tick(delta) ||
+		c.StatThirst.Tick(delta) ||
+		c.StatStress.Tick(delta) ||
+		c.HP.Value() <= 0 {
+		c.Dead = true
+	}
 }
 
-// Update recalculates stats like HP and AP based on the current
+// Update updates the character sheet.
+func (c *CharacterSheet) Update() {
+	c.UpdatePoints()
+	c.UpdateStates()
+}
+
+// SetStates applies the given states to the statuses.
+func (c *CharacterSheet) SetStates(states []*State) {
+	c.States = states
+	c.UpdateStates()
+}
+
+func (c *CharacterSheet) UpdateStates() {
+	var exhaustion, hunger, thirst, stress float32
+	for _, s := range c.States {
+		exhaustion += s.Exhaustion
+		hunger += s.Hunger
+		thirst += s.Thirst
+		stress += s.Stress
+	}
+	c.StatExhaustion.Rate = exhaustion
+	c.StatHunger.Rate = hunger
+	c.StatThirst.Rate = thirst
+	c.StatStress.Rate = stress
+}
+
+// UpdatePoints recalculates stats like HP and AP based on the current
 // level and attributes.
 //
 // Call this function if any of the attributes change to update
 // the stats.
-func (c *CharacterSheet) Update() {
+func (c *CharacterSheet) UpdatePoints() {
 	// Calculate new max HP and AP.
 	//
 	// Since resilience has an impact on both HP and AP,

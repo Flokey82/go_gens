@@ -43,44 +43,6 @@ func (s *Slider) SetMax(val uint16) {
 	s[1] = val
 }
 
-// Status is a character sheet status value that changes at a
-// set rate and has a defined limit.
-// TODO: Reduce the memory footprint of this struct.
-// - Limit does not have to be a float.
-type Status struct {
-	Val   float32 // Current value.
-	Rate  float32 // Increase / decrease per second.
-	Limit float32 // Maximum value.
-}
-
-// NewStatus returns a new status with the given rate and limit.
-func NewStatus(rate, limit float32) Status {
-	return Status{Rate: rate, Limit: limit}
-}
-
-// Tick advances the stat simulation by 'delta' milliseconds.
-func (s *Status) Tick(delta int64) {
-	s.Val += s.Rate * float32(delta) / 1000
-	if s.Val > s.Limit {
-		s.Val = s.Limit
-	}
-}
-
-// Add adds the given value to the status.
-func (s *Status) Add(val float32) {
-	s.Val += val
-	if s.Val > s.Limit {
-		s.Val = s.Limit
-	} else if s.Val < 0 {
-		s.Val = 0
-	}
-}
-
-// Max returns if the value has reached its upper limit.
-func (s *Status) Max() bool {
-	return s.Val == s.Limit
-}
-
 // Attribute represents a character attribute.
 type Attribute byte
 
