@@ -27,25 +27,29 @@ Instead of making the "rate" part of the Status struct, the rate could be part o
 Alternative, state could be a number of states, which are summed up to the rates of each status.
 
 For example: 
+```
 StatusAwake:  (exhaustion:  0.5, hunger: 0.05,  thirst: 0.1)
 StatusAsleep: (exhaustion: -1.0, hunger: 0.025, thirst: 0.05, stress: -0.5)
 StatusAfraid: (exhaustion:  0.1, stress: 0.2)
 StatusRunning:(exhaustion:  0.5, hunger: 0.01,  thirst: 0.1,  stress: 0.1)
 StatusCombat: (exhaustion:  0.5, hunger: 0.1,   thirst: 0.2,  stress: 0.1)
+```
 
 So, if the state is []{StatusAwake, StatusAfraid}, the resulting rates would be:
+```
 exhaustion:  0.5 + 0.1   = 0.6
 hunger:      0.05 + 0.01 = 0.06
 thirst:      0.1 + 0.1   = 0.2
 stress:      0.2         = 0.2
-
+```
 
 If the state is []{StatusAsleep}, the resulting rates would be:
+```
 exhaustion: -1.0
 hunger:      0.025
 thirst:      0.05
 stress:     -0.5
-
+```
 
 
 
