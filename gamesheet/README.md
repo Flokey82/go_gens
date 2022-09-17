@@ -38,8 +38,8 @@ StatusCombat: (exhaustion:  0.5, hunger: 0.1,   thirst: 0.2,  stress: 0.1)
 So, if the state is []{StatusAwake, StatusAfraid}, the resulting rates would be:
 ```
 exhaustion:  0.5 + 0.1   = 0.6
-hunger:      0.05 + 0.01 = 0.06
-thirst:      0.1 + 0.1   = 0.2
+hunger:      0.05        = 0.05
+thirst:      0.1         = 0.1
 stress:      0.2         = 0.2
 ```
 
