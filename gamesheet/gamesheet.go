@@ -1,7 +1,10 @@
 // Package gamesheet provides a minimal character sheet for agents, or players.
 package gamesheet
 
-import "log"
+import (
+	"fmt"
+	"log"
+)
 
 // CharacterSheet represents a character sheet.
 //
@@ -23,6 +26,9 @@ type CharacterSheet struct {
 	AP          Slider // Action points.
 	Dead        bool   // Is the character dead?
 
+	// Used to handle AP/HP regen.
+	msCounter uint16 // millisecond tick counter
+
 	// Active states.
 	States []*State
 
@@ -37,6 +43,8 @@ type CharacterSheet struct {
 	AttrIntelligence Attribute
 	AttrDexterity    Attribute
 	AttrResilience   Attribute
+
+	Messages []string // Messages to display.
 }
 
 // New returns a new character sheet with the given base HP and AP.
@@ -74,19 +82,35 @@ func (c *CharacterSheet) Log() {
 	printStat := func(name string, s Status) {
 		log.Printf("  %s: %.2f%%", name, s.Val)
 	}
+
 	printStat("Exhaustion", c.StatExhaustion)
 	printStat("Hunger", c.StatHunger)
 	printStat("Thirst", c.StatThirst)
 	printStat("Stress", c.StatStress)
+
+	for _, msg := range c.Messages {
+		log.Printf("  %s", msg)
+	}
+}
+
+const maxMessages = 5
+
+func (c *CharacterSheet) addMessage(msg string) {
+	c.Messages = append(c.Messages, msg)
+	if len(c.Messages) > maxMessages {
+		c.Messages = c.Messages[len(c.Messages)-maxMessages:]
+	}
 }
 
 // AddExperience adds experience to the character sheet.
 func (c *CharacterSheet) AddExperience(xp uint16) {
-	if c.Level >= maxLevel {
+	if c.Level >= maxLevel || c.Dead {
 		return
 	}
+
 	c.CurrentXP += xp
 	if nextLvlXP := c.NextLevelXP(); c.CurrentXP >= nextLvlXP {
+		c.addMessage(fmt.Sprintf("Leveled up to level %d.", c.Level+1))
 		// Level up.
 		c.Level++
 
@@ -107,12 +131,26 @@ func (c *CharacterSheet) Tick(delta float64) {
 		return
 	}
 
+	// Restore action points and hit points.
+	//
+	// NOTE: This is probably not really performant,
+	// but it works for now.
+	c.msCounter += uint16(delta * 1000) // ... in milliseconds
+
+	// Check if one second has passed.
+	if c.msCounter >= 1000 {
+		c.msCounter -= 1000
+		c.AP.Add(2)
+		c.HP.Add(1)
+	}
+
 	// Tick our stats and see if we're still alive.
 	if c.StatExhaustion.Tick(delta) ||
 		c.StatHunger.Tick(delta) ||
 		c.StatThirst.Tick(delta) ||
 		c.StatStress.Tick(delta) ||
 		c.HP.Value() <= 0 {
+		c.addMessage("You died.")
 		c.Dead = true
 	}
 }
@@ -120,6 +158,18 @@ func (c *CharacterSheet) Tick(delta float64) {
 // Update updates the character sheet.
 func (c *CharacterSheet) Update() {
 	c.UpdatePoints()
+	c.UpdateStates()
+}
+
+// SetState sets the states to this single state.
+// NOTE: This is only for experimentation and will be removed or
+// refactored
+func (c *CharacterSheet) SetState(state *State) {
+	if c.Dead {
+		return
+	}
+	c.addMessage(fmt.Sprintf("Setting state: %s", state.Name))
+	c.States = []*State{state}
 	c.UpdateStates()
 }
 
@@ -137,10 +187,81 @@ func (c *CharacterSheet) UpdateStates() {
 		thirst += s.Thirst
 		stress += s.Stress
 	}
+
 	c.StatExhaustion.Rate = exhaustion
+	c.StatStress.Rate = stress
 	c.StatHunger.Rate = hunger
 	c.StatThirst.Rate = thirst
-	c.StatStress.Rate = stress
+}
+
+// TakeDamage removes the given amount of hit points from the HP.
+// Return true if the character is dead.
+// NOTE: This is only for experimentation and will be removed or
+// refactored.
+func (c *CharacterSheet) TakeDamage(hp int) bool {
+	c.addHP(-hp) // Remove HP.
+	return c.HP.Value() <= 0
+}
+
+// Heal heals the character for the given amount of hit points.
+// NOTE: This is only for experimentation and will be removed or
+// refactored
+func (c *CharacterSheet) Heal(hp int) {
+	c.HP.Add(hp) // Add HP.
+}
+
+func (c *CharacterSheet) addHP(hp int) {
+	if c.Dead {
+		return
+	}
+	if hp < 0 {
+		c.addMessage(fmt.Sprintf("Taking %d damage", hp))
+	} else {
+		c.addMessage(fmt.Sprintf("Healing %d HP", hp))
+	}
+	// Add or remove a little stress.
+	c.StatStress.Add(-float32(hp) / float32(c.HP.Max()) * 10)
+
+	// Add or remove HP.
+	c.HP.Add(hp)
+}
+
+// TakeAction deducts the given action points from the APs and
+// returns true on success.
+// NOTE: This is only for experimentation and will be removed or
+// refactored
+func (c *CharacterSheet) TakeAction(ap int) bool {
+	return c.addAP(-ap) // Remove AP.
+}
+
+// RestoreAP restores the given amount of action points to the AP.
+// NOTE: This is only for experimentation and will be removed or
+// refactored
+func (c *CharacterSheet) RestoreAP(ap int) {
+	c.addAP(ap) // Add AP.
+}
+
+// addAP adds or deducts the given number of AP and returns true on success.
+func (c *CharacterSheet) addAP(ap int) bool {
+	if c.Dead {
+		return false
+	}
+
+	if ap < 0 {
+		if c.AP.Value() < uint16(ap) {
+			c.addMessage("Not enough AP to take action")
+			return false
+		}
+		c.addMessage(fmt.Sprintf("Taking %d action cost", ap))
+	} else {
+		c.addMessage(fmt.Sprintf("Restoring %d AP", ap))
+	}
+	// Add or remove a little exhaustion.
+	c.StatExhaustion.Add(-float32(ap) / float32(c.AP.Max()) * 10)
+
+	// Add or remove AP.
+	c.AP.Add(ap)
+	return true
 }
 
 // UpdatePoints recalculates stats like HP and AP based on the current

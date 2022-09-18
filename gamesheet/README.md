@@ -8,16 +8,20 @@ I try to be as conservative as possible with the size of the struct to allow for
 - Leveling / XP requirement calculations
 - Skill point generation
 - AP / HP leveling
-- Rudimentary status support (hunger, thirst, exhaustion, stress)
-- Increase of stats over time (on tick?)
+- AP / HP regeneration
+- Status (hunger, thirst, exhaustion, stress)
+  - Rudimentary support 
+  - Increase over time (on tick)
+- Handle death (through exhaustion, injury)
 
 ## Planned
 - Provide means to reduce status values (hunger, thirst, etc.)
-- Handle death (through exhaustion, injury)
 - Handle injury (causes stress and damage)
 - Adjust limits of Status values based on resilience, etc.
 
 ## TODO
+
+### States
 
 Add a "state", which will influence the growth factor for each status.
 This could be a struct that can be defined externally, which would allow for a lot of flexibility wherever this is being used. New states like "swimming" or "flying" could be added easily without the need to modify the gamesheet package.
@@ -51,5 +55,9 @@ thirst:      0.05
 stress:     -0.5
 ```
 
+#### State duration.
 
+Some states should only be active for a set duration or have an exit condition. Sleeping, for example, should end when we are fully rested or after a set number of time.
+
+Should this be handled by the AI/Player?
 
