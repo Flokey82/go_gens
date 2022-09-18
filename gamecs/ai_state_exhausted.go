@@ -26,9 +26,12 @@ func (s *StateRest) Type() aistate.StateType {
 }
 
 func (s *StateRest) Tick(delta uint64) {
+	// If pathfinding is still active, we're not home yet.
 	if s.ai.CAiPath.active {
 		return
 	}
+
+	// If we're home, rest.
 	log.Println(fmt.Sprintf("%d: arrived home!!", s.ai.id))
 	s.ai.Sleep()
 }

@@ -21,10 +21,10 @@ type Agent struct {
 func (w *World) NewChar() *Agent {
 	c := newAgent(w)
 	w.mgr.RegisterEntity(c)
-	l := newLocation(w, w.mgr.NextID(), vectors.Vec2{
-		X: float64(rand.Intn(w.Height / 2)),
-		Y: float64(rand.Intn(w.Width / 2)),
-	})
+	l := newLocation(w, w.mgr.NextID(), vectors.NewVec2(
+		float64(rand.Intn(w.Height/2)),
+		float64(rand.Intn(w.Width/2)),
+	))
 	w.mgr.RegisterLocation(l)
 	c.SetLocation("home", l)
 	return c
@@ -34,10 +34,10 @@ func newAgent(w *World) *Agent {
 	id := w.mgr.NextID()
 	a := &Agent{
 		id: id,
-		CMovable: newCMovable(vectors.Vec2{
-			X: float64(rand.Intn(w.Height)),
-			Y: float64(rand.Intn(w.Width)),
-		}),
+		CMovable: newCMovable(vectors.NewVec2(
+			float64(rand.Intn(w.Height)),
+			float64(rand.Intn(w.Width)),
+		)),
 		CStatus:    newCStatus(),
 		CInventory: newCInventory(w, id, 3),
 		CAi:        newCAi(w, id),
@@ -69,7 +69,7 @@ func (c *Agent) Update(delta float64) {
 
 func (c *Agent) Injure(amount, srcID int) {
 	// TODO: Should this be messaging?
-	c.Health -= amount
+	c.cs.TakeDamage(amount)
 
 	// TODO: Change opinion of related tags / terms / individuals.
 	log.Println(fmt.Sprintf("%d: remember %d caused %d damage", c.id, srcID, amount))

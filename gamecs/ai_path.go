@@ -38,7 +38,7 @@ func (c *CAiPath) planWaypoints(m *CMovable) {
 	// This implementation is poop.
 	// TODO: Replace with A* or similar stuff.
 	curWay := m.Pos
-	for calcDist(curWay, c.Target) > 5.0 {
+	for vectors.Dist2(curWay, c.Target) > 5.0 {
 		dir := calcNormVec(curWay, c.Target)
 		dir.MulWithThis(5.0)
 		curWay.AddToThis(dir)
@@ -53,7 +53,7 @@ func (c *CAiPath) currentWaypoint(m *CMovable) vectors.Vec2 {
 		return c.Target
 	}
 	curWay := c.Waypoints[c.WaypointCurrent]
-	if calcDist(curWay, m.Pos) >= 0.2 {
+	if vectors.Dist2(curWay, m.Pos) >= 0.2 {
 		return curWay
 	}
 	c.WaypointCurrent++
@@ -78,7 +78,7 @@ func (c *CAiPath) Update(m *CMovable, delta float64) {
 	}
 
 	// Check if we have already reached the target.
-	dist := calcDist(m.Pos, c.Target)
+	dist := vectors.Dist2(m.Pos, c.Target)
 	if dist < 0.02 {
 		c.resetWaypoints()
 		c.active = false
@@ -111,13 +111,6 @@ func (c *CAiPath) Update(m *CMovable, delta float64) {
 	m.Speed.MulWithThis(magnitude)
 }
 
-func calcVec(a, b vectors.Vec2) vectors.Vec2 {
-	return vectors.Vec2{
-		X: b.X - a.X,
-		Y: b.Y - a.Y,
-	}
-}
-
 func calcNormVec(a, b vectors.Vec2) vectors.Vec2 {
 	x := b.X - a.X
 	y := b.Y - a.Y
@@ -126,8 +119,4 @@ func calcNormVec(a, b vectors.Vec2) vectors.Vec2 {
 		X: x / l,
 		Y: y / l,
 	}
-}
-
-func calcDist(a, b vectors.Vec2) float64 {
-	return math.Hypot(b.X-a.X, b.Y-a.Y)
 }

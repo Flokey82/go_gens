@@ -90,6 +90,11 @@ func Dot2(v1, v2 Vec2) float64 {
 	return v1.Y*v2.Y + v1.X*v2.X
 }
 
+// Dist2 returns the eucledian distance between two vectors.
+func Dist2(a, b Vec2) float64 {
+	return math.Hypot(a.X-b.X, a.Y-b.Y)
+}
+
 // Vec3 represents a three dimensional vector.
 type Vec3 struct {
 	X float64

@@ -1,63 +1,70 @@
 package gamecs
 
-import "log"
+import (
+	"log"
+	"math/rand"
+
+	"github.com/Flokey82/go_gens/gamesheet"
+)
+
+func randByte() byte {
+	return byte(rand.Intn(255))
+}
 
 type CStatus struct {
-	Health     int
-	MaxHealth  int
-	Exhaustion float64
-	Hunger     float64
-	Sleeping   bool
+	Sleeping bool
+	cs       *gamesheet.CharacterSheet
 }
 
 func newCStatus() *CStatus {
 	return &CStatus{
-		Health:     100,
-		MaxHealth:  100,
-		Exhaustion: 0,
+		cs: gamesheet.New(100, 100, 0, randByte(), randByte(), randByte(), randByte()),
 	}
 }
 
-const (
-	healthRecovery     = 0.7 // TODO: Implement
-	hungerRate         = 0.5
-	exhaustionRate     = 0.4
-	exhaustionRecovery = 0.9
-)
-
 func (c *CStatus) Update(delta float64) {
-	log.Println(delta)
-	if c.Sleeping {
+	c.cs.Tick(delta)
+	if c.Sleeping && c.cs.StatExhaustion.Val <= 0 {
+		c.Wake()
+	} else if c.Sleeping {
 		log.Println("Sleeping!")
-		if c.Health < c.MaxHealth {
-			c.Health += 10 // TODO: Take delta in account
-		}
-		if c.Health > c.MaxHealth {
-			c.Health = c.MaxHealth
-		}
-		// TODO: Reduce exhaustion.
-		c.Exhaustion -= exhaustionRecovery * delta // TODO: Take delta in account
-		if c.Exhaustion <= 0 {
-			c.Exhaustion = 0
-			c.Sleeping = false
-		}
-	} else {
-		// TODO: Switch from exhaustion to stamina and regenerate over time.
-		c.Exhaustion += exhaustionRate * delta
 	}
-	c.Hunger += hungerRate * delta
 }
 
 func (c *CStatus) Sleep() {
 	c.Sleeping = true
+	c.cs.SetState(gamesheet.StateAsleep)
+}
+
+func (c *CStatus) Wake() {
+	c.Sleeping = false
+	c.cs.SetState(gamesheet.StateAwake)
+}
+
+func (c *CStatus) Health() float64 {
+	return float64(c.cs.HP.Value())
+}
+
+func (c *CStatus) MaxHealth() float64 {
+	return float64(c.cs.HP.Max())
+}
+
+func (c *CStatus) Hunger() float64 {
+	return float64(c.cs.StatHunger.Val)
+}
+
+func (c *CStatus) Thirst() float64 {
+	return float64(c.cs.StatThirst.Val)
+}
+
+func (c *CStatus) Stress() float64 {
+	return float64(c.cs.StatStress.Val)
+}
+
+func (c *CStatus) Exhaustion() float64 {
+	return float64(c.cs.StatExhaustion.Val)
 }
 
 func (c *CStatus) Dead() bool {
-	return c.Health <= 0
-}
-
-type State struct {
-	Name  string
-	Value float64
-	Max   float64
+	return c.cs.Dead
 }

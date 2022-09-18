@@ -61,13 +61,17 @@ func NewStateAttack(ai *CAi) *StateAttack {
 		ait: aitree.New(),
 	}
 
+	// New action sequence.
 	fci := aitree.NewSequence("chase and eliminate threat")
 	s.ait.Root = fci
+
+	// Move towards the target.
 	am := newActionMoveTo(ai, s.needTarget, func() vectors.Vec2 {
 		return s.target.Pos
 	})
 	fci.Append(am)
 
+	// Attack the target.
 	at := newActionAttack(ai, func() *Agent {
 		return s.target
 	})
@@ -86,24 +90,36 @@ func (s *StateAttack) foundTarget() bool {
 	return s.target != nil && s.ai.CanSeeEntity(s.target)
 }
 
+// findTarget attempts to find a target to attack.
 func (s *StateAttack) findTarget() {
+	// Check if we have already found a target.
 	if s.foundTarget() {
+		// Check if the target is dead.
+		// If so, we give up pursuing the target.
 		if s.target.Dead() {
 			s.giveUpTarget()
 		}
 		return
 	}
-	// Set our target we move to to the current position of the first entity that we have perceived.
-	// (NOT the closest, the first)
+
+	// Set our target to the current position of the first entity that we have perceived.
+	// (the first is the closest).
 	// Ideally we would choose our target based on distance, threat level, etc.
 	if len(s.ai.Entities) > 0 {
-		s.target = s.ai.Entities[0]
-		s.ai.running = true // Run to intercept.
+		for _, e := range s.ai.Entities {
+			if e.Dead() {
+				continue
+			}
+			s.target = e
+			s.ai.running = true // Run to intercept.
+			break
+		}
 	} else {
-		s.giveUpTarget()
+		s.giveUpTarget() // No target in sight, give up.
 	}
 }
 
+// giveUpTarget gives up on the current target.
 func (s *StateAttack) giveUpTarget() {
 	s.target = nil
 	// TODO: Unset aipath target.
@@ -113,8 +129,7 @@ func (s *StateAttack) giveUpTarget() {
 func (s *StateAttack) Tick(delta uint64) {
 	if s.ait.Tick() == aitree.StateFailure {
 		log.Println(fmt.Sprintf("%d: StateAttack failed!!", s.ai.id))
-	}
-	if s.target != nil {
+	} else if s.target != nil {
 		log.Println(fmt.Sprintf("chasing Target %.2f, %.2f", s.ai.CAiPath.Target.X, s.ai.CAiPath.Target.Y))
 	}
 }

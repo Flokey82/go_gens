@@ -22,25 +22,31 @@ func (c *CAiStatus) init(ai *CAi) {
 
 func (c *CAiStatus) Update(s *CStatus, delta float64) {
 	if c.eat {
-		s.Hunger = 0
+		s.cs.StatHunger.Val = 0.0
+		s.cs.StatThirst.Val = 0.0
 		c.eat = false
 	}
 
 	// TODO: Improve needs evaluation.
 	// Check 'aineeds' repo, add priority list
-	c.states[sExhausted] = s.Exhaustion > 10
+	c.states[sExhausted] = s.Exhaustion() > 10
 	// TODO: Evaluate if the entities we see are actually a threat.
-	c.states[sThreatened] = len(c.ape.Entities) > 0
+	c.states[sThreatened] = false
+	for _, a := range c.ape.Entities {
+		// Dead folks are not a threat.
+		if a.Dead() {
+			continue
+		}
+		c.states[sThreatened] = true
+		break
+	}
 	// c.states[sInteracting] = len(c.ape.Entities) > 0
-	c.states[sHungry] = s.Hunger > 20
-	c.states[sInjured] = s.Health <= 20
+	c.states[sHungry] = s.Hunger() > 20
+	c.states[sInjured] = s.Health()/s.MaxHealth() <= 0.2
 }
 
 func (c *CAiStatus) HasFood() bool {
 	a := c.ai.w.mgr.GetEntityFromID(c.ai.id)
-	if a.CInventory.Find("food") != nil {
-		log.Println(a.CInventory.Find("food"))
-	}
 	return a.CInventory.Find("food") != nil
 }
 

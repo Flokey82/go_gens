@@ -1,7 +1,5 @@
 package gamecs
 
-import "log"
-
 type CInventory struct {
 	BodySlots map[int]*Item // Head, Feet, Upper Body, ...
 	Slots     []*Item
@@ -28,7 +26,6 @@ func (in *CInventory) Add(it *Item) bool {
 	if in.IsFull() {
 		return false
 	}
-	log.Println("Add item to inventory")
 	it.Location = LocInventory
 	it.LocationID = in.id
 	in.Slots = append(in.Slots, it)

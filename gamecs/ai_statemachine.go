@@ -16,6 +16,12 @@ func newCAiScheduler() *CAiScheduler {
 	}
 }
 
+// init initializes the state machine that controls agent behavior.
+//
+// NOTE: This is super-messy and would need to be re-written from
+// scratch. There is no real rhyme or reason behind many of the
+// transitions and there might be dead ends. I'll probably start
+// over again in a new project at some point.
 func (c *CAiScheduler) init(ai *CAi) {
 	// TODO: Add 'any' transitions in order of priority.
 	// Set up the two states we decide on if we are being threatened.
@@ -24,8 +30,8 @@ func (c *CAiScheduler) init(ai *CAi) {
 
 	// Allow the transition to return one of multiple different transitions.
 	c.AddAnySelector(func() aistate.State {
-		// Randomly switch between attacking and fleeing.
 		// Ultimately we want to decide based on personality or our chances to win.
+		// TODO: Check if we have enough action points to attack.
 		if ai.Conflict() && !ai.CAiStatus.states[sInjured] {
 			return sAttack
 		}
@@ -58,10 +64,30 @@ func (c *CAiScheduler) init(ai *CAi) {
 		return ai.CAiStatus.states[sExhausted]
 	})
 
-	//c.AddAnyTransition(sFind, func() bool {
-	//	// Always make sure we have food.
-	//	return !ai.CAiStatus.HasFood()
-	//})
+	c.AddAnyTransition(sFind, func() bool {
+		// Always make sure we have food.
+		return !ai.CAiStatus.HasFood()
+	})
+
+	// Add selector to exit attack state.
+	c.AddSelector(sAttack, func() aistate.State {
+		if c.Previous != nil {
+			return c.Previous
+		}
+		return sFind
+	}, func() bool {
+		return !ai.CAiStatus.states[sThreatened]
+	})
+
+	// Add selector to exit flee state.
+	c.AddSelector(sAttack, func() aistate.State {
+		if c.Previous != nil {
+			return c.Previous
+		}
+		return sFind
+	}, func() bool {
+		return !ai.CAiStatus.states[sThreatened]
+	})
 
 	// Set our initial state.
 	c.SetState(sFind)
