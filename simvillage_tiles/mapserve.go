@@ -10,19 +10,32 @@ type MapCache struct {
 	World                      // fetchChunk is a function to fetch a chunk from the source.
 }
 
-func newMapCache() *MapCache {
+func newMapCache(w World) *MapCache {
 	return &MapCache{
-		World: newDefaultWorld(),
+		World: w,
 	}
 }
 
 // setNewWorld sets the given World as the source for chunks.
+// TODO: Allow specification of chunk (so we cache where we will spawn).
 func (g *MapCache) setNewWorld(f World) {
 	// Set the new chunk source.
 	g.World = f
 
 	// Reset the cache.
-	g.refreshCache(g.curChunkXY)
+	g.flushCache(g.curChunkXY)
+}
+
+func (g *MapCache) flushCache(chunkXY [2]int) {
+	// Set the current chunk position.
+	g.curChunkXY = chunkXY
+
+	// Fetch the new chunks.
+	for x := 0; x < 3; x++ {
+		for y := 0; y < 3; y++ {
+			g.chunkCache[x][y] = g.World.FetchChunk(chunkXY[0]+x-1, chunkXY[1]+y-1)
+		}
+	}
 }
 
 // validCacheIdx returns true if the indices are within the bounds of x[0..2], y[0..2].

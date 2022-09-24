@@ -22,16 +22,6 @@ func newMapChunk(width, height int) *MapChunk {
 	}
 }
 
-// toLegacy returns the layers in the legacy format currently still used by the
-// main renderer.
-func (m *MapChunk) toLegacy() [][]int {
-	return [][]int{
-		m.Ground.Tiles,
-		m.GroundOverlay.Tiles,
-		m.Structures.Tiles,
-	}
-}
-
 // drawObject draws the given object at (dx, dy).
 func (m *MapChunk) drawObject(h drawable, dx, dy int) {
 	// Draw all object layers onto the the appropriate layers of the map chunk.

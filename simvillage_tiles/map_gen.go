@@ -14,7 +14,8 @@ func genChunk(x, y, width, height int) *MapChunk {
 	chunk := newMapChunk(width, height)
 
 	// Initialize the random number generator with a unique seed for the given coordinates.
-	r := rand.New(rand.NewSource(cash(x, y)))
+	r := newRandForChunk(x, y)
+
 	// Fill the ground layer with grass tiles.
 	// NOTE: We've repeated the 243 tile a few times in the grassTiles slice
 	// to skew the probability in favor of the plain grass tile.
@@ -41,6 +42,12 @@ func genChunk(x, y, width, height int) *MapChunk {
 		chunk.drawObject(hedge, 1, 1)
 	}
 	return chunk
+}
+
+// newRandForChunk returns a new rand.Rand initialized with a unique seed
+// for the given coordinates.
+func newRandForChunk(x, y int) *rand.Rand {
+	return rand.New(rand.NewSource(cash(x, y)))
 }
 
 // cash stands for chaos hash :D

@@ -13,7 +13,13 @@ import (
 	"github.com/hajimehoshi/ebiten"
 	"github.com/hajimehoshi/ebiten/ebitenutil"
 	"github.com/hajimehoshi/ebiten/examples/resources/images"
+	"github.com/hajimehoshi/ebiten/inpututil"
+
+	_ "embed"
 )
+
+//go:embed tiles/dungeon_tiles.png
+var dungeon_png []byte
 
 const (
 	screenWidth  = 240
@@ -27,11 +33,13 @@ const (
 )
 
 var (
-	tilesImage  *ebiten.Image
-	runnerImage *ebiten.Image
+	tilesImage   *ebiten.Image
+	tilesDungeon *ebiten.Image
+	runnerImage  *ebiten.Image
 )
 
 func init() {
+	// TODO: Move this to the world.go and the creatures.go files.
 	// Decode an image from the image file's byte slice.
 	// Now the byte slice is generated with //go:generate for Go 1.15 or older.
 	// If you use Go 1.16 or newer, it is strongly recommended to use //go:embed to embed the image file.
@@ -41,6 +49,12 @@ func init() {
 		log.Fatal(err)
 	}
 	tilesImage = ebiten.NewImageFromImage(img)
+
+	imgDungeon, _, err := image.Decode(bytes.NewReader(dungeon_png))
+	if err != nil {
+		log.Fatal(err)
+	}
+	tilesDungeon = ebiten.NewImageFromImage(imgDungeon)
 
 	// Decode an image from the image file's byte slice.
 	imgRunner, _, err := image.Decode(bytes.NewReader(images.Runner_png))
@@ -56,24 +70,31 @@ func init() {
 // its world, so all creatures everywhere are still updated.
 type Game struct {
 	*MapCache
-	player    *Creature   // player
-	creatures []*Creature // NPCs (and player)
+	player    *Creature     // player
+	creatures []*Creature   // NPCs (and player)
+	indoors   bool          // for toggling between worlds (hacky)
+	tileSet   *ebiten.Image // Tile set of the current world
+	dWorld    World         // Default world
+	iWorld    World         // Fake indoor world
 }
 
 func NewGame() *Game {
 	g := &Game{
-		MapCache: newMapCache(),
+		tileSet: tilesImage,
+		dWorld:  newDefaultWorld(),
+		iWorld:  &FakeIndoorWorld{},
 	}
-	g.player = NewCreature(g, [2]int{0, 0})
+	g.MapCache = newMapCache(g.dWorld)
+	g.player = NewCreature(g, g.dWorld, [2]int{0, 0})
 	g.refreshCache([2]int{0, 0})
 
 	// Add the player to the creature index.
 	g.addCreature(g.player)
 
 	// Add some creatures.
-	g.addCreature(NewCreature(g, [2]int{2, 2}))
-	g.addCreature(NewCreature(g, [2]int{20, 2}))
-	g.addCreature(NewCreature(g, [2]int{2, 20}))
+	g.addCreature(NewCreature(g, g.dWorld, [2]int{2, 2}))
+	g.addCreature(NewCreature(g, g.dWorld, [2]int{20, 2}))
+	g.addCreature(NewCreature(g, g.iWorld, [2]int{2, 20}))
 	return g
 }
 
@@ -94,8 +115,20 @@ func (g *Game) Update() error {
 	}
 	g.player.move(posDelta)
 
+	// Transport player to another world.
+	// TODO:
+	// - Set player position in the new world
+	//   and remember player position in the old world.
+	// - Check if we are at a door.
+	//   Each door would have a destination world and coordinate.
+	//   The destination world would have a door that leads back
+	//   to the entrance.
+	if inpututil.IsKeyJustPressed(ebiten.KeySpace) {
+		g.changeWorld()
+	}
+
 	// If the currently cached center chunk does not match the
-	// player chunk position, we need to refresh the cache.
+	// player chunk position, we need to refresh the render cache.
 	if g.player.chunk != g.curChunkXY {
 		g.refreshCache(g.player.chunk)
 	}
@@ -112,16 +145,21 @@ func (g *Game) Update() error {
 	return nil
 }
 
-// canEnter returns whether the player can enter the tile at (x, y) in the chunk (cX, cY).
-// TODO: Improve collision detection.
-func (g *Game) canEnter(cX, cY, newX, newY int) bool {
-	x, y := getTileXYFromPos(newX, newY)
-	if x < 0 || x >= screenWidth/tileSize || y < 0 || y >= screenHeight/tileSize {
-		return false
+// changeWorld toggles between indoor and outdoor map.
+// NOTE: This is just for testing purposes.
+func (g *Game) changeWorld() {
+	if g.indoors = !g.indoors; g.indoors {
+		g.setWorld(g.iWorld)
+	} else {
+		g.setWorld(g.dWorld)
 	}
-	// TODO: Allow multiple layers to be checked for collision.
-	layers := g.getChunk(cX, cY)
-	return layers.Structures.getTile(x, y) == 0
+}
+
+// setWorld sets the currently rendered world.
+func (g *Game) setWorld(w World) {
+	g.MapCache.setNewWorld(w) // update the map cache
+	g.tileSet = w.TileSet()   // update the render tile set
+	g.player.w = w            // update the player's world
 }
 
 func (g *Game) Draw(screen *ebiten.Image) {
@@ -130,7 +168,7 @@ func (g *Game) Draw(screen *ebiten.Image) {
 	// this rendering is done very efficiently.
 	// For more detail, see https://pkg.go.dev/github.com/hajimehoshi/ebiten/v2#Image.DrawImage
 	const xCount = screenWidth / tileSize
-	w, _ := tilesImage.Size()
+	w, _ := g.tileSet.Size()
 	tileXCount := w / tileSize
 
 	// Iterate through the layers and draw them.
@@ -171,7 +209,7 @@ func (g *Game) Draw(screen *ebiten.Image) {
 				// Get the right tile sprite.
 				sx := (t % tileXCount) * tileSize
 				sy := (t / tileXCount) * tileSize
-				screen.DrawImage(tilesImage.SubImage(image.Rect(sx, sy, sx+tileSize, sy+tileSize)).(*ebiten.Image), op)
+				screen.DrawImage(g.tileSet.SubImage(image.Rect(sx, sy, sx+tileSize, sy+tileSize)).(*ebiten.Image), op)
 			}
 		}
 
@@ -206,10 +244,11 @@ func (g *Game) Draw(screen *ebiten.Image) {
 // drawDebugInfo prints debug information on the screen.
 func (g *Game) drawDebugInfo(screen *ebiten.Image) {
 	px, py := g.player.getTileXY()                 // Current player tile
+	fx, fy := g.player.facingTile()                // The tile the player is facing at
 	cx, cy := g.player.chunk[0], g.player.chunk[1] // Current chunk
 
 	// Draw ticks per second (TPS), current tile (T), viewport center tile (V), and current chunk (C).
-	ebitenutil.DebugPrint(screen, fmt.Sprintf("TPS: %0.2f (T %d, %d C %d, %d)", ebiten.ActualTPS(), px, py, cx, cy))
+	ebitenutil.DebugPrint(screen, fmt.Sprintf("TPS: %0.2f (T %d, %d C %d, %d F %d, %d)", ebiten.ActualTPS(), px, py, cx, cy, fx, fy))
 }
 
 func (g *Game) Layout(outsideWidth, outsideHeight int) (int, int) {
@@ -221,11 +260,12 @@ func (g *Game) addCreature(c *Creature) {
 	g.creatures = append(g.creatures, c)
 }
 
-// getCreatures returns the creatures at the given tile in the given chunk.
+// getCreatures returns the creatures at the given tile in the given chunk in
+// the current world (of the player).
 func (g *Game) getCreatures(tileIdx int, chunk [2]int) []*Creature {
 	var creatures []*Creature
 	for _, c := range g.creatures {
-		if c.tileIdx == tileIdx && c.chunk == chunk {
+		if c.w == c.g.player.w && c.tileIdx == tileIdx && c.chunk == chunk {
 			creatures = append(creatures, c)
 		}
 	}

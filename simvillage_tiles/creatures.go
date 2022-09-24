@@ -7,8 +7,15 @@ import (
 )
 
 // Creature represents a moving entity in the game.
+//
+// TODO: Consider adding a pointer to the world the creature
+// currently is in, which will allow us to use collision detection
+// even if the "main character" is in a different world (in a shop
+// etc).
 type Creature struct {
 	g         *Game
+	w         World
+	delta     [2]int // Last direction change
 	pos       [2]int // current creature position relative to the chunk center
 	tile      [2]int // current tile coordinates relative to the top left corner of the chunk
 	chunk     [2]int // current global chunk coordinates
@@ -18,9 +25,10 @@ type Creature struct {
 }
 
 // NewCreature returns a new creature with the given position.
-func NewCreature(g *Game, pos [2]int) *Creature {
+func NewCreature(g *Game, w World, pos [2]int) *Creature {
 	c := &Creature{
 		g:         g,
+		w:         w,
 		pos:       pos,
 		looksLeft: false,
 	}
@@ -36,11 +44,23 @@ func (c *Creature) updateTile() {
 	c.tileIdx = c.tile[1]*xCount + c.tile[0]
 }
 
+// facingTile returns the tile that we are facing.
+// This is a helper function that will probably be improved,
+// used primarily to detect if we are facing a door or something
+// else that we can interact with.
+func (c *Creature) facingTile() (int, int) {
+	return c.tile[0] + c.delta[0], c.tile[1] + c.delta[1]
+}
+
 // move attempts to move the creature by the given xy delta.
 func (c *Creature) move(delta [2]int) {
 	if delta[0] == 0 && delta[1] == 0 {
 		return
 	}
+
+	// Update orientation.
+	c.delta = delta
+
 	// Do we want to move left or right?
 	c.looksLeft = delta[0] < 0
 
@@ -58,9 +78,7 @@ func (c *Creature) move(delta [2]int) {
 	newChunkY := c.chunk[1] + newChunkDeltaY
 
 	// Now check if we can go where we'd end up.
-	// TODO: Check if we can enter newPosX, newPosY in the new chunk.
-	// NOTE: This doesn't check the chunk yet, but since all chunks are the same it sorta works.
-	if c.g.canEnter(newChunkX, newChunkY, newPosX, newPosY) {
+	if canEnter(c.w, newChunkX, newChunkY, newPosX, newPosY) {
 		// TODO: If only one of both directions would be an illegal move,
 		// should we just move along one axis?
 		c.pos[0] = newPosX
