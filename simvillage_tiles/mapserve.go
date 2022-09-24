@@ -1,16 +1,28 @@
 package simvillage_tiles
 
+// chunkSourceFunc returns map chunks for our current world.
+type chunkSourceFunc func(x, y int) *MapChunk
+
 // MapCache provides a caching layer for serving MapChunks.
 type MapCache struct {
-	layers     *MapChunk       // chunk at 0, 0 (this is statically generated)
 	chunkCache [3][3]*MapChunk // chunkCache[x][y] is the chunk at x-1, y-1.
 	curChunkXY [2]int          // curChunkXY[0] is the x position of the current chunk.
+	World                      // fetchChunk is a function to fetch a chunk from the source.
 }
 
 func newMapCache() *MapCache {
 	return &MapCache{
-		layers: defaultChunk(),
+		World: newDefaultWorld(),
 	}
+}
+
+// setNewWorld sets the given World as the source for chunks.
+func (g *MapCache) setNewWorld(f World) {
+	// Set the new chunk source.
+	g.World = f
+
+	// Reset the cache.
+	g.refreshCache(g.curChunkXY)
 }
 
 // validCacheIdx returns true if the indices are within the bounds of x[0..2], y[0..2].
@@ -86,7 +98,7 @@ func (g *MapCache) refreshCache(pChunk [2]int) {
 				chunkCache[x][y] = g.chunkCache[cdx][cdy]
 			} else {
 				// If we are out of bounds of the old cache, we fetch the chunk.
-				chunkCache[x][y] = g.fetchChunk(pChunk[0]+x-1, pChunk[1]+y-1)
+				chunkCache[x][y] = g.FetchChunk(pChunk[0]+x-1, pChunk[1]+y-1)
 			}
 		}
 	}
@@ -101,14 +113,5 @@ func (g *MapCache) getChunk(x, y int) *MapChunk {
 	if cx, cy := g.curChunkXY[0]-x+1, g.curChunkXY[1]-y+1; validCacheIdx(cx, cy) && g.chunkCache[cx][cy] != nil {
 		return g.chunkCache[cx][cy]
 	}
-	return g.fetchChunk(x, y)
-}
-
-// fetchChunk returns the un-cached MapChunk from the generator.
-func (g *MapCache) fetchChunk(x, y int) *MapChunk {
-	if x != 0 || y != 0 {
-		// Generate the chunk at the given position with the given dimensions (in number of tiles).
-		return genChunk(x, y, screenWidth/tileSize, screenHeight/tileSize)
-	}
-	return g.layers // Position 0, 0 is special.
+	return g.FetchChunk(x, y)
 }

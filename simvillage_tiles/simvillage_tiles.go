@@ -50,6 +50,10 @@ func init() {
 	runnerImage = ebiten.NewImageFromImage(imgRunner)
 }
 
+// Game represents the main game struct.
+// TODO: Move creatures to the individual world structs.
+// ... or add a pointer to each creature that points to
+// its world, so all creatures everywhere are still updated.
 type Game struct {
 	*MapCache
 	player    *Creature   // player
