@@ -29,6 +29,13 @@ func genChunk(x, y, width, height int) *MapChunk {
 		}
 	}
 
+	// Randomly add items.
+	for i := 0; i < 10; i++ {
+		item := ItemTypeRock.NewInstance()
+		item.Position = [2]int{r.Intn(width), r.Intn(height)}
+		chunk.Items = append(chunk.Items, item)
+	}
+
 	// Randomly put some houses and other objects on the chunk.
 	// NOTE: We currently have hardcoded the offset for the houses to (1, 1).
 	switch r.Intn(10) {

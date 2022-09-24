@@ -47,4 +47,5 @@ This package contains a very simple tile based renderer and will hopefully be a 
 
 ## Attribution
 
-Dungeon Tile Set by http://blog-buch.rhcloud.com (link is dead)
+Dungeon Tile Set by Buch https://opengameart.org/users/buch
+Roguelike Items by https://twitter.com/joecreates

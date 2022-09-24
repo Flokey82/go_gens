@@ -21,6 +21,9 @@ import (
 //go:embed tiles/dungeon_tiles.png
 var dungeon_png []byte
 
+//go:embed tiles/roguelikeitems.png
+var items_png []byte
+
 const (
 	screenWidth  = 240
 	screenHeight = 240
@@ -33,30 +36,33 @@ const (
 )
 
 var (
-	tilesImage   *ebiten.Image
-	tilesDungeon *ebiten.Image
-	runnerImage  *ebiten.Image
+	tilesDefaultSet *TileSet
+	tilesDungeonSet *TileSet
+	tilesItemsSet   *TileSet
+	runnerImage     *ebiten.Image
 )
 
 func init() {
+	var err error
+
 	// TODO: Move this to the world.go and the creatures.go files.
-	// Decode an image from the image file's byte slice.
-	// Now the byte slice is generated with //go:generate for Go 1.15 or older.
-	// If you use Go 1.16 or newer, it is strongly recommended to use //go:embed to embed the image file.
-	// See https://pkg.go.dev/embed for more details.
-	img, _, err := image.Decode(bytes.NewReader(images.Tiles_png))
+	tilesDefaultSet, err = NewTileSet(images.Tiles_png)
 	if err != nil {
 		log.Fatal(err)
 	}
-	tilesImage = ebiten.NewImageFromImage(img)
 
-	imgDungeon, _, err := image.Decode(bytes.NewReader(dungeon_png))
+	tilesDungeonSet, err = NewTileSet(dungeon_png)
 	if err != nil {
 		log.Fatal(err)
 	}
-	tilesDungeon = ebiten.NewImageFromImage(imgDungeon)
+
+	tilesItemsSet, err = NewTileSet(items_png)
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	// Decode an image from the image file's byte slice.
+	// TODO: Move to TileSet.
 	imgRunner, _, err := image.Decode(bytes.NewReader(images.Runner_png))
 	if err != nil {
 		log.Fatal(err)
@@ -70,17 +76,17 @@ func init() {
 // its world, so all creatures everywhere are still updated.
 type Game struct {
 	*MapCache
-	player    *Creature     // player
-	creatures []*Creature   // NPCs (and player)
-	indoors   bool          // for toggling between worlds (hacky)
-	tileSet   *ebiten.Image // Tile set of the current world
-	dWorld    World         // Default world
-	iWorld    World         // Fake indoor world
+	player    *Creature   // player
+	creatures []*Creature // NPCs (and player)
+	indoors   bool        // for toggling between worlds (hacky)
+	tileSet   *TileSet    // Tile set of the current world
+	dWorld    World       // Default world
+	iWorld    World       // Fake indoor world
 }
 
 func NewGame() *Game {
 	g := &Game{
-		tileSet: tilesImage,
+		tileSet: tilesDefaultSet,
 		dWorld:  newDefaultWorld(),
 		iWorld:  &FakeIndoorWorld{},
 	}
@@ -168,8 +174,6 @@ func (g *Game) Draw(screen *ebiten.Image) {
 	// this rendering is done very efficiently.
 	// For more detail, see https://pkg.go.dev/github.com/hajimehoshi/ebiten/v2#Image.DrawImage
 	const xCount = screenWidth / tileSize
-	w, _ := g.tileSet.Size()
-	tileXCount := w / tileSize
 
 	// Iterate through the layers and draw them.
 	var cxy [2]int
@@ -207,9 +211,17 @@ func (g *Game) Draw(screen *ebiten.Image) {
 				op.GeoM.Translate(float64((i%xCount)*tileSize)+cOffsX, float64((i/xCount)*tileSize)+cOffsY)
 
 				// Get the right tile sprite.
-				sx := (t % tileXCount) * tileSize
-				sy := (t / tileXCount) * tileSize
-				screen.DrawImage(g.tileSet.SubImage(image.Rect(sx, sy, sx+tileSize, sy+tileSize)).(*ebiten.Image), op)
+				screen.DrawImage(g.tileSet.TileImage(t), op)
+			}
+		}
+
+		drawItems := func(items []*Item) {
+			for _, it := range items {
+				op := &ebiten.DrawImageOptions{}
+				op.GeoM.Translate(float64(it.Position[0]*tileSize)+cOffsX, float64(it.Position[1]*tileSize)+cOffsY)
+
+				// Get the right tile sprite.
+				screen.DrawImage(tilesItemsSet.TileImage(it.Tile), op)
 			}
 		}
 
@@ -218,6 +230,7 @@ func (g *Game) Draw(screen *ebiten.Image) {
 		drawLayer(layers.Ground, false)
 		drawLayer(layers.GroundOverlay, false)
 		drawLayer(layers.Objects, false)
+		drawItems(layers.Items)
 		drawLayer(layers.Structures, true)
 		drawLayer(layers.Roof, false)
 	}

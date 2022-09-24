@@ -1,14 +1,12 @@
 package simvillage_tiles
 
-import "github.com/hajimehoshi/ebiten"
-
 // World is an interface providing chunks at the given coordinates.
 // TODO: Add a function that returns the active creatures in this world.
 // TODO: Add a function that retrieves a specific tile.
 // This would allow us to get information on doors to other maps etc.
 type World interface {
 	FetchChunk(x, y int) *MapChunk // returns a specific chunk
-	TileSet() *ebiten.Image        // returns the tileset for this world
+	TileSet() *TileSet             // returns the tileset for this world
 }
 
 // DefaultWorld is the default chunk source.
@@ -33,8 +31,8 @@ func (w *DefaultWorld) FetchChunk(x, y int) *MapChunk {
 }
 
 // TileSet returns the tileset used for this world.
-func (w *DefaultWorld) TileSet() *ebiten.Image {
-	return tilesImage
+func (w *DefaultWorld) TileSet() *TileSet {
+	return tilesDefaultSet
 }
 
 // FakeIndoorWorld is a fake indoor map.
@@ -55,8 +53,8 @@ func (w *FakeIndoorWorld) FetchChunk(x, y int) *MapChunk {
 }
 
 // TileSet returns the tileset used for this world.
-func (w *FakeIndoorWorld) TileSet() *ebiten.Image {
-	return tilesDungeon
+func (w *FakeIndoorWorld) TileSet() *TileSet {
+	return tilesDungeonSet
 }
 
 var dungeonFloorTiles = []int{48, 49, 50, 71, 72, 73, 94, 95, 96} // Tiles that are stone floor (in the dungeon)

@@ -7,11 +7,6 @@ import (
 )
 
 // Creature represents a moving entity in the game.
-//
-// TODO: Consider adding a pointer to the world the creature
-// currently is in, which will allow us to use collision detection
-// even if the "main character" is in a different world (in a shop
-// etc).
 type Creature struct {
 	g         *Game
 	w         World

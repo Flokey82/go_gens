@@ -3,11 +3,12 @@ package simvillage_tiles
 // MapChunk represents a chunk of the map.
 type MapChunk struct {
 	Dimensions
-	Ground        *Layer // Ground or terrain.
-	GroundOverlay *Layer // Overlays like carpets, scratchmarks, etc.
-	Objects       *Layer // Objects like stones, flowers, etc.
-	Structures    *Layer // Structures like walls, gates, fences, etc.
-	Roof          *Layer // Roof or ceiling.
+	Ground        *Layer  // Ground or terrain.
+	GroundOverlay *Layer  // Overlays like carpets, scratchmarks, etc.
+	Objects       *Layer  // Objects like stones, flowers, etc.
+	Structures    *Layer  // Structures like walls, gates, fences, etc.
+	Roof          *Layer  // Roof or ceiling.
+	Items         []*Item // Items in the current chunk.
 }
 
 // newMapChunk returns a new map chunk with the given width and height.
