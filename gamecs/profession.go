@@ -7,14 +7,18 @@ import (
 	"github.com/Flokey82/aistate"
 )
 
+// ProfessionType is the general type of a profession.
+// (e.g.: Baker, farmer, butcher, ...)
 type ProfessionType struct {
 	Name     string
 	CanCraft []*ItemType
 }
 
-func NewProfessionType(name string) *ProfessionType {
+// NewProfessionType returns a new profession of a given type.
+func NewProfessionType(name string, canCraft ...*ItemType) *ProfessionType {
 	return &ProfessionType{
-		Name: name,
+		Name:     name,
+		CanCraft: canCraft,
 	}
 }
 
@@ -27,6 +31,8 @@ func (p *ProfessionType) New(w *World, a *Agent, workshop *Location) *Profession
 	}
 }
 
+// Profession represents a career of an individual and performs
+// tasks related to the production of items. Implements aistate.State.
 type Profession struct {
 	*ProfessionType
 	w              *World
@@ -43,6 +49,8 @@ func (s *Profession) Type() aistate.StateType {
 	return StateTypeProfession
 }
 
+// Tick advances the tasks associated with the profession by the
+// given time interval.
 func (s *Profession) Tick(delta uint64) {
 	if len(s.Missing) > 0 {
 		return // TODO: Implement acquisition of missing materials.
@@ -59,6 +67,7 @@ func (s *Profession) Tick(delta uint64) {
 	}
 }
 
+// selectNewProject selects a new Item to produce.
 func (s *Profession) selectNewProject() {
 	// Do we have a current project?
 	if s.CurrentProject == nil {
@@ -78,6 +87,8 @@ func (s *Profession) selectNewProject() {
 	}
 }
 
+// OnEnter is called when the state machine switches
+// to this state.
 func (s *Profession) OnEnter() {
 	log.Println("Start work")
 	if len(s.CanCraft) == 0 {
@@ -88,10 +99,13 @@ func (s *Profession) OnEnter() {
 	// Work on current project.
 }
 
+// OnExit is called when the state machine switches
+// to another state.
 func (s *Profession) OnExit() {
 	log.Println("Stop work")
 }
 
+// Project represents a production task.
 type Project struct {
 	Produce  *ItemType
 	Progress uint64 // Amount of time invested
@@ -99,6 +113,8 @@ type Project struct {
 	Complete bool
 }
 
+// newProject returns a project to produce an item of the
+// given ItemType.
 func newProject(it *ItemType) *Project {
 	return &Project{
 		Produce:  it,
@@ -106,6 +122,7 @@ func newProject(it *ItemType) *Project {
 	}
 }
 
+// Tick advances the project by the given duration.
 func (p *Project) Tick(delta uint64) {
 	if p.Complete {
 		return
