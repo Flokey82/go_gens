@@ -37,18 +37,25 @@ func (w *DefaultWorld) TileSet() *TileSet {
 
 // FakeIndoorWorld is a fake indoor map.
 type FakeIndoorWorld struct {
+	layers *MapChunk // chunk at 0, 0 (this is statically generated)
+}
+
+func newFakeIndoorWorld() *FakeIndoorWorld {
+	return &FakeIndoorWorld{
+		layers: defaultDungeonChunk(),
+	}
 }
 
 func (w *FakeIndoorWorld) FetchChunk(x, y int) *MapChunk {
-	// Initialize the random number generator with a unique seed for the given coordinates.
-	r := newRandForChunk(x, y)
-
+	if x == 0 && y == 0 {
+		return w.layers
+	}
 	width := screenWidth / tileSize
 	height := screenHeight / tileSize
 
 	// Create a new, empty chunk.
 	chunk := newMapChunk(width, height)
-	chunk.Ground.fillRandom(dungeonFloorTiles, r)
+	chunk.Ground.fill(311) // fill black
 	return chunk
 }
 

@@ -88,7 +88,7 @@ func NewGame() *Game {
 	g := &Game{
 		tileSet: tilesDefaultSet,
 		dWorld:  newDefaultWorld(),
-		iWorld:  &FakeIndoorWorld{},
+		iWorld:  newFakeIndoorWorld(),
 	}
 	g.MapCache = newMapCache(g.dWorld)
 	g.player = NewCreature(g, g.dWorld, [2]int{0, 0})
