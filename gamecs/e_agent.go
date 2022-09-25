@@ -48,13 +48,9 @@ func newAgent(w *World) *Agent {
 
 func (c *Agent) SetProfession(w *World, p *ProfessionType) {
 	c.Profession = p.New(w, c, c.GetLocation("home"))
+
 	// We currently only work if we don't have any other worries.
-	c.CAi.CAiScheduler.AddAnyTransition(c.Profession, func() bool {
-		return !c.CAi.states[sExhausted] &&
-			!c.CAi.states[sThreatened] &&
-			!c.CAi.states[sHungry] &&
-			!c.CAi.states[sInjured]
-	})
+	c.CAi.CAiScheduler.AddAnyTransition(c.Profession, c.CAi.Idle)
 }
 
 func (c *Agent) ID() int {

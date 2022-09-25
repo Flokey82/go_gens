@@ -45,9 +45,32 @@ func (c *CAiStatus) Update(s *CStatus, delta float64) {
 	c.states[sInjured] = s.Health()/s.MaxHealth() <= 0.2
 }
 
+func (c *CAiStatus) Idle() bool {
+	if c.states[sExhausted] || c.states[sThreatened] || c.states[sHungry] || c.states[sInjured] {
+		return false
+	}
+	return true
+}
+
+func (c *CAiStatus) IsFunc(s string) func() bool {
+	return func() bool {
+		return c.states[s]
+	}
+}
+
+func (c *CAiStatus) IsNotFunc(s string) func() bool {
+	return func() bool {
+		return !c.states[s]
+	}
+}
+
 func (c *CAiStatus) HasFood() bool {
 	a := c.ai.w.mgr.GetEntityFromID(c.ai.id)
 	return a.CInventory.Find("food") != nil
+}
+
+func (c *CAiStatus) NoFood() bool {
+	return !c.HasFood()
 }
 
 func (c *CAiStatus) Eat() {

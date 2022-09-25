@@ -36,9 +36,7 @@ func (c *CAiScheduler) init(ai *CAi) {
 			return sAttack
 		}
 		return sFlee
-	}, func() bool {
-		return ai.CAiStatus.states[sThreatened]
-	})
+	}, ai.CAiStatus.IsFunc(sThreatened))
 
 	// Empty our inventory if it is full.
 	sStore := NewStateStoreFood(ai)
@@ -54,20 +52,14 @@ func (c *CAiScheduler) init(ai *CAi) {
 			return sMunch // If we have food, we can go munch.
 		}
 		return sFind // ... otherwise we have to find food first.
-	}, func() bool {
-		return ai.CAiStatus.states[sHungry]
-	})
+	}, ai.CAiStatus.IsFunc(sHungry))
 
-	// If we get sleepy....
+	// If we get sleepy, get some rest.
 	sRest := NewStateRest(ai)
-	c.AddAnyTransition(sRest, func() bool {
-		return ai.CAiStatus.states[sExhausted]
-	})
+	c.AddAnyTransition(sRest, ai.CAiStatus.IsFunc(sExhausted))
 
-	c.AddAnyTransition(sFind, func() bool {
-		// Always make sure we have food.
-		return !ai.CAiStatus.HasFood()
-	})
+	// Make sure we always have some food in our pocket.
+	c.AddAnyTransition(sFind, ai.CAiStatus.NoFood)
 
 	// Add selector to exit attack state.
 	c.AddSelector(sAttack, func() aistate.State {
@@ -75,19 +67,15 @@ func (c *CAiScheduler) init(ai *CAi) {
 			return c.Previous
 		}
 		return sFind
-	}, func() bool {
-		return !ai.CAiStatus.states[sThreatened]
-	})
+	}, ai.CAiStatus.IsNotFunc(sThreatened))
 
 	// Add selector to exit flee state.
-	c.AddSelector(sAttack, func() aistate.State {
+	c.AddSelector(sFlee, func() aistate.State {
 		if c.Previous != nil {
 			return c.Previous
 		}
 		return sFind
-	}, func() bool {
-		return !ai.CAiStatus.states[sThreatened]
-	})
+	}, ai.CAiStatus.IsNotFunc(sThreatened))
 
 	// Set our initial state.
 	c.SetState(sFind)
