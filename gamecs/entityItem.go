@@ -4,6 +4,8 @@ import (
 	"github.com/Flokey82/go_gens/vectors"
 )
 
+// ItemLocation indicates the type of location where an item
+// is located.
 type ItemLocation int
 
 const (
@@ -12,6 +14,7 @@ const (
 	LocInventory
 )
 
+// Item represents a movable item in the world.
 type Item struct {
 	id         int          // ID of the item
 	Location   ItemLocation // Type of location (world, inventory, ...)
@@ -20,10 +23,12 @@ type Item struct {
 	*ItemType               // Base information
 }
 
+// ID returns the unique identifier for this item.
 func (it *Item) ID() int {
 	return it.id
 }
 
+// ItemType represents the base type of an item.
 type ItemType struct {
 	Name       string
 	Tags       []string       // Food, Weapon
@@ -31,6 +36,7 @@ type ItemType struct {
 	Requires   []*ItemType    // Requires items to craft
 }
 
+// NewItemType returns a new item type with the given name and tags.
 func NewItemType(name string, tags ...string) *ItemType {
 	return &ItemType{
 		Name:       name,
@@ -39,6 +45,7 @@ func NewItemType(name string, tags ...string) *ItemType {
 	}
 }
 
+// New returns a new item of the current type.
 func (i *ItemType) New(w *World, pos vectors.Vec2) *Item {
 	return &Item{
 		ItemType: i,

@@ -44,7 +44,7 @@ func (m *Manager) RemoveItem(it *Item) {
 		if in == it {
 			m.items = append(m.items[:i], m.items[i+1:]...)
 			if it.Location != LocWorld {
-				m.GetEntityFromID(it.LocationID).CInventory.RemoveID(it.id)
+				m.GetEntityFromID(it.LocationID).CompInventory.RemoveID(it.id)
 			} else {
 				log.Println("removed world item!!!!")
 			}

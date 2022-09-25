@@ -6,7 +6,8 @@ import (
 	"github.com/Flokey82/aifiver"
 )
 
-type CAi struct {
+// CompAi is the AI component.
+type CompAi struct {
 	id int
 	w  *World
 
@@ -18,8 +19,9 @@ type CAi struct {
 	aifiver.SmallModel
 }
 
-func newCAi(w *World, id int) *CAi {
-	c := &CAi{
+// newCompAi returns a new AI component.
+func newCompAi(w *World, id int) *CompAi {
+	c := &CompAi{
 		id:            id,
 		w:             w,
 		CAiPerception: newCAiPerception(),
@@ -40,11 +42,12 @@ func newCAi(w *World, id int) *CAi {
 }
 
 // Conflict returns true if the personality indicates low agreeableness.
-func (c *CAi) Conflict() bool {
+func (c *CompAi) Conflict() bool {
 	return c.Get(aifiver.FactorAgreeableness) <= 0
 }
 
-func (c *CAi) Update(m *CMovable, s *CStatus, delta float64) {
+// Update updates the AI state, performs calculations and magic.
+func (c *CompAi) Update(m *CompMovable, s *CompStatus, delta float64) {
 	// Update perception.
 	c.CAiPerception.Update(m, delta)
 

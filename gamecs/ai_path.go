@@ -9,7 +9,7 @@ import (
 
 // CAiPath is a path planning component.
 type CAiPath struct {
-	ai              *CAi
+	ai              *CompAi
 	Waypoints       []vectors.Vec2 // Current list of waypoints.
 	WaypointCurrent int            // Current index in the waypoints array.
 	Target          vectors.Vec2   // Our current target.
@@ -22,7 +22,7 @@ func newCAiPath() *CAiPath {
 	return new(CAiPath)
 }
 
-func (c *CAiPath) init(ai *CAi) {
+func (c *CAiPath) init(ai *CompAi) {
 	c.ai = ai
 }
 
@@ -34,7 +34,7 @@ func (c *CAiPath) resetWaypoints() {
 }
 
 // planWaypoints plans a number of waypoints for reaching the current target.
-func (c *CAiPath) planWaypoints(m *CMovable) {
+func (c *CAiPath) planWaypoints(m *CompMovable) {
 	// This implementation is poop.
 	// TODO: Replace with A* or similar stuff.
 	curWay := m.Pos
@@ -48,7 +48,7 @@ func (c *CAiPath) planWaypoints(m *CMovable) {
 }
 
 // currentWaypoint returns the next position to move towards in order to reach the target.
-func (c *CAiPath) currentWaypoint(m *CMovable) vectors.Vec2 {
+func (c *CAiPath) currentWaypoint(m *CompMovable) vectors.Vec2 {
 	if c.WaypointCurrent >= len(c.Waypoints) {
 		return c.Target
 	}
@@ -71,7 +71,7 @@ func (c *CAiPath) SetTarget(t vectors.Vec2) {
 }
 
 // Update ticks the AI path planner by delta.
-func (c *CAiPath) Update(m *CMovable, delta float64) {
+func (c *CAiPath) Update(m *CompMovable, delta float64) {
 	// Check if we're still actively moving.
 	if !c.active {
 		return

@@ -13,10 +13,10 @@ const StateTypeFlee aistate.StateType = 1
 
 // StateFlee
 type StateFlee struct {
-	ai *CAi
+	ai *CompAi
 }
 
-func NewStateFlee(ai *CAi) *StateFlee {
+func NewStateFlee(ai *CompAi) *StateFlee {
 	return &StateFlee{ai: ai}
 }
 
@@ -50,12 +50,12 @@ const StateTypeAttack aistate.StateType = 2
 
 // StateAttack
 type StateAttack struct {
-	ai     *CAi
+	ai     *CompAi
 	ait    *aitree.Tree
 	target *Agent
 }
 
-func NewStateAttack(ai *CAi) *StateAttack {
+func NewStateAttack(ai *CompAi) *StateAttack {
 	s := &StateAttack{
 		ai:  ai,
 		ait: aitree.New(),

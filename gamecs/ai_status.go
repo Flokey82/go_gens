@@ -3,7 +3,7 @@ package gamecs
 import "log"
 
 type CAiStatus struct {
-	ai     *CAi
+	ai     *CompAi
 	ape    *CAiPerception
 	states map[string]bool
 	eat    bool // This is a temp hack to work around the lack of event/command/message system
@@ -15,12 +15,12 @@ func newCAiStatus() *CAiStatus {
 	}
 }
 
-func (c *CAiStatus) init(ai *CAi) {
+func (c *CAiStatus) init(ai *CompAi) {
 	c.ai = ai
 	c.ape = ai.CAiPerception
 }
 
-func (c *CAiStatus) Update(s *CStatus, delta float64) {
+func (c *CAiStatus) Update(s *CompStatus, delta float64) {
 	if c.eat {
 		s.cs.StatHunger.Val = 0.0
 		s.cs.StatThirst.Val = 0.0
@@ -66,7 +66,7 @@ func (c *CAiStatus) IsNotFunc(s string) func() bool {
 
 func (c *CAiStatus) HasFood() bool {
 	a := c.ai.w.mgr.GetEntityFromID(c.ai.id)
-	return a.CInventory.Find("food") != nil
+	return a.CompInventory.Find("food") != nil
 }
 
 func (c *CAiStatus) NoFood() bool {

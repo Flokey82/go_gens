@@ -17,12 +17,12 @@ const StateTypeFind aistate.StateType = 0
 // their hunger and remove the food source from the world map.
 
 type StateFindFood struct {
-	ai  *CAi
+	ai  *CompAi
 	ait *aitree.Tree
 	it  *Item
 }
 
-func NewStateFindFood(ai *CAi) *StateFindFood {
+func NewStateFindFood(ai *CompAi) *StateFindFood {
 	s := &StateFindFood{
 		ai:  ai,
 		ait: aitree.New(),
@@ -99,11 +99,11 @@ const StateTypeMunch aistate.StateType = 3
 
 // StateEatFood will be active if the agent is hungry and we have food.
 type StateEatFood struct {
-	ai  *CAi
+	ai  *CompAi
 	ait *aitree.Tree
 }
 
-func NewStateEatFood(ai *CAi) *StateEatFood {
+func NewStateEatFood(ai *CompAi) *StateEatFood {
 	s := &StateEatFood{
 		ai:  ai,
 		ait: aitree.New(),
@@ -115,7 +115,7 @@ func NewStateEatFood(ai *CAi) *StateEatFood {
 		a := ai.w.mgr.GetEntityFromID(ai.id)
 
 		// Try to find an item tagged as food.
-		return a.CInventory.Find("food")
+		return a.CompInventory.Find("food")
 	})
 	return s
 }
@@ -142,11 +142,11 @@ func (s *StateEatFood) OnExit() {
 const StateTypeStore aistate.StateType = 5
 
 type StateStoreFood struct {
-	ai  *CAi
+	ai  *CompAi
 	ait *aitree.Tree
 }
 
-func NewStateStoreFood(ai *CAi) *StateStoreFood {
+func NewStateStoreFood(ai *CompAi) *StateStoreFood {
 	s := &StateStoreFood{
 		ai:  ai,
 		ait: aitree.New(),
@@ -164,8 +164,8 @@ func NewStateStoreFood(ai *CAi) *StateStoreFood {
 	}))
 
 	// Store stuff.
-	ghst.Append(newActionTransferItems(ai, func() *CInventory {
-		return s.ai.GetLocation("home").CInventory
+	ghst.Append(newActionTransferItems(ai, func() *CompInventory {
+		return s.ai.GetLocation("home").CompInventory
 	}))
 	return s
 }

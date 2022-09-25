@@ -3,7 +3,7 @@ package gamecs
 import "github.com/Flokey82/go_gens/vectors"
 
 type CAiMemory struct {
-	ai        *CAi
+	ai        *CompAi
 	Locations map[string]*Location
 	Positions map[string]vectors.Vec2
 }
@@ -15,7 +15,7 @@ func newCAiMemory() *CAiMemory {
 	}
 }
 
-func (c *CAiMemory) init(ai *CAi) {
+func (c *CAiMemory) init(ai *CompAi) {
 	c.ai = ai
 }
 

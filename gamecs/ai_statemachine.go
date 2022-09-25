@@ -1,8 +1,6 @@
 package gamecs
 
 import (
-	"log"
-
 	"github.com/Flokey82/aistate"
 )
 
@@ -22,7 +20,7 @@ func newCAiScheduler() *CAiScheduler {
 // scratch. There is no real rhyme or reason behind many of the
 // transitions and there might be dead ends. I'll probably start
 // over again in a new project at some point.
-func (c *CAiScheduler) init(ai *CAi) {
+func (c *CAiScheduler) init(ai *CompAi) {
 	// TODO: Add 'any' transitions in order of priority.
 	// Set up the two states we decide on if we are being threatened.
 	sFlee := NewStateFlee(ai)     // Flee from predator
@@ -41,7 +39,7 @@ func (c *CAiScheduler) init(ai *CAi) {
 	// Empty our inventory if it is full.
 	sStore := NewStateStoreFood(ai)
 	c.AddAnyTransition(sStore, func() bool {
-		return ai.w.mgr.GetEntityFromID(ai.id).CInventory.IsFull()
+		return ai.w.mgr.GetEntityFromID(ai.id).CompInventory.IsFull()
 	})
 
 	// If we get hungry....
@@ -83,29 +81,4 @@ func (c *CAiScheduler) init(ai *CAi) {
 
 func (c *CAiScheduler) Update(delta float64) {
 	c.Tick(uint64(delta * 100))
-}
-
-const StateTypeIdle aistate.StateType = 7
-
-type StateIdle struct {
-	ai *CAi
-}
-
-func NewStateIdle(ai *CAi) *StateIdle {
-	return &StateIdle{ai: ai}
-}
-
-func (s *StateIdle) Type() aistate.StateType {
-	return StateTypeIdle
-}
-
-func (s *StateIdle) Tick(delta uint64) {
-}
-
-func (s *StateIdle) OnEnter() {
-	log.Printf("entering state %d", s.Type())
-}
-
-func (s *StateIdle) OnExit() {
-	log.Printf("leaving state %d", s.Type())
 }

@@ -12,10 +12,10 @@ const StateTypeRest aistate.StateType = 4
 // StateRest will be active once an agent is exhausted.
 // In this state, the agent will attempt to return home to rest.
 type StateRest struct {
-	ai *CAi
+	ai *CompAi
 }
 
-func NewStateRest(ai *CAi) *StateRest {
+func NewStateRest(ai *CompAi) *StateRest {
 	return &StateRest{
 		ai: ai,
 	}

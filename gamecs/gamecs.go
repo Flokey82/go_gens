@@ -92,14 +92,14 @@ func (w *World) storeGifFrame() {
 // Export all frames to a GIF under the given path.
 func (w *World) ExportGif(path string) error {
 	for _, loc := range w.mgr.locations {
-		log.Println(fmt.Sprintf("loc %d in storage", len(loc.CInventory.Slots)))
-		for i, it := range loc.CInventory.Slots {
+		log.Println(fmt.Sprintf("loc %d in storage", len(loc.CompInventory.Slots)))
+		for i, it := range loc.CompInventory.Slots {
 			log.Println(fmt.Sprintf("%d: %s", i, it.Name))
 		}
 	}
 	for _, loc := range w.mgr.entities {
-		log.Println(fmt.Sprintf("age %d in storage", len(loc.CInventory.Slots)))
-		for i, it := range loc.CInventory.Slots {
+		log.Println(fmt.Sprintf("age %d in storage", len(loc.CompInventory.Slots)))
+		for i, it := range loc.CompInventory.Slots {
 			log.Println(fmt.Sprintf("%d: %s", i, it.Name))
 		}
 	}

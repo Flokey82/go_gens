@@ -9,11 +9,11 @@ import (
 )
 
 type ActionWander struct {
-	ai           *CAi
+	ai           *CompAi
 	EndCondition func() bool
 }
 
-func newActionWander(ai *CAi, f func() bool) *ActionWander {
+func newActionWander(ai *CompAi, f func() bool) *ActionWander {
 	return &ActionWander{
 		ai:           ai,
 		EndCondition: f,
@@ -36,12 +36,12 @@ func (l *ActionWander) Tick() aitree.State {
 }
 
 type ActionMoveTo struct {
-	ai       *CAi
+	ai       *CompAi
 	FailFunc func() bool
 	PosFunc  func() vectors.Vec2
 }
 
-func newActionMoveTo(ai *CAi, ff func() bool, f func() vectors.Vec2) *ActionMoveTo {
+func newActionMoveTo(ai *CompAi, ff func() bool, f func() vectors.Vec2) *ActionMoveTo {
 	return &ActionMoveTo{
 		ai:       ai,
 		FailFunc: ff,
@@ -69,11 +69,11 @@ func (l *ActionMoveTo) Tick() aitree.State {
 }
 
 type ActionPickUpItem struct {
-	ai       *CAi
+	ai       *CompAi
 	ItemFunc func() *Item
 }
 
-func newActionPickUpItem(ai *CAi, f func() *Item) *ActionPickUpItem {
+func newActionPickUpItem(ai *CompAi, f func() *Item) *ActionPickUpItem {
 	return &ActionPickUpItem{
 		ai:       ai,
 		ItemFunc: f,
@@ -97,7 +97,7 @@ func (l *ActionPickUpItem) Tick() aitree.State {
 
 	// ... and try to add the object to our inventory.
 	// If we can't, return the failure state.
-	if !a.CInventory.Add(it) {
+	if !a.CompInventory.Add(it) {
 		return aitree.StateFailure
 	}
 
@@ -106,11 +106,11 @@ func (l *ActionPickUpItem) Tick() aitree.State {
 }
 
 type ActionConsumeItem struct {
-	ai       *CAi
+	ai       *CompAi
 	ItemFunc func() *Item
 }
 
-func newActionConsumeItem(ai *CAi, f func() *Item) *ActionConsumeItem {
+func newActionConsumeItem(ai *CompAi, f func() *Item) *ActionConsumeItem {
 	return &ActionConsumeItem{
 		ai:       ai,
 		ItemFunc: f,
@@ -139,11 +139,11 @@ func (l *ActionConsumeItem) Tick() aitree.State {
 }
 
 type ActionTransferItems struct {
-	ai         *CAi
-	TargetFunc func() *CInventory
+	ai         *CompAi
+	TargetFunc func() *CompInventory
 }
 
-func newActionTransferItems(ai *CAi, f func() *CInventory) *ActionTransferItems {
+func newActionTransferItems(ai *CompAi, f func() *CompInventory) *ActionTransferItems {
 	return &ActionTransferItems{
 		ai:         ai,
 		TargetFunc: f,
@@ -164,7 +164,7 @@ func (l *ActionTransferItems) Tick() aitree.State {
 
 	// ... and attempt to transfer all items to the dst inventory.
 	// If we can't, return the failure state.
-	if !a.CInventory.TransferAll(dstInv) {
+	if !a.CompInventory.TransferAll(dstInv) {
 		return aitree.StateFailure
 	}
 
@@ -172,11 +172,11 @@ func (l *ActionTransferItems) Tick() aitree.State {
 }
 
 type ActionIsTrue struct {
-	ai   *CAi
+	ai   *CompAi
 	Eval func() bool
 }
 
-func newActionIsTrue(ai *CAi, ef func() bool) *ActionIsTrue {
+func newActionIsTrue(ai *CompAi, ef func() bool) *ActionIsTrue {
 	return &ActionIsTrue{
 		ai:   ai,
 		Eval: ef,
@@ -194,11 +194,11 @@ func (l *ActionIsTrue) Tick() aitree.State {
 }
 
 type ActionAttack struct {
-	ai         *CAi
+	ai         *CompAi
 	TargetFunc func() *Agent
 }
 
-func newActionAttack(ai *CAi, f func() *Agent) *ActionAttack {
+func newActionAttack(ai *CompAi, f func() *Agent) *ActionAttack {
 	return &ActionAttack{
 		ai:         ai,
 		TargetFunc: f,

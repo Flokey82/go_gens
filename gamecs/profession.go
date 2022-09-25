@@ -22,7 +22,7 @@ func (p *ProfessionType) New(w *World, a *Agent, workshop *Location) *Profession
 	return &Profession{
 		w:              w,
 		ProfessionType: p,
-		ai:             a.CAi,
+		ai:             a.CompAi,
 		workshop:       workshop,
 	}
 }
@@ -30,7 +30,7 @@ func (p *ProfessionType) New(w *World, a *Agent, workshop *Location) *Profession
 type Profession struct {
 	*ProfessionType
 	w              *World
-	ai             *CAi
+	ai             *CompAi
 	CurrentProject *Project  // Current project? Would a queue be better?
 	workshop       *Location // Workshop inventory
 	Missing        []*ItemType

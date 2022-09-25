@@ -11,7 +11,7 @@ import (
 const perceptionDist = 4.0
 
 type CAiPerception struct {
-	ai       *CAi
+	ai       *CompAi
 	w        *World
 	Entities []*Agent
 	Items    []*Item
@@ -25,7 +25,7 @@ func newCAiPerception() *CAiPerception {
 }
 
 // init initializes the perception using the CAi struct.
-func (c *CAiPerception) init(ai *CAi) {
+func (c *CAiPerception) init(ai *CompAi) {
 	c.ai = ai
 	c.w = ai.w
 }
@@ -53,14 +53,14 @@ func (c *CAiPerception) CanSee(it *Item) bool {
 }
 
 // Update updates the list of visible items / entities.
-func (c *CAiPerception) Update(m *CMovable, delta float64) {
+func (c *CAiPerception) Update(m *CompMovable, delta float64) {
 	// TODO: Send notifications on newly spotted entities and items and those we lost sight of.
 
 	// Update perceived agents.
 	// TODO: Deduplicate with percieved items.
 	c.Entities = nil
 	for _, ce := range c.w.mgr.Entities() {
-		if ce.CMovable != m && vectors.Dist2(ce.CMovable.Pos, m.Pos) < c.maxDist {
+		if ce.CompMovable != m && vectors.Dist2(ce.CompMovable.Pos, m.Pos) < c.maxDist {
 			c.Entities = append(c.Entities, ce)
 		}
 	}
