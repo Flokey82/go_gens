@@ -43,3 +43,4 @@ genmarchingcubes/cmd/tmp.obj
 genflora/cmd/runner
 gamesheet/cmd/runner
 simvillage_tiles/cmd/main
+gamerogueish/cmd/runner
