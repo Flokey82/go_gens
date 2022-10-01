@@ -11,8 +11,10 @@ import (
 	"github.com/hajimehoshi/ebiten/inpututil"
 )
 
+type GenWorld func(width, height int) *World
+
 const (
-	labelWindow     = "ramen - roguelike example"
+	labelWindow     = "rogue-ish"
 	labelWorldView  = "World View"
 	labelPlayerInfo = "Player Info"
 )
@@ -27,16 +29,18 @@ func NewPosition(x, y int) *Position {
 }
 
 type Game struct {
+	*World                          // currently generated world
+	generator      GenWorld         // world generator function
 	player         *Position        // player entity
-	cells          [][]byte         // world cells
 	rootView       *console.Console // view for all sub views
 	worldView      *console.Console // contains map
 	playerInfoView *console.Console // contains player info
 }
 
-func NewGame() (*Game, error) {
+func NewGame(gw GenWorld) (*Game, error) {
 	g := &Game{
-		player: NewPosition(3, 3),
+		generator: gw,
+		player:    NewPosition(3, 3),
 	}
 	if err := g.init(); err != nil {
 		return nil, err
@@ -48,8 +52,7 @@ func (g *Game) init() error {
 	// Init world cells.
 	wWidth := 50
 	wHeight := 50
-	w := genFancyWorld(wWidth, wHeight)
-	g.cells = [][]byte(*w)
+	g.World = g.generator(wWidth, wHeight)
 
 	// Place the player in the middle.
 	g.player.X = wWidth / 2
@@ -89,32 +92,23 @@ func (g *Game) Start() {
 }
 
 func (g *Game) HandleInput(timeElapsed float64) error {
-	if inpututil.IsKeyJustPressed(ebiten.KeyW) && g.canMoveTo(g.player.X, g.player.Y-1) {
+	if inpututil.IsKeyJustPressed(ebiten.KeyW) && g.CanMoveTo(g.player.X, g.player.Y-1) {
 		g.player.Y -= 1
 	}
 
-	if inpututil.IsKeyJustPressed(ebiten.KeyS) && g.canMoveTo(g.player.X, g.player.Y+1) {
+	if inpututil.IsKeyJustPressed(ebiten.KeyS) && g.CanMoveTo(g.player.X, g.player.Y+1) {
 		g.player.Y += 1
 	}
 
-	if inpututil.IsKeyJustPressed(ebiten.KeyA) && g.canMoveTo(g.player.X-1, g.player.Y) {
+	if inpututil.IsKeyJustPressed(ebiten.KeyA) && g.CanMoveTo(g.player.X-1, g.player.Y) {
 		g.player.X -= 1
 	}
 
-	if inpututil.IsKeyJustPressed(ebiten.KeyD) && g.canMoveTo(g.player.X+1, g.player.Y) {
+	if inpututil.IsKeyJustPressed(ebiten.KeyD) && g.CanMoveTo(g.player.X+1, g.player.Y) {
 		g.player.X += 1
 	}
 
 	return nil
-}
-
-// checks if a tile is solid (tile content is not a space ' ' character)
-func (g *Game) isSolid(x int, y int) bool {
-	return g.cells[y][x] != ' '
-}
-
-func (g *Game) canMoveTo(x, y int) bool {
-	return g.cells[y][x] == ' '
 }
 
 func (g *Game) Update(screen *ebiten.Image, timeDelta float64) error {
@@ -135,12 +129,12 @@ func (g *Game) Update(screen *ebiten.Image, timeDelta float64) error {
 	// draw world
 	midX := g.worldView.Width / 2
 	midY := g.worldView.Height / 2
-	for y := range g.cells {
-		for x := range g.cells[y] {
-			if g.cells[y][x] == ' ' {
+	for y := range g.Cells {
+		for x := range g.Cells[y] {
+			if g.Cells[y][x] == ' ' {
 				continue
 			}
-			g.worldView.Transform(midX-g.player.X+x, midY-g.player.Y+y, t.CharByte(g.cells[y][x]))
+			g.worldView.Transform(midX-g.player.X+x, midY-g.player.Y+y, t.CharByte(g.Cells[y][x]))
 		}
 	}
 

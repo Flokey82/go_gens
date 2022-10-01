@@ -20,7 +20,7 @@ var levelLayout = `
 `
 
 // genWorld returns the default world as world cells.
-func genWorld() [][]byte {
+func genWorld(width, height int) [][]byte {
 	var cells [][]byte
 	lines := strings.Split(levelLayout, "\n")
 	for i := range lines {
@@ -32,25 +32,47 @@ func genWorld() [][]byte {
 	return cells
 }
 
-type World [][]byte
-
-func newWorld(width, height int) *World {
-	w := World(genWorldBoxy(width, height))
-	return &w
+type World struct {
+	Cells  [][]byte // 2D array of world cells
+	Width  int      // width of the world in cells
+	Height int      // height of the world in cells
 }
 
-func (w *World) fill(c byte) {
-	for y := range *w {
-		for x := range (*w)[y] {
-			(*w)[y][x] = c
+func newWorld(width, height int) *World {
+	w := &World{
+		Width:  width,
+		Height: height,
+	}
+	w.Cells = make([][]byte, height)
+	for y := range w.Cells {
+		w.Cells[y] = make([]byte, width)
+	}
+	return w
+}
+
+// IsSolid checks if a tile is solid (tile content is not a space ' ' character).
+func (w *World) IsSolid(x int, y int) bool {
+	return w.Cells[y][x] != ' '
+}
+
+// CanMoveTo checks if a tile is solid and if it is not occupied by an entity.
+func (w *World) CanMoveTo(x, y int) bool {
+	// TODO: Bounds check.
+	return w.Cells[y][x] == ' '
+}
+
+func (w *World) Fill(c byte) {
+	for y := range w.Cells {
+		for x := range w.Cells[y] {
+			w.Cells[y][x] = c
 		}
 	}
 }
 
-func (w *World) carveRoom(room *Room) {
-	for y := room.y; y < room.y+room.h; y++ {
-		for x := room.x; x < room.x+room.w; x++ {
-			(*w)[y][x] = ' '
+func (w *World) CarveRoom(room *Room) {
+	for y := room.Y; y < room.Y+room.H; y++ {
+		for x := room.X; x < room.X+room.W; x++ {
+			w.Cells[y][x] = ' '
 		}
 	}
 }
@@ -64,7 +86,7 @@ const (
 )
 
 // Room generation algorithm:
-func genFancyWorld(width, height int) *World {
+func GenSimpleDungeon(width, height int) *World {
 	const (
 		attempts    = 200
 		maxRooms    = 100
@@ -72,19 +94,19 @@ func genFancyWorld(width, height int) *World {
 		maxRoomSize = 20
 	)
 	w := newWorld(width, height)
-	w.fill('#')
+	w.Fill('#')
 
 	var rooms []*Room
 
 	// Start with a single room.
 	rooms = append(rooms, &Room{
-		x: (width / 2) - 3,
-		y: (height / 2) - 2,
-		w: 6,
-		h: 4,
+		X: (width / 2) - 3,
+		Y: (height / 2) - 2,
+		W: 6,
+		H: 4,
 	})
 
-	w.carveRoom(rooms[0])
+	w.CarveRoom(rooms[0])
 	for i := 0; i < attempts; i++ {
 		// Pick a room and place a neighboring room.
 		room := rooms[rand.Intn(len(rooms))]
@@ -99,29 +121,29 @@ func genFancyWorld(width, height int) *World {
 		var x, y int
 		switch dir {
 		case DirNorth:
-			x = room.x + room.w/2 - rw/2
-			y = room.y - rl - 1
+			x = room.X + room.W/2 - rw/2
+			y = room.Y - rl - 1
 		case DirEast:
-			x = room.x + room.w + 1
-			y = room.y + room.h/2 - rl/2
+			x = room.X + room.W + 1
+			y = room.Y + room.H/2 - rl/2
 		case DirSouth:
-			x = room.x + room.w/2 - rw/2
-			y = room.y + room.h + 1
+			x = room.X + room.W/2 - rw/2
+			y = room.Y + room.H + 1
 		case DirWest:
-			x = room.x - rw - 1
-			y = room.y + room.h/2 - rl/2
+			x = room.X - rw - 1
+			y = room.Y + room.H/2 - rl/2
 		}
 
 		// Create a new room.
 		newRoom := &Room{
-			x: x,
-			y: y,
-			w: rw,
-			h: rl,
+			X: x,
+			Y: y,
+			W: rw,
+			H: rl,
 		}
 
 		// Check if the new room overlaps with any existing rooms.
-		if newRoom.x < 1 || newRoom.y < 1 || newRoom.x+newRoom.w > width-1 || newRoom.y+newRoom.h > height-1 || newRoom.overlaps(rooms) {
+		if newRoom.X < 1 || newRoom.Y < 1 || newRoom.X+newRoom.W > width-1 || newRoom.Y+newRoom.H > height-1 || newRoom.Overlaps(rooms) {
 			continue
 		}
 
@@ -129,19 +151,19 @@ func genFancyWorld(width, height int) *World {
 		rooms = append(rooms, newRoom)
 
 		// Draw room.
-		w.carveRoom(newRoom)
+		w.CarveRoom(newRoom)
 
 		// Draw a tunnel between the rooms.
 		// NOTE: Right now, we just place the door in the middle.
 		switch dir {
 		case DirNorth:
-			(*w)[room.y-1][room.x+room.w/2] = ' '
+			w.Cells[room.Y-1][room.X+room.W/2] = ' '
 		case DirEast:
-			(*w)[room.y+room.h/2][room.x+room.w] = ' '
+			w.Cells[room.Y+room.H/2][room.X+room.W] = ' '
 		case DirSouth:
-			(*w)[room.y+room.h][room.x+room.w/2] = ' '
+			w.Cells[room.Y+room.H][room.X+room.W/2] = ' '
 		case DirWest:
-			(*w)[room.y+room.h/2][room.x-1] = ' '
+			w.Cells[room.Y+room.H/2][room.X-1] = ' '
 		}
 		// Stop if we have enough rooms.
 		if len(rooms) > maxRooms {
@@ -154,15 +176,15 @@ func genFancyWorld(width, height int) *World {
 // Room represents a room in the world.
 // TODO: Store connecting rooms
 type Room struct {
-	x, y, w, h int
+	X, Y, W, H int
 }
 
-func (r *Room) overlaps(rooms []*Room) bool {
+func (r *Room) Overlaps(rooms []*Room) bool {
 	for _, room := range rooms {
-		if r.x+r.w < room.x || r.x > room.x+room.w {
+		if r.X+r.W < room.X || r.X > room.X+room.W {
 			continue
 		}
-		if r.y+r.h < room.y || r.y > room.y+room.h {
+		if r.Y+r.H < room.Y || r.Y > room.Y+room.H {
 			continue
 		}
 		return true
@@ -174,18 +196,14 @@ func randInt(min, max int) int {
 	return min + rand.Intn(max-min)
 }
 
-func genWorldBoxy(width, height int) [][]byte {
-	var cells [][]byte
-	for y := 0; y < height; y++ {
-		var row []byte
-		for x := 0; x < width; x++ {
-			if x == 0 || x == width-1 || y == 0 || y == height-1 {
-				row = append(row, '#')
-			} else {
-				row = append(row, '.')
-			}
-		}
-		cells = append(cells, row)
-	}
-	return cells
+func GenBigBox(width, height int) *World {
+	w := newWorld(width, height)
+	w.Fill('#')
+	w.CarveRoom(&Room{
+		X: 1,
+		Y: 1,
+		W: width - 2,
+		H: height - 2,
+	})
+	return w
 }
