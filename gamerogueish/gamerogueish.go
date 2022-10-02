@@ -11,7 +11,7 @@ import (
 	"github.com/hajimehoshi/ebiten/inpututil"
 )
 
-type GenWorld func(width, height int) *World
+type GenWorld func(width, height int, seed int64) *World
 
 const (
 	labelWindow     = "rogue-ish"
@@ -19,65 +19,60 @@ const (
 	labelPlayerInfo = "Player Info"
 )
 
-type Position struct {
-	X int
-	Y int
+type Entity struct {
+	X    int
+	Y    int
+	Tile byte
 }
 
-func NewPosition(x, y int) *Position {
-	return &Position{X: x, Y: y}
+func NewEntity(x, y int, tile byte) *Entity {
+	return &Entity{
+		X:    x,
+		Y:    y,
+		Tile: tile,
+	}
 }
 
 type Game struct {
 	*World                          // currently generated world
+	*FOV                            // currently generated FOV
 	generator      GenWorld         // world generator function
-	player         *Position        // player entity
+	player         *Entity          // player entity
 	rootView       *console.Console // view for all sub views
 	worldView      *console.Console // contains map
 	playerInfoView *console.Console // contains player info
 }
 
-func NewGame(gw GenWorld) (*Game, error) {
+func NewGame(gw GenWorld, width, height int, seed int64) (*Game, error) {
 	g := &Game{
 		generator: gw,
-		player:    NewPosition(3, 3),
+		World:     gw(width, height, seed),
+		player:    NewEntity(width/2, height/2, '@'), // Place the player in the middle.
 	}
-	if err := g.init(); err != nil {
-		return nil, err
-	}
-	return g, nil
-}
 
-func (g *Game) init() error {
-	// Init world cells.
-	wWidth := 50
-	wHeight := 50
-	g.World = g.generator(wWidth, wHeight)
-
-	// Place the player in the middle.
-	g.player.X = wWidth / 2
-	g.player.Y = wHeight / 2
+	g.FOV = NewFOV(g.World, 10)
+	g.FOV.Update(g.player.X, g.player.Y) // Update FOV
 
 	// Init views / UI.
 	rootView, err := console.New(60, 35, font.DefaultFont, labelWindow)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	g.rootView = rootView
 
 	worldView, err := rootView.CreateSubConsole(0, 1, rootView.Width-20, rootView.Height-1)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	g.worldView = worldView
 
 	playerInfoView, err := rootView.CreateSubConsole(worldView.Width, 1, 20, rootView.Height-1)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	g.playerInfoView = playerInfoView
 
-	return nil
+	return g, nil
 }
 
 func (g *Game) Start() {
@@ -92,20 +87,32 @@ func (g *Game) Start() {
 }
 
 func (g *Game) HandleInput(timeElapsed float64) error {
+	var turnTaken bool
 	if inpututil.IsKeyJustPressed(ebiten.KeyW) && g.CanMoveTo(g.player.X, g.player.Y-1) {
 		g.player.Y -= 1
+		turnTaken = true
 	}
 
 	if inpututil.IsKeyJustPressed(ebiten.KeyS) && g.CanMoveTo(g.player.X, g.player.Y+1) {
 		g.player.Y += 1
+		turnTaken = true
 	}
 
 	if inpututil.IsKeyJustPressed(ebiten.KeyA) && g.CanMoveTo(g.player.X-1, g.player.Y) {
 		g.player.X -= 1
+		turnTaken = true
 	}
 
 	if inpututil.IsKeyJustPressed(ebiten.KeyD) && g.CanMoveTo(g.player.X+1, g.player.Y) {
 		g.player.X += 1
+		turnTaken = true
+	}
+
+	if turnTaken {
+		// If we move, update seen tiles.
+		g.Compute(g.player.X, g.player.Y)
+
+		// Handle entity AI.
 	}
 
 	return nil
@@ -129,9 +136,11 @@ func (g *Game) Update(screen *ebiten.Image, timeDelta float64) error {
 	// draw world
 	midX := g.worldView.Width / 2
 	midY := g.worldView.Height / 2
+
+	// TODO: Skip drawing everything outside of the view.
 	for y := range g.Cells {
 		for x := range g.Cells[y] {
-			if g.Cells[y][x] == ' ' {
+			if g.Cells[y][x] == ' ' || !g.Seen[y][x] {
 				continue
 			}
 			g.worldView.Transform(midX-g.player.X+x, midY-g.player.Y+y, t.CharByte(g.Cells[y][x]))
@@ -139,7 +148,7 @@ func (g *Game) Update(screen *ebiten.Image, timeDelta float64) error {
 	}
 
 	// draw player in the middle
-	g.worldView.Transform(midX, midY, t.CharByte('@'), t.Foreground(concolor.Green))
+	g.worldView.Transform(midX, midY, t.CharByte(g.player.Tile), t.Foreground(concolor.Green))
 
 	// draw player info
 	g.playerInfoView.PrintBounded(1, 1, g.playerInfoView.Width-2, 2, fmt.Sprintf("X=%d Y=%d", g.player.X, g.player.Y))

@@ -14,6 +14,9 @@ Right now, the code is a really basic re-factor of the roguelike example that co
 ## TODO
 
 * FOV / 'Fog of war'
+  * [DONE] Basic radius based FOV
+  * Raycasting based FOV
+  * See: https://github.com/ajhager/rog/blob/master/fov.go
 * Creatures
 * Documentation
 * Map generation

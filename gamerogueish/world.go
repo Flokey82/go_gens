@@ -38,7 +38,7 @@ type World struct {
 	Height int      // height of the world in cells
 }
 
-func newWorld(width, height int) *World {
+func NewWorld(width, height int) *World {
 	w := &World{
 		Width:  width,
 		Height: height,
@@ -61,6 +61,7 @@ func (w *World) CanMoveTo(x, y int) bool {
 	return w.Cells[y][x] == ' '
 }
 
+// Fill all cells with the given tile.
 func (w *World) Fill(c byte) {
 	for y := range w.Cells {
 		for x := range w.Cells[y] {
@@ -69,6 +70,12 @@ func (w *World) Fill(c byte) {
 	}
 }
 
+// InBounds returns true if the given position is within the world bounds.
+func (w *World) InBounds(x, y int) bool {
+	return x >= 0 && x < w.Width && y >= 0 && y < w.Height
+}
+
+// CarveRoom sets all tiles occupied by the room to ' '.
 func (w *World) CarveRoom(room *Room) {
 	for y := room.Y; y < room.Y+room.H; y++ {
 		for x := room.X; x < room.X+room.W; x++ {
@@ -86,15 +93,18 @@ const (
 )
 
 // Room generation algorithm:
-func GenSimpleDungeon(width, height int) *World {
+func GenSimpleDungeon(width, height int, seed int64) *World {
 	const (
 		attempts    = 200
 		maxRooms    = 100
 		minRoomSize = 4
 		maxRoomSize = 20
 	)
-	w := newWorld(width, height)
+	w := NewWorld(width, height)
 	w.Fill('#')
+
+	ssrc := rand.NewSource(seed)
+	rng := rand.New(ssrc)
 
 	var rooms []*Room
 
@@ -109,12 +119,12 @@ func GenSimpleDungeon(width, height int) *World {
 	w.CarveRoom(rooms[0])
 	for i := 0; i < attempts; i++ {
 		// Pick a room and place a neighboring room.
-		room := rooms[rand.Intn(len(rooms))]
+		room := rooms[rng.Intn(len(rooms))]
 		// Pick a random direction.
-		dir := rand.Intn(4)
+		dir := rng.Intn(4)
 		// Pick a random length and width.
-		rl := randInt(minRoomSize, maxRoomSize)
-		rw := randInt(minRoomSize, maxRoomSize)
+		rl := randInt(rng, minRoomSize, maxRoomSize)
+		rw := randInt(rng, minRoomSize, maxRoomSize)
 
 		// Calculate position based on direction.
 		// NOTE: Right now we center the neighboring room.
@@ -176,7 +186,8 @@ func GenSimpleDungeon(width, height int) *World {
 // Room represents a room in the world.
 // TODO: Store connecting rooms
 type Room struct {
-	X, Y, W, H int
+	X, Y int // top left corner
+	W, H int // width and height
 }
 
 func (r *Room) Overlaps(rooms []*Room) bool {
@@ -192,12 +203,12 @@ func (r *Room) Overlaps(rooms []*Room) bool {
 	return false
 }
 
-func randInt(min, max int) int {
-	return min + rand.Intn(max-min)
+func randInt(rng *rand.Rand, min, max int) int {
+	return min + rng.Intn(max-min)
 }
 
-func GenBigBox(width, height int) *World {
-	w := newWorld(width, height)
+func GenBigBox(width, height int, seed int64) *World {
+	w := NewWorld(width, height)
 	w.Fill('#')
 	w.CarveRoom(&Room{
 		X: 1,
