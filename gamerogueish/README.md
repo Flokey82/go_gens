@@ -7,24 +7,45 @@ Right now, the code is a really basic re-factor of the roguelike example that co
 
 ![alt text](https://raw.githubusercontent.com/Flokey82/go_gens/master/gamerogueish/images/rgb.png "rogue-ish")
 
-## Done
-
-* Custom world generator functions
-
 ## TODO
 
 * FOV / 'Fog of war'
   * [DONE] Basic radius based FOV
   * Raycasting based FOV
-  * See: https://github.com/ajhager/rog/blob/master/fov.go
 * Creatures
+  * [DONE] Basic movement (random)
   * AI
 * Documentation
 * Inventory
+  * [DONE] Basic inventory
+  * [DONE] Item add / remove
 * Items
+  * [DONE] Basic items
+  * [DONE] Item generation
+  * [DONE] Consumable items
+  * [DONE] Equippable items
+  * Item pickup / drop
+  * Item effects
 * Combat
 * Map generation
+  * [DONE] Custom world generator functions
+  * [DONE] Creature placement
   * Neighbor rooms not centered (optionally)
   * Connections / doors not centered (optionally)
   * Caves
   * Custom seed
+  * Item placement
+
+## Interesting stuff
+
+* FOV
+  * https://github.com/ajhager/rog/blob/master/fov.go
+  * http://journal.stuffwithstuff.com/2015/09/07/what-the-hero-sees/
+  * http://www.roguebasin.com/index.php?title=Field_of_Vision
+* Loot
+  * http://journal.stuffwithstuff.com/2014/07/05/dropping-loot/
+  * https://www.reddit.com/r/roguelikedev/comments/2y3rkg/faq_friday_7_loot/
+* Game loop
+  * http://journal.stuffwithstuff.com/2014/07/15/a-turn-based-game-loop/
+* Map generation
+  * http://journal.stuffwithstuff.com/2014/12/21/rooms-and-mazes/

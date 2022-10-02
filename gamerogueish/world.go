@@ -2,43 +2,17 @@ package gamerogueish
 
 import (
 	"math/rand"
-	"strings"
 )
 
-var levelLayout = `
-#####################
-#         #    #    #
-#    #    #         #
-#    ######    #    #
-#              #    #
-##  #############  ##
-#    #    #    #    #
-#    #         #    #
-#    ######         #
-#              #    #
-#####################
-`
-
-// genWorld returns the default world as world cells.
-func genWorld(width, height int) [][]byte {
-	var cells [][]byte
-	lines := strings.Split(levelLayout, "\n")
-	for i := range lines {
-		if len(lines[i]) == 0 {
-			continue
-		}
-		cells = append(cells, []byte(lines[i]))
-	}
-	return cells
-}
-
+// World represents a game world.
 type World struct {
-	Cells    [][]byte // 2D array of world cells
-	Width    int      // width of the world in cells
-	Height   int      // height of the world in cells
-	Entities []*Entity
+	Cells    [][]byte  // 2D array of world cells
+	Width    int       // width of the world in cells
+	Height   int       // height of the world in cells
+	Entities []*Entity // entities in the world (creatures)
 }
 
+// NewWorld returns a new world with the given width and height.
 func NewWorld(width, height int) *World {
 	w := &World{
 		Width:  width,
@@ -93,8 +67,11 @@ const (
 	DirWest  = 3
 )
 
-// Room generation algorithm:
-func GenSimpleDungeon(width, height int, seed int64) *World {
+// GenWorldSimpleDungeon generates a simple random-walk-ish dungeon.
+// - A starting room is placed in the center of the world.
+// - Rooms are then placed in random directions neighboring a randomly selectd room.
+// - Rooms are not placed if they would overlap with an existing room.
+func GenWorldSimpleDungeon(width, height int, seed int64) *World {
 	const (
 		attempts    = 200
 		maxRooms    = 100
@@ -107,17 +84,20 @@ func GenSimpleDungeon(width, height int, seed int64) *World {
 	ssrc := rand.NewSource(seed)
 	rng := rand.New(ssrc)
 
-	var rooms []*Room
+	// Start with a single room in the middle of the map.
+	rl := randInt(rng, minRoomSize, maxRoomSize)
+	rw := randInt(rng, minRoomSize, maxRoomSize)
+	rooms := []*Room{{
+		X: (width / 2) - rw/2,
+		Y: (height / 2) - rl/2,
+		W: rw,
+		H: rl,
+	}}
 
-	// Start with a single room.
-	rooms = append(rooms, &Room{
-		X: (width / 2) - 3,
-		Y: (height / 2) - 2,
-		W: 6,
-		H: 4,
-	})
-
+	// Carve out the starting room.
 	w.CarveRoom(rooms[0])
+
+	// Place rooms until we run out of attempts or reach the max room count.
 	for i := 0; i < attempts; i++ {
 		// Pick a room and place a neighboring room.
 		room := rooms[rng.Intn(len(rooms))]
@@ -129,6 +109,9 @@ func GenSimpleDungeon(width, height int, seed int64) *World {
 
 		// Calculate position based on direction.
 		// NOTE: Right now we center the neighboring room.
+		//
+		// This could be changed to use a random offset to
+		// make the rooms more varied.
 		var x, y int
 		switch dir {
 		case DirNorth:
@@ -199,6 +182,7 @@ type Room struct {
 	W, H int // width and height
 }
 
+// Overlaps returns true if the given room overlaps with any of the rooms in the list.
 func (r *Room) Overlaps(rooms []*Room) bool {
 	for _, room := range rooms {
 		if r.X+r.W < room.X || r.X > room.X+room.W {
@@ -212,11 +196,13 @@ func (r *Room) Overlaps(rooms []*Room) bool {
 	return false
 }
 
+// randInt returns a random integer between min and max using the given rng.
 func randInt(rng *rand.Rand, min, max int) int {
 	return min + rng.Intn(max-min)
 }
 
-func GenBigBox(width, height int, seed int64) *World {
+// GenWorldBigBox generates a big box world.
+func GenWorldBigBox(width, height int, seed int64) *World {
 	w := NewWorld(width, height)
 	w.Fill('#')
 	w.CarveRoom(&Room{

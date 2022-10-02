@@ -2,20 +2,19 @@ package gamerogueish
 
 import "math"
 
+// FOV implements a field of view logic.
+// TODO: Add raycasting or octants.
+// See: http://journal.stuffwithstuff.com/2015/09/07/what-the-hero-sees/
 type FOV struct {
-	Seen   [][]bool
-	Radius int
-	Width  int
-	Height int
-	*World
+	Seen   [][]bool // keeps track of tiles that we have seen and remember
+	Radius int      // radius of the FOV
+	*World          // world to compute the FOV for
 }
 
 // NewFOV returns a new FOV struct.
 func NewFOV(w *World, r int) *FOV {
 	f := &FOV{
 		Radius: r,
-		Width:  w.Width,
-		Height: w.Height,
 		World:  w,
 	}
 	f.Seen = make([][]bool, f.Height)
