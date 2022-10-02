@@ -19,20 +19,6 @@ const (
 	labelPlayerInfo = "Player Info"
 )
 
-type Entity struct {
-	X    int
-	Y    int
-	Tile byte
-}
-
-func NewEntity(x, y int, tile byte) *Entity {
-	return &Entity{
-		X:    x,
-		Y:    y,
-		Tile: tile,
-	}
-}
-
 type Game struct {
 	*World                          // currently generated world
 	*FOV                            // currently generated FOV
@@ -49,6 +35,29 @@ func NewGame(gw GenWorld, width, height int, seed int64) (*Game, error) {
 		World:     gw(width, height, seed),
 		player:    NewEntity(width/2, height/2, '@'), // Place the player in the middle.
 	}
+
+	g.player.Inventory.Items = append(g.player.Inventory.Items, Item{
+		Name: "Sword",
+		Type: ItemWeapon,
+	})
+	g.player.Inventory.Items = append(g.player.Inventory.Items, Item{
+		Name: "Axe",
+		Type: ItemWeapon,
+	})
+	g.player.Inventory.Items = append(g.player.Inventory.Items, Item{
+		Name: "Potion",
+		Type: ItemPotion,
+	})
+	g.player.Inventory.Items = append(g.player.Inventory.Items, Item{
+		Name: "Leather Armor",
+		Type: ItemArmor,
+	})
+	g.player.Inventory.Items = append(g.player.Inventory.Items, Item{
+		Name: "Plate Armor",
+		Type: ItemArmor,
+	})
+
+	g.Entities = append(g.Entities, NewEntity(10, 10, 'R'))
 
 	g.FOV = NewFOV(g.World, 10)
 	g.FOV.Update(g.player.X, g.player.Y) // Update FOV
@@ -108,6 +117,17 @@ func (g *Game) HandleInput(timeElapsed float64) error {
 		turnTaken = true
 	}
 
+	// TODO: Move this to a UI component.
+	if inpututil.IsKeyJustPressed(ebiten.KeyUp) {
+		g.player.Inventory.SelectItem(g.player.Inventory.selectedItem - 1)
+	}
+	if inpututil.IsKeyJustPressed(ebiten.KeyDown) {
+		g.player.Inventory.SelectItem(g.player.Inventory.selectedItem + 1)
+	}
+	if inpututil.IsKeyJustPressed(ebiten.KeyEnter) {
+		g.player.Equip(g.player.Inventory.selectedItem)
+	}
+
 	if turnTaken {
 		// If we move, update seen tiles.
 		g.Compute(g.player.X, g.player.Y)
@@ -117,6 +137,8 @@ func (g *Game) HandleInput(timeElapsed float64) error {
 
 	return nil
 }
+
+var colGrey = concolor.RGB(128, 128, 128)
 
 func (g *Game) Update(screen *ebiten.Image, timeDelta float64) error {
 	// clear console
@@ -143,15 +165,45 @@ func (g *Game) Update(screen *ebiten.Image, timeDelta float64) error {
 			if g.Cells[y][x] == ' ' || !g.Seen[y][x] {
 				continue
 			}
-			g.worldView.Transform(midX-g.player.X+x, midY-g.player.Y+y, t.CharByte(g.Cells[y][x]))
+			if !g.IsInRadius(g.player.X, g.player.Y, x, y) {
+				g.worldView.Transform(midX-g.player.X+x, midY-g.player.Y+y, t.CharByte(g.Cells[y][x]), t.Foreground(colGrey))
+			} else {
+				g.worldView.Transform(midX-g.player.X+x, midY-g.player.Y+y, t.CharByte(g.Cells[y][x]))
+			}
 		}
 	}
 
 	// draw player in the middle
 	g.worldView.Transform(midX, midY, t.CharByte(g.player.Tile), t.Foreground(concolor.Green))
 
+	// draw entities
+	for _, e := range g.Entities {
+		if !g.IsInRadius(g.player.X, g.player.Y, e.X, e.Y) {
+			continue
+		}
+		g.worldView.Transform(midX-g.player.X+e.X, midY-g.player.Y+e.Y, t.CharByte(e.Tile), t.Foreground(concolor.Blue))
+	}
+
 	// draw player info
 	g.playerInfoView.PrintBounded(1, 1, g.playerInfoView.Width-2, 2, fmt.Sprintf("X=%d Y=%d", g.player.X, g.player.Y))
 
+	// draw inventory
+	// TODO:
+	// - Move this to a UI component.
+	// - Render equipped armor and weapon.
+	g.playerInfoView.PrintBounded(1, 3, g.playerInfoView.Width-2, 2, fmt.Sprintf("Inventory (%d)", g.player.Inventory.Count()))
+	for i, item := range g.player.Items {
+		var entry string
+		if item.Equipped {
+			entry = fmt.Sprintf("%d:*%s", i, item.Name)
+		} else {
+			entry = fmt.Sprintf("%d: %s", i, item.Name)
+		}
+		var transformers []t.Transformer
+		if i == g.player.selectedItem {
+			transformers = append(transformers, t.Foreground(concolor.Green))
+		}
+		g.playerInfoView.PrintBounded(2, 5+i, g.playerInfoView.Width-2, 2, entry, transformers...)
+	}
 	return nil
 }

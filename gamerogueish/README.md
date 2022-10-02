@@ -18,7 +18,11 @@ Right now, the code is a really basic re-factor of the roguelike example that co
   * Raycasting based FOV
   * See: https://github.com/ajhager/rog/blob/master/fov.go
 * Creatures
+  * AI
 * Documentation
+* Inventory
+* Items
+* Combat
 * Map generation
   * Neighbor rooms not centered (optionally)
   * Connections / doors not centered (optionally)

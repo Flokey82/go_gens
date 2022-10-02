@@ -33,9 +33,10 @@ func genWorld(width, height int) [][]byte {
 }
 
 type World struct {
-	Cells  [][]byte // 2D array of world cells
-	Width  int      // width of the world in cells
-	Height int      // height of the world in cells
+	Cells    [][]byte // 2D array of world cells
+	Width    int      // width of the world in cells
+	Height   int      // height of the world in cells
+	Entities []*Entity
 }
 
 func NewWorld(width, height int) *World {
@@ -162,6 +163,14 @@ func GenSimpleDungeon(width, height int, seed int64) *World {
 
 		// Draw room.
 		w.CarveRoom(newRoom)
+
+		// There is a chance that a creature entity is placed randomly
+		// in the room.
+
+		// Pick a random location in the room.
+		cx := randInt(rng, newRoom.X, newRoom.X+newRoom.W)
+		cy := randInt(rng, newRoom.Y, newRoom.Y+newRoom.H)
+		w.Entities = append(w.Entities, NewEntity(cx, cy, 'R'))
 
 		// Draw a tunnel between the rooms.
 		// NOTE: Right now, we just place the door in the middle.
