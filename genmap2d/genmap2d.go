@@ -4,7 +4,6 @@ package genmap2d
 import (
 	"image"
 	"image/png"
-	"math"
 	"math/rand"
 	"os"
 
@@ -16,8 +15,8 @@ type Map struct {
 	Width     int               // Width of the map
 	Height    int               // Height of the map
 	Villages  []*VillageScore   // Generated villages
-	Cells     [][]byte          // Cells represents the map and the assigned tile IDs.
-	HeightMap [][]byte          // Heightmap
+	Elevation []float64         // Elevation values for each cell
+	Cells     []byte            // Cells contains the assigned tile IDs
 	Rand      *rand.Rand        // Rand initialized with the provided seed
 	Noise     opensimplex.Noise // Noise initialized with the provided seed
 }
@@ -25,15 +24,24 @@ type Map struct {
 // New returns a new map with the given dimensions generated using the given seed.
 func New(width, height int, seed int64) *Map {
 	m := &Map{
-		Width:  width,
-		Height: height,
-		Cells:  initCells(width, height),
-		Rand:   rand.New(rand.NewSource(seed)),
-		Noise:  opensimplex.New(seed),
+		Width:     width,
+		Height:    height,
+		Elevation: make([]float64, width*height),
+		Cells:     make([]byte, width*height),
+		Rand:      rand.New(rand.NewSource(seed)),
+		Noise:     opensimplex.New(seed),
 	}
 	m.genHeightMap()
 	m.setup()
 	return m
+}
+
+func (m *Map) GetIndex(x, y int) int {
+	return x + y*m.Width
+}
+
+func (m *Map) GetCoordinates(idx int) (int, int) {
+	return idx % m.Width, idx / m.Width
 }
 
 // Export last frame to a PNG under the given path.
@@ -44,7 +52,7 @@ func (m *Map) ExportPng(path string) error {
 	// Set each pixel to the appropriate tile color.
 	for x := 0; x < m.Width; x++ {
 		for y := 0; y < m.Height; y++ {
-			img.Set(x, y, m.TileColor(m.Cells[x][y]))
+			img.Set(x, y, m.TileColor(m.Cells[m.GetIndex(x, y)]))
 		}
 	}
 
@@ -57,18 +65,4 @@ func (m *Map) ExportPng(path string) error {
 	// Write the png and close the file.
 	defer f.Close()
 	return png.Encode(f, img)
-}
-
-// dist calculates the distance between two points.
-func dist(x1, y1, x2, y2 int) int {
-	return int(math.Sqrt(float64((x1-x2)*(x1-x2) + (y1-y2)*(y1-y2))))
-}
-
-// initCells initializes a two dimensional slice of bytes with the given 'w'idth and 'h'eight.
-func initCells(w, h int) [][]byte {
-	nc := make([][]byte, w)
-	for i := range nc {
-		nc[i] = make([]byte, h)
-	}
-	return nc
 }

@@ -61,7 +61,7 @@ func (m *Map) TileColor(tID byte) color.Color {
 // setup assigns all tiles based on the height of a given point.
 func (m *Map) setup() {
 	m.run(func(x, y int) byte {
-		return m.TileFromHeight(int(m.HeightMap[x][y]) - 120)
+		return m.TileFromHeight(int(m.Elevation[m.GetIndex(x, y)]) - 120)
 	})
 }
 
@@ -69,7 +69,7 @@ func (m *Map) setup() {
 func (m *Map) run(f func(x, y int) byte) {
 	for x := 0; x < m.Width; x++ {
 		for y := 0; y < m.Height; y++ {
-			m.Cells[x][y] = f(x, y)
+			m.Cells[m.GetIndex(x, y)] = f(x, y)
 		}
 	}
 }
@@ -89,7 +89,7 @@ func (m *Map) tilesInRadius(x, y, r int) []byte {
 				// Not in circle.
 				continue
 			}
-			res = append(res, m.Cells[cx][cy])
+			res = append(res, m.Cells[m.GetIndex(cx, cy)])
 		}
 	}
 	return res

@@ -44,3 +44,8 @@ genflora/cmd/runner
 gamesheet/cmd/runner
 simvillage_tiles/cmd/main
 gamerogueish/cmd/runner
+genmap2d/cmd/rgb.png
+genmap2derosion/cmd/anim.gif
+genmap2derosion/cmd/*.png
+genmap2derosion/cmd/cpu.prof
+genmap2derosion/cmd/tmp.obj

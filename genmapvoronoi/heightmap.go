@@ -122,10 +122,16 @@ func distPoints(x1, y1, x2, y2 float64) float64 {
 func MeshHills(m *vmesh.Mesh, n int, r float64) *vmesh.Heightmap {
 	var mounts []voronoi.Vertex
 	for i := 0; i < n; i++ {
-		op := voronoi.Vertex{m.Extent.Width * (rand.Float64() - 0.5), m.Extent.Height * (rand.Float64() - 0.5)}
+		op := voronoi.Vertex{
+			X: m.Extent.Width * (rand.Float64() - 0.5),
+			Y: m.Extent.Height * (rand.Float64() - 0.5),
+		}
 		nh := rand.Intn(4) + 1
 		for j := 0; j < nh; j++ {
-			mounts = append(mounts, voronoi.Vertex{op.X + (rand.Float64()-0.5)*r, op.Y + (rand.Float64()-0.5)*r})
+			mounts = append(mounts, voronoi.Vertex{
+				X: op.X + (rand.Float64()-0.5)*r,
+				Y: op.Y + (rand.Float64()-0.5)*r,
+			})
 		}
 	}
 	r = r / 20

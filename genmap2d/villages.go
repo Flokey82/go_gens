@@ -19,13 +19,10 @@ func (m *Map) PlaceVillage() {
 	var scores []*VillageScore
 	for x := 0; x < m.Width; x++ {
 		for y := 0; y < m.Height; y++ {
-			if m.Cells[x][y] != TileIDGrass {
+			if m.Cells[m.GetIndex(x, y)] != TileIDGrass {
 				continue
 			}
-			ns := &VillageScore{
-				X: x,
-				Y: y,
-			}
+			ns := &VillageScore{X: x, Y: y}
 			for _, cr := range m.tilesInRadius(x, y, 20) {
 				switch cr {
 				case TileIDTree:
@@ -48,5 +45,10 @@ func (m *Map) PlaceVillage() {
 	})
 	winner := scores[0]
 	m.Villages = append(m.Villages, winner)
-	m.Cells[winner.X][winner.Y] = TileIDVillage
+	m.Cells[m.GetIndex(winner.X, winner.Y)] = TileIDVillage
+}
+
+// dist calculates the distance between two points.
+func dist(x1, y1, x2, y2 int) int {
+	return int(math.Sqrt(float64((x1-x2)*(x1-x2) + (y1-y2)*(y1-y2))))
 }
