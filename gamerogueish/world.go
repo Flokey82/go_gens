@@ -153,7 +153,7 @@ func GenWorldSimpleDungeon(width, height int, seed int64) *World {
 		// Pick a random location in the room.
 		cx := randInt(rng, newRoom.X, newRoom.X+newRoom.W)
 		cy := randInt(rng, newRoom.Y, newRoom.Y+newRoom.H)
-		w.Entities = append(w.Entities, NewEntity(cx, cy, 'R'))
+		w.Entities = append(w.Entities, NewEntity(cx, cy, MonsterEntities[rng.Intn(len(MonsterEntities))]))
 
 		// Draw a tunnel between the rooms.
 		// NOTE: Right now, we just place the door in the middle.

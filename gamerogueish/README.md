@@ -14,7 +14,8 @@ Right now, the code is a really basic re-factor of the roguelike example that co
   * Raycasting based FOV
 * Creatures
   * [DONE] Basic movement (random)
-  * AI
+  * [DONE] AI (basic)
+  * Pathfinding
 * Documentation
 * Inventory
   * [DONE] Basic inventory
@@ -27,6 +28,7 @@ Right now, the code is a really basic re-factor of the roguelike example that co
   * Item pickup / drop
   * Item effects
 * Combat
+  * Player death
 * Map generation
   * [DONE] Custom world generator functions
   * [DONE] Creature placement

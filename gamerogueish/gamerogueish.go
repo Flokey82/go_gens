@@ -2,7 +2,6 @@ package gamerogueish
 
 import (
 	"fmt"
-	"math/rand"
 
 	"github.com/BigJk/ramen/concolor"
 	"github.com/BigJk/ramen/console"
@@ -28,13 +27,16 @@ type Game struct {
 	rootView       *console.Console // view for all sub views
 	worldView      *console.Console // contains map
 	playerInfoView *console.Console // contains player info
+	messageView    *console.Console // contains messages
+
+	Messages []string // messages to display
 }
 
 func NewGame(gw GenWorld, width, height int, seed int64) (*Game, error) {
 	g := &Game{
 		generator: gw,
 		World:     gw(width, height, seed),
-		player:    NewEntity(width/2, height/2, '@'), // Place the player in the middle.
+		player:    NewEntity(width/2, height/2, EntityPlayer), // Place the player in the middle.
 	}
 
 	// Seed the player inventory with some items.
@@ -56,17 +58,23 @@ func NewGame(gw GenWorld, width, height int, seed int64) (*Game, error) {
 	}
 	g.rootView = rootView
 
-	worldView, err := rootView.CreateSubConsole(0, 1, rootView.Width-20, rootView.Height-1)
+	worldView, err := rootView.CreateSubConsole(0, 1, rootView.Width-20, rootView.Height-4)
 	if err != nil {
 		return nil, err
 	}
 	g.worldView = worldView
 
-	playerInfoView, err := rootView.CreateSubConsole(worldView.Width, 1, 20, rootView.Height-1)
+	playerInfoView, err := rootView.CreateSubConsole(worldView.Width, 1, 20, rootView.Height-4)
 	if err != nil {
 		return nil, err
 	}
 	g.playerInfoView = playerInfoView
+
+	messageView, err := rootView.CreateSubConsole(0, rootView.Height-3, rootView.Width, 3)
+	if err != nil {
+		return nil, err
+	}
+	g.messageView = messageView
 
 	return g, nil
 }
@@ -108,6 +116,28 @@ func (g *Game) HandleInput(timeElapsed float64) error {
 		turnTaken = true
 	}
 
+	// Attack entities if space is pressed.
+	if inpututil.IsKeyJustPressed(ebiten.KeySpace) {
+		pX := g.player.X
+		pY := g.player.Y
+
+		// TODO: Factor this out into a function.
+		var entities []*Entity
+		for _, e := range g.Entities {
+			if e.X == pX && e.Y == pY {
+				entities = append(entities, e)
+			}
+		}
+
+		// Select Random enemy.
+		for _, en := range entities {
+			if !en.IsDead() {
+				g.player.Attack(g, en)
+			}
+		}
+		turnTaken = true
+	}
+
 	// Inventory stuff.
 	// TODO: Move this to a UI component.
 	if inpututil.IsKeyJustPressed(ebiten.KeyUp) {
@@ -140,20 +170,17 @@ func (g *Game) HandleInput(timeElapsed float64) error {
 		// Handle entity AI.
 		// TODO: Make this energy based or something.
 		for _, e := range g.Entities {
-			// Yeah, this only moves the entities in random directions...
-			// For now.
-			if dx := rand.Intn(3) - 1; g.CanMoveTo(e.X+dx, e.Y) {
-				e.X += dx
-			} else if dy := rand.Intn(3) - 1; g.CanMoveTo(e.X, e.Y+dy) {
-				e.Y += dy
-			}
+			g.decideAction(e)
 		}
 	}
 
 	return nil
 }
 
-var colGrey = concolor.RGB(128, 128, 128)
+var (
+	colGrey    = concolor.RGB(128, 128, 128)
+	colDarkRed = concolor.RGB(128, 0, 0)
+)
 
 func (g *Game) Update(screen *ebiten.Image, timeDelta float64) error {
 	// Clear console.
@@ -164,6 +191,8 @@ func (g *Game) Update(screen *ebiten.Image, timeDelta float64) error {
 	g.worldView.TransformAll(t.Background(concolor.RGB(55, 55, 55)), t.Char(0))
 
 	g.playerInfoView.ClearAll()
+
+	g.messageView.ClearAll()
 
 	// Draw header.
 	g.rootView.TransformArea(0, 0, g.rootView.Width, 1, t.Background(concolor.RGB(80, 80, 80)))
@@ -204,18 +233,25 @@ func (g *Game) Update(screen *ebiten.Image, timeDelta float64) error {
 		if !g.IsInRadius(pX, pY, e.X, e.Y) {
 			continue
 		}
-		g.worldView.Transform(midX-pX+e.X, midY-pY+e.Y, t.CharByte(e.Tile), t.Foreground(concolor.Blue))
+		transformer := t.Foreground(concolor.Red)
+		if e.IsDead() {
+			transformer = t.Foreground(colDarkRed)
+		}
+		g.worldView.Transform(midX-pX+e.X, midY-pY+e.Y, t.CharByte(e.Tile), transformer)
 	}
 
 	// Draw player info.
-	g.playerInfoView.PrintBounded(1, 1, g.playerInfoView.Width-2, 2, fmt.Sprintf("X=%d Y=%d", pX, pY))
+	g.playerInfoView.PrintBounded(1, 1, g.playerInfoView.Width-2, 2, fmt.Sprintf("Health: %d/%d", g.player.Health, g.player.BaseHealth))
+	g.playerInfoView.PrintBounded(1, 2, g.playerInfoView.Width-2, 2, fmt.Sprintf("Def: %d Att: %d", g.player.DefenseValue(), g.player.AttackDamage()))
+	g.playerInfoView.PrintBounded(1, 3, g.playerInfoView.Width-2, 2, fmt.Sprintf("X=%d Y=%d", pX, pY), t.Foreground(colGrey))
 
 	// Draw inventory.
 	//
 	// TODO:
 	// - Move this to a UI component.
 	// - Render equipped armor and weapon.
-	g.playerInfoView.PrintBounded(1, 3, g.playerInfoView.Width-2, 2, fmt.Sprintf("Inventory (%d)", g.player.Inventory.Count()))
+	g.playerInfoView.PrintBounded(1, 4, g.playerInfoView.Width-2, 2, fmt.Sprintf("Inventory (%d)", g.player.Inventory.Count()))
+	var idx int
 	for i, item := range g.player.Items {
 		var entry string
 		if item.Equipped {
@@ -227,7 +263,45 @@ func (g *Game) Update(screen *ebiten.Image, timeDelta float64) error {
 		if i == g.player.selectedItem {
 			transformers = append(transformers, t.Foreground(concolor.Green))
 		}
-		g.playerInfoView.PrintBounded(2, 5+i, g.playerInfoView.Width-2, 2, entry, transformers...)
+		g.playerInfoView.PrintBounded(2, 6+idx, g.playerInfoView.Width-2, 2, entry, transformers...)
+		idx++
 	}
+
+	// Draw what can be found at the current position.
+	// List entities first.
+	// TODO: Factor this out into a function.
+	var entities []*Entity
+	for _, e := range g.Entities {
+		if e.X == pX && e.Y == pY {
+			entities = append(entities, e)
+		}
+	}
+
+	g.playerInfoView.PrintBounded(1, 7+idx, g.playerInfoView.Width-2, 2, fmt.Sprintf("In Range (%d)", len(entities)))
+	for i, e := range entities {
+		entry := e.Name
+		var transformers []t.Transformer
+		if e.IsDead() {
+			entry += " (dead)"
+			transformers = append(transformers, t.Foreground(concolor.Red))
+		}
+		g.playerInfoView.PrintBounded(2, 8+idx, g.playerInfoView.Width-2, 2, fmt.Sprintf("%d: %s", i, entry), transformers...)
+		idx++
+	}
+
+	// List messages.
+	for i, m := range g.Messages {
+		g.messageView.PrintBounded(1, i, g.messageView.Width-2, 2, m)
+	}
+
 	return nil
+}
+
+func (g *Game) AddMessage(msg string) {
+	// TODO: Move this to a messaging component.
+	const maxMessages = 3
+	g.Messages = append(g.Messages, msg)
+	if len(g.Messages) > maxMessages {
+		g.Messages = g.Messages[1:]
+	}
 }
