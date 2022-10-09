@@ -118,6 +118,7 @@ func (m *Map) ExportSVG(path string) error {
 	drawTemperature := false
 	drawLatitudeDots := false
 	drawCityscore := false
+	drawRegionTerrain := true
 
 	zoom := 3
 	filterPathDist := 20.0
@@ -151,47 +152,86 @@ func (m *Map) ExportSVG(path string) error {
 	//	panic(err)
 	// }
 	// end hack
-	min, max := minMax(m.t_elevation)
-	_, maxMois := minMax(m.t_moisture)
-	for i := 0; i < len(em.mesh.Triangles); i += 3 {
-		// Hacky way to filter paths/triangles that wrap around the entire SVG.
-		triLat := em.t_latLon[i/3][0]
-		triLon := em.t_latLon[i/3][1]
-		triX, triY := latLonToPixels(triLat, triLon, zoom)
-		var skip bool
-		var poolCount int
-		for _, j := range em.mesh.Triangles[i : i+3] {
-			if em.r_pool[j] > 0 {
-				poolCount++
-			}
-			x, y := latLonToPixels(em.r_latLon[j][0], em.r_latLon[j][1], zoom)
-			if dist2([2]float64{x, y}, [2]float64{triX, triY}) > filterPathDist {
-				skip = true
-				break
-			}
-		}
-		if skip {
-			continue
-		}
 
-		var path [][2]float64
-		for _, j := range em.mesh.Triangles[i : i+3] {
-			x, y := latLonToPixels(em.r_latLon[j][0], em.r_latLon[j][1], zoom)
-			path = append(path, [2]float64{x, y})
+	// Use regions instead of triangles to render terrain.
+	if drawRegionTerrain {
+		min, max := minMax(m.r_elevation)
+		_, maxMois := minMax(m.r_moisture)
+		for i := 0; i < em.mesh.numRegions; i++ {
+			rLat := em.r_latLon[i][0]
+			rLon := em.r_latLon[i][1]
+			rX, rY := latLonToPixels(rLat, rLon, zoom)
+			var skip bool
+			for _, j := range em.mesh.r_circulate_t(nil, i) {
+				x, y := latLonToPixels(em.t_latLon[j][0], em.t_latLon[j][1], zoom)
+				if dist2([2]float64{x, y}, [2]float64{rX, rY}) > filterPathDist {
+					skip = true
+					break
+				}
+			}
+			if skip {
+				continue
+			}
+			var path [][2]float64
+			for _, j := range em.mesh.r_circulate_t(nil, i) {
+				x, y := latLonToPixels(em.t_latLon[j][0], em.t_latLon[j][1], zoom)
+				path = append(path, [2]float64{x, y})
+			}
+			elev := em.r_elevation[i]
+			val := (elev - min) / (max - min)
+			var col color.NRGBA
+			if elev <= 0 {
+				col = genBlue(val)
+			} else {
+				valElev := elev / max
+				valMois := em.r_moisture[i] / maxMois
+				col = genbiome.GetWhittakerModBiomeColor(int(getMeanAnnualTemp(rLat)-getTempFalloffFromAltitude(maxAltitudeFactor*valElev)), int(valMois*maxPrecipitation), val)
+			}
+			svg.Path(svgGenD(path), fmt.Sprintf("fill: rgb(%d, %d, %d)", col.R, col.G, col.B), "class=\"terrain\"")
 		}
-		elev := em.t_elevation[i/3]
-		val := (elev - min) / (max - min)
-		var col color.NRGBA
-		if elev <= 0 || poolCount > 2 {
-			col = genBlue(val)
-		} else {
-			valElev := elev / max
-			// Hacky: Modify elevation based on latitude to compensate for colder weather at the poles and warmer weather at the equator.
-			// valElev := math.Max(math.Min((elev/max)+(math.Sqrt(math.Abs(triLat)/90.0)-0.5), max), 0)
-			valMois := em.t_moisture[i/3] / maxMois
-			col = genbiome.GetWhittakerModBiomeColor(int(getMeanAnnualTemp(triLat)-getTempFalloffFromAltitude(maxAltitudeFactor*valElev)), int(valMois*maxPrecipitation), val)
+	} else {
+		min, max := minMax(m.t_elevation)
+		_, maxMois := minMax(m.t_moisture)
+		for i := 0; i < len(em.mesh.Triangles); i += 3 {
+			// Hacky way to filter paths/triangles that wrap around the entire SVG.
+			triLat := em.t_latLon[i/3][0]
+			triLon := em.t_latLon[i/3][1]
+			triX, triY := latLonToPixels(triLat, triLon, zoom)
+			var skip bool
+			var poolCount int
+			for _, j := range em.mesh.Triangles[i : i+3] {
+				if em.r_pool[j] > 0 {
+					poolCount++
+				}
+				x, y := latLonToPixels(em.r_latLon[j][0], em.r_latLon[j][1], zoom)
+				if dist2([2]float64{x, y}, [2]float64{triX, triY}) > filterPathDist {
+					skip = true
+					break
+				}
+			}
+			if skip {
+				continue
+			}
+
+			var path [][2]float64
+			for _, j := range em.mesh.Triangles[i : i+3] {
+				x, y := latLonToPixels(em.r_latLon[j][0], em.r_latLon[j][1], zoom)
+				path = append(path, [2]float64{x, y})
+			}
+			elev := em.t_elevation[i/3]
+			val := (elev - min) / (max - min)
+			var col color.NRGBA
+			if elev <= 0 || poolCount > 2 {
+				col = genBlue(val)
+			} else {
+				valElev := elev / max
+				// Hacky: Modify elevation based on latitude to compensate for colder weather at the poles and warmer weather at the equator.
+				// valElev := math.Max(math.Min((elev/max)+(math.Sqrt(math.Abs(triLat)/90.0)-0.5), max), 0)
+				valMois := em.t_moisture[i/3] / maxMois
+				col = genbiome.GetWhittakerModBiomeColor(int(getMeanAnnualTemp(triLat)-getTempFalloffFromAltitude(maxAltitudeFactor*valElev)), int(valMois*maxPrecipitation), val)
+			}
+			svg.Path(svgGenD(path), fmt.Sprintf("fill: rgb(%d, %d, %d)", col.R, col.G, col.B), "class=\"terrain\"")
 		}
-		svg.Path(svgGenD(path), fmt.Sprintf("fill: rgb(%d, %d, %d)", col.R, col.G, col.B), "class=\"terrain\"")
 	}
 
 	// drawCircle draws a circle at the given lat/lon coordinates.
