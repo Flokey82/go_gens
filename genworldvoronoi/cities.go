@@ -10,13 +10,15 @@ func (m *Map) rCityScore() []float64 {
 	cities := m.cities_r
 	_, maxFlux := minMax(m.r_flux)
 	score := make([]float64, m.mesh.numRegions)
+	steepness := m.getRSteepness()
+	_, maxSteepness := minMax(steepness)
 
 	// Initialize fitness score with the normalized flux value.
 	// This will favor placing cities along (and at the end of)
 	// large rivers.
 	for i, fl := range m.r_flux {
 		// Skip all regions below sea level.
-		if m.r_elevation[i] < 0 {
+		if m.r_elevation[i] <= 0 {
 			continue
 		}
 		score[i] = math.Sqrt(fl / maxFlux) // originally: math.Sqrt(fl / maxFlux)
@@ -31,13 +33,8 @@ func (m *Map) rCityScore() []float64 {
 	//   - ...
 
 	// Get distance to other cities.
-	stopOcean := make(map[int]bool)
-	for r, elev := range m.r_elevation {
-		if elev < 0.0 {
-			stopOcean[r] = true
-		}
-	}
-	r_distance_c := m.assignDistanceField(cities, stopOcean)
+	r_distance_c := m.assignDistanceField(cities, make(map[int]bool))
+	_, maxDistC := minMax(r_distance_c)
 
 	// Calculate the fitness score for each region
 	for i := 0; i < m.mesh.numRegions; i++ {
@@ -49,26 +46,37 @@ func (m *Map) rCityScore() []float64 {
 		}
 
 		// Visit all neighbors and modify the score based on their properties.
-		for _, nbs := range m.rNeighbors(i) {
+		var hasWaterBodyBonus bool
+		nbs := m.rNeighbors(i)
+		for _, nb := range nbs {
 			// Add bonus if near ocean or lake.
-			if m.r_elevation[nbs] <= 0 || m.r_pool[nbs] > 0 {
+			if m.r_elevation[nb] <= 0 || m.r_pool[nb] > 0 {
+				// We only apply this bonus once.
+				if hasWaterBodyBonus {
+					continue
+				}
+				hasWaterBodyBonus = true
 				// If a neighbor is below (or at) sea level, or a lake,
 				// we increase the fitness value and reduce it by a fraction,
 				// depending on the size of the lake or ocean it is part of.
 				//
 				// TODO: Improve this.
-				scoreDelta := 0.09
-				if m.r_waterbodies[nbs] >= 0 {
-					// If nbs is part of a waterbody (ocean), we reduce the score by a constant factor.
+				scoreDelta := 0.5
+				if wbIdx := m.r_waterbodies[nb]; wbIdx >= 0 && m.r_waterbody_size[wbIdx] > 0 {
+					// If nb is part of a waterbody (ocean), we reduce the score by a constant factor.
 					// The larger the waterbody, the smaller the penalty, which will favor larger waterbodies.
-					scoreDelta -= 0.09 / (float64(m.r_waterbody_size[m.r_waterbodies[nbs]]) + 1e-9)
-				} else if m.r_drainage[nbs] >= 0 {
-					// If a drainage is set for nbs, it is part of a lake.
+					scoreDelta -= 0.5 / (float64(m.r_waterbody_size[wbIdx]) + 1e-9)
+				} else if drIdx := m.r_drainage[nb]; drIdx >= 0 && m.r_lake_size[drIdx] > 0 {
+					// If a drainage is set for nb, it is part of a lake.
 					// So we reduce the score by a constant factor, which is smaller, the larger the lake.
-					scoreDelta -= 0.09 / (float64(m.r_lake_size[m.r_drainage[nbs]]) + 1e-9)
+					scoreDelta -= 0.5 / (float64(m.r_lake_size[drIdx]) + 1e-9)
+				} else {
+					scoreDelta = 0.0
 				}
 				score[i] += scoreDelta
-				break
+			} else {
+				// If the sourrounding terrain is flat, we get a bonus.
+				score[i] += 0.5 * (1.0 - steepness[nb]) / float64(len(nbs))
 			}
 
 			// TODO:
@@ -88,7 +96,10 @@ func (m *Map) rCityScore() []float64 {
 		if math.IsInf(r_distance_c[i], 0) {
 			continue
 		}
-		score[i] *= (float64(r_distance_c[i]) + 1e-9) // originally: -= 0.02 / (float64(r_distance_c[i]) + 1e-9)
+		score[i] *= r_distance_c[i] / maxDistC // originally: -= 0.02 / (float64(r_distance_c[i]) + 1e-9)
+
+		// The steeper the terrain, the less likely it is to be settled.
+		score[i] *= 1.0 - (steepness[i] / maxSteepness)
 	}
 	return score
 }
