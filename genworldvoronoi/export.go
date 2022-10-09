@@ -131,6 +131,13 @@ func (m *Map) ExportSVG(path string) error {
 
 	svg := svgo.New(f)
 	svg.Start(size, size)
+	svg.Style("text/css",
+		"path { fill: none; stroke-width: 0.5; }\n"+
+			"path.contour{ stroke: black;}\n"+
+			".river{ stroke: blue;}\n"+
+			"path.lake{ fill: blue; stroke: blue; fill-opacity: 0.5;}\n"+
+			"path.border{ stroke: red;}\n"+
+			"path.terrain{ stroke: none;}\n")
 
 	em := m
 	// Hack to test tile fetching
@@ -147,8 +154,6 @@ func (m *Map) ExportSVG(path string) error {
 	min, max := minMax(m.t_elevation)
 	_, maxMois := minMax(m.t_moisture)
 	for i := 0; i < len(em.mesh.Triangles); i += 3 {
-		tmpLine := ""
-
 		// Hacky way to filter paths/triangles that wrap around the entire SVG.
 		triLat := em.t_latLon[i/3][0]
 		triLon := em.t_latLon[i/3][1]
@@ -186,7 +191,7 @@ func (m *Map) ExportSVG(path string) error {
 			valMois := em.t_moisture[i/3] / maxMois
 			col = genbiome.GetWhittakerModBiomeColor(int(getMeanAnnualTemp(triLat)-getTempFalloffFromAltitude(maxAltitudeFactor*valElev)), int(valMois*maxPrecipitation), val)
 		}
-		svg.Path(svgGenD(path), fmt.Sprintf("fill: rgb(%d, %d, %d)", col.R, col.G, col.B)+tmpLine)
+		svg.Path(svgGenD(path), fmt.Sprintf("fill: rgb(%d, %d, %d)", col.R, col.G, col.B), "class=\"terrain\"")
 	}
 
 	// drawCircle draws a circle at the given lat/lon coordinates.
@@ -196,7 +201,7 @@ func (m *Map) ExportSVG(path string) error {
 	}
 
 	// drawPath draws a bunch of paths with the given style attributes.
-	drawPath := func(paths [][]int, style []string, useTriangles bool) {
+	drawPath := func(paths [][]int, useTriangles bool, style ...string) {
 		latLon := m.r_latLon
 		if useTriangles {
 			latLon = m.t_latLon
@@ -229,24 +234,20 @@ func (m *Map) ExportSVG(path string) error {
 	}
 
 	if drawBorders {
-		drawPath(m.getBorders(),
-			[]string{"stroke=\"red\"", "fill=\"none\"", "stroke-width=\"0.5\""}, true)
+		drawPath(m.getBorders(), true, "class=\"border\"")
 	}
 
 	if drawLakeBorders {
-		drawPath(m.getLakeBorders(),
-			[]string{"stroke=\"blue\"", "fill=\"blue\"", "fill-opacity=\"0.5\"", "stroke-width=\"0.5\""}, true)
+		drawPath(m.getLakeBorders(), true, "class=\"lake\"")
 	}
 
 	if drawContour {
-		drawPath(m.contour(),
-			[]string{"stroke=\"black\"", "fill=\"none\"", "stroke-width=\"0.5\""}, true)
+		drawPath(m.contour(), true, "class=\"contour\"")
 	}
 
 	// Rivers (based on regions)
 	if drawRiversA {
-		drawPath(m.getRivers(0.001),
-			[]string{"stroke=\"blue\" fill=\"none\" stroke-width=\"0.5\""}, false)
+		drawPath(m.getRivers(0.001), false, "class=\"river\"")
 
 		// Skip frozen regions
 		// TODO: Fix maxElev caching!!!
@@ -278,7 +279,7 @@ func (m *Map) ExportSVG(path string) error {
 			if math.Abs(x1-x2) > float64(size)/2 || math.Abs(y1-y2) > float64(size)/2 {
 				continue
 			}
-			svg.Line(int(x1), int(y1), int(x2), int(y2), "stroke=\"blue\" stroke-width=\"1\"")
+			svg.Line(int(x1), int(y1), int(x2), int(y2), "class=\"river\"")
 		}
 	}
 
