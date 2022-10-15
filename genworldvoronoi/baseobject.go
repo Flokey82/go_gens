@@ -134,6 +134,13 @@ func (m *BaseObject) getSinks(skipSinksBelowSea, usePool bool) []int {
 	return r_sinks
 }
 
+// Calculate distance using the lat long and haversine.
+func (m *BaseObject) getRDistance(r1, r2 int) float64 {
+	la1, lo1 := m.r_latLon[r1][0], m.r_latLon[r1][1]
+	la2, lo2 := m.r_latLon[r2][0], m.r_latLon[r2][1]
+	return haversine(la1, lo1, la2, lo2)
+}
+
 func (m *BaseObject) resetRand() {
 	m.rand.Seed(m.seed)
 }

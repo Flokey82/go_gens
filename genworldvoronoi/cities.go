@@ -11,7 +11,6 @@ func (m *Map) rCityScore() []float64 {
 	_, maxFlux := minMax(m.r_flux)
 	score := make([]float64, m.mesh.numRegions)
 	steepness := m.getRSteepness()
-	_, maxSteepness := minMax(steepness)
 
 	// Initialize fitness score with the normalized flux value.
 	// This will favor placing cities along (and at the end of)
@@ -50,33 +49,27 @@ func (m *Map) rCityScore() []float64 {
 		nbs := m.rNeighbors(i)
 		for _, nb := range nbs {
 			// Add bonus if near ocean or lake.
-			if m.r_elevation[nb] <= 0 || m.r_pool[nb] > 0 {
+			if m.isRBelowOrAtSeaLevelOrPool(nb) {
 				// We only apply this bonus once.
 				if hasWaterBodyBonus {
 					continue
 				}
-				hasWaterBodyBonus = true
 				// If a neighbor is below (or at) sea level, or a lake,
 				// we increase the fitness value and reduce it by a fraction,
 				// depending on the size of the lake or ocean it is part of.
 				//
 				// TODO: Improve this.
-				scoreDelta := 0.5
-				if wbIdx := m.r_waterbodies[nb]; wbIdx >= 0 && m.r_waterbody_size[wbIdx] > 0 {
-					// If nb is part of a waterbody (ocean), we reduce the score by a constant factor.
-					// The larger the waterbody, the smaller the penalty, which will favor larger waterbodies.
-					scoreDelta -= 0.5 / (float64(m.r_waterbody_size[wbIdx]) + 1e-9)
-				} else if drIdx := m.r_drainage[nb]; drIdx >= 0 && m.r_lake_size[drIdx] > 0 {
-					// If a drainage is set for nb, it is part of a lake.
-					// So we reduce the score by a constant factor, which is smaller, the larger the lake.
-					scoreDelta -= 0.5 / (float64(m.r_lake_size[drIdx]) + 1e-9)
-				} else {
-					scoreDelta = 0.0
+
+				// If nb is part of a waterbody (ocean) or lake, we reduce the score by a constant factor.
+				// The larger the waterbody/lake, the smaller the penalty, which will favor larger waterbodies.
+				if wbSize := m.getRLakeOrWaterBodySize(nb); wbSize > 0 {
+					hasWaterBodyBonus = true
+					score[i] += 0.55 * (1 - 1/(float64(wbSize)+1e-9))
 				}
-				score[i] += scoreDelta
 			} else {
 				// If the sourrounding terrain is flat, we get a bonus.
-				score[i] += 0.5 * (1.0 - steepness[nb]) / float64(len(nbs))
+				stp := steepness[nb]
+				score[i] += 0.5 * (1.0 - stp*stp) / float64(len(nbs))
 			}
 
 			// TODO:
@@ -96,10 +89,14 @@ func (m *Map) rCityScore() []float64 {
 		if math.IsInf(r_distance_c[i], 0) {
 			continue
 		}
-		score[i] *= r_distance_c[i] / maxDistC // originally: -= 0.02 / (float64(r_distance_c[i]) + 1e-9)
+		dist := (r_distance_c[i] / maxDistC)
+		score[i] *= dist * dist // originally: -= 0.02 / (float64(r_distance_c[i]) + 1e-9)
 
 		// The steeper the terrain, the less likely it is to be settled.
-		score[i] *= 1.0 - (steepness[i] / maxSteepness)
+		stp := steepness[i]
+		score[i] *= 1.0 - (stp * stp)
+
+		// TODO: Bonus for trade routes.
 	}
 	return score
 }

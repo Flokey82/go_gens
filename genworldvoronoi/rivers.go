@@ -170,6 +170,26 @@ func (m *BaseObject) getLakeSizes() map[int]int {
 	return lakeSize
 }
 
+func (m *BaseObject) isRBelowOrAtSeaLevelOrPool(r int) bool {
+	return m.r_elevation[r] <= 0 || m.r_pool[r] > 0
+}
+
+func (m *BaseObject) isRLakeOrWaterBody(r int) bool {
+	return m.r_waterbodies[r] >= 0 || m.r_drainage[r] >= 0
+}
+
+// getRLakeOrWaterBodySiyze returns the size of the lake or waterbody that the
+// provided region is part of.
+func (m *BaseObject) getRLakeOrWaterBodySize(r int) int {
+	if m.r_waterbodies[r] >= 0 {
+		return m.r_waterbody_size[m.r_waterbodies[r]]
+	}
+	if m.r_drainage[r] >= 0 {
+		return m.r_lake_size[m.r_drainage[r]]
+	}
+	return 0
+}
+
 // getRiverIndices returns a mapping from regions to river ID.
 func (m *Map) getRiverIndices(limit float64) []int {
 	// Set up defaults.
@@ -552,8 +572,25 @@ func (m *Map) fillSinksPlanchonDarboux() []float64 {
 // assignHydrology will calculate river systems and fill sinks instead of trying to generate
 // water pools.
 func (m *Map) assignHydrology() {
-	maxAttempts := 3
+	maxAttempts := 30
 	erosionAmount := 0.01 // Erode 1% of delta-h per pass.
+
+	// HACK: Fill all sinks that are below sea level and a single region
+	// below sea level.
+Loop:
+	for _, r := range m.getSinks(false, false) {
+		// Check if all neighbors are above sea level.
+		lowest := math.Inf(0)
+		for _, nb := range m.rNeighbors(r) {
+			if !m.isRBelowOrAtSeaLevelOrPool(r) {
+				continue Loop
+			}
+			if m.r_elevation[nb] < lowest {
+				lowest = m.r_elevation[nb]
+			}
+		}
+		m.r_elevation[r] = lowest
+	}
 
 	// Start off by filling sinks.
 	m.r_elevation = m.fillSinks()

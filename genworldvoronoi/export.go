@@ -119,6 +119,7 @@ func (m *Map) ExportSVG(path string) error {
 	drawLatitudeDots := false
 	drawCityscore := false
 	drawRegionTerrain := true
+	drawTradeRoutes := true
 
 	zoom := 3
 	filterPathDist := 20.0
@@ -138,7 +139,8 @@ func (m *Map) ExportSVG(path string) error {
 			".river{ stroke: blue;}\n"+
 			"path.lake{ fill: blue; stroke: blue; fill-opacity: 0.5;}\n"+
 			"path.border{ stroke: red;}\n"+
-			"path.terrain{ stroke: none;}\n")
+			"path.terrain{ stroke: none;}\n"+
+			"path.traderoute{ stroke: lime; stroke-width: 0.5;}\n")
 
 	em := m
 	// Hack to test tile fetching
@@ -155,6 +157,11 @@ func (m *Map) ExportSVG(path string) error {
 
 	// Use regions instead of triangles to render terrain.
 	if drawRegionTerrain {
+		//cities_r := m.cities_r
+		//m.cities_r = nil
+		//cityScore := m.rCityScore()
+		//m.cities_r = cities_r
+		//_, maxS := minMax(cityScore)
 		min, max := minMax(m.r_elevation)
 		_, maxMois := minMax(m.r_moisture)
 		for i := 0; i < em.mesh.numRegions; i++ {
@@ -179,6 +186,7 @@ func (m *Map) ExportSVG(path string) error {
 			}
 			elev := em.r_elevation[i]
 			val := (elev - min) / (max - min)
+			//val = cityScore[i] / maxS
 			var col color.NRGBA
 			if elev <= 0 {
 				col = genBlue(val)
@@ -301,6 +309,11 @@ func (m *Map) ExportSVG(path string) error {
 		// if genbiome.GetWhittakerModBiome(int(m.getRTemperature(rivseg, maxR)), int(valMois*45)) == WhittakerModBiomeSnow {
 		// 	continue
 		// }
+	}
+
+	if drawTradeRoutes {
+		paths, _ := getTradeRoutes(m)
+		drawPath(paths, false, "class=\"traderoute\"")
 	}
 
 	// Rivers (based on triangles)

@@ -73,8 +73,8 @@ func NewMap(seed int64, numPlates, numPoints int, jitter float64) (*Map, error) 
 		r_windvec_local: make([]Vertex, mesh.numRegions),
 		NumPlates:       numPlates,
 		NumPoints:       numPoints,
-		NumTerritories:  10,
-		NumCities:       50,
+		NumTerritories:  20,
+		NumCities:       150,
 		QuadGeom:        NewQuadGeometry(),
 	}
 	m.QuadGeom.setMesh(mesh)
