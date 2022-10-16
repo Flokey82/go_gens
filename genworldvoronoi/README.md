@@ -17,6 +17,22 @@ I draw further inspiration from various other projects such as https://github.co
   * Make winds push temperature around, not just humidity
   * Re-evaluate rainfall and moisture distribution
   * Check if we also push dry air around, not just humid air
+* Civilization
+  * Industry and trade
+    * Improve trade routes
+    * Introduce industry
+  * Cities
+    * Add better city fitness functions
+    * Separate world generation better from everything else
+    * Assign goods and resources to cities (for trade)
+  * Empires
+    * Provide simpler means to query information over an empire
+    * Introduce empires with capitals
+* Resources
+  * Improve resource distribution
+    * Fitness functions
+    * Amount / quality / discoverability?
+  * Add more resource types
 
 Here some old pictures what it does...
 

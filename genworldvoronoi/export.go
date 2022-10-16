@@ -120,6 +120,7 @@ func (m *Map) ExportSVG(path string) error {
 	drawCityscore := false
 	drawRegionTerrain := true
 	drawTradeRoutes := true
+	drawResources := false
 
 	zoom := 3
 	filterPathDist := 20.0
@@ -162,6 +163,8 @@ func (m *Map) ExportSVG(path string) error {
 		//cityScore := m.rCityScore()
 		//m.cities_r = cities_r
 		//_, maxS := minMax(cityScore)
+		//fitScore := m.resourceFitness()
+		//_, maxFit := minMax(fitScore)
 		min, max := minMax(m.r_elevation)
 		_, maxMois := minMax(m.r_moisture)
 		for i := 0; i < em.mesh.numRegions; i++ {
@@ -187,6 +190,7 @@ func (m *Map) ExportSVG(path string) error {
 			elev := em.r_elevation[i]
 			val := (elev - min) / (max - min)
 			//val = cityScore[i] / maxS
+			//val = fitScore[i] / maxFit
 			var col color.NRGBA
 			if elev <= 0 {
 				col = genBlue(val)
@@ -312,7 +316,7 @@ func (m *Map) ExportSVG(path string) error {
 	}
 
 	if drawTradeRoutes {
-		paths, _ := getTradeRoutes(m)
+		paths, _ := m.getTradeRoutes()
 		drawPath(paths, false, "class=\"traderoute\"")
 	}
 
@@ -507,21 +511,57 @@ func (m *Map) ExportSVG(path string) error {
 	// Cities
 	if drawCities {
 		for i, r := range m.cities_r {
-			radius := 2
+			radius := 3
 			// Capital cities are bigger!
 			if i < m.NumTerritories {
 				radius = 4
 			}
-			drawCircle(m.r_latLon[r][0], m.r_latLon[r][1], radius, "fill: rgb(255, 0, 0)")
+			col := "fill: rgb(255, 0, 0)"
+			switch r.Type {
+			case TownTypeDefault:
+			case TownTypeMining:
+				col = "fill: rgb(255, 255, 0)"
+				radius = 2
+			case TownTypeFarming:
+				col = "fill: rgb(55, 255, 0)"
+				radius = 1
+			}
+			drawCircle(m.r_latLon[r.R][0], m.r_latLon[r.R][1], radius, col)
 		}
 	}
 
 	if drawCityscore {
-		scores := m.rCityScore()
+		scores := m.rCityScore(m.getFitnessCityDefault())
 		minScore, maxScore := minMax(scores)
 		for r, score := range scores {
 			col := genBlue((score - minScore) / (maxScore - minScore))
 			drawCircle(m.r_latLon[r][0], m.r_latLon[r][1], 1, fmt.Sprintf("fill: rgb(%d, %d, %d)", col.R, col.G, col.G))
+		}
+	}
+
+	if drawResources {
+		// NOTE: This sucks right now.
+		res := m.res_metals_r
+		for r, t := range res {
+			radius := 1
+			// Capital cities are bigger!
+			if t&ResMetPlatinum > 0 {
+				drawCircle(m.r_latLon[r][0], m.r_latLon[r][1], radius, "fill: rgb(255, 127, 255)")
+			}
+		}
+		for r, t := range res {
+			radius := 1
+			// Capital cities are bigger!
+			if t&ResMetGold > 0 {
+				drawCircle(m.r_latLon[r][0], m.r_latLon[r][1], radius, "fill: rgb(255, 255, 0)")
+			}
+		}
+		for r, t := range res {
+			radius := 1
+			// Capital cities are bigger!
+			if t&ResMetIron > 0 {
+				drawCircle(m.r_latLon[r][0], m.r_latLon[r][1], radius, "fill: rgb(200, 127, 0)")
+			}
 		}
 	}
 
@@ -546,7 +586,7 @@ func (m *Map) ExportPng(name string) {
 	cols := grad.Colors(uint(m.NumTerritories))
 	terrToCol := make(map[int]int)
 	for i, terr := range m.cities_r[:m.NumTerritories] {
-		terrToCol[terr] = i
+		terrToCol[terr.R] = i
 	}
 	zoom := 1
 	size := sizeFromZoom(zoom)

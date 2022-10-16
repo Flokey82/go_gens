@@ -178,6 +178,10 @@ func (m *BaseObject) isRLakeOrWaterBody(r int) bool {
 	return m.r_waterbodies[r] >= 0 || m.r_drainage[r] >= 0
 }
 
+func (m *BaseObject) isRiver(r int) bool {
+	return m.r_flux[r] > m.r_rainfall[r]
+}
+
 // getRLakeOrWaterBodySiyze returns the size of the lake or waterbody that the
 // provided region is part of.
 func (m *BaseObject) getRLakeOrWaterBodySize(r int) int {
@@ -572,7 +576,7 @@ func (m *Map) fillSinksPlanchonDarboux() []float64 {
 // assignHydrology will calculate river systems and fill sinks instead of trying to generate
 // water pools.
 func (m *Map) assignHydrology() {
-	maxAttempts := 30
+	maxAttempts := 3
 	erosionAmount := 0.01 // Erode 1% of delta-h per pass.
 
 	// HACK: Fill all sinks that are below sea level and a single region

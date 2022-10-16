@@ -63,38 +63,37 @@ func (m *Map) identifyLandmasses() []int {
 	return landMasses
 }
 
-type queueEntry struct {
+type queueRegionEntry struct {
 	index int // The index of the item in the heap.
 	score float64
 	city  int
 	vx    int
 }
 
-// A PriorityQueue implements heap.Interface and holds Items.
-type PriorityQueue2 []*queueEntry
+// territoryQueue implements heap.Interface and holds Items.
+type territoryQueue []*queueRegionEntry
 
-func (pq PriorityQueue2) Len() int { return len(pq) }
+func (pq territoryQueue) Len() int { return len(pq) }
 
-func (pq PriorityQueue2) Less(i, j int) bool {
+func (pq territoryQueue) Less(i, j int) bool {
 	// We want Pop to give us the highest, not lowest, priority so we use greater than here.
 	// return pq[i].score > pq[j].score // 3, 2, 1
 	return pq[i].score < pq[j].score // 1, 2, 3
 }
 
-func (pq PriorityQueue2) Swap(i, j int) {
+func (pq territoryQueue) Swap(i, j int) {
 	pq[i], pq[j] = pq[j], pq[i]
-	pq[i].index = i
-	pq[j].index = j
+	pq[i].index, pq[j].index = i, j
 }
 
-func (pq *PriorityQueue2) Push(x interface{}) {
+func (pq *territoryQueue) Push(x interface{}) {
 	n := len(*pq)
-	item := x.(*queueEntry)
+	item := x.(*queueRegionEntry)
 	item.index = n
 	*pq = append(*pq, item)
 }
 
-func (pq *PriorityQueue2) Pop() interface{} {
+func (pq *territoryQueue) Pop() interface{} {
 	old := *pq
 	n := len(old)
 	item := old[n-1]
@@ -111,7 +110,7 @@ func (m *Map) rPlaceNTerritories(n int) {
 		n = len(m.cities_r)
 	}
 	terr := make([]int, m.mesh.numRegions)
-	var queue PriorityQueue2
+	var queue territoryQueue
 	heap.Init(&queue)
 	weight := func(u, v int) float64 {
 		ulat := m.r_latLon[u][0]
@@ -137,20 +136,20 @@ func (m *Map) rPlaceNTerritories(n int) {
 	}
 
 	for i := 0; i < n; i++ {
-		terr[m.cities_r[i]] = m.cities_r[i]
-		for _, v := range m.rNeighbors(m.cities_r[i]) {
+		terr[m.cities_r[i].R] = m.cities_r[i].R
+		for _, v := range m.rNeighbors(m.cities_r[i].R) {
 			if m.r_elevation[v] <= 0 {
 				continue
 			}
-			heap.Push(&queue, &queueEntry{
-				score: weight(m.cities_r[i], v),
-				city:  m.cities_r[i],
+			heap.Push(&queue, &queueRegionEntry{
+				score: weight(m.cities_r[i].R, v),
+				city:  m.cities_r[i].R,
 				vx:    v,
 			})
 		}
 	}
 	for queue.Len() > 0 {
-		u := heap.Pop(&queue).(*queueEntry)
+		u := heap.Pop(&queue).(*queueRegionEntry)
 		if terr[u.vx] != 0 {
 			continue
 		}
@@ -163,7 +162,7 @@ func (m *Map) rPlaceNTerritories(n int) {
 			if newdist < 0 {
 				continue
 			}
-			heap.Push(&queue, &queueEntry{
+			heap.Push(&queue, &queueRegionEntry{
 				score: u.score + newdist,
 				city:  u.city,
 				vx:    v,

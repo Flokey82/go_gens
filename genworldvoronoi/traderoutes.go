@@ -9,11 +9,13 @@ import (
 )
 
 type TradeNode struct {
-	r         *Map
-	getNode   func(int) *TradeNode
-	index     int       // node index / region number
-	used      int       // number of times this node was used for a trade route
-	steepness []float64 // cached steepness of all regiones
+	r            *Map
+	getNode      func(int) *TradeNode
+	index        int          // node index / region number
+	used         int          // number of times this node was used for a trade route
+	steepness    []float64    // cached steepness of all regiones
+	isCity       map[int]bool // quick lookup if an index is a city
+	maxElevation float64
 }
 
 func (n *TradeNode) SetUsed() {
@@ -43,17 +45,26 @@ func (n *TradeNode) Cost(i int) float32 {
 	cost := float32(1.0)
 
 	// Altitude changes come with a cost.
-	cost += float32(math.Abs(n.r.r_elevation[n.index]-n.r.r_elevation[nIdx])) * 10
-	if n.used > 0 {
-		cost *= 0.75 / float32(n.used)
-	}
+	cost *= 1.0 - float32(math.Abs(n.r.r_elevation[nIdx]-n.r.r_elevation[n.index])/n.maxElevation)
+	//	if n.used > 0 {
+	//		cost *= 0.75
+	//	} else {
+	//		cost *= 2
+	//	}
 
 	// The steeper the terrain, the more expensive.
 	cost *= 1.0 + float32(n.steepness[nIdx]*n.steepness[nIdx])
 
 	// Heavily incentivize re-using existing roads.
 	if nUsed := n.Neighbour(i).(*TradeNode).used; nUsed > 0 {
-		cost *= 0.25 / float32(nUsed)
+		cost *= 0.25
+	} else {
+		cost *= 4
+	}
+
+	// Bonus if the neighbor is a city.
+	if n.isCity[nIdx] {
+		cost *= 0.25
 	}
 
 	// Bonus if along coast.
@@ -65,12 +76,12 @@ func (n *TradeNode) Cost(i int) float32 {
 	}
 
 	// Cost of crossing rivers.
-	if (n.r.r_flux[n.index] > n.r.r_rainfall[n.index]) != (n.r.r_flux[nIdx] > n.r.r_rainfall[nIdx]) {
+	if n.r.isRiver(n.index) != n.r.isRiver(nIdx) {
 		cost *= 1.4
 	}
 
 	// Bonus if along rivers.
-	if n.r.r_flux[n.index] > n.r.r_rainfall[n.index] && n.r.r_flux[nIdx] > n.r.r_rainfall[nIdx] {
+	if n.r.isRiver(n.index) && n.r.isRiver(nIdx) {
 		cost *= 0.8
 	}
 
@@ -96,9 +107,27 @@ func estimateFunction(start, end astar.Node) float32 {
 	return float32(start.(*TradeNode).r.getRDistance(start.(*TradeNode).index, end.(*TradeNode).index))
 }
 
-func getTradeRoutes(r *Map) ([][]int, [][]int) {
+func (r *Map) getTradeRoutes() ([][]int, [][]int) {
+	// TODO: Allow persistent trading routes, so we can run multiple times without
+	//       destroying existing routes.
+	// Major cities will produce major trading routes that ensure that trade will be
+	// as efficiently as possible. Minor cities will produce minor trading routes
+	// that will connect them to the major trading routes.
+	// Currently we only connect cities / settlement by proximity, which is not
+	// how it works in reality. Of course along major trade routes, settlements
+	// will experience growth through trade passing through, which is something
+	// to consider later.
+	log.Println("Generating trade routes...")
 	nodeCache := make(map[int]*TradeNode)
 	steepness := r.getRSteepness()
+
+	cities := r.cities_r
+	isCity := make(map[int]bool)
+	for _, c := range cities {
+		isCity[c.R] = true
+	}
+
+	_, maxElevation := minMax(r.r_elevation)
 
 	// linking will store which cities are linked through a trade route crossing
 	// the given region.
@@ -114,15 +143,16 @@ func getTradeRoutes(r *Map) ([][]int, [][]int) {
 		// If we have no cached node for this index,
 		// create a new one.
 		n = &TradeNode{
-			steepness: steepness,
-			r:         r,
-			index:     i,
-			getNode:   getNode,
+			steepness:    steepness,
+			r:            r,
+			index:        i,
+			getNode:      getNode,
+			isCity:       isCity,
+			maxElevation: maxElevation,
 		}
 		nodeCache[i] = n
 		return n
 	}
-	cities := r.cities_r
 	pather := astar.New(estimateFunction)
 	visited := make(map[[2]int]bool)
 
@@ -138,13 +168,15 @@ func getTradeRoutes(r *Map) ([][]int, [][]int) {
 	for i := range sortCityIdx {
 		sortCityIdx[i] = i
 	}
-	for i, start := range cities {
+	for i, startC := range cities {
+		start := startC.R
 		// Sort by distance to start as we try to connect the closest towns first.
+		// NOTE: Wouldn't it make sense to connect the largest cities first?
 		sort.Slice(sortCityIdx, func(j, k int) bool {
-			return r.getRDistance(start, cities[sortCityIdx[j]]) < r.getRDistance(start, cities[sortCityIdx[k]])
+			return r.getRDistance(start, cities[sortCityIdx[j]].R) < r.getRDistance(start, cities[sortCityIdx[k]].R)
 		})
 		for _, j := range sortCityIdx {
-			end := cities[j]
+			end := cities[j].R
 			// We don't want to link a city to itself and we try to avoid double
 			// links (a->b and b->a) as well as we try to only connect towns within
 			// the same territory.
@@ -179,6 +211,8 @@ func getTradeRoutes(r *Map) ([][]int, [][]int) {
 			paths = append(paths, newPath)
 		}
 	}
+
+	log.Println("Done generating trade routes.")
 	return paths, linking
 }
 

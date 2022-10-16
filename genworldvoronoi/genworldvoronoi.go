@@ -27,12 +27,16 @@ type Map struct {
 	PlateVectors    []vectors.Vec3 // Plate tectonics / movement vectors
 	PlateIsOcean    map[int]bool   // Plate was chosen to be an ocean plate
 	plate_r         []int          // Plate seed points / regions
-	cities_r        []int          // City seed points / regions
-	NumPlates       int            // Number of generated plates
-	NumPoints       int            // Number of generated points / regions
-	NumCities       int            // Number of generated cities (regions)
-	NumTerritories  int            // Number of generated territories
-	QuadGeom        *QuadGeometry  // Quad geometry generated from the mesh (?)
+	cities_r        []*City        // City seed points / regions
+	res_metals_r    []byte
+	res_gems_r      []byte
+	NumPlates       int // Number of generated plates
+	NumPoints       int // Number of generated points / regions
+	NumCities       int // Number of generated cities (regions)
+	NumMiningTowns  int
+	// NumFarmingTowns int
+	NumTerritories int           // Number of generated territories
+	QuadGeom       *QuadGeometry // Quad geometry generated from the mesh (?)
 }
 
 func NewMap(seed int64, numPlates, numPoints int, jitter float64) (*Map, error) {
@@ -71,11 +75,15 @@ func NewMap(seed int64, numPlates, numPoints int, jitter float64) (*Map, error) 
 		s_flow:          make([]float64, mesh.numSides),
 		r_windvec:       make([]Vertex, mesh.numRegions),
 		r_windvec_local: make([]Vertex, mesh.numRegions),
+		res_metals_r:    make([]byte, mesh.numRegions),
+		res_gems_r:      make([]byte, mesh.numRegions),
 		NumPlates:       numPlates,
 		NumPoints:       numPoints,
-		NumTerritories:  20,
+		NumTerritories:  10,
 		NumCities:       150,
-		QuadGeom:        NewQuadGeometry(),
+		NumMiningTowns:  40,
+		//NumFarmingTowns: 60,
+		QuadGeom: NewQuadGeometry(),
 	}
 	m.QuadGeom.setMesh(mesh)
 	m.generateTriangleCenters()
@@ -115,14 +123,28 @@ func (m *Map) generateMap() {
 	// m.r_elevation = m.rErode(0.05)
 	log.Println("Done hydrology in ", time.Since(start).String())
 
+	// Place resources
+	m.placeResources()
+
 	// Place cities and territories in regions.
 	start = time.Now()
-	m.rPlaceNCities(m.NumCities)
+	m.rPlaceNCities(m.NumCities, TownTypeDefault)
+	m.rPlaceNCities(m.NumMiningTowns, TownTypeMining)
+	// m.rPlaceNCities(m.NumFarmingTowns, TownTypeFarming)
 	log.Println("Done cities in ", time.Since(start).String())
 
 	start = time.Now()
 	m.rPlaceNTerritories(m.NumTerritories)
 	log.Println("Done territories in ", time.Since(start).String())
+
+	// Once we have established the territories, we can add trade towns
+	// (we need the territories for the trade routes).
+	// We should probably establish the trade routes now, so we ensure
+	// that the trade towns will still be placed on the nexus points
+	// where trade routes meet.
+	// start = time.Now()
+	// m.rPlaceNCities(30, TownTypeTrading)
+	// log.Println("Done trade cities in ", time.Since(start).String())
 
 	// Hydrology (based on triangles)
 	// Amit's hydrology code.
