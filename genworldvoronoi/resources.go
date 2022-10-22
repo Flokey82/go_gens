@@ -15,6 +15,27 @@ const (
 	ResMetPlatinum
 )
 
+func metalToString(metalID int) string {
+	switch 1 << metalID {
+	case ResMetIron:
+		return "Iron"
+	case ResMetCopper:
+		return "Copper"
+	case ResMetLead:
+		return "Lead"
+	case ResMetTin:
+		return "Tin"
+	case ResMetSilver:
+		return "Silver"
+	case ResMetGold:
+		return "Gold"
+	case ResMetPlatinum:
+		return "Platinum"
+	default:
+		return "Unknown"
+	}
+}
+
 const ResMaxMetals = 7
 
 // Gemstone resource flags starting with the cheapest gem.
@@ -26,6 +47,27 @@ const (
 	ResGemRuby
 	ResGemDiamond
 )
+
+func gemToString(gemsID int) string {
+	switch 1 << gemsID {
+	case ResGemAmethyst:
+		return "Amethyst"
+	case ResGemTopaz:
+		return "Topaz"
+	case ResGemSapphire:
+		return "Sapphire"
+	case ResGemEmerald:
+		return "Emerald"
+	case ResGemRuby:
+		return "Ruby"
+	case ResGemDiamond:
+		return "Diamond"
+	default:
+		return "Unknown"
+	}
+}
+
+const ResMaxGems = 6
 
 // Stone resource flags starting with the most common stone.
 // NOTE: Clay?
@@ -202,7 +244,7 @@ func (m *Map) placeResources() {
 	gems := make([]byte, len(steepness))
 	for r := 0; r < m.mesh.numRegions; r++ {
 		if steepness[r] > 0.9 && m.r_elevation[r] > 0.5 {
-			switch rv := m.rand.NormFloat64(); {
+			switch rv := math.Abs(m.rand.NormFloat64()); {
 			case rv < chanceDiamond:
 				gems[r] |= ResGemDiamond
 			case rv < chanceRuby:

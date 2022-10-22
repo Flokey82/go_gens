@@ -11,20 +11,35 @@ import (
 // TODO: Maybe drop the regions since we can get that info
 // relatively cheaply.
 type Empire struct {
-	ID       int     // ID of the territory
+	ID       int // ID of the territory
+	Name     string
 	Capital  *City   // Capital city
 	Cities   []*City // Cities within the territory
 	Regions  []int   // Regions that are part of the empire
 	Language *Language
+	ResMetal [ResMaxMetals]int
+	ResGems  [ResMaxGems]int
+}
+
+func (e *Empire) Log() {
+	log.Printf("The Empire of %s: %d cities, %d regions, capital: %s", e.Name, len(e.Cities), len(e.Regions), e.Capital.Name)
+	for i := 0; i < ResMaxMetals; i++ {
+		log.Printf("Metal %s: %d", metalToString(i), e.ResMetal[i])
+	}
+	for i := 0; i < ResMaxGems; i++ {
+		log.Printf("Gem %s: %d", gemToString(i), e.ResGems[i])
+	}
 }
 
 func (m *Map) GetEmpires() []*Empire {
 	var res []*Empire
 	for i := 0; i < m.NumTerritories; i++ {
+		lang := GenLanguage(m.seed + int64(i))
 		e := &Empire{
 			ID:       m.cities_r[i].R,
+			Name:     lang.MakeName(),
 			Capital:  m.cities_r[i],
-			Language: GenLanguage(m.seed + int64(i)),
+			Language: lang,
 		}
 
 		// TODO: Name empire, name cities.
@@ -37,15 +52,25 @@ func (m *Map) GetEmpires() []*Empire {
 				e.Cities = append(e.Cities, c)
 			}
 		}
-		log.Println(e.Cities)
 
 		// Collect all regions that are part of the
 		// current territory.
 		for r, terr := range m.r_territory {
 			if terr == e.ID {
+				for i := 0; i < ResMaxMetals; i++ {
+					if m.res_metals_r[r]&(1<<i) != 0 {
+						e.ResMetal[i]++
+					}
+				}
+				for i := 0; i < ResMaxGems; i++ {
+					if m.res_gems_r[r]&(1<<i) != 0 {
+						e.ResGems[i]++
+					}
+				}
 				e.Regions = append(e.Regions, r)
 			}
 		}
+		e.Log()
 		res = append(res, e)
 	}
 	return res

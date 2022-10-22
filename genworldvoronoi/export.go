@@ -549,7 +549,7 @@ func (m *Map) ExportSVG(path string) error {
 			}
 		}
 		for i := 0; i < ResMaxMetals; i++ {
-			log.Printf("Metal %d: %d", i, count[i])
+			log.Printf("Metal %s: %d", metalToString(i), count[i])
 		}
 	}
 
