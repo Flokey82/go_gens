@@ -11,6 +11,7 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
+	sp.GetEmpires()
 	exportPNG := true
 	exportOBJ := true
 	exportSVG := true

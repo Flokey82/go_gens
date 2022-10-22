@@ -108,7 +108,7 @@ func (m *Map) ExportSVG(path string) error {
 	drawHumidity := false
 	drawWindOrder := false
 	drawRainfall := false
-	drawBorders := false
+	drawBorders := true
 	drawLakeBorders := false
 	drawBelow := false
 	drawContour := true
@@ -141,8 +141,24 @@ func (m *Map) ExportSVG(path string) error {
 			"path.lake{ fill: blue; stroke: blue; fill-opacity: 0.5;}\n"+
 			"path.border{ stroke: red;}\n"+
 			"path.terrain{ stroke: none;}\n"+
-			"path.traderoute{ stroke: lime; stroke-width: 0.5;}\n")
-
+			"path.traderoute{"+
+			"stroke: lime;"+
+			"stroke-width: 0.5;}\n"+
+			"text{"+
+			"font-weight: bold;"+
+			"font-family: \"Palatino Linotype\", \"Book Antiqua\", Palatino, serif;"+
+			"fill: white;"+
+			"stroke: black;"+
+			"stroke-width: 2;"+
+			"text-anchor: start;"+
+			"stroke-linejoin: round;"+
+			"paint-order: stroke;}\n"+
+			"text.mine{"+
+			"font-size: 6px;}\n"+
+			"text.city{"+
+			"font-size: 8px;}\n"+
+			"text.capital{"+
+			"font-size: 12px;}\n")
 	em := m
 	// Hack to test tile fetching
 	// 113.48673955688815 180 139.02010193037987 225
@@ -250,6 +266,12 @@ func (m *Map) ExportSVG(path string) error {
 	drawCircle := func(lat, lon float64, r int, color string) {
 		x, y := latLonToPixels(lat, lon, zoom)
 		svg.Circle(int(x), int(y), r, color)
+	}
+
+	drawText := func(lat, lon float64, text string, style ...string) {
+		x, y := latLonToPixels(lat, lon, zoom)
+		y -= 3
+		svg.Text(int(x), int(y), text, style...)
 	}
 
 	// drawPath draws a bunch of paths with the given style attributes.
@@ -508,37 +530,6 @@ func (m *Map) ExportSVG(path string) error {
 		}
 	}
 
-	// Cities
-	if drawCities {
-		for i, r := range m.cities_r {
-			radius := 2
-			// Capital cities are bigger!
-			if i < m.NumTerritories {
-				radius = 4
-			}
-			col := "fill: rgb(255, 0, 0)"
-			switch r.Type {
-			case TownTypeDefault:
-			case TownTypeMining:
-				col = "fill: rgb(255, 255, 0)"
-				radius = 2
-			case TownTypeFarming:
-				col = "fill: rgb(55, 255, 0)"
-				radius = 1
-			}
-			drawCircle(m.r_latLon[r.R][0], m.r_latLon[r.R][1], radius, col)
-		}
-	}
-
-	if drawCityscore {
-		scores := m.rCityScore(m.getFitnessCityDefault(), func() []int { return nil })
-		minScore, maxScore := minMax(scores)
-		for r, score := range scores {
-			col := genBlue((score - minScore) / (maxScore - minScore))
-			drawCircle(m.r_latLon[r][0], m.r_latLon[r][1], 1, fmt.Sprintf("fill: rgb(%d, %d, %d)", col.R, col.G, col.G))
-		}
-	}
-
 	if drawResources {
 		grad := colorgrad.Rainbow()
 		cols := grad.Colors(uint(ResMaxMetals))
@@ -559,6 +550,43 @@ func (m *Map) ExportSVG(path string) error {
 		}
 		for i := 0; i < ResMaxMetals; i++ {
 			log.Printf("Metal %d: %d", i, count[i])
+		}
+	}
+
+	// Cities
+	if drawCities {
+		for i, r := range m.cities_r {
+			radius := 2
+			class := "class=\"city\""
+			col := "fill: rgb(255, 165, 0)"
+
+			// Capital cities are bigger!
+			if i < m.NumTerritories {
+				radius = 4
+				class = "class=\"capital\""
+				col = "fill: rgb(255, 0, 0)"
+			}
+			switch r.Type {
+			case TownTypeDefault:
+			case TownTypeMining:
+				col = "fill: rgb(255, 255, 0)"
+				radius = 2
+			case TownTypeFarming:
+				col = "fill: rgb(55, 255, 0)"
+				radius = 1
+			}
+			drawCircle(m.r_latLon[r.R][0], m.r_latLon[r.R][1], radius, col)
+			drawText(m.r_latLon[r.R][0], m.r_latLon[r.R][1], r.Name, class)
+		}
+		// TODO: Move labels to avoid overlap.
+	}
+
+	if drawCityscore {
+		scores := m.rCityScore(m.getFitnessCityDefault(), func() []int { return nil })
+		minScore, maxScore := minMax(scores)
+		for r, score := range scores {
+			col := genBlue((score - minScore) / (maxScore - minScore))
+			drawCircle(m.r_latLon[r][0], m.r_latLon[r][1], 1, fmt.Sprintf("fill: rgb(%d, %d, %d)", col.R, col.G, col.G))
 		}
 	}
 

@@ -22,7 +22,7 @@ func (m *Map) GetEmpires() []*Empire {
 	var res []*Empire
 	for i := 0; i < m.NumTerritories; i++ {
 		e := &Empire{
-			ID:       i,
+			ID:       m.cities_r[i].R,
 			Capital:  m.cities_r[i],
 			Language: GenLanguage(m.seed + int64(i)),
 		}
@@ -32,15 +32,17 @@ func (m *Map) GetEmpires() []*Empire {
 		// Loop through all cities and gather all that
 		// are within the current territory.
 		for _, c := range m.cities_r {
-			if m.r_territory[c.R] == i {
+			if m.r_territory[c.R] == e.ID {
+				c.Name = e.Language.MakeName()
 				e.Cities = append(e.Cities, c)
 			}
 		}
+		log.Println(e.Cities)
 
 		// Collect all regions that are part of the
 		// current territory.
 		for r, terr := range m.r_territory {
-			if terr == i {
+			if terr == e.ID {
 				e.Regions = append(e.Regions, r)
 			}
 		}

@@ -16,6 +16,7 @@ type City struct {
 	R     int     // Region where the city is located
 	Score float64 // Score of the fitness function
 	Type  string  // Type of city
+	Name  string  // HACK HACK MOVE OUT OF HERE!!LSLDSJALSFJALKSLSAFKJfLJAFJLALKJAFSLK
 }
 
 // rPlaceNCities places n cities with the highest fitness scores.
