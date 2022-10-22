@@ -20,10 +20,24 @@ type City struct {
 
 // rPlaceNCities places n cities with the highest fitness scores.
 func (m *Map) rPlaceNCities(n int, cType string) {
+	// The fitness function, returning a score from
+	// 0.0 to 1.0 for a given region.
 	var sf func(int) float64
+
+	// The distance seed point function, returning
+	// seed points/regions that we want to be far
+	// away from.
+	var dsf func() []int
+
+	// Select the fitness function based on the
+	// city type.
 	switch cType {
 	case TownTypeDefault:
-		sf = m.getFitnessCityDefault()
+		fa := m.getFitnessClimate()
+		fb := m.getFitnessCityDefault()
+		sf = func(r int) float64 {
+			return fa(r) * fb(r)
+		}
 	case TownTypeTrading:
 		sf = m.getFitnessTradingTowns()
 	case TownTypeMining:
@@ -34,17 +48,29 @@ func (m *Map) rPlaceNCities(n int, cType string) {
 		return
 	}
 
+	// For now we just maximize the distance to cities of the same type.
+	dsf = func() []int {
+		var cities []int
+		for _, c := range m.cities_r {
+			if c.Type == cType {
+				cities = append(cities, c.R)
+			}
+		}
+		return cities
+	}
+
+	// Place n cities of the given type.
 	for i := 0; i < n; i++ {
 		log.Println("placing "+cType+" city", i)
-		m.rPlaceCity(cType, sf)
+		m.rPlaceCity(cType, sf, dsf)
 	}
 }
 
 // rPlaceCity places another city at the region with the highest fitness score.
-func (m *Map) rPlaceCity(cType string, sf func(int) float64) {
+func (m *Map) rPlaceCity(cType string, sf func(int) float64, distSeedFunc func() []int) {
 	var newcity int
 	lastMax := math.Inf(-1)
-	for i, val := range m.rCityScore(sf) {
+	for i, val := range m.rCityScore(sf, distSeedFunc) {
 		if val > lastMax {
 			newcity = i
 			lastMax = val
@@ -58,7 +84,9 @@ func (m *Map) rPlaceCity(cType string, sf func(int) float64) {
 }
 
 // rCityScore calculates the fitness value for settlements for all regions.
-func (m *Map) rCityScore(sf func(int) float64) []float64 {
+// distSeedFunc returns a number of regions from which we maximize the distance when
+// calculating the fitness score.
+func (m *Map) rCityScore(sf func(int) float64, distSeedFunc func() []int) []float64 {
 	// TODO: Create different fitness functions for different types of settlement.
 	//   - Capital
 	//   - Cities / Settlements
@@ -67,14 +95,12 @@ func (m *Map) rCityScore(sf func(int) float64) []float64 {
 	//   - Mining
 	//   - ...
 
-	var cities []int
-	for _, c := range m.cities_r {
-		cities = append(cities, c.R)
-	}
 	score := make([]float64, m.mesh.numRegions)
 
-	// Get distance to other cities.
-	r_distance_c := m.assignDistanceField(cities, make(map[int]bool))
+	// Get distance to other cities returned by the distSeedFunc.
+	r_distance_c := m.assignDistanceField(distSeedFunc(), make(map[int]bool))
+
+	// Get the max distance for normalizing the distance.
 	_, maxDistC := minMax(r_distance_c)
 
 	// Calculate the fitness score for each region
@@ -101,7 +127,7 @@ func (m *Map) rCityScore(sf func(int) float64) []float64 {
 			continue
 		}
 		dist := (r_distance_c[i] / maxDistC)
-		score[i] *= dist * dist // originally: -= 0.02 / (float64(r_distance_c[i]) + 1e-9)
+		score[i] *= dist // originally: -= 0.02 / (float64(r_distance_c[i]) + 1e-9)
 	}
 	return score
 }
@@ -113,6 +139,21 @@ func (m *Map) getFitnessTradingTowns() func(int) float64 {
 	_, connecting := m.getTradeRoutes()
 	return func(r int) float64 {
 		return float64(len(connecting[r]))
+	}
+}
+
+// getFitnessClimate returns a fitness function that returns high
+// scores for regions with high rainfall and high temperatures.
+func (m *Map) getFitnessClimate() func(int) float64 {
+	_, maxRain := minMax(m.r_rainfall)
+	_, maxElev := minMax(m.r_elevation)
+
+	return func(r int) float64 {
+		rTemp := m.getRTemperature(r, maxElev)
+		if rTemp < 0 {
+			return 0.1
+		}
+		return 0.1 + 0.9*(m.r_rainfall[r]/maxRain)*math.Sqrt(rTemp/maxTemp)
 	}
 }
 

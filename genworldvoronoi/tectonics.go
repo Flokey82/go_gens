@@ -281,6 +281,6 @@ func (m *Map) assignRegionElevation() {
 			f := (1/a - 1/b) / (1/a + 1/b + 1/c)
 			m.r_elevation[r] += f
 		}
-		m.r_elevation[r] += m.fbm_noise(r_xyz[3*r], r_xyz[3*r+1], r_xyz[3*r+2])
+		m.r_elevation[r] += m.fbm_noise(r_xyz[3*r], r_xyz[3*r+1], r_xyz[3*r+2])*2 - 1 // Noise from -1.0 to 1.0
 	}
 }

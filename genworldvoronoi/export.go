@@ -119,8 +119,8 @@ func (m *Map) ExportSVG(path string) error {
 	drawLatitudeDots := false
 	drawCityscore := false
 	drawRegionTerrain := true
-	drawTradeRoutes := true
-	drawResources := false
+	drawTradeRoutes := false
+	drawResources := true
 
 	zoom := 3
 	filterPathDist := 20.0
@@ -163,7 +163,7 @@ func (m *Map) ExportSVG(path string) error {
 		//cityScore := m.rCityScore()
 		//m.cities_r = cities_r
 		//_, maxS := minMax(cityScore)
-		//fitScore := m.resourceFitness()
+		//fitScore := m.genNoise()
 		//_, maxFit := minMax(fitScore)
 		min, max := minMax(m.r_elevation)
 		_, maxMois := minMax(m.r_moisture)
@@ -511,7 +511,7 @@ func (m *Map) ExportSVG(path string) error {
 	// Cities
 	if drawCities {
 		for i, r := range m.cities_r {
-			radius := 3
+			radius := 2
 			// Capital cities are bigger!
 			if i < m.NumTerritories {
 				radius = 4
@@ -531,7 +531,7 @@ func (m *Map) ExportSVG(path string) error {
 	}
 
 	if drawCityscore {
-		scores := m.rCityScore(m.getFitnessCityDefault())
+		scores := m.rCityScore(m.getFitnessCityDefault(), func() []int { return nil })
 		minScore, maxScore := minMax(scores)
 		for r, score := range scores {
 			col := genBlue((score - minScore) / (maxScore - minScore))
@@ -540,28 +540,25 @@ func (m *Map) ExportSVG(path string) error {
 	}
 
 	if drawResources {
+		grad := colorgrad.Rainbow()
+		cols := grad.Colors(uint(ResMaxMetals))
+
 		// NOTE: This sucks right now.
 		res := m.res_metals_r
-		for r, t := range res {
-			radius := 1
-			// Capital cities are bigger!
-			if t&ResMetPlatinum > 0 {
-				drawCircle(m.r_latLon[r][0], m.r_latLon[r][1], radius, "fill: rgb(255, 127, 255)")
+		radius := 1
+		count := make([]int, ResMaxMetals)
+		for i := 0; i < ResMaxMetals; i++ {
+			cr, cg, cb, _ := cols[i].RGBA()
+			col := fmt.Sprintf("fill: rgb(%d, %d, %d)", cr/(0xffff/255), cg/(0xffff/255), cb/(0xffff/255))
+			for r, t := range res {
+				if t&(1<<i) > 0 {
+					count[i]++
+					drawCircle(m.r_latLon[r][0], m.r_latLon[r][1], radius, col)
+				}
 			}
 		}
-		for r, t := range res {
-			radius := 1
-			// Capital cities are bigger!
-			if t&ResMetGold > 0 {
-				drawCircle(m.r_latLon[r][0], m.r_latLon[r][1], radius, "fill: rgb(255, 255, 0)")
-			}
-		}
-		for r, t := range res {
-			radius := 1
-			// Capital cities are bigger!
-			if t&ResMetIron > 0 {
-				drawCircle(m.r_latLon[r][0], m.r_latLon[r][1], radius, "fill: rgb(200, 127, 0)")
-			}
+		for i := 0; i < ResMaxMetals; i++ {
+			log.Printf("Metal %d: %d", i, count[i])
 		}
 	}
 

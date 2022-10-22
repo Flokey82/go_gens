@@ -28,11 +28,12 @@ type Map struct {
 	PlateIsOcean    map[int]bool   // Plate was chosen to be an ocean plate
 	plate_r         []int          // Plate seed points / regions
 	cities_r        []*City        // City seed points / regions
-	res_metals_r    []byte
-	res_gems_r      []byte
-	NumPlates       int // Number of generated plates
-	NumPoints       int // Number of generated points / regions
-	NumCities       int // Number of generated cities (regions)
+	res_metals_r    []byte         // Metal ores
+	res_gems_r      []byte         // Gemstones
+	res_stone_r     []byte         // Different types of stones or minerals
+	NumPlates       int            // Number of generated plates
+	NumPoints       int            // Number of generated points / regions
+	NumCities       int            // Number of generated cities (regions)
 	NumMiningTowns  int
 	// NumFarmingTowns int
 	NumTerritories int           // Number of generated territories
@@ -66,7 +67,7 @@ func NewMap(seed int64, numPlates, numPoints int, jitter float64) (*Map, error) 
 			r_lake_size:      make(map[int]int),
 			seed:             seed,
 			rand:             rand.New(rand.NewSource(seed)),
-			noise:            opensimplex.New(seed),
+			noise:            opensimplex.NewNormalized(seed),
 			mesh:             result.mesh,
 		},
 		t_downflow_s:    make([]int, mesh.numTriangles),

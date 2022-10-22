@@ -7,6 +7,48 @@ import (
 	"math"
 )
 
+// Empire contains information about a territory with the given ID.
+// TODO: Maybe drop the regions since we can get that info
+// relatively cheaply.
+type Empire struct {
+	ID       int     // ID of the territory
+	Capital  *City   // Capital city
+	Cities   []*City // Cities within the territory
+	Regions  []int   // Regions that are part of the empire
+	Language *Language
+}
+
+func (m *Map) GetEmpires() []*Empire {
+	var res []*Empire
+	for i := 0; i < m.NumTerritories; i++ {
+		e := &Empire{
+			ID:       i,
+			Capital:  m.cities_r[i],
+			Language: GenLanguage(m.seed + int64(i)),
+		}
+
+		// TODO: Name empire, name cities.
+
+		// Loop through all cities and gather all that
+		// are within the current territory.
+		for _, c := range m.cities_r {
+			if m.r_territory[c.R] == i {
+				e.Cities = append(e.Cities, c)
+			}
+		}
+
+		// Collect all regions that are part of the
+		// current territory.
+		for r, terr := range m.r_territory {
+			if terr == i {
+				e.Regions = append(e.Regions, r)
+			}
+		}
+		res = append(res, e)
+	}
+	return res
+}
+
 // identifyLandmasses returns a mapping from region to landmass ID.
 // A landmass is a connected number of regions above sealevel.
 func (m *Map) identifyLandmasses() []int {
@@ -104,22 +146,32 @@ func (pq *territoryQueue) Pop() interface{} {
 }
 
 func (m *Map) rPlaceNTerritories(n int) {
+	// Get maxFlux and maxElev for normalizing.
 	_, maxFlux := minMax(m.r_flux)
 	_, maxElev := minMax(m.r_elevation)
+
+	// Truncate the number of territories to the number
+	// of cities, just in case we have less cities than
+	// territories.
 	if n > len(m.cities_r) {
 		n = len(m.cities_r)
 	}
-	terr := make([]int, m.mesh.numRegions)
 	var queue territoryQueue
 	heap.Init(&queue)
 	weight := func(u, v int) float64 {
+		// Don't cross from water to land and vice versa.
+		if (m.r_elevation[u] > 0) != (m.r_elevation[v] > 0) {
+			return -1
+		}
+
+		// Calculate horizontal distance.
 		ulat := m.r_latLon[u][0]
 		ulon := m.r_latLon[u][1]
-
 		vlat := m.r_latLon[v][0]
 		vlon := m.r_latLon[v][1]
-
 		horiz := haversine(ulat, ulon, vlat, vlon) / (2 * math.Pi)
+
+		// Calculate vertical distance.
 		vert := (m.r_elevation[v] - m.r_elevation[u]) / maxElev
 		if vert > 0 {
 			vert /= 10
@@ -129,12 +181,12 @@ func (m *Map) rPlaceNTerritories(n int) {
 		if m.r_elevation[u] <= 0 {
 			diff = 100
 		}
-		if (m.r_elevation[u] > 0) != (m.r_elevation[v] > 0) {
-			return -1
-		}
 		return horiz * diff
 	}
 
+	// 'terr' will hold a mapping of region to territory.
+	// The territory ID is the region number of the capital city.
+	terr := make([]int, m.mesh.numRegions)
 	for i := 0; i < n; i++ {
 		terr[m.cities_r[i].R] = m.cities_r[i].R
 		for _, v := range m.rNeighbors(m.cities_r[i].R) {
@@ -148,6 +200,8 @@ func (m *Map) rPlaceNTerritories(n int) {
 			})
 		}
 	}
+
+	// Extend territories until the queue is empty.
 	for queue.Len() > 0 {
 		u := heap.Pop(&queue).(*queueRegionEntry)
 		if terr[u.vx] != 0 {

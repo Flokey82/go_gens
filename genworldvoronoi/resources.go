@@ -1,6 +1,8 @@
 package genworldvoronoi
 
-import "math"
+import (
+	"math"
+)
 
 // Metal resource flags starting with the cheapest metal.
 const (
@@ -13,6 +15,8 @@ const (
 	ResMetPlatinum
 )
 
+const ResMaxMetals = 7
+
 // Gemstone resource flags starting with the cheapest gem.
 const (
 	ResGemAmethyst = 1 << iota
@@ -21,6 +25,27 @@ const (
 	ResGemEmerald
 	ResGemRuby
 	ResGemDiamond
+)
+
+// Stone resource flags starting with the most common stone.
+// NOTE: Clay?
+const (
+	ResStoSandstone = 1 << iota
+	ResStoLimestone
+	ResStoChalk
+	ResStoMarble
+	ResStoGranite
+	ResStoBasalt
+	ResStoObsidian
+)
+
+const (
+	ResVarClay = 1 << iota
+	ResVarSulfur
+	ResVarSalt
+	ResVarCoal
+	ResVarOil
+	ResVarGas
 )
 
 // getFitnessSteepMountains returns a fitness function with high scores for
@@ -121,14 +146,15 @@ func (m *Map) placeResources() {
 	// https://www.reddit.com/r/worldbuilding/comments/kbmnd6/a_guide_to_placing_resources_on_fictional_worlds/
 	const (
 		chancePlatinum = 0.005
-		chanceGold     = 0.025
-		chanceSilver   = 0.04
-		chanceTin      = 0.1
-		chanceCopper   = 0.06
-		chanceLed      = 0.07
-		chanceIron     = 0.75
-		chanceCoal     = 0.9
+		chanceGold     = chancePlatinum + 0.020
+		chanceSilver   = chanceGold + 0.040
+		chanceCopper   = chanceSilver + 0.06
+		chanceLead     = chanceCopper + 0.07
+		chanceTin      = chanceLead + 0.1
+		chanceIron     = chanceTin + 0.4
 	)
+	fn := m.fbm_noise2(2, 1, 2, 2, 2, 0, 0, 0)
+	fm := m.getFitnessSteepMountains()
 
 	// NOTE: By encoding the resources as bit flags, we can easily
 	// determine the value of a region given the assumption that
@@ -136,22 +162,25 @@ func (m *Map) placeResources() {
 	// resource. This will be handy for fitness functions and such.
 	//
 	// I feel pretty clever about this one, but it's not realistic.
+	m.resetRand()
 	metals := make([]byte, len(steepness))
+
+	// TODO: Use noise intersection instead of rand.
 	for r := 0; r < m.mesh.numRegions; r++ {
-		if steepness[r] > 0.9 && m.r_elevation[r] > 0.5 {
-			switch rv := m.rand.Float64(); {
+		if fm(r) > 0.9 {
+			switch rv := math.Abs(m.rand.NormFloat64() * fn(r)); {
 			case rv < chancePlatinum:
 				metals[r] |= ResMetPlatinum
 			case rv < chanceGold:
 				metals[r] |= ResMetGold
 			case rv < chanceSilver:
 				metals[r] |= ResMetSilver
-			case rv < chanceTin:
-				metals[r] |= ResMetTin
 			case rv < chanceCopper:
 				metals[r] |= ResMetCopper
-			case rv < chanceLed:
+			case rv < chanceLead:
 				metals[r] |= ResMetLead
+			case rv < chanceTin:
+				metals[r] |= ResMetTin
 			case rv < chanceIron:
 				metals[r] |= ResMetIron
 			}
@@ -161,11 +190,11 @@ func (m *Map) placeResources() {
 
 	const (
 		chanceDiamond  = 0.005
-		chanceRuby     = 0.025
-		chanceEmerald  = 0.04
-		chanceSapphire = 0.1
-		chanceTopaz    = 0.06
-		chanceAmethyst = 0.07
+		chanceRuby     = chanceDiamond + 0.025
+		chanceEmerald  = chanceRuby + 0.04
+		chanceSapphire = chanceEmerald + 0.05
+		chanceTopaz    = chanceSapphire + 0.06
+		chanceAmethyst = chanceTopaz + 0.1
 		// chanceQuartz   = 0.75 // Usually goes hand in hand with gold?
 		// chanceFlint    = 0.9
 	)
@@ -173,7 +202,7 @@ func (m *Map) placeResources() {
 	gems := make([]byte, len(steepness))
 	for r := 0; r < m.mesh.numRegions; r++ {
 		if steepness[r] > 0.9 && m.r_elevation[r] > 0.5 {
-			switch rv := m.rand.Float64(); {
+			switch rv := m.rand.NormFloat64(); {
 			case rv < chanceDiamond:
 				gems[r] |= ResGemDiamond
 			case rv < chanceRuby:
@@ -193,7 +222,7 @@ func (m *Map) placeResources() {
 			}
 		}
 	}
-	m.res_gems_r = metals
+	m.res_gems_r = gems
 
 	// This attempts some weird variation of:
 	// https://www.redblobgames.com/x/1736-resource-placement/
@@ -237,7 +266,17 @@ func (m *Map) getIntersection(noisevalue, bandvalue, bandwidth float64) bool {
 	return bandvalue-bandwidth/2 <= noisevalue && noisevalue <= bandvalue+bandwidth/2
 }
 
+func (m *Map) genNoise() []float64 {
+	fn := m.fbm_noise2(2, 1, 2, 2, 2, 0, 0, 0)
+	n := make([]float64, m.mesh.numRegions)
+	for r := 0; r < m.mesh.numRegions; r++ {
+		n[r] = fn(r)
+	}
+	return n
+}
+
 func (m *Map) fbm_noise2(octaves int, persistence, mx, my, mz, dx, dy, dz float64) func(int) float64 {
+	// https://thebookofshaders.com/13/
 	return func(r int) float64 {
 		nx, ny, nz := m.r_xyz[3*r]*mx+dx, m.r_xyz[3*r+1]*my+dy, m.r_xyz[3*r+2]*mz+dz
 		var sum float64
@@ -247,9 +286,9 @@ func (m *Map) fbm_noise2(octaves int, persistence, mx, my, mz, dx, dy, dz float6
 			frequency := 1 << octave
 			fFreq := float64(frequency)
 			sum += amplitude * m.noise.Eval3(nx*fFreq, ny*fFreq, nz*fFreq) * float64(octave)
-			sumOfAmplitudes += amplitude
+			sumOfAmplitudes += amplitude * float64(octave)
 			amplitude *= persistence
 		}
-		return ((sum / sumOfAmplitudes) + 1) / 2
+		return (sum / sumOfAmplitudes)
 	}
 }
