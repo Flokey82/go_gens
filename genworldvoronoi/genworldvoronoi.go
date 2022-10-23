@@ -82,7 +82,7 @@ func NewMap(seed int64, numPlates, numPoints int, jitter float64) (*Map, error) 
 		NumPoints:       numPoints,
 		NumTerritories:  10,
 		NumCities:       150,
-		NumMiningTowns:  40,
+		NumMiningTowns:  60,
 		//NumFarmingTowns: 60,
 		QuadGeom: NewQuadGeometry(),
 	}

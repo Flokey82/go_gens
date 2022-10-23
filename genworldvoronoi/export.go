@@ -139,7 +139,10 @@ func (m *Map) ExportSVG(path string) error {
 			"path.contour{ stroke: black;}\n"+
 			".river{ stroke: blue;}\n"+
 			"path.lake{ fill: blue; stroke: blue; fill-opacity: 0.5;}\n"+
-			"path.border{ stroke: red;}\n"+
+			"path.border{ stroke: red; stroke-width: 1;"+
+			"stroke-linecap: butt;}\n"+
+			"path.cityborder{ stroke: black; stroke-width: 1;"+
+			"stroke-linecap: butt;}\n"+
 			"path.terrain{ stroke: none;}\n"+
 			"path.traderoute{"+
 			"stroke: lime;"+
@@ -308,6 +311,7 @@ func (m *Map) ExportSVG(path string) error {
 	}
 
 	if drawBorders {
+		drawPath(m.getCustomBorders(m.rPlaceNCityStates(m.NumCities)), true, "class=\"cityborder\"")
 		drawPath(m.getBorders(), true, "class=\"border\"")
 	}
 

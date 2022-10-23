@@ -163,7 +163,7 @@ func (m *BaseObject) getLowestNeighbor(r int) int {
 	return lowest_r
 }
 
-func (m *BaseObject) testAreas() {
+func (m *BaseObject) TestAreas() {
 	var tot float64
 	for i := 0; i < m.mesh.numRegions; i++ {
 		a := m.getRegionArea(i)

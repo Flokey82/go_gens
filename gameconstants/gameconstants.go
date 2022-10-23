@@ -1,6 +1,8 @@
 // Package gameconstants provides various interesting constants for games.
 package gameconstants
 
+import "math"
+
 const (
 	// Approximate movement speeds for the average person.
 	WalkingSpeed = 1.4 // m/s
@@ -51,6 +53,10 @@ const (
 	EarthElevationTemperatureFalloff = 0.0065      // °C/m
 	// EarthMinTemperature           = -89.2       // °C (extreme)
 	// EarthMaxTemperature           = 56.7        // °C (extreme)
+
+	// Sphere constants.
+	SphereSurface = 4.0 * math.Pi // 4π - surface of a unit sphere
+	SphereVolume  = 4.0 / 3.0     // 4/3 - volume of a unit sphere
 
 	// Ship speed.
 	// http://penelope.uchicago.edu/Thayer/E/Journals/TAPA/82/Speed_under_Sail_of_Ancient_Ships*.html
