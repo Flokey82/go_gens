@@ -49,3 +49,4 @@ genmap2derosion/cmd/anim.gif
 genmap2derosion/cmd/*.png
 genmap2derosion/cmd/cpu.prof
 genmap2derosion/cmd/tmp.obj
+simmarket/cmd/runner
