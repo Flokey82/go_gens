@@ -66,12 +66,12 @@ func (m *Map) GetEmpires() []*Empire {
 			if terr == e.ID {
 				e.TotalArea += m.getRegionArea(r)
 				for i := 0; i < ResMaxMetals; i++ {
-					if m.res_metals_r[r]&(1<<i) != 0 {
+					if m.r_res_metals[r]&(1<<i) != 0 {
 						e.ResMetal[i]++
 					}
 				}
 				for i := 0; i < ResMaxGems; i++ {
-					if m.res_gems_r[r]&(1<<i) != 0 {
+					if m.r_res_gems[r]&(1<<i) != 0 {
 						e.ResGems[i]++
 					}
 				}

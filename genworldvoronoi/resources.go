@@ -228,7 +228,7 @@ func (m *Map) placeResources() {
 			}
 		}
 	}
-	m.res_metals_r = metals
+	m.r_res_metals = metals
 
 	const (
 		chanceDiamond  = 0.005
@@ -264,7 +264,7 @@ func (m *Map) placeResources() {
 			}
 		}
 	}
-	m.res_gems_r = gems
+	m.r_res_gems = gems
 
 	// This attempts some weird variation of:
 	// https://www.redblobgames.com/x/1736-resource-placement/

@@ -23,14 +23,14 @@ type Map struct {
 	r_windvec       []Vertex       // Point / region wind vector
 	r_windvec_local []Vertex       // Point / region wind vector (local)
 	r_plate         []int          // Point / region to plate mapping
-	r_territory     []int          // Point / region mapping to territory (political)
 	PlateVectors    []vectors.Vec3 // Plate tectonics / movement vectors
 	PlateIsOcean    map[int]bool   // Plate was chosen to be an ocean plate
 	plate_r         []int          // Plate seed points / regions
-	cities_r        []*City        // City seed points / regions
-	res_metals_r    []byte         // Metal ores
-	res_gems_r      []byte         // Gemstones
-	res_stone_r     []byte         // Different types of stones or minerals
+	r_territory     []int          // (political) Point / region mapping to territory / empire
+	cities_r        []*City        // (political) City seed points / regions
+	r_res_metals    []byte         // (resources) Metal ores
+	r_res_gems      []byte         // (resources) Gemstones
+	r_res_stone     []byte         // (resources) Different types of stones or minerals
 	NumPlates       int            // Number of generated plates
 	NumPoints       int            // Number of generated points / regions
 	NumCities       int            // Number of generated cities (regions)
@@ -76,8 +76,9 @@ func NewMap(seed int64, numPlates, numPoints int, jitter float64) (*Map, error) 
 		s_flow:          make([]float64, mesh.numSides),
 		r_windvec:       make([]Vertex, mesh.numRegions),
 		r_windvec_local: make([]Vertex, mesh.numRegions),
-		res_metals_r:    make([]byte, mesh.numRegions),
-		res_gems_r:      make([]byte, mesh.numRegions),
+		r_res_metals:    make([]byte, mesh.numRegions),
+		r_res_gems:      make([]byte, mesh.numRegions),
+		r_res_stone:     make([]byte, mesh.numRegions),
 		NumPlates:       numPlates,
 		NumPoints:       numPoints,
 		NumTerritories:  10,
