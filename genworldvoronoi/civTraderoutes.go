@@ -8,105 +8,6 @@ import (
 	"github.com/chsc/astar"
 )
 
-type TradeNode struct {
-	r            *Map
-	getNode      func(int) *TradeNode
-	index        int          // node index / region number
-	used         int          // number of times this node was used for a trade route
-	steepness    []float64    // cached steepness of all regiones
-	isCity       map[int]bool // quick lookup if an index is a city
-	maxElevation float64
-}
-
-func (n *TradeNode) SetUsed() {
-	n.used++
-}
-
-func (n *TradeNode) NumNeighbours() int {
-	return len(n.r.rNeighbors(n.index))
-}
-
-func (n *TradeNode) Neighbour(i int) astar.Node {
-	// TODO: Fix this... this is highly inefficient.
-	return n.getNode(n.r.rNeighbors(n.index)[i])
-}
-
-func (n *TradeNode) Cost(i int) float32 {
-	// Discourage underwater paths.
-	if n.r.r_elevation[n.index] <= 0 {
-		return 999.00
-	}
-	// TODO: Fix this... this is highly inefficient.
-	nIdx := n.r.rNeighbors(n.index)[i]
-	if n.r.r_elevation[nIdx] <= 0 {
-		return 999.00
-	}
-
-	cost := float32(1.0)
-
-	// Altitude changes come with a cost.
-	cost *= 1.0 - float32(math.Abs(n.r.r_elevation[nIdx]-n.r.r_elevation[n.index])/n.maxElevation)
-	//	if n.used > 0 {
-	//		cost *= 0.75
-	//	} else {
-	//		cost *= 2
-	//	}
-
-	// The steeper the terrain, the more expensive.
-	cost *= 1.0 + float32(n.steepness[nIdx]*n.steepness[nIdx])
-
-	// Heavily incentivize re-using existing roads.
-	if nUsed := n.Neighbour(i).(*TradeNode).used; nUsed > 0 {
-		cost *= 0.25
-	} else {
-		cost *= 4
-	}
-
-	// Bonus if the neighbor is a city.
-	if n.isCity[nIdx] {
-		cost *= 0.25
-	}
-
-	// Bonus if along coast.
-	for _, nbnb := range n.r.rNeighbors(nIdx) {
-		if n.r.r_elevation[nbnb] <= 0 {
-			cost *= 0.65
-			break
-		}
-	}
-
-	// Cost of crossing rivers.
-	if n.r.isRiver(n.index) != n.r.isRiver(nIdx) {
-		cost *= 1.4
-	}
-
-	// Bonus if along rivers.
-	if n.r.isRiver(n.index) && n.r.isRiver(nIdx) {
-		cost *= 0.8
-	}
-
-	// Penalty for crossing into a new territory
-	if n.r.r_territory[n.index] != n.r.r_territory[nIdx] {
-		cost += 1.2
-	}
-
-	/*
-		if n.r.rivers[n.index] < 0 && n.r.rivers[nIdx] >= 0 {
-			cost *= 1.4
-		}
-		if n.r.rivers[n.index] >= 0 && n.r.rivers[n.index] >= 0 {
-			cost *= 0.8
-		}
-		if n.r.terr[n.index] != n.r.terr[nIdx] {
-			cost += 1.2
-		}*/
-	return cost
-}
-
-func estimateFunction(start, end astar.Node) float32 {
-	return float32(start.(*TradeNode).r.getRDistance(start.(*TradeNode).index, end.(*TradeNode).index))
-}
-
 func (r *Map) getTradeRoutes() ([][]int, [][]int) {
 	// TODO: Allow persistent trading routes, so we can run multiple times without
 	//       destroying existing routes.
@@ -216,11 +117,101 @@ func (r *Map) getTradeRoutes() ([][]int, [][]int) {
 	return paths, linking
 }
 
-func isInIntList(l []int, i int) bool {
-	for _, v := range l {
-		if v == i {
-			return true
+type TradeNode struct {
+	r            *Map
+	getNode      func(int) *TradeNode
+	index        int          // node index / region number
+	used         int          // number of times this node was used for a trade route
+	steepness    []float64    // cached steepness of all regiones
+	isCity       map[int]bool // quick lookup if an index is a city
+	maxElevation float64
+}
+
+func (n *TradeNode) SetUsed() {
+	n.used++
+}
+
+func (n *TradeNode) NumNeighbours() int {
+	return len(n.r.rNeighbors(n.index))
+}
+
+func (n *TradeNode) Neighbour(i int) astar.Node {
+	// TODO: Fix this... this is highly inefficient.
+	return n.getNode(n.r.rNeighbors(n.index)[i])
+}
+
+func (n *TradeNode) Cost(i int) float32 {
+	// Discourage underwater paths.
+	if n.r.r_elevation[n.index] <= 0 {
+		return 999.00
+	}
+	// TODO: Fix this... this is highly inefficient.
+	nIdx := n.r.rNeighbors(n.index)[i]
+	if n.r.r_elevation[nIdx] <= 0 {
+		return 999.00
+	}
+
+	cost := float32(1.0)
+
+	// Altitude changes come with a cost.
+	cost *= 1.0 - float32(math.Abs(n.r.r_elevation[nIdx]-n.r.r_elevation[n.index])/n.maxElevation)
+	//	if n.used > 0 {
+	//		cost *= 0.75
+	//	} else {
+	//		cost *= 2
+	//	}
+
+	// The steeper the terrain, the more expensive.
+	cost *= 1.0 + float32(n.steepness[nIdx]*n.steepness[nIdx])
+
+	// Heavily incentivize re-using existing roads.
+	if nUsed := n.Neighbour(i).(*TradeNode).used; nUsed > 0 {
+		cost *= 0.25
+	} else {
+		cost *= 4
+	}
+
+	// Bonus if the neighbor is a city.
+	if n.isCity[nIdx] {
+		cost *= 0.25
+	}
+
+	// Bonus if along coast.
+	for _, nbnb := range n.r.rNeighbors(nIdx) {
+		if n.r.r_elevation[nbnb] <= 0 {
+			cost *= 0.65
+			break
 		}
 	}
-	return false
+
+	// Cost of crossing rivers.
+	if n.r.isRiver(n.index) != n.r.isRiver(nIdx) {
+		cost *= 1.4
+	}
+
+	// Bonus if along rivers.
+	if n.r.isRiver(n.index) && n.r.isRiver(nIdx) {
+		cost *= 0.8
+	}
+
+	// Penalty for crossing into a new territory
+	if n.r.r_territory[n.index] != n.r.r_territory[nIdx] {
+		cost += 1.2
+	}
+
+	/*
+		if n.r.rivers[n.index] < 0 && n.r.rivers[nIdx] >= 0 {
+			cost *= 1.4
+		}
+		if n.r.rivers[n.index] >= 0 && n.r.rivers[n.index] >= 0 {
+			cost *= 0.8
+		}
+		if n.r.terr[n.index] != n.r.terr[nIdx] {
+			cost += 1.2
+		}*/
+	return cost
+}
+
+func estimateFunction(start, end astar.Node) float32 {
+	return float32(start.(*TradeNode).r.getRDistance(start.(*TradeNode).index, end.(*TradeNode).index))
 }

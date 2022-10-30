@@ -303,34 +303,3 @@ func (m *Map) placeResources() {
 
 	//m.r_metals = resources
 }
-
-func (m *Map) getIntersection(noisevalue, bandvalue, bandwidth float64) bool {
-	return bandvalue-bandwidth/2 <= noisevalue && noisevalue <= bandvalue+bandwidth/2
-}
-
-func (m *Map) genNoise() []float64 {
-	fn := m.fbm_noise2(2, 1, 2, 2, 2, 0, 0, 0)
-	n := make([]float64, m.mesh.numRegions)
-	for r := 0; r < m.mesh.numRegions; r++ {
-		n[r] = fn(r)
-	}
-	return n
-}
-
-func (m *Map) fbm_noise2(octaves int, persistence, mx, my, mz, dx, dy, dz float64) func(int) float64 {
-	// https://thebookofshaders.com/13/
-	return func(r int) float64 {
-		nx, ny, nz := m.r_xyz[3*r]*mx+dx, m.r_xyz[3*r+1]*my+dy, m.r_xyz[3*r+2]*mz+dz
-		var sum float64
-		var sumOfAmplitudes float64
-		amplitude := 1.0
-		for octave := 0; octave < octaves; octave++ {
-			frequency := 1 << octave
-			fFreq := float64(frequency)
-			sum += amplitude * m.noise.Eval3(nx*fFreq, ny*fFreq, nz*fFreq) * float64(octave)
-			sumOfAmplitudes += amplitude * float64(octave)
-			amplitude *= persistence
-		}
-		return (sum / sumOfAmplitudes)
-	}
-}

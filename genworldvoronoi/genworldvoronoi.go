@@ -315,26 +315,3 @@ func (m *Map) assignDistanceFieldWithIntensity(seeds_r []int, stop_r map[int]boo
 	// elevation to each seed instead of them always being +1/-1
 	return r_distance
 }
-
-// Initialize the noise amplitudes for use in our heightmap.
-var amplitudes []float64
-
-func init() {
-	const persistence = 2.0 / 3.0
-	amplitudes = make([]float64, 5)
-	for i := range amplitudes {
-		amplitudes[i] = math.Pow(persistence, float64(i))
-	}
-}
-
-// fbm_noise returns a noise value for the given xyz coordinate.
-func (m *Map) fbm_noise(nx, ny, nz float64) float64 {
-	sum := 0.0
-	sumOfAmplitudes := 0.0
-	for octave := 0; octave < len(amplitudes); octave++ {
-		frequency := 1 << octave
-		sum += amplitudes[octave] * m.noise.Eval3(nx*float64(frequency), ny*float64(frequency), nz*float64(frequency))
-		sumOfAmplitudes += amplitudes[octave]
-	}
-	return sum / sumOfAmplitudes
-}

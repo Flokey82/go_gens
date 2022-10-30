@@ -23,29 +23,6 @@ func (m *BaseObject) getRivers(limit float64) [][]int {
 	return mergeIndexSegments(links)
 }
 
-// getRivers2 is a modified, simpler version of getRivers and getRiverSegments.
-// NOTE: Not sure why this exists, since getRivers works just fine?
-func (m *Map) getRivers2(limit float64) [][]int {
-	dh := m.r_downhill
-	flux := m.r_flux
-
-	// Adjust the limit to be a fraction of the max flux.
-	// This will save us a lot of cycles when comparing
-	// flux values to the limit.
-	_, maxFlux := minMax(flux)
-	limit *= maxFlux
-
-	var links [][2]int
-	for r := 0; r < m.mesh.numRegions; r++ {
-		if flux[r] > limit && m.r_elevation[r] > 0 && dh[r] >= 0 && flux[dh[r]] > limit {
-			// up := r, down := dh[r]
-			links = append(links, [2]int{r, dh[r]})
-		}
-	}
-	log.Println("start merge")
-	return mergeIndexSegments(links)
-}
-
 // getRiverSegments returns all region / downhill neighbor pairs whose flux values
 // exceed the provided limit / threshold.
 func (m *BaseObject) getRiverSegments(limit float64) [][2]int {
@@ -90,108 +67,6 @@ func (m *BaseObject) getRiverSegments(limit float64) [][2]int {
 		}
 	}
 	return links
-}
-
-// getWaterBodies returns a slice which all regions to enumerated waterbodies/oceans.
-//
-// NOTE: For regions that are not part of an ocean (elevation above sea level)
-// a value of -2 is assigned.
-func (m *BaseObject) getWaterBodies() []int {
-	// Initialize the waterbody (ocean) mapping.
-	done := make([]int, m.mesh.numRegions)
-	for i := range done {
-		if m.r_elevation[i] > 0 {
-			done[i] = -2 // Non-ocean regions above sealevel.
-		} else {
-			done[i] = -1 // Ocean regions that have not been visited yet.
-		}
-	}
-
-	for r := range done {
-		// Skip regions that have already been visited or that are
-		// non-ocean / above sealevel.
-		if done[r] != -1 {
-			continue
-		}
-		// Set the region index (r) as the ID for the new waterbody.
-		done[r] = r
-
-		// diveDeeper is a recursive function that performs a sort
-		// of flood fill, assigning the current waterbody ID to all
-		// neighboring regions that are ocean regions.
-		//
-		// TODO: Maybe use a queue instead... we might exceed Go's
-		// stack size calling this recursively regardless of how deep
-		// the execution stack might go.
-		var diveDeeper func(rd int)
-		diveDeeper = func(rd int) {
-			for _, nbs := range m.rNeighbors(rd) {
-				// If we have reached land or already visited nbs, skip.
-				if m.r_elevation[nbs] > 0 || done[nbs] != -1 {
-					continue
-				}
-				// Assign the source region index to nbs.
-				done[nbs] = r
-
-				// Visit neighbors of nbs.
-				diveDeeper(nbs)
-			}
-		}
-
-		// Recursively assign the waterbody ID / region index (r)
-		// to all suitable neighbor regions and their neighbors,
-		// and so on.
-		diveDeeper(r)
-	}
-	return done
-}
-
-// getWaterBodySizes return a mapping of waterbody IDs to the number of regions
-// associated with each waterbody ID.
-func (m *BaseObject) getWaterBodySizes() map[int]int {
-	wbSize := make(map[int]int)
-	for _, wb := range m.r_waterbodies {
-		if wb >= 0 {
-			wbSize[wb]++ // Only count regions that are set to a valid ID.
-		}
-	}
-	return wbSize
-}
-
-// getLakeSizes returns a mapping of drainage region to the number of regions that
-// drain to this point, effectively summing up the size of each lake.
-func (m *BaseObject) getLakeSizes() map[int]int {
-	lakeSize := make(map[int]int)
-	for _, drain := range m.r_drainage {
-		if drain != -1 {
-			lakeSize[drain]++ // Only count regions that have a drainage point assigned.
-		}
-	}
-	return lakeSize
-}
-
-func (m *BaseObject) isRBelowOrAtSeaLevelOrPool(r int) bool {
-	return m.r_elevation[r] <= 0 || m.r_pool[r] > 0
-}
-
-func (m *BaseObject) isRLakeOrWaterBody(r int) bool {
-	return m.r_waterbodies[r] >= 0 || m.r_drainage[r] >= 0
-}
-
-func (m *BaseObject) isRiver(r int) bool {
-	return m.r_flux[r] > m.r_rainfall[r]
-}
-
-// getRLakeOrWaterBodySiyze returns the size of the lake or waterbody that the
-// provided region is part of.
-func (m *BaseObject) getRLakeOrWaterBodySize(r int) int {
-	if m.r_waterbodies[r] >= 0 {
-		return m.r_waterbody_size[m.r_waterbodies[r]]
-	}
-	if m.r_drainage[r] >= 0 {
-		return m.r_lake_size[m.r_drainage[r]]
-	}
-	return 0
 }
 
 // getRiverIndices returns a mapping from regions to river ID.
@@ -297,263 +172,6 @@ const (
 	FloodVariant1 = 0
 	FloodVariant2 = 1
 )
-
-// fillSinks attempts to remove sinks in the terrain using different approaches.
-// NOTE: This is very much WIP, so forgive me for the mess.
-func (m *Map) fillSinks() []float64 {
-	// This will define which algorithm to use.
-	usePlanchonDarboux := true
-
-	// Use alternative fill sink algorithm?
-	if usePlanchonDarboux {
-		// Return sinks filled with Plançon-Darboux.
-		return m.fillSinksPlanchonDarboux()
-	}
-
-	epsilon := 1e-13
-
-	// Gather all regions that are below sealevel.
-	var sea_r []int
-	is_sea := make([]bool, m.mesh.numRegions)
-	for r, h := range m.r_elevation {
-		if h < 0 {
-			sea_r = append(sea_r, r)
-			is_sea[r] = true
-		}
-	}
-
-	// Find all regions that are seeds for mountains by running the
-	// continent collision code.
-	//
-	// NOTE: This is very inefficient to call this each time.
-	mountain_r, _, _, _ := m.findCollisions()
-
-	log.Println("Reminder for dev: fill sink epsilon might be too big!")
-
-	// Calculate the distance field that gives us the distance of each region
-	// to the sea tiles.
-	r_distance_c := m.assignDistanceField(sea_r, convToMap(mountain_r))
-
-	// Loop until we didn't change the terrain anymore.
-	for {
-		var changed bool
-
-		// Get all sinks (regions without downhill neighbor).
-		r_sinks := m.BaseObject.getSinks(true, false)
-
-		log.Println("sinks remaining: ", len(r_sinks))
-
-		// Sort the sinks by the distance to the ocean.
-		sort.Slice(r_sinks, func(i, j int) bool {
-			// Sort in ascending order.
-			// The sinks closest to the ocean come first etc.
-			return r_distance_c[r_sinks[i]] < r_distance_c[r_sinks[j]]
-		})
-
-		// Iterate over the sinks.
-		for _, r := range r_sinks {
-			// Skip sinks that are in the ocean or don't have any waterflow.
-			// We only fill sinks to avoid issues when generating rivers.
-			if m.r_flux[r] == 0 || is_sea[r] {
-				continue
-			}
-
-			// Get the neighbor that is closest to the ocean with the lowest elevation.
-			closest := r_distance_c[r]
-			lowest := 9999.0
-			rn := -1
-			for _, nb := range m.rNeighbors(r) {
-				if closest > r_distance_c[nb] && lowest > m.r_elevation[nb] {
-					closest = r_distance_c[nb]
-					lowest = m.r_elevation[nb]
-					rn = nb
-				}
-			}
-
-			// If we have found a suitable neighbor, we increase the elevation of
-			// the sink while reducing the height of the neighbor closer to the ocean.
-			// This will "dig a trench" towards the ocean.
-			//
-			// TODO:
-			// - If we didn't find a suitable neighbor, we could still fill the sink a little?
-			// - Reducing the neighbor by the elevation delta is a bit brutal, we could do a 50/50 split.
-			if rn >= 0 {
-				if m.r_elevation[rn] > m.r_elevation[r] {
-					// If the elevation of the neighbor is higher than the sinks', we reduce
-					// the neighbor's elevation by the elevation delta while increasing the
-					// elevation of the sink by epsilon.
-					delta := m.r_elevation[rn] - m.r_elevation[r]
-					m.r_elevation[r] += epsilon
-					m.r_elevation[rn] -= delta
-					changed = true
-				} else if m.r_elevation[rn] == m.r_elevation[r] {
-					// If the elevation happens to be identical, we reduce the elevation of
-					// the neighbor by epsilon.
-					m.r_elevation[rn] -= epsilon
-					changed = true
-				}
-			}
-		}
-
-		// If no change has occured in this pass, we can stop.
-		if !changed {
-			break
-		}
-	}
-
-	// This pass is currently deactivated and contains another variant of the above.
-	// Yeah... I can't really remember what my intention were here.
-	if false {
-		sort_r := make([]int, m.mesh.numRegions)
-		for r := range m.r_elevation {
-			sort_r[r] = r
-		}
-		sort.Slice(sort_r, func(i, j int) bool {
-			// If the distance to the sea is the same, sort by ascending elevation.
-			if r_distance_c[sort_r[i]] == r_distance_c[sort_r[j]] {
-				return m.r_elevation[sort_r[i]] < m.r_elevation[sort_r[j]]
-			}
-			// Sort by distance to the sea in ascending order.
-			return r_distance_c[sort_r[i]] < r_distance_c[sort_r[j]]
-		})
-		for {
-			var changed bool
-			for _, r := range sort_r {
-				// Skip all ocean regions.
-				if is_sea[r] {
-					continue
-				}
-
-				// Iterate over all neighbors.
-				for _, nb := range m.rNeighbors(r) {
-					// If the distance to the sea for r is shorter than the distance for
-					// nb, we reduce the elevation of r by the elevation delta and increase
-					// the elevation of nb by epsilon.
-					a, b := r, nb
-					if r_distance_c[r] > r_distance_c[nb] {
-						a, b = nb, r // If nb is closer to the sea than nb, we do the oposite to the above.
-					}
-					if m.r_elevation[a] > m.r_elevation[b] {
-						delta := m.r_elevation[a] - m.r_elevation[b]
-						m.r_elevation[b] += epsilon // delta / 2
-						m.r_elevation[a] -= delta   // (delta / 2) + epsilon
-						changed = true
-					} else if m.r_elevation[b] == m.r_elevation[a] {
-						m.r_elevation[a] -= epsilon
-						changed = true
-					}
-
-					// NOTE: The old code did not alter elevations if the distance to the ocean was the same?
-				}
-			}
-
-			// If no change has occured in this pass, we can stop.
-			if !changed {
-				break
-			}
-		}
-	}
-	return m.r_elevation
-}
-
-// fillSinksPlanchonDarboux is an implementation of the algorithm described in
-// https://www.researchgate.net/publication/240407597_A_fast_simple_and_versatile_algorithm_to_fill_the_depressions_of_digital_elevation_models
-// and a partial port of the implementation in:
-// https://github.com/Rob-Voss/Learninator/blob/master/js/lib/Terrain.js
-//
-// NOTE: This algorithm produces a too uniform result at the moment, resulting
-// in very artificially looking rivers. It lacks some kind of variation like
-// noise. It's very fast and less destructive than my other, home-grown algorithm.
-// Maybe it's worth to combine the two in some way?
-func (m *Map) fillSinksPlanchonDarboux() []float64 {
-	// Reset the RNG.
-	m.resetRand()
-
-	inf := math.Inf(0)
-	baseEpsilon := 1.0 / (float64(m.mesh.numRegions) * 1000.0)
-	newHeight := make([]float64, m.mesh.numRegions)
-	for i := range newHeight {
-		if m.r_elevation[i] <= 0 {
-			// Set the elevation at or below sea level to the current
-			// elevation.
-			newHeight[i] = m.r_elevation[i]
-		} else {
-			// Set the elevation above sea level to infinity.
-			newHeight[i] = inf
-		}
-	}
-
-	// Loop until no more changes are made.
-	var epsilon float64
-	for {
-		// Variation.
-		//
-		// In theory we could use noise or random values to slightly
-		// alter epsilon here. It should still work, albeit a bit slower.
-		// The idea is to make the algorithm less destructive and more
-		// natural looking.
-		//
-		// NOTE: I've decided to use m.rand.Float64() instead of noise.
-		epsilon = baseEpsilon * m.rand.Float64()
-
-		changed := false
-
-		// By shuffling the order in which we parse regions,
-		// we ensure a more natural look.
-		for _, r := range m.rand.Perm(len(m.r_elevation)) {
-			// Skip all regions that have the same elevation as in
-			// the current heightmap.
-			if newHeight[r] == m.r_elevation[r] {
-				continue
-			}
-
-			// Iterate over all neighbors in a random order.
-			nbs := m.rNeighbors(r)
-			for _, i := range m.rand.Perm(len(nbs)) {
-				nb := nbs[i]
-				// Since we have set all inland regions to infinity,
-				// we will only succeed here if the newHeight of the neighbor
-				// is either below sea level or if the newHeight has already
-				// been set AND if the elevation is higher than the neighbors.
-				//
-				// This means that we're working our way inland, starting from
-				// the coast, comparing each region with the processed / set
-				// neighbors (that aren't set to infinity) in the new heightmap
-				// until we run out of regions that need change.
-				if m.r_elevation[r] >= newHeight[nb]+epsilon {
-					newHeight[r] = m.r_elevation[r]
-					changed = true
-					break
-				}
-
-				// If we reach this point, the neighbor in the new heightmap
-				// is higher than the current elevation of 'r'.
-				// This can mean two things. Either the neighbor is set to infinity
-				// or the current elevation might indicate a sink.
-
-				// So we check if the newHeight of r is larger than the
-				// newHeight of the neighbor (plus epsilon), which will ensure that
-				// the newHeight of neighbor is not set to infinity.
-				//
-				// Additionally we check if the newHeight of the neighbor
-				// is higher than the current height of r, which ensures that if the
-				// current elevation indicates a sink, we will fill up the sink to the
-				// new neighbor height plus epsilon.
-				//
-				// TODO: Simplify this comment word salad.
-				oh := newHeight[nb] + epsilon
-				if newHeight[r] > oh && oh > m.r_elevation[r] {
-					newHeight[r] = oh
-					changed = true
-				}
-			}
-		}
-		if !changed {
-			break
-		}
-	}
-	return newHeight
-}
 
 // assignHydrology will calculate river systems and fill sinks instead of trying to generate
 // water pools.
@@ -1283,6 +901,46 @@ func (m *Map) assignDownflow() {
 	}
 }
 
+type Item struct {
+	ID    int
+	Value float64
+	Index int // The index of the item in the heap.
+}
+
+type PriorityQueue []*Item
+
+func (pq PriorityQueue) Len() int { return len(pq) }
+
+func (pq PriorityQueue) Less(i, j int) bool {
+	// We want Pop to give us the lowest based on expiration number as the priority
+	// The lower the expiry, the higher the priority
+	return pq[i].Value < pq[j].Value
+}
+
+// We just implement the pre-defined function in interface of heap.
+
+func (pq *PriorityQueue) Pop() interface{} {
+	old := *pq
+	n := len(old)
+	item := old[n-1]
+	item.Index = -1
+	*pq = old[0 : n-1]
+	return item
+}
+
+func (pq *PriorityQueue) Push(x interface{}) {
+	n := len(*pq)
+	item := x.(*Item)
+	item.Index = n
+	*pq = append(*pq, item)
+}
+
+func (pq PriorityQueue) Swap(i, j int) {
+	pq[i], pq[j] = pq[j], pq[i]
+	pq[i].Index = i
+	pq[j].Index = j
+}
+
 // assignFlow calculates the water flux by traversing the graph generated with
 // assignDownflow in reverse order (so, downhill?) and summing up the moisture.
 //
@@ -1333,44 +991,4 @@ func (m *Map) assignFlow() {
 	m.t_flow = t_flow
 	m.s_flow = s_flow
 	m.t_elevation = t_elevation
-}
-
-type Item struct {
-	ID    int
-	Value float64
-	Index int // The index of the item in the heap.
-}
-
-type PriorityQueue []*Item
-
-func (pq PriorityQueue) Len() int { return len(pq) }
-
-func (pq PriorityQueue) Less(i, j int) bool {
-	// We want Pop to give us the lowest based on expiration number as the priority
-	// The lower the expiry, the higher the priority
-	return pq[i].Value < pq[j].Value
-}
-
-// We just implement the pre-defined function in interface of heap.
-
-func (pq *PriorityQueue) Pop() interface{} {
-	old := *pq
-	n := len(old)
-	item := old[n-1]
-	item.Index = -1
-	*pq = old[0 : n-1]
-	return item
-}
-
-func (pq *PriorityQueue) Push(x interface{}) {
-	n := len(*pq)
-	item := x.(*Item)
-	item.Index = n
-	*pq = append(*pq, item)
-}
-
-func (pq PriorityQueue) Swap(i, j int) {
-	pq[i], pq[j] = pq[j], pq[i]
-	pq[i].Index = i
-	pq[j].Index = j
 }

@@ -2,6 +2,7 @@ package genworldvoronoi
 
 import (
 	"log"
+	"math"
 	"math/rand"
 
 	opensimplex "github.com/ojrac/opensimplex-go"
@@ -31,6 +32,11 @@ type BaseObject struct {
 	rand             *rand.Rand        // Rand initialized with above seed
 	noise            opensimplex.Noise // Opensimplex noise initialized with above seed
 	mesh             *TriangleMesh     // Triangle mesh containing the sphere information
+}
+
+// resetRand resets the random number generator to its initial state.
+func (m *BaseObject) resetRand() {
+	m.rand.Seed(m.seed)
 }
 
 // generateTriangleCenters iterates through all triangles and generates the centroids for each.
@@ -123,26 +129,11 @@ func (m *BaseObject) getDownhill(usePool bool) []int {
 	return r_downhill
 }
 
-func (m *BaseObject) getSinks(skipSinksBelowSea, usePool bool) []int {
-	// Identify sinks above sea level.
-	var r_sinks []int
-	for r, lowest_r := range m.getDownhill(usePool) {
-		if lowest_r == -1 && (!skipSinksBelowSea || m.r_elevation[r] >= 0) { // && m.r_drainage[r] < 0
-			r_sinks = append(r_sinks, r)
-		}
-	}
-	return r_sinks
-}
-
 // Calculate distance using the lat long and haversine.
 func (m *BaseObject) getRDistance(r1, r2 int) float64 {
 	la1, lo1 := m.r_latLon[r1][0], m.r_latLon[r1][1]
 	la2, lo2 := m.r_latLon[r2][0], m.r_latLon[r2][1]
 	return haversine(la1, lo1, la2, lo2)
-}
-
-func (m *BaseObject) resetRand() {
-	m.rand.Seed(m.seed)
 }
 
 func (m *BaseObject) rNeighbors(r int) []int {
@@ -173,6 +164,7 @@ func (m *BaseObject) TestAreas() {
 	log.Println(tot)
 }
 
+// getRegionArea returns the surface area of a region on a unit sphere.
 func (m *BaseObject) getRegionArea(r int) float64 {
 	rLatLon := m.r_latLon[r]
 	ts := m.mesh.r_circulate_t(nil, r)
@@ -195,6 +187,308 @@ func (m *BaseObject) getRegionArea(r int) float64 {
 	return area
 }
 
+func (m *BaseObject) isRBelowOrAtSeaLevelOrPool(r int) bool {
+	return m.r_elevation[r] <= 0 || m.r_pool[r] > 0
+}
+
+func (m *BaseObject) isRLakeOrWaterBody(r int) bool {
+	return m.r_waterbodies[r] >= 0 || m.r_drainage[r] >= 0
+}
+
+func (m *BaseObject) isRiver(r int) bool {
+	return m.r_flux[r] > m.r_rainfall[r]
+}
+
+// getRSlope returns the region slope by averaging the slopes of the triangles
+// around a given region.
+//
+// NOTE: This is based on mewo2's erosion code but uses rPolySlope instead of
+// rSlope, which determines the slope based on all neighbors.
+//
+// See: https://github.com/mewo2/terrain
+func (m *BaseObject) getRSlope() []float64 {
+	slope := make([]float64, m.mesh.numRegions)
+	for r, dhr := range m.getDownhill(false) {
+		// Sinks have no slope, so we skip them.
+		if dhr < 0 {
+			continue
+		}
+
+		// Get the slope vector.
+		// The slope value we want is the length of the vector returned by rPolySlope.
+		// NOTE: We use improved poly-slope code, which uses all neighbors for
+		// the slope calculation.
+		s := m.rPolySlope(r)
+		slope[r] = math.Sqrt(s[0]*s[0] + s[1]*s[1])
+	}
+	return slope
+}
+
+// getRSteepness returns the steepness per region.
+//
+// NOTE: We define steepness as the angle to a region from its downhill neighbor
+// expressed as a value between 0.0 to 1.0 (representing an angle from 0° to 90°).
+func (m *BaseObject) getRSteepness() []float64 {
+	// This will collect the steepness for each region.
+	steeps := make([]float64, m.mesh.numRegions)
+
+	// Get the downhill neighbors for all regions (ignoring water pools for now).
+	dh := m.getDownhill(false)
+	for r, d := range dh {
+		if d < 0 {
+			continue // Skip all sinks.
+		}
+		// In order to calculate the steepness value, we get the great arc distance
+		// of each region and its downhill neighbor, as well as the elevation change.
+		//
+		//     __r            r
+		//     | |\            \
+		//     | | \            \
+		// height|  \            \
+		//     | |   \            \
+		//     |_|____\dh[r]   ____\dh[r] <- we want to calculate this angle
+		//       |dist|
+		//
+		// We calculate the angle (in radians) as follows:
+		// angle = atan(height/dist)
+		//
+		// Finally, to get the steepness in a range of 0.0 ... 1.0:
+		// steepness = angle * 2 / Pi
+
+		// Calculate height difference between r and dh[r].
+		hDiff := m.r_elevation[r] - m.r_elevation[d]
+
+		// Great arc distance between the lat/lon coordinates of r and dh[r].
+		rLatLon := m.r_latLon[r]
+		dLatLon := m.r_latLon[d]
+		dist := haversine(rLatLon[0], rLatLon[1], dLatLon[0], dLatLon[1])
+
+		// Calculate the the angle (0°-90°) expressed as range from 0.0 to 1.0.
+		steeps[r] = math.Atan(hDiff/dist) * 2 / math.Pi
+	}
+	return steeps
+}
+
+// rPolySlope calculates the slope of a region, taking in account all neighbors (which form a polygon).
+func (m *BaseObject) rPolySlope(i int) [2]float64 {
+	// See: https://www.khronos.org/opengl/wiki/Calculating_a_Surface_Normal
+	//
+	// Begin Function CalculateSurfaceNormal (Input Polygon) Returns Vector
+	//  Set Vertex Normal to (0, 0, 0)
+	//
+	//  Begin Cycle for Index in [0, Polygon.vertexNumber)
+	//    Set Vertex Current to Polygon.verts[Index]
+	//    Set Vertex Next    to Polygon.verts[(Index plus 1) mod Polygon.vertexNumber]
+	//
+	//    Set Normal.X to Sum of Normal.X and (multiply (Current.Z minus Next.Z) by (Current.Y plus Next.Y))
+	//    Set Normal.Z to Sum of Normal.Z and (multiply (Current.Y minus Next.Y) by (Current.X plus Next.X))
+	//    Set Normal.Y to Sum of Normal.Y and (multiply (Current.X minus Next.X) by (Current.Z plus Next.Z))
+	//  End Cycle
+	//
+	//  Returning Normalize(Normal)
+	// End Function
+
+	var normal [3]float64
+	nbs := m.rNeighbors(i)
+	for j, r := range nbs {
+		jNext := nbs[(j+1)%len(nbs)]
+		current := convToVec3(m.r_xyz[r*3:])
+		next := convToVec3(m.r_xyz[jNext*3:])
+		normal[0] += (current.Z - next.Z) * (current.Y + next.Y)
+		normal[1] += (current.Y - next.Y) * (current.X + next.X)
+		normal[2] += (current.X - next.X) * (current.Z + next.Z)
+	}
+	return [2]float64{normal[0] / -normal[2], normal[1] / -normal[2]} // TODO: Normalize
+}
+
+// rSlope returns the x/y vector for a given region by averaging the
+// x/y vectors of the neighbor triangle centers.
+func (m *BaseObject) rSlope(i int) [2]float64 {
+	var res [2]float64
+	var count int
+
+	// NOTE: This is way less accurate. In theory we'd need
+	// to calculate the normal of a polygon.
+	// See solution rSlope2.
+	for _, t := range m.mesh.r_circulate_t(nil, i) {
+		slope := m.rTriSlope(m.mesh.t_circulate_r(nil, t))
+		res[0] += slope[0]
+		res[1] += slope[1]
+		count++
+	}
+	res[0] /= float64(count)
+	res[1] /= float64(count)
+	return res
+}
+
+// rTriSlope calculates the slope based on three regions.
+//
+// NOTE: This is based on mewo2's erosion code
+// See: https://github.com/mewo2/terrain
+//
+// WARNING: This only takes in account 3 neighbors!!
+// Our implementation however has at times more than 3!
+func (m *BaseObject) rTriSlope(nbs []int) [2]float64 {
+	// Skip if we don't have enough regions.
+	if len(nbs) != 3 {
+		return [2]float64{0, 0}
+	}
+
+	// I assume that this is what this code is based on...?
+	//
+	// See: https://www.khronos.org/opengl/wiki/Calculating_a_Surface_Normal
+	//
+	// Begin Function CalculateSurfaceNormal (Input Triangle) Returns Vector
+	//
+	//	Set Vector U to (Triangle.p2 minus Triangle.p1)
+	//	Set Vector V to (Triangle.p3 minus Triangle.p1)
+	//
+	//	Set Normal.X to (multiply U.Z by V.Y) minus (multiply U.Y by V.Z)
+	//	Set Normal.Z to (multiply U.Y by V.X) minus (multiply U.X by V.Y)
+	//	Set Normal.Y to (multiply U.X by V.Z) minus (multiply U.Z by V.X)
+	//
+	//	Returning Normal
+	//
+	// End Function
+
+	p0 := convToVec3(m.r_xyz[nbs[0]*3:])
+	p1 := convToVec3(m.r_xyz[nbs[1]*3:])
+	p2 := convToVec3(m.r_xyz[nbs[2]*3:])
+
+	x1 := p1.X - p0.X
+	x2 := p2.X - p0.X
+	y1 := p1.Y - p0.Y
+	y2 := p2.Y - p0.Y
+	z1 := m.r_elevation[nbs[1]] - m.r_elevation[nbs[0]]
+	z2 := m.r_elevation[nbs[2]] - m.r_elevation[nbs[0]]
+
+	det := x1*y2 - y1*x2 // negative Z?
+	return [2]float64{
+		(z1*y2 - y1*z2) / det,
+		(x1*z2 - z1*x2) / det,
+	}
+}
+
+// getSinks returns all regions that do not have a downhill neighbor.
+// If 'skipSinksBelowSea' is true, regions below sea level are excluded.
+// If 'usePool' is true, water pool data is used to determine if the sink is a lake.
+func (m *BaseObject) getSinks(skipSinksBelowSea, usePool bool) []int {
+	// Identify sinks above sea level.
+	var r_sinks []int
+	for r, lowest_r := range m.getDownhill(usePool) {
+		if lowest_r == -1 && (!skipSinksBelowSea || m.r_elevation[r] >= 0) { // && m.r_drainage[r] < 0
+			r_sinks = append(r_sinks, r)
+		}
+	}
+	return r_sinks
+}
+
+// fillSinks is an implementation of the algorithm described in
+// https://www.researchgate.net/publication/240407597_A_fast_simple_and_versatile_algorithm_to_fill_the_depressions_of_digital_elevation_models
+// and a partial port of the implementation in:
+// https://github.com/Rob-Voss/Learninator/blob/master/js/lib/Terrain.js
+//
+// NOTE: This algorithm produces a too uniform result at the moment, resulting
+// in very artificially looking rivers. It lacks some kind of variation like
+// noise. It's very fast and less destructive than my other, home-grown algorithm.
+// Maybe it's worth to combine the two in some way?
+func (m *BaseObject) fillSinks() []float64 {
+	// Reset the RNG.
+	m.resetRand()
+
+	inf := math.Inf(0)
+	baseEpsilon := 1.0 / (float64(m.mesh.numRegions) * 1000.0)
+	newHeight := make([]float64, m.mesh.numRegions)
+	for i := range newHeight {
+		if m.r_elevation[i] <= 0 {
+			// Set the elevation at or below sea level to the current
+			// elevation.
+			newHeight[i] = m.r_elevation[i]
+		} else {
+			// Set the elevation above sea level to infinity.
+			newHeight[i] = inf
+		}
+	}
+
+	// Loop until no more changes are made.
+	var epsilon float64
+	for {
+		// Variation.
+		//
+		// In theory we could use noise or random values to slightly
+		// alter epsilon here. It should still work, albeit a bit slower.
+		// The idea is to make the algorithm less destructive and more
+		// natural looking.
+		//
+		// NOTE: I've decided to use m.rand.Float64() instead of noise.
+		epsilon = baseEpsilon * m.rand.Float64()
+
+		changed := false
+
+		// By shuffling the order in which we parse regions,
+		// we ensure a more natural look.
+		for _, r := range m.rand.Perm(len(m.r_elevation)) {
+			// Skip all regions that have the same elevation as in
+			// the current heightmap.
+			if newHeight[r] == m.r_elevation[r] {
+				continue
+			}
+
+			// Iterate over all neighbors in a random order.
+			nbs := m.rNeighbors(r)
+			for _, i := range m.rand.Perm(len(nbs)) {
+				nb := nbs[i]
+				// Since we have set all inland regions to infinity,
+				// we will only succeed here if the newHeight of the neighbor
+				// is either below sea level or if the newHeight has already
+				// been set AND if the elevation is higher than the neighbors.
+				//
+				// This means that we're working our way inland, starting from
+				// the coast, comparing each region with the processed / set
+				// neighbors (that aren't set to infinity) in the new heightmap
+				// until we run out of regions that need change.
+				if m.r_elevation[r] >= newHeight[nb]+epsilon {
+					newHeight[r] = m.r_elevation[r]
+					changed = true
+					break
+				}
+
+				// If we reach this point, the neighbor in the new heightmap
+				// is higher than the current elevation of 'r'.
+				// This can mean two things. Either the neighbor is set to infinity
+				// or the current elevation might indicate a sink.
+
+				// So we check if the newHeight of r is larger than the
+				// newHeight of the neighbor (plus epsilon), which will ensure that
+				// the newHeight of neighbor is not set to infinity.
+				//
+				// Additionally we check if the newHeight of the neighbor
+				// is higher than the current height of r, which ensures that if the
+				// current elevation indicates a sink, we will fill up the sink to the
+				// new neighbor height plus epsilon.
+				//
+				// TODO: Simplify this comment word salad.
+				oh := newHeight[nb] + epsilon
+				if newHeight[r] > oh && oh > m.r_elevation[r] {
+					newHeight[r] = oh
+					changed = true
+				}
+			}
+		}
+		if !changed {
+			break
+		}
+	}
+	return newHeight
+}
+
+type interpolated struct {
+	num_r int
+	BaseObject
+}
+
+// interpolate adds for each neighboring region pair one intermediate,
+// interpolated region, increasing the "resolution" for the given regions.
 func (m *BaseObject) interpolate(rr []int) (*interpolated, error) {
 	// Get all points within bounds.
 	var ipl interpolated
@@ -281,9 +575,4 @@ func (m *BaseObject) interpolate(rr []int) (*interpolated, error) {
 	ipl.rand = rand.New(rand.NewSource(m.seed))
 	ipl.noise = m.noise
 	return &ipl, nil
-}
-
-type interpolated struct {
-	num_r int
-	BaseObject
 }

@@ -124,3 +124,12 @@ func heronsTriArea(a, b, c float64) float64 {
 	p := (a + b + c) / 2
 	return math.Sqrt(p * (p - a) * (p - b) * (p - c))
 }
+
+func isInIntList(l []int, i int) bool {
+	for _, v := range l {
+		if v == i {
+			return true
+		}
+	}
+	return false
+}
