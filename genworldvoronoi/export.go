@@ -111,7 +111,7 @@ func (m *Map) ExportSVG(path string) error {
 	drawBorders := true
 	drawLakeBorders := false
 	drawBelow := false
-	drawContour := true
+	drawLandmassContour := true
 	drawWindDir := false
 	drawPlateCompression := false
 	drawAltitude := false
@@ -311,6 +311,7 @@ func (m *Map) ExportSVG(path string) error {
 	}
 
 	if drawBorders {
+		log.Println("TODO: Place city states first and grow empires from city states?")
 		drawPath(m.getCustomBorders(m.rPlaceNCityStates(m.NumCities)), true, "class=\"cityborder\"")
 		drawPath(m.getBorders(), true, "class=\"border\"")
 	}
@@ -319,8 +320,8 @@ func (m *Map) ExportSVG(path string) error {
 		drawPath(m.getLakeBorders(), true, "class=\"lake\"")
 	}
 
-	if drawContour {
-		drawPath(m.contour(), true, "class=\"contour\"")
+	if drawLandmassContour {
+		drawPath(m.getLandmassContour(), true, "class=\"contour\"")
 	}
 
 	// Rivers (based on regions)
@@ -468,7 +469,7 @@ func (m *Map) ExportSVG(path string) error {
 	}
 
 	if drawErosion2 {
-		er := m.getRErosion2()
+		er := m.rErosionRate2()
 		minFlux, maxFlux := minMax(er)
 		for r, rdh := range m.r_flux {
 			if rdh > 0 {

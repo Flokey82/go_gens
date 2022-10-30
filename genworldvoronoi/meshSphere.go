@@ -13,8 +13,8 @@ import (
 func generateFibonacciSphere(seed int64, numPoints int, jitter float64) []float64 {
 	rnd := rand.New(rand.NewSource(seed))
 	var a_latlong []float64
-	_randomLat := make(map[int]float64)
-	_randomLon := make(map[int]float64)
+	randomLat := make(map[int]float64)
+	randomLon := make(map[int]float64)
 
 	// Second algorithm from http://web.archive.org/web/20120421191837/http://www.cgafaq.info/wiki/Evenly_distributed_points_on_sphere
 	s := 3.6 / math.Sqrt(float64(numPoints))
@@ -25,15 +25,15 @@ func generateFibonacciSphere(seed int64, numPoints int, jitter float64) []float6
 		r := math.Sqrt(1 - z*z)
 		latDeg := math.Asin(z) * 180 / math.Pi
 		lonDeg := long * 180 / math.Pi
-		if _, ok := _randomLat[k]; !ok {
-			_randomLat[k] = rnd.Float64() - rnd.Float64()
+		if _, ok := randomLat[k]; !ok {
+			randomLat[k] = rnd.Float64() - rnd.Float64()
 		}
-		if _, ok := _randomLon[k]; !ok {
-			_randomLon[k] = rnd.Float64() - rnd.Float64()
+		if _, ok := randomLon[k]; !ok {
+			randomLon[k] = rnd.Float64() - rnd.Float64()
 		}
 
-		latDeg += jitter * _randomLat[k] * (latDeg - math.Asin(math.Max(-1, z-dz*2*math.Pi*r/s))*180/math.Pi)
-		lonDeg += jitter * _randomLon[k] * (s / r * 180 / math.Pi)
+		latDeg += jitter * randomLat[k] * (latDeg - math.Asin(math.Max(-1, z-dz*2*math.Pi*r/s))*180/math.Pi)
+		lonDeg += jitter * randomLon[k] * (s / r * 180 / math.Pi)
 		a_latlong = append(a_latlong, latDeg, math.Mod(lonDeg, 360.0))
 		long += dlong
 		z -= dz
@@ -143,9 +143,7 @@ func stereographicProjection(r_xyz []float64) []float64 {
 		x := r_xyz[3*r]
 		y := r_xyz[3*r+1]
 		z := r_xyz[3*r+2]
-		X := x / (1 - z)
-		Y := y / (1 - z)
-		r_XY = append(r_XY, X, Y)
+		r_XY = append(r_XY, x/(1-z), y/(1-z)) // Append projected 2d coordinates.
 	}
 	return r_XY
 }

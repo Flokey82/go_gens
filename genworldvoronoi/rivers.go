@@ -248,24 +248,6 @@ func mergeIndexSegments(segs [][2]int) [][]int {
 			if done[i] {
 				continue
 			}
-
-			/*
-				// Original code.
-				if len(adj[path[0]]) == 2 && segs[i][0] == path[0] {
-					path = unshiftIndexPath(path, segs[i][1])
-				} else if len(adj[path[0]]) == 2 && segs[i][1] == path[0] {
-					path = unshiftIndexPath(path, segs[i][0])
-				} else if len(adj[path[len(path)-1]]) == 2 && segs[i][0] == path[len(path)-1] {
-					path = append(path, segs[i][1])
-				} else if len(adj[path[len(path)-1]]) == 2 && segs[i][1] == path[len(path)-1] {
-					path = append(path, segs[i][0])
-				} else {
-					continue
-				}
-				done[i] = true
-				changed = true
-				break
-			*/
 			if len(adj[path[0]]) == 2 {
 				if segs[i][0] == path[0] {
 					path = unshiftIndexPath(path, segs[i][1])
@@ -1203,17 +1185,13 @@ func (m *Map) floodV2(r int, dVol float64) bool {
 			// Fill Neighbors
 			for _, neighbor_r := range nbs {
 				lowbound(neighbor_r)
+				// Fill neighbors of neighbors
+				// for _, nbs2 := range m.rNeighbors(nbs) { // ??????
+				//	lowbound(nbs2)
+				// }
 			}
-			/*
-				// Fill Neighbors
-				for _, nbs := range m.rNeighbors(drain) {
-					lowbound(nbs)
-					//for _, nbs2 := range m.rNeighbors(nbs) { // ??????
-					//	lowbound(nbs2)
-					//}
-				}
-			*/
 		}
+
 		// Water-Level to Plane-Height
 		for _, s := range floodset {
 			// volume += ((plane > h[ind])?(h[ind] + p[ind] - plane):p[ind])/volumeFactor;

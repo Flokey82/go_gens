@@ -6,7 +6,11 @@ import (
 )
 
 // rErode erodes all region by the given amount.
-// NOTE: This is based on mewo2's erosion code
+//
+// NOTE: This is based on mewo2's erosion code but limits the eroded height
+// to a fraction of the height difference to the downhill neighbor, which
+// prevents extreme sinks from forming.
+//
 // See: https://github.com/mewo2/terrain
 func (m *Map) rErode(amount float64) []float64 {
 	// Get downhill height diffs so we can ensure that we do not erode
@@ -35,17 +39,6 @@ func (m *Map) rErode(amount float64) []float64 {
 	for r, e := range er {
 		// We can at most erode amount*dhDiff[r].
 		newh[r] = m.r_elevation[r] - amount*dhDiff[r]*(e/maxr)
-	}
-	return newh
-}
-
-// rErodeOld is the old erosion code that we have improved on above.
-func (m *Map) rErodeOld(amount float64) []float64 {
-	newh := make([]float64, m.mesh.numRegions)
-	er := m.rErosionRate()
-	_, maxr := minMax(er)
-	for r, e := range er {
-		newh[r] = m.r_elevation[r] - amount*(e/maxr)
 	}
 	return newh
 }
@@ -139,12 +132,11 @@ func (m *Map) rErosionRate() []float64 {
 // getRSlope returns the region slope by averaging the slopes of the triangles
 // around a given region.
 //
-// NOTE: This is based on mewo2's erosion code
+// NOTE: This is based on mewo2's erosion code but uses rPolySlope instead of
+// rSlope, which determines the slope based on all neighbors.
+//
 // See: https://github.com/mewo2/terrain
 func (m *Map) getRSlope() []float64 {
-	// This determines if we use rSlope or rPolySlope for calculating the slope.
-	usePolySlope := true
-
 	slope := make([]float64, m.mesh.numRegions)
 	for r, dhr := range m.getDownhill(false) {
 		// Sinks have no slope, so we skip them.
@@ -153,50 +145,19 @@ func (m *Map) getRSlope() []float64 {
 		}
 
 		// Get the slope vector.
-		var s [2]float64
-
-		if usePolySlope {
-			// Use improved poly-slope code, which uses all neighbors for
-			// the slope calculation.
-			s = m.rPolySlope(r)
-		} else {
-			// Use old tri-slope which only uses the first three neighbors
-			// for the slope calculation.
-			s = m.rSlope(r)
-		}
-
-		// The slope value we want is the length of the vector returned by
-		// rSlope (or rPolySlope).
+		// The slope value we want is the length of the vector returned by rPolySlope.
+		// NOTE: We use improved poly-slope code, which uses all neighbors for
+		// the slope calculation.
+		s := m.rPolySlope(r)
 		slope[r] = math.Sqrt(s[0]*s[0] + s[1]*s[1])
 	}
 	return slope
 }
 
-// rSlope returns the x/y vector for a given region by averaging the
-// x/y vectors of the neighbor triangle centers.
-func (m *Map) rSlope(i int) [2]float64 {
-	var res [2]float64
-	var count int
-
-	// NOTE: This is way less accurate. In theory we'd need
-	// to calculate the normal of a polygon.
-	// See solution rSlope2.
-	for _, t := range m.mesh.r_circulate_t(nil, i) {
-		slope := m.rTriSlope(m.mesh.t_circulate_r(nil, t))
-		res[0] += slope[0]
-		res[1] += slope[1]
-		count++
-	}
-
-	res[0] /= float64(count)
-	res[1] /= float64(count)
-	return res
-}
-
-// getRErosion2 is an alternative erosion calculation which takes in account
+// rErosionRate2 is an alternative erosion calculation which takes in account
 // the steepness and flux of each region to determine the shape of eroded
 // riverbeds and valleys.
-func (m *Map) getRErosion2() []float64 {
+func (m *Map) rErosionRate2() []float64 {
 	const (
 		// HACK: That's about 3 neighbors away at 400.000 points. This should not be hardcoded.
 		maxErosionDistance = 3 * 0.006
@@ -397,8 +358,27 @@ func (m *Map) rPolySlope(i int) [2]float64 {
 		normal[1] += (current.Y - next.Y) * (current.X + next.X)
 		normal[2] += (current.X - next.X) * (current.Z + next.Z)
 	}
-
 	return [2]float64{normal[0] / -normal[2], normal[1] / -normal[2]} // TODO: Normalize
+}
+
+// rSlope returns the x/y vector for a given region by averaging the
+// x/y vectors of the neighbor triangle centers.
+func (m *Map) rSlope(i int) [2]float64 {
+	var res [2]float64
+	var count int
+
+	// NOTE: This is way less accurate. In theory we'd need
+	// to calculate the normal of a polygon.
+	// See solution rSlope2.
+	for _, t := range m.mesh.r_circulate_t(nil, i) {
+		slope := m.rTriSlope(m.mesh.t_circulate_r(nil, t))
+		res[0] += slope[0]
+		res[1] += slope[1]
+		count++
+	}
+	res[0] /= float64(count)
+	res[1] /= float64(count)
+	return res
 }
 
 // rTriSlope calculates the slope based on three regions.

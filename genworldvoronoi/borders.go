@@ -11,6 +11,22 @@ func (m *Map) getLakeBorders() [][]int {
 }
 
 func (m *Map) getCustomBorders(territories []int) [][]int {
+	return m.getCustomContour(func(idxA, idxB int) bool {
+		if m.r_elevation[idxA] < 0 || m.r_elevation[idxB] < 0 ||
+			(territories[idxA] < 0 && territories[idxB] < 0) {
+			return false
+		}
+		return territories[idxA] != territories[idxB]
+	})
+}
+
+func (m *Map) getLandmassContour() [][]int {
+	return m.getCustomContour(func(idxA, idxB int) bool {
+		return m.r_elevation[idxA] >= 0 && m.r_elevation[idxB] < 0 || m.r_elevation[idxA] < 0 && m.r_elevation[idxB] >= 0
+	})
+}
+
+func (m *Map) getCustomContour(f func(idxA, idxB int) bool) [][]int {
 	var edges [][2]int
 	seen := make(map[[2]int]bool)
 	for i := 0; i < len(m.mesh.Halfedges); i++ {
@@ -28,36 +44,7 @@ func (m *Map) getCustomBorders(territories []int) [][]int {
 			continue
 		}
 		seen[vx] = true
-		if m.r_elevation[idxA] < 0 || m.r_elevation[idxB] < 0 ||
-			(territories[idxA] < 0 && territories[idxB] < 0) {
-			continue
-		}
-		if territories[idxA] != territories[idxB] {
-			edges = append(edges, vx)
-		}
-	}
-	return mergeIndexSegments(edges)
-}
-
-func (m *Map) contour() [][]int {
-	var edges [][2]int
-	seen := make(map[[2]int]bool)
-	for i := 0; i < len(m.mesh.Halfedges); i++ {
-		idxA := m.mesh.s_begin_r(i)
-		idxB := m.mesh.s_end_r(i)
-		var vx [2]int
-		if idxA > idxB {
-			vx[0] = m.mesh.s_outer_t(i)
-			vx[1] = m.mesh.s_inner_t(i)
-		} else {
-			vx[0] = m.mesh.s_inner_t(i)
-			vx[1] = m.mesh.s_outer_t(i)
-		}
-		if seen[vx] {
-			continue
-		}
-
-		if m.r_elevation[idxA] >= 0 && m.r_elevation[idxB] < 0 || m.r_elevation[idxA] < 0 && m.r_elevation[idxB] >= 0 {
+		if f(idxA, idxB) {
 			edges = append(edges, vx)
 		}
 	}
