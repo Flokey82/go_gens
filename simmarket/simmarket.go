@@ -4,6 +4,7 @@
 package simmarket
 
 import (
+	"math/rand"
 	"sort"
 )
 
@@ -100,7 +101,9 @@ func (m *Market) tradeResource(asks, bids []*Order) float64 {
 	}
 
 	// Resolve all satisfied bids and complete the transactions.
-	// NOTE: The clearing price should be agreed on by the two parties.
+	// NOTE: The clearing price should be agreed on by the two parties and
+	// the traders should be notified on the trading volume, min, max, and
+	// the clearing price.
 	for bid, ask := range satisfied_bids {
 		bid.Carrier.Buy(bid, ask, actualPrice)
 	}
@@ -122,12 +125,15 @@ func (m *Market) Trade() {
 		asks := allAsks[resource]
 		bids := allBids[resource]
 
-		// TODO: Shuffle to avoid that traders with similar prices always
-		// end up in the same order.
+		// Shuffle to avoid that traders with identical prices always
+		// end up in the same order after sorting.
+		rand.Shuffle(len(asks), func(i, j int) { asks[i], asks[j] = asks[j], asks[i] })
+		rand.Shuffle(len(bids), func(i, j int) { bids[i], bids[j] = bids[j], bids[i] })
 
 		// Sort asks and bids by price.
 		sort.Sort(Orders(asks))
 		sort.Sort(Orders(bids))
+
 		if askSums[resource] == 0 {
 			m.prices[resource] = bids[0].Price
 		} else if bidSums[resource] == 0 {
@@ -163,18 +169,14 @@ func (m *Market) createSums() *Sums {
 	sums := newSums()
 	for trader := range m.traders {
 		// Sum up all asks.
-		asks := trader.Asks()
-		for i := range asks {
-			ask := asks[i]
+		for _, ask := range trader.Asks() {
 			sums.asks[ask.Resource] = append(sums.asks[ask.Resource], ask)
 			sums.askSums[ask.Resource] += ask.Units
 			sums.resources[ask.Resource] = true
 		}
 
 		// Sum up all bids.
-		bids := trader.Bids()
-		for i := range bids {
-			bid := bids[i]
+		for _, bid := range trader.Bids() {
 			sums.bids[bid.Resource] = append(sums.bids[bid.Resource], bid)
 			sums.bidSums[bid.Resource] += bid.Units
 			sums.resources[bid.Resource] = true
