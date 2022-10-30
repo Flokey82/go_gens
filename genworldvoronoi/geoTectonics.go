@@ -2,6 +2,7 @@ package genworldvoronoi
 
 import (
 	"math"
+	"sort"
 
 	"github.com/Flokey82/go_gens/utils"
 	"github.com/Flokey82/go_gens/vectors"
@@ -18,7 +19,7 @@ func (m *Map) generatePlates() {
 	}
 
 	// Pick random regions as seed points for plate generation.
-	plate_r := m.pickRandomRegions(mesh, utils.Min(m.NumPlates, m.NumPoints))
+	plate_r := m.pickRandomRegions(utils.Min(m.NumPlates, m.NumPoints))
 
 	var queue []int
 	for _, r := range plate_r {
@@ -216,6 +217,23 @@ func (m *Map) assignRegionElevation() {
 		}
 	}
 
+	sorted_r := make([]int, m.mesh.numRegions)
+	for i := range sorted_r {
+		sorted_r[i] = i
+	}
+
+	// Sort by compression.
+	sort.Slice(mountain_r, func(i, j int) bool {
+		return compression_r[mountain_r[i]] > compression_r[mountain_r[j]]
+	})
+
+	// Select a number of mountains with the highest compression as volcanoes.
+	//numVolcanoes := m.mesh.numSides
+	//if numVolcanoes > len(mountain_r) {
+	//	numVolcanoes = len(mountain_r)
+	//}
+	//volcano_r := mountain_r[:numVolcanoes]
+
 	// Distance field generation.
 	// I do not quite know how that works, but it is based on:
 	// See: https://www.redblobgames.com/x/1728-elevation-control/
@@ -233,7 +251,6 @@ func (m *Map) assignRegionElevation() {
 	var r_distance_a, r_distance_b, r_distance_c []float64
 	if useDistanceFieldWithCompression {
 		// Calculate distance fields using the compression values of each region.
-
 		// Graph distance from mountains (stops at ocean regions).
 		r_distance_a = m.assignDistanceFieldWithIntensity(mountain_r, convToMap(ocean_r), compression_r)
 		// Graph distance from ocean (stops at coastline regions).

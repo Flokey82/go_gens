@@ -2,36 +2,26 @@ package genworldvoronoi
 
 import (
 	"log"
-
-	"github.com/Flokey82/go_gens/gameconstants"
 )
 
 // Empire contains information about a territory with the given ID.
 // TODO: Maybe drop the regions since we can get that info
 // relatively cheaply.
 type Empire struct {
-	ID        int // ID of the territory
-	Name      string
-	Emperor   string
-	Capital   *City   // Capital city
-	Cities    []*City // Cities within the territory
-	Regions   []int   // Regions that are part of the empire
-	Language  *Language
-	ResMetal  [ResMaxMetals]int
-	ResGems   [ResMaxGems]int
-	TotalArea float64
+	ID       int // ID of the territory
+	Name     string
+	Emperor  string
+	Capital  *City   // Capital city
+	Cities   []*City // Cities within the territory
+	Regions  []int   // Regions that are part of the empire
+	Language *Language
+	*Stats
 }
 
 func (e *Empire) Log() {
 	log.Printf("The Empire of %s: %d cities, %d regions, capital: %s", e.Name, len(e.Cities), len(e.Regions), e.Capital.Name)
-	log.Printf("Total Area: %.2f km2", e.TotalArea*gameconstants.EarthSurface/gameconstants.SphereSurface)
 	log.Printf("Emperor: %s", e.Emperor)
-	for i := 0; i < ResMaxMetals; i++ {
-		log.Printf("Metal %s: %d", metalToString(i), e.ResMetal[i])
-	}
-	for i := 0; i < ResMaxGems; i++ {
-		log.Printf("Gem %s: %d", gemToString(i), e.ResGems[i])
-	}
+	e.Stats.Log()
 }
 
 func (m *Map) GetEmpires() []*Empire {
@@ -61,20 +51,10 @@ func (m *Map) GetEmpires() []*Empire {
 		// current territory.
 		for r, terr := range m.r_territory {
 			if terr == e.ID {
-				e.TotalArea += m.getRegionArea(r)
-				for i := 0; i < ResMaxMetals; i++ {
-					if m.r_res_metals[r]&(1<<i) != 0 {
-						e.ResMetal[i]++
-					}
-				}
-				for i := 0; i < ResMaxGems; i++ {
-					if m.r_res_gems[r]&(1<<i) != 0 {
-						e.ResGems[i]++
-					}
-				}
 				e.Regions = append(e.Regions, r)
 			}
 		}
+		e.Stats = m.getStats(e.Regions)
 		e.Log()
 		res = append(res, e)
 	}

@@ -88,11 +88,18 @@ func (m *Map) getTerritoryWeightFunc() func(u, v int) float64 {
 	_, maxFlux := minMax(m.r_flux)
 	_, maxElev := minMax(m.r_elevation)
 
+	biomeFunc := m.getRWhittakerModBiomeFunc()
+	climatFunc := m.getFitnessClimate()
 	return func(u, v int) float64 {
 		// Don't cross from water to land and vice versa,
 		// don't do anything below or at sea level.
 		if (m.r_elevation[u] > 0) != (m.r_elevation[v] > 0) || m.r_elevation[v] <= 0 {
 			return -1
+		}
+
+		biomePenalty := 0.0
+		if biomeFunc(u) != biomeFunc(v) {
+			biomePenalty = 1 - (climatFunc(v)+climatFunc(u))/2
 		}
 
 		// Calculate horizontal distance.
@@ -114,7 +121,7 @@ func (m *Map) getTerritoryWeightFunc() func(u, v int) float64 {
 		if m.r_elevation[u] <= 0 {
 			diff = 100
 		}
-		return horiz * diff
+		return horiz*diff + biomePenalty
 	}
 }
 

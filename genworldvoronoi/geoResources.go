@@ -81,6 +81,29 @@ const (
 	ResStoObsidian
 )
 
+func stoneToString(stoneID int) string {
+	switch 1 << stoneID {
+	case ResStoSandstone:
+		return "Sandstone"
+	case ResStoLimestone:
+		return "Limestone"
+	case ResStoChalk:
+		return "Chalk"
+	case ResStoMarble:
+		return "Marble"
+	case ResStoGranite:
+		return "Granite"
+	case ResStoBasalt:
+		return "Basalt"
+	case ResStoObsidian:
+		return "Obsidian"
+	default:
+		return "Unknown"
+	}
+}
+
+const ResMaxStones = 7
+
 const (
 	ResVarClay = 1 << iota
 	ResVarSulfur

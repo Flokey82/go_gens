@@ -10,6 +10,17 @@ import (
 	"github.com/Flokey82/go_gens/vectors"
 )
 
+func (m *Map) getRWhittakerModBiomeFunc() func(r int) int {
+	_, maxElev := minMax(m.r_elevation)
+	_, maxMois := minMax(m.r_moisture)
+	return func(r int) int {
+		valElev := m.r_elevation[r] / maxElev
+		valMois := m.r_moisture[r] / maxMois
+		rLat := m.r_latLon[r][0]
+		return genbiome.GetWhittakerModBiome(int(getMeanAnnualTemp(rLat)-getTempFalloffFromAltitude(maxAltitudeFactor*valElev)), int(valMois*maxPrecipitation))
+	}
+}
+
 // getTempFalloffFromAltitude returns the temperature falloff at a given altitude in meters
 // above sea level. (approx. 9.8 °C per 1000 m)
 // NOTE: This is definitely not correct :)
@@ -593,7 +604,7 @@ func (m *Map) assignRainfallBasic() {
 			m.r_moisture[r] = humidity
 		}
 	}
-	m.interpolateRainfallMoisture(15)
+	m.interpolateRainfallMoisture(5)
 }
 
 func (m *Map) interpolateRainfallMoisture(interpolationSteps int) {
