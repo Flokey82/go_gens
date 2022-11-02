@@ -97,8 +97,10 @@ func (m *Map) getTerritoryWeightFunc() func(u, v int) float64 {
 			return -1
 		}
 
+		// Changes in biomes are also considered natural boundaries.
 		biomePenalty := 0.0
 		if biomeFunc(u) != biomeFunc(v) {
+			// Penalty is higher for inhospitable climates.
 			biomePenalty = 1 - (climatFunc(v)+climatFunc(u))/2
 		}
 

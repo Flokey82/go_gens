@@ -30,7 +30,7 @@ func (m *Map) rErode(amount float64) []float64 {
 	newh := make([]float64, m.mesh.numRegions)
 
 	// Get the erosion rate for all regions.
-	er := m.rErosionRate()
+	er := m.rErosionRate2()
 
 	// Get the maximum erosion rate, so we can normalize the erosion values.
 	_, maxr := minMax(er)
@@ -199,6 +199,13 @@ func (m *Map) rErosionRate2() []float64 {
 		// distance of each neighbor visited by doErode().
 		rLatLon := m.r_latLon[r]
 
+		// If we have a downhill neighbor, use its lat lon coordinates
+		// for the arc segment distance.
+		dLatLon := rLatLon
+		if rdh := m.r_downhill[r]; rdh >= 0 {
+			dLatLon = m.r_latLon[rdh]
+		}
+
 		// seen will keep track of all regions whose neighbors doErode()
 		// has already visited (to prevent infinite recursion).
 		seen := make(map[int]bool)
@@ -219,14 +226,16 @@ func (m *Map) rErosionRate2() []float64 {
 
 			// Visit all neighbors of reg and calculate the erosion rate for each.
 			for _, nb := range m.rNeighbors(reg) {
-				// Calculate great arc distance to the center of the river (r).
-				dLatLon := m.r_latLon[nb]
-				dist := haversine(rLatLon[0], rLatLon[1], dLatLon[0], dLatLon[1])
+				nbLatLon := m.r_latLon[nb]
+
+				// Calculate distance to the arc/line segment of the river (r->rdh).
+				dist := crossArc(rLatLon[0], rLatLon[1], dLatLon[0], dLatLon[1], nbLatLon[0], nbLatLon[1])
 
 				// Skip everything that is too far away.
 				if dist > maxDist {
 					continue
 				}
+
 				// Calculate distance as value from 0.0 to 1.0, representing
 				// the range of 0.0 to maxDist.
 				distRes := dist / maxDist

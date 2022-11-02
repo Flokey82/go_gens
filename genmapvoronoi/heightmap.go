@@ -119,6 +119,19 @@ func distPoints(x1, y1, x2, y2 float64) float64 {
 	return math.Sqrt(dx*dx + dy*dy)
 }
 
+func distToSegment(vx, vy, wx, wy, px, py float64) float64 {
+	l2 := distPoints(vx, vy, wx, wy)
+	if l2 == 0 {
+		// If the line segment has a length of 0, we can just return
+		// the distance between the point and any of the two line
+		// segment points.
+		return distPoints(px, py, vx, vy)
+	}
+	t := ((px-vx)*(wx-vx) + (py-vy)*(wy-vy)) / (l2 * l2)
+	t = math.Max(0, math.Min(1, t))
+	return distPoints(px, py, vx+t*(wx-vx), vy+t*(wy-vy))
+}
+
 func MeshHills(m *vmesh.Mesh, n int, r float64) *vmesh.Heightmap {
 	var mounts []voronoi.Vertex
 	for i := 0; i < n; i++ {

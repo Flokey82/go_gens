@@ -63,6 +63,7 @@ func erosionRate2(h *vmesh.Heightmap) *vmesh.Heightmap {
 	)
 	m := h.Mesh
 	steeps := getSteepness(h)
+	dh := h.Downhill()
 	toE := vmesh.NewHeightmap(m)
 	flux := getFlux(h)
 	for r, fl := range flux.Values {
@@ -107,6 +108,13 @@ func erosionRate2(h *vmesh.Heightmap) *vmesh.Heightmap {
 		}
 		rVertex := m.Vertices[r]
 
+		// If we have a downhill neighbor, get the vertex for
+		// calculating the river segment distance of each neighbor.
+		dVertex := rVertex
+		if rdh := dh[r]; rdh >= 0 {
+			dVertex = m.Vertices[rdh]
+		}
+
 		// seen will keep track of all regions whose neighbors doErode()
 		// has already visited (to prevent infinite recursion).
 		seen := make(map[int]bool)
@@ -126,13 +134,14 @@ func erosionRate2(h *vmesh.Heightmap) *vmesh.Heightmap {
 
 			// Visit all neighbors of reg and calculate the erosion rate for each.
 			for _, nb := range h.Neighbours(reg) {
-				dVertex := m.Vertices[nb]
+				nbVertex := m.Vertices[nb]
 
-				// Calculate great arc distance to the center of the river (r).
-				dist := distPoints(rVertex.X, rVertex.Y, dVertex.X, dVertex.Y)
+				// Calculate distance of the neighbor to the river segment (r->rdh).
+				dist := distToSegment(rVertex.X, rVertex.Y, dVertex.X, dVertex.Y, nbVertex.X, nbVertex.Y)
 				if dist > maxDist {
 					continue // Skip everything that is too far away.
 				}
+
 				// Calculate distance as value from 0.0 to 1.0, representing
 				// the range of 0.0 to maxDist.
 				distRes := dist / maxDist

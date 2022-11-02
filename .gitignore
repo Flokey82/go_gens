@@ -50,3 +50,4 @@ genmap2derosion/cmd/*.png
 genmap2derosion/cmd/cpu.prof
 genmap2derosion/cmd/tmp.obj
 simmarket/cmd/runner
+genmapvoronoi/cmd/tmp.obj

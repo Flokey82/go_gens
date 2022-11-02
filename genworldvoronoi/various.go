@@ -40,6 +40,19 @@ func normal2(v [2]float64) [2]float64 {
 	}
 }
 
+func distToSegment2(v, w, p [2]float64) float64 {
+	l2 := dist2(v, w)
+	if l2 == 0 {
+		// If the line segment has a length of 0, we can just return
+		// the distance between the point and any of the two line
+		// segment points.
+		return dist2(p, v)
+	}
+	t := ((p[0]-v[0])*(w[0]-v[0]) + (p[1]-v[1])*(w[1]-v[1])) / (l2 * l2)
+	t = math.Max(0, math.Min(1, t))
+	return dist2(p, [2]float64{v[0] + t*(w[0]-v[0]), v[1] + t*(w[1]-v[1])})
+}
+
 // minMax returns the smallest and largest value in hm.
 func minMax(hm []float64) (float64, float64) {
 	if len(hm) == 0 {
@@ -116,6 +129,52 @@ func haversine(lat1, lon1, lat2, lon2 float64) float64 {
 	// apply formula
 	a := math.Pow(math.Sin(dLat/2), 2) + math.Pow(math.Sin(dLon/2), 2)*math.Cos(lat1)*math.Cos(lat2)
 	return 2 * math.Atan2(math.Sqrt(a), math.Sqrt(1-a))
+}
+
+// crossArc calculates the shortest distance between an arc (defined by p1 and p2)
+// and a third point, p3. The input is expected in degrees.
+// See: https://stackoverflow.com/questions/32771458/distance-from-lat-lng-point-to-minor-arc-segment
+func crossArc(lat1, lon1, lat2, lon2, lat3, lon3 float64) float64 {
+	// dis Finds the distance between two lat/lon points.
+	dis := func(latA, lonA, latB, lonB float64) float64 {
+		return math.Acos(math.Sin(latA)*math.Sin(latB) + math.Cos(latA)*math.Cos(latB)*math.Cos(lonB-lonA))
+	}
+
+	// bearing Finds the bearing from one lat/lon point to another.
+	bearing := func(latA, lonA, latB, lonB float64) float64 {
+		return math.Atan2(math.Sin(lonB-lonA)*math.Cos(latB), math.Cos(latA)*math.Sin(latB)-math.Sin(latA)*math.Cos(latB)*math.Cos(lonB-lonA))
+	}
+
+	lat1 = degToRad(lat1)
+	lat2 = degToRad(lat2)
+	lat3 = degToRad(lat3)
+	lon1 = degToRad(lon1)
+	lon2 = degToRad(lon2)
+	lon3 = degToRad(lon3)
+
+	// Prerequisites for the formulas
+	bear12 := bearing(lat1, lon1, lat2, lon2)
+	bear13 := bearing(lat1, lon1, lat3, lon3)
+	dis13 := dis(lat1, lon1, lat3, lon3)
+
+	diff := math.Abs(bear13 - bear12)
+	if diff > math.Pi {
+		diff = 2*math.Pi - diff
+	}
+	// Is relative bearing obtuse?
+	if diff > math.Pi/2 {
+		return dis13
+	}
+	// Find the cross-track distance.
+	dxt := math.Asin(math.Sin(dis13) * math.Sin(bear13-bear12))
+
+	// Is p4 beyond the arc?
+	dis12 := dis(lat1, lon1, lat2, lon2)
+	dis14 := math.Acos(math.Cos(dis13) / math.Cos(dxt))
+	if dis14 > dis12 {
+		return dis(lat2, lon2, lat3, lon3)
+	}
+	return math.Abs(dxt)
 }
 
 // heronsTriArea returns the area of a triangle given the three sides.
