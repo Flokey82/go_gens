@@ -59,6 +59,7 @@ func (m *Map) rPlaceNTerritories(n int) {
 	}
 	weight := m.getTerritoryWeightFunc()
 	m.r_territory = m.rPlaceNTerritoriesCustom(seedCities, weight)
+	m.rRelaxTerritories(m.r_territory, 15)
 }
 
 func (m *Map) rPlaceNCityStates(n int) []int {
@@ -75,22 +76,28 @@ func (m *Map) rPlaceNCityStates(n int) []int {
 	}
 	weight := m.getTerritoryWeightFunc()
 
-	return m.rPlaceNTerritoriesCustom(seedCities, func(u, v int) float64 {
+	cityStates := m.rPlaceNTerritoriesCustom(seedCities, func(o, u, v int) float64 {
 		if m.r_territory[u] != m.r_territory[v] {
 			return -1
 		}
-		return weight(u, v)
+		return weight(o, u, v)
 	})
+
+	// Before relaxing the territories, we'd need to ensure that we only
+	// relax without changing the borders of the empire...
+	// So we'd only re-assign IDs that belong to the same territory.
+	// m.rRelaxTerritories(cityStates, 5)
+	return cityStates
 }
 
-func (m *Map) getTerritoryWeightFunc() func(u, v int) float64 {
+func (m *Map) getTerritoryWeightFunc() func(o, u, v int) float64 {
 	// Get maxFlux and maxElev for normalizing.
 	_, maxFlux := minMax(m.r_flux)
 	_, maxElev := minMax(m.r_elevation)
 
 	biomeFunc := m.getRWhittakerModBiomeFunc()
 	climatFunc := m.getFitnessClimate()
-	return func(u, v int) float64 {
+	return func(o, u, v int) float64 {
 		// Don't cross from water to land and vice versa,
 		// don't do anything below or at sea level.
 		if (m.r_elevation[u] > 0) != (m.r_elevation[v] > 0) || m.r_elevation[v] <= 0 {
@@ -104,6 +111,12 @@ func (m *Map) getTerritoryWeightFunc() func(u, v int) float64 {
 			biomePenalty = 1 - (climatFunc(v)+climatFunc(u))/2
 		}
 
+		// Try to stick with original biome?
+		// if biomeFunc(o) != biomeFunc(v) {
+		//	// Penalty is higher for inhospitable climates.
+		//	biomePenalty += 1 - (climatFunc(o)+climatFunc(u))/2
+		// }
+
 		// Calculate horizontal distance.
 		ulat := m.r_latLon[u][0]
 		ulon := m.r_latLon[u][1]
@@ -112,6 +125,9 @@ func (m *Map) getTerritoryWeightFunc() func(u, v int) float64 {
 		horiz := haversine(ulat, ulon, vlat, vlon) / (2 * math.Pi)
 
 		// TODO: Maybe add a small penalty based on distance from the capital?
+		// oLat := m.r_latLon[o][0]
+		// oLon := m.r_latLon[o][1]
+		// originDist := haversine(vlat, vlon, oLat, oLon) / (2 * math.Pi)
 
 		// Calculate vertical distance.
 		vert := (m.r_elevation[v] - m.r_elevation[u]) / maxElev
@@ -127,7 +143,11 @@ func (m *Map) getTerritoryWeightFunc() func(u, v int) float64 {
 	}
 }
 
-func (m *Map) rPlaceNTerritoriesCustom(seedPoints []int, weight func(u, v int) float64) []int {
+// NOTE: The weight function takes three parameters:
+// o: The origin/seed region
+// u: The region we expand from
+// v: The region we expand to
+func (m *Map) rPlaceNTerritoriesCustom(seedPoints []int, weight func(o, u, v int) float64) []int {
 	var queue territoryQueue
 	heap.Init(&queue)
 
@@ -140,7 +160,7 @@ func (m *Map) rPlaceNTerritoriesCustom(seedPoints []int, weight func(u, v int) f
 	for i := 0; i < len(seedPoints); i++ {
 		terr[seedPoints[i]] = seedPoints[i]
 		for _, v := range m.rNeighbors(seedPoints[i]) {
-			newdist := weight(seedPoints[i], v)
+			newdist := weight(seedPoints[i], seedPoints[i], v)
 			if newdist < 0 {
 				continue
 			}
@@ -163,7 +183,7 @@ func (m *Map) rPlaceNTerritoriesCustom(seedPoints []int, weight func(u, v int) f
 			if terr[v] >= 0 {
 				continue
 			}
-			newdist := weight(u.vx, v)
+			newdist := weight(u.city, u.vx, v)
 			if newdist < 0 {
 				continue
 			}
@@ -175,4 +195,32 @@ func (m *Map) rPlaceNTerritoriesCustom(seedPoints []int, weight func(u, v int) f
 		}
 	}
 	return terr
+}
+
+func (m *Map) rRelaxTerritories(terr []int, n int) {
+	for i := 0; i < n; i++ {
+		// TODO: Make sure that we can put some type of constraints on
+		// how much a territory can move.
+		for r, t := range terr {
+			if t < 0 {
+				continue
+			}
+			var nbCountOtherTerr, nbCountSameTerr int
+			otherTerr := -1
+			for _, v := range m.rNeighbors(r) {
+				if v < 0 {
+					continue
+				}
+				if terr[v] != t {
+					nbCountOtherTerr++
+					otherTerr = terr[v]
+				} else {
+					nbCountSameTerr++
+				}
+			}
+			if nbCountOtherTerr > nbCountSameTerr && otherTerr >= 0 {
+				terr[r] = otherTerr
+			}
+		}
+	}
 }

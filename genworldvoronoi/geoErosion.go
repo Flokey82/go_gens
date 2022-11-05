@@ -30,7 +30,7 @@ func (m *Map) rErode(amount float64) []float64 {
 	newh := make([]float64, m.mesh.numRegions)
 
 	// Get the erosion rate for all regions.
-	er := m.rErosionRate2()
+	er := m.rErosionRate()
 
 	// Get the maximum erosion rate, so we can normalize the erosion values.
 	_, maxr := minMax(er)

@@ -534,7 +534,7 @@ func (n *namer) randomString(list []string) string {
 }
 
 func (n *namer) randomChance(chance float64) bool {
-	return math.Abs(n.rand.NormFloat64()) < chance
+	return math.Abs(n.rand.Float64()) < chance
 }
 
 type WordPair struct {
