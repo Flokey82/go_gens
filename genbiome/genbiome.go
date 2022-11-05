@@ -58,18 +58,18 @@ func GetRedblobBiome(height, moisture int) int {
 // RedblobBiomeColor maps the (RedBlobGames) biome types to their color representation.
 var RedblobBiomeColor = map[int]color.NRGBA{
 	RedblobBiomeSnow:                    ColorSnowIce,
-	RedblobBiomeTundra:                  {0xDD, 0xDD, 0xBB, 0},
-	RedblobBiomeBare:                    {0xBB, 0xBB, 0xBB, 0},
-	RedblobBiomeScorched:                {0x99, 0x99, 0x99, 0},
-	RedblobBiomeTaiga:                   {0xCC, 0xD4, 0xBB, 0},
-	RedblobBiomeShrubland:               {0xC4, 0xCC, 0xBB, 0},
-	RedblobBiomeTemperateDesert:         {0xE4, 0xE8, 0xCA, 0},
-	RedblobBiomeTemperateRainForest:     {0xA4, 0xC4, 0xA8, 0},
-	RedblobBiomeTemperateSeasonalForest: {0xB4, 0xC9, 0xA9, 0},
-	RedblobBiomeTropicalRainForest:      {0x9C, 0xBB, 0xA9, 0},
-	RedblobBiomeTropicalSeasonalForest:  {0xA9, 0xCC, 0xA4, 0},
-	RedblobBiomeGrassland:               {0xC4, 0xD4, 0xAA, 0},
-	RedblobBiomeSubtropicalDesert:       {0xE9, 0xDD, 0xC7, 0},
+	RedblobBiomeTundra:                  {0xDD, 0xDD, 0xBB, 0xFF},
+	RedblobBiomeBare:                    {0xBB, 0xBB, 0xBB, 0xFF},
+	RedblobBiomeScorched:                {0x99, 0x99, 0x99, 0xFF},
+	RedblobBiomeTaiga:                   {0xCC, 0xD4, 0xBB, 0xFF},
+	RedblobBiomeShrubland:               {0xC4, 0xCC, 0xBB, 0xFF},
+	RedblobBiomeTemperateDesert:         {0xE4, 0xE8, 0xCA, 0xFF},
+	RedblobBiomeTemperateRainForest:     {0xA4, 0xC4, 0xA8, 0xFF},
+	RedblobBiomeTemperateSeasonalForest: {0xB4, 0xC9, 0xA9, 0xFF},
+	RedblobBiomeTropicalRainForest:      {0x9C, 0xBB, 0xA9, 0xFF},
+	RedblobBiomeTropicalSeasonalForest:  {0xA9, 0xCC, 0xA4, 0xFF},
+	RedblobBiomeGrassland:               {0xC4, 0xD4, 0xAA, 0xFF},
+	RedblobBiomeSubtropicalDesert:       {0xE9, 0xDD, 0xC7, 0xFF},
 }
 
 // GetRedblobBiomeColor returns a color representing the (RedBlobGames) biome
@@ -181,15 +181,15 @@ func GetWhittakerBiome(temperature, precipitation int) int {
 
 // WhittakerBiomeColor maps the (Whittaker) biome types to their color representation.
 var WhittakerBiomeColor = map[int]color.NRGBA{
-	WhittakerBiomeTropicalRainForest:            {0x9C, 0xBB, 0xA9, 0},
-	WhittakerBiomeTropicalSeasonalForestSavanna: {0xA9, 0xCC, 0xA4, 0},
-	WhittakerBiomeSubtropicalDesert:             {0xE9, 0xDD, 0xC7, 0},
-	WhittakerBiomeTemperateRainForest:           {0xA4, 0xC4, 0xA8, 0},
-	WhittakerBiomeTemperateSeasonalForest:       {0xB4, 0xC9, 0xA9, 0},
-	WhittakerBiomeWoodlandShrubland:             {0xC4, 0xCC, 0xBB, 0},
-	WhittakerBiomeTemperateGrasslandDesert:      {0xE4, 0xE8, 0xCA, 0},
-	WhittakerBiomeBorealForestTaiga:             {0xCC, 0xD4, 0xBB, 0},
-	WhittakerBiomeTundra:                        {0xDD, 0xDD, 0xBB, 0},
+	WhittakerBiomeTropicalRainForest:            {0x9C, 0xBB, 0xA9, 0xFF},
+	WhittakerBiomeTropicalSeasonalForestSavanna: {0xA9, 0xCC, 0xA4, 0xFF},
+	WhittakerBiomeSubtropicalDesert:             {0xE9, 0xDD, 0xC7, 0xFF},
+	WhittakerBiomeTemperateRainForest:           {0xA4, 0xC4, 0xA8, 0xFF},
+	WhittakerBiomeTemperateSeasonalForest:       {0xB4, 0xC9, 0xA9, 0xFF},
+	WhittakerBiomeWoodlandShrubland:             {0xC4, 0xCC, 0xBB, 0xFF},
+	WhittakerBiomeTemperateGrasslandDesert:      {0xE4, 0xE8, 0xCA, 0xFF},
+	WhittakerBiomeBorealForestTaiga:             {0xCC, 0xD4, 0xBB, 0xFF},
+	WhittakerBiomeTundra:                        {0xDD, 0xDD, 0xBB, 0xFF},
 }
 
 // GetWhittakerModBiomeColor returns a color representing the (Whittaker) biome
@@ -285,27 +285,27 @@ func GetWhittakerModBiome(temperature, precipitation int) int {
 }
 
 var (
-	ColorRainForest     = color.NRGBA{R: 0x1d, G: 0xBA, B: 0x37, A: 0}
-	ColorSeasonalForest = color.NRGBA{R: 0x28, G: 0xAC, B: 0x2A, A: 0}
-	ColorSnowIce        = color.NRGBA{R: 0xFF, G: 0xFF, B: 0xFF, A: 0}
+	ColorRainForest     = color.NRGBA{R: 0x1d, G: 0xBA, B: 0x37, A: 0xFF}
+	ColorSeasonalForest = color.NRGBA{R: 0x28, G: 0xAC, B: 0x2A, A: 0xFF}
+	ColorSnowIce        = color.NRGBA{R: 0xFF, G: 0xFF, B: 0xFF, A: 0xFF}
 )
 
 // WhittakerModBiomeColor maps the (modified Whittaker) biome types to their color representation.
 var WhittakerModBiomeColor = map[int]color.NRGBA{
-	WhittakerModBiomeUnknown:                 {0, 0, 0, 0}, // {0xA9, 0, 0, 0}, // TODO: Find better solution. It's wet and with relative cool temperature.
+	WhittakerModBiomeUnknown:                 {0, 0, 0, 0xFF}, // {0xA9, 0, 0, 0xFF}, // TODO: Find better solution. It's wet and with relative cool temperature.
 	WhittakerModBiomeTropicalRainForest:      ColorRainForest,
 	WhittakerModBiomeTropicalSeasonalForest:  ColorSeasonalForest,
-	WhittakerModBiomeSubtropicalDesert:       {0xfd, 0xe3, 0x8d, 0}, // was 0xE9DDC7
+	WhittakerModBiomeSubtropicalDesert:       {0xfd, 0xe3, 0x8d, 0xFF}, // was 0xE9DDC7
 	WhittakerModBiomeTemperateRainForest:     ColorRainForest,
 	WhittakerModBiomeTemperateSeasonalForest: ColorSeasonalForest,
-	WhittakerModBiomeWoodlandShrubland:       {0xC4, 0xCC, 0xBB, 0},
-	WhittakerModBiomeTemperateGrassland:      {0x97, 0xE9, 0x87, 0},
-	WhittakerModBiomeBorealForestTaiga:       {0x58, 0x9F, 0x5A, 0},
-	WhittakerModBiomeTundra:                  {0x69, 0xB0, 0x0B, 0},
-	WhittakerModBiomeColdDesert:              {0xDD, 0xDD, 0xC0, 0},
-	WhittakerModBiomeHotSwamp:                {0x96, 0x4B, 0x00, 0},
-	WhittakerModBiomeWetlands:                {0x0B, 0xB0, 0x1B, 0}, // TODO: Find a better color
-	WhittakerModBiomeSavannah:                {0xff, 0xd1, 0x45, 0},
+	WhittakerModBiomeWoodlandShrubland:       {0xC4, 0xCC, 0xBB, 0xFF},
+	WhittakerModBiomeTemperateGrassland:      {0x97, 0xE9, 0x87, 0xFF},
+	WhittakerModBiomeBorealForestTaiga:       {0x58, 0x9F, 0x5A, 0xFF},
+	WhittakerModBiomeTundra:                  {0x69, 0xB0, 0x0B, 0xFF},
+	WhittakerModBiomeColdDesert:              {0xDD, 0xDD, 0xC0, 0xFF},
+	WhittakerModBiomeHotSwamp:                {0x96, 0x4B, 0x00, 0xFF},
+	WhittakerModBiomeWetlands:                {0x0B, 0xB0, 0x1B, 0xFF}, // TODO: Find a better color
+	WhittakerModBiomeSavannah:                {0xff, 0xd1, 0x45, 0xFF},
 	WhittakerModBiomeSnow:                    ColorSnowIce,
 }
 
@@ -355,4 +355,133 @@ func WhittakerClampPrecipitationToIndex(prec int) int {
 		return 0
 	}
 	return prec
+}
+
+// AzgaarLookupTable maps temperature and moisture to biome.
+// See: https://github.com/Azgaar/Fantasy-Map-Generator/blob/master/main.js
+var AzgaarLookupTable = [5][26]int{
+	// hot ↔ cold [>19°C; <-4°C]; dry ↕ wet
+	{1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 10},
+	{3, 3, 3, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 9, 9, 9, 9, 10, 10, 10},
+	{5, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 9, 9, 9, 9, 9, 10, 10, 10},
+	{5, 6, 6, 6, 6, 6, 6, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 9, 9, 9, 9, 9, 9, 10, 10, 10},
+	{7, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 9, 9, 9, 9, 9, 9, 9, 10, 10},
+}
+
+var azgaarBiomeName = [13]string{
+	"Marine",
+	"Hot desert",
+	"Cold desert",
+	"Savanna",
+	"Grassland",
+	"Tropical seasonal forest",
+	"Temperate deciduous forest",
+	"Tropical rainforest",
+	"Temperate rainforest",
+	"Taiga",
+	"Tundra",
+	"Glacier",
+	"Wetland",
+}
+
+// Biomes as per Azgaar's map generator.
+const (
+	AzgaarBiomeMarine = iota
+	AzgaarBiomeHotDesert
+	AzgaarBiomeColdDesert
+	AzgaarBiomeSavanna
+	AzgaarBiomeGrassland
+	AzgaarBiomeTropicalSeasonalForest
+	AzgaarBiomeTemperateDeciduousForest
+	AzgaarBiomeTropicalRainforest
+	AzgaarBiomeTemperateRainforest
+	AzgaarBiomeTaiga
+	AzgaarBiomeTundra
+	AzgaarBiomeGlacier
+	AzgaarBiomeWetland
+)
+
+// AzgaarBiomeColor maps Azgaar's biome IDs to their color representation.
+var AzgaarBiomeColor = [13]color.NRGBA{
+	{R: 0x46, G: 0x6e, B: 0xab, A: 0xFF},
+	{R: 0xfb, G: 0xe7, B: 0x9f, A: 0xFF},
+	{R: 0xb5, G: 0xb8, B: 0x87, A: 0xFF},
+	{R: 0xd2, G: 0xd0, B: 0x82, A: 0xFF},
+	{R: 0xc8, G: 0xd6, B: 0x8f, A: 0xFF},
+	{R: 0xb6, G: 0xd9, B: 0x5d, A: 0xFF},
+	{R: 0x29, G: 0xbc, B: 0x56, A: 0xFF},
+	{R: 0x7d, G: 0xcb, B: 0x35, A: 0xFF},
+	{R: 0x40, G: 0x9c, B: 0x43, A: 0xFF},
+	{R: 0x4b, G: 0x6b, B: 0x32, A: 0xFF},
+	{R: 0x96, G: 0x78, B: 0x4b, A: 0xFF},
+	{R: 0xd5, G: 0xe7, B: 0xeb, A: 0xFF},
+	{R: 0x0b, G: 0x91, B: 0x31, A: 0xFF},
+}
+
+// Habitability as per Azgaar's map generator.
+var AzgaarBiomeHabitability = [13]int{0, 4, 10, 22, 30, 50, 100, 80, 90, 12, 4, 0, 12}
+
+// Biome movement cost as per Azgaar's map generator.
+var AzgaarBiomeMovementCost = [13]int{10, 200, 150, 60, 50, 70, 70, 80, 90, 200, 1000, 5000, 150}
+
+// GetAzgaarBiome returns the biome for the given temperature, elevation, and precipitation.
+//
+// NOTE:
+// - Elevation ranges from 0 to 100. (everything below 20 is considered water)
+// - Temperature ranges from -5 to 20.
+// - Moisture ranges from 0 to 20.
+func GetAzgaarBiome(moisture, temperature, height int) int {
+	if height < 20 {
+		return 0 // marine biome: all water cells
+	}
+	if temperature < -5 {
+		return 11 // permafrost biome
+	}
+	if isAzgaarWetland(moisture, temperature, height) {
+		return 12 // wetland biome
+	}
+	moistureBand := min((moisture / 5), 4)             // [0-4]
+	temperatureBand := min(max(20-temperature, 0), 25) // [0-25]
+	return AzgaarLookupTable[moistureBand][temperatureBand]
+}
+
+// GetAzgaarBiomeColor returns the biome color for the given temperature, elevation, and precipitation.
+//
+// NOTE:
+// - Elevation ranges from 0 to 100. (everything below 20 is considered water)
+// - Temperature ranges from -5 to 20.
+// - Moisture ranges from 0 to 20.
+func GetAzgaarBiomeColor(moisture, temperature, height int, intensity float64) color.NRGBA {
+	c := AzgaarBiomeColor[GetAzgaarBiome(moisture, temperature, height)]
+	return color.NRGBA{
+		R: uint8(intensity * float64(c.R)),
+		G: uint8(intensity * float64(c.G)),
+		B: uint8(intensity * float64(c.B)),
+		A: 255,
+	}
+}
+
+func min(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
+}
+
+func max(a, b int) int {
+	if a > b {
+		return a
+	}
+	return b
+}
+
+// isAzgaarWetland returns true if the region is considered a wetland.
+func isAzgaarWetland(moisture, temperature, height int) bool {
+	if moisture > 40 && temperature > -2 && height < 25 {
+		return true //near coast
+	}
+	if moisture > 24 && temperature > -2 && height > 24 && height < 60 {
+		return true //off coast
+	}
+	return false
 }

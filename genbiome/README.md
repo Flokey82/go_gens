@@ -17,6 +17,10 @@ This map is based on https://github.com/JoeyR/FastBiome and provides a more exte
 
 I've started to extend the Whittaker model to be more complete and have added the missing biomes, as well as additional biomes such as "snow", "wetlands", and "hot swamp". I am not sure if I will keep the swamp though, since it is a bit... meh. Let's say I don't really trust my skills as a climate biome science person.
 
+## Azgaar's biome map
+
+This is a third variant, which is based on Azgaar's map generator and its biome map. It is a bit more fine grained than the Redblobgames' biome map, but also a bit more coarse than the Whittaker map. It is also based on elevation and moisture zones, but has a few more biomes, and takes temperature into account. (see: https://github.com/Azgaar/Fantasy-Map-Generator/blob/master/main.js)
+
 ## Done
 
 * missing biome in extended Whittaker (cool, humid)
