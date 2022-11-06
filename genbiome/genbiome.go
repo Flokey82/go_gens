@@ -373,15 +373,15 @@ var azgaarBiomeName = [13]string{
 	"Hot desert",
 	"Cold desert",
 	"Savanna",
-	"Grassland",
-	"Tropical seasonal forest",
-	"Temperate deciduous forest",
-	"Tropical rainforest",
-	"Temperate rainforest",
-	"Taiga",
-	"Tundra",
-	"Glacier",
-	"Wetland",
+	"Grassland",                  //4
+	"Tropical seasonal forest",   //5
+	"Temperate deciduous forest", //6
+	"Tropical rainforest",        //7
+	"Temperate rainforest",       //8
+	"Taiga",                      //9
+	"Tundra",                     //10
+	"Glacier",                    //11
+	"Wetland",                    //12
 }
 
 // Biomes as per Azgaar's map generator.
@@ -431,7 +431,7 @@ var AzgaarBiomeMovementCost = [13]int{10, 200, 150, 60, 50, 70, 70, 80, 90, 200,
 // - Temperature ranges from -5 to 20.
 // - Moisture ranges from 0 to 20.
 func GetAzgaarBiome(moisture, temperature, height int) int {
-	if height < 20 {
+	if height < 0 {
 		return 0 // marine biome: all water cells
 	}
 	if temperature < -5 {

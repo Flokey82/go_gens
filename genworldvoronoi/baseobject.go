@@ -217,6 +217,10 @@ func (m *BaseObject) isRiver(r int) bool {
 	return m.r_flux[r] > m.r_rainfall[r]
 }
 
+func (m *BaseObject) isBigRiver(r int) bool {
+	return m.r_flux[r] > m.r_rainfall[r]*2
+}
+
 // getRSlope returns the region slope by averaging the slopes of the triangles
 // around a given region.
 //
@@ -510,7 +514,7 @@ func (m *BaseObject) assignDistanceField(seeds_r []int, stop_r map[int]bool) []f
 	mesh := m.mesh
 	numRegions := mesh.numRegions
 
-	// Initialize the distance values for all regions to -1.
+	// Initialize the distance values for all regions to +Inf.
 	r_distance := make([]float64, numRegions)
 	for i := range r_distance {
 		r_distance[i] = inf
@@ -564,7 +568,7 @@ func (m *BaseObject) assignDistanceFieldWithIntensity(seeds_r []int, stop_r map[
 	mesh := m.mesh
 	numRegions := mesh.numRegions
 
-	// Initialize the distance values for all regions to -1.
+	// Initialize the distance values for all regions to +Inf.
 	r_distance := make([]float64, numRegions)
 	for i := range r_distance {
 		r_distance[i] = inf

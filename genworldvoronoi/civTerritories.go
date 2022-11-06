@@ -5,46 +5,6 @@ import (
 	"math"
 )
 
-type queueRegionEntry struct {
-	index int // The index of the item in the heap.
-	score float64
-	city  int
-	vx    int
-}
-
-// territoryQueue implements heap.Interface and holds Items.
-type territoryQueue []*queueRegionEntry
-
-func (pq territoryQueue) Len() int { return len(pq) }
-
-func (pq territoryQueue) Less(i, j int) bool {
-	// We want Pop to give us the highest, not lowest, priority so we use greater than here.
-	// return pq[i].score > pq[j].score // 3, 2, 1
-	return pq[i].score < pq[j].score // 1, 2, 3
-}
-
-func (pq territoryQueue) Swap(i, j int) {
-	pq[i], pq[j] = pq[j], pq[i]
-	pq[i].index, pq[j].index = i, j
-}
-
-func (pq *territoryQueue) Push(x interface{}) {
-	n := len(*pq)
-	item := x.(*queueRegionEntry)
-	item.index = n
-	*pq = append(*pq, item)
-}
-
-func (pq *territoryQueue) Pop() interface{} {
-	old := *pq
-	n := len(old)
-	item := old[n-1]
-	old[n-1] = nil  // avoid memory leak
-	item.index = -1 // for safety
-	*pq = old[0 : n-1]
-	return item
-}
-
 func (m *Map) rPlaceNTerritories(n int) {
 	// Territories are based on cities acting as their capital.
 	// Since the algorithm places the cities with the highes scores
@@ -58,7 +18,14 @@ func (m *Map) rPlaceNTerritories(n int) {
 		seedCities = append(seedCities, c.R)
 	}
 	weight := m.getTerritoryWeightFunc()
-	m.r_territory = m.rPlaceNTerritoriesCustom(seedCities, weight)
+	biomeWeight := m.getTerritoryBiomeWeightFunc()
+
+	m.r_territory = m.rPlaceNTerritoriesCustom(seedCities, func(o, u, v int) float64 {
+		if (m.r_elevation[u] > 0) != (m.r_elevation[v] > 0) || m.r_elevation[v] <= 0 {
+			return -1
+		}
+		return weight(o, u, v) + biomeWeight(o, u, v)
+	})
 	m.rRelaxTerritories(m.r_territory, 15)
 }
 
@@ -75,12 +42,13 @@ func (m *Map) rPlaceNCityStates(n int) []int {
 		seedCities = append(seedCities, c.R)
 	}
 	weight := m.getTerritoryWeightFunc()
+	biomeWeight := m.getTerritoryBiomeWeightFunc()
 
 	cityStates := m.rPlaceNTerritoriesCustom(seedCities, func(o, u, v int) float64 {
 		if m.r_territory[u] != m.r_territory[v] {
 			return -1
 		}
-		return weight(o, u, v)
+		return weight(o, u, v) + biomeWeight(o, u, v)
 	})
 
 	// Before relaxing the territories, we'd need to ensure that we only
@@ -90,20 +58,10 @@ func (m *Map) rPlaceNCityStates(n int) []int {
 	return cityStates
 }
 
-func (m *Map) getTerritoryWeightFunc() func(o, u, v int) float64 {
-	// Get maxFlux and maxElev for normalizing.
-	_, maxFlux := minMax(m.r_flux)
-	_, maxElev := minMax(m.r_elevation)
-
+func (m *Map) getTerritoryBiomeWeightFunc() func(o, u, v int) float64 {
 	biomeFunc := m.getRWhittakerModBiomeFunc()
 	climatFunc := m.getFitnessClimate()
 	return func(o, u, v int) float64 {
-		// Don't cross from water to land and vice versa,
-		// don't do anything below or at sea level.
-		if (m.r_elevation[u] > 0) != (m.r_elevation[v] > 0) || m.r_elevation[v] <= 0 {
-			return -1
-		}
-
 		// Changes in biomes are also considered natural boundaries.
 		biomePenalty := 0.0
 		if biomeFunc(u) != biomeFunc(v) {
@@ -116,6 +74,21 @@ func (m *Map) getTerritoryWeightFunc() func(o, u, v int) float64 {
 		//	// Penalty is higher for inhospitable climates.
 		//	biomePenalty += 1 - (climatFunc(o)+climatFunc(u))/2
 		// }
+		return biomePenalty
+	}
+}
+
+func (m *Map) getTerritoryWeightFunc() func(o, u, v int) float64 {
+	// Get maxFlux and maxElev for normalizing.
+	_, maxFlux := minMax(m.r_flux)
+	_, maxElev := minMax(m.r_elevation)
+
+	return func(o, u, v int) float64 {
+		// Don't cross from water to land and vice versa,
+		// don't do anything below or at sea level.
+		if (m.r_elevation[u] > 0) != (m.r_elevation[v] > 0) || m.r_elevation[v] <= 0 {
+			return -1
+		}
 
 		// Calculate horizontal distance.
 		ulat := m.r_latLon[u][0]
@@ -139,7 +112,7 @@ func (m *Map) getTerritoryWeightFunc() func(o, u, v int) float64 {
 		if m.r_elevation[u] <= 0 {
 			diff = 100
 		}
-		return horiz*diff + biomePenalty
+		return horiz * diff
 	}
 }
 
@@ -195,6 +168,46 @@ func (m *Map) rPlaceNTerritoriesCustom(seedPoints []int, weight func(o, u, v int
 		}
 	}
 	return terr
+}
+
+type queueRegionEntry struct {
+	index int // The index of the item in the heap.
+	score float64
+	city  int
+	vx    int
+}
+
+// territoryQueue implements heap.Interface and holds Items.
+type territoryQueue []*queueRegionEntry
+
+func (pq territoryQueue) Len() int { return len(pq) }
+
+func (pq territoryQueue) Less(i, j int) bool {
+	// We want Pop to give us the highest, not lowest, priority so we use greater than here.
+	// return pq[i].score > pq[j].score // 3, 2, 1
+	return pq[i].score < pq[j].score // 1, 2, 3
+}
+
+func (pq territoryQueue) Swap(i, j int) {
+	pq[i], pq[j] = pq[j], pq[i]
+	pq[i].index, pq[j].index = i, j
+}
+
+func (pq *territoryQueue) Push(x interface{}) {
+	n := len(*pq)
+	item := x.(*queueRegionEntry)
+	item.index = n
+	*pq = append(*pq, item)
+}
+
+func (pq *territoryQueue) Pop() interface{} {
+	old := *pq
+	n := len(old)
+	item := old[n-1]
+	old[n-1] = nil  // avoid memory leak
+	item.index = -1 // for safety
+	*pq = old[0 : n-1]
+	return item
 }
 
 func (m *Map) rRelaxTerritories(terr []int, n int) {

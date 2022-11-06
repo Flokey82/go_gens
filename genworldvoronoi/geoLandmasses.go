@@ -60,3 +60,13 @@ func (m *Map) identifyLandmasses() []int {
 	log.Println(landSizes)
 	return landMasses
 }
+
+func (m *Map) getLandmassSizes() map[int]int {
+	lmSize := make(map[int]int)
+	for _, lm := range m.identifyLandmasses() {
+		if lm >= 0 {
+			lmSize[lm]++ // Only count regions that are set to a valid ID.
+		}
+	}
+	return lmSize
+}

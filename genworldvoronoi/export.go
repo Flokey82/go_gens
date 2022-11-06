@@ -613,11 +613,22 @@ func svgGenD(path [][2]float64) string {
 
 func (m *Map) ExportPng(name string) {
 	grad := colorgrad.Rainbow()
-	cols := grad.Colors(uint(m.NumTerritories))
+
 	terrToCol := make(map[int]int)
-	for i, terr := range m.cities_r[:m.NumTerritories] {
-		terrToCol[terr.R] = i
+
+	//terr := m.cities_r[:m.NumTerritories]
+	//for i, terr := range terr {
+	//	terrToCol[terr.R] = i
+	//}
+	//territory := m.r_territory
+	terr := m.cultures_r
+	territory := m.r_cultures
+	for i, c := range terr {
+		terrToCol[c.Origin] = i
+		log.Printf("%d: %s %f", i, c.Type, c.Expansionism)
 	}
+	cols := grad.Colors(uint(len(terr)))
+
 	zoom := 1
 	size := sizeFromZoom(zoom)
 	// Create a colored image of the given width and height.
@@ -638,10 +649,10 @@ func (m *Map) ExportPng(name string) {
 			// Hacky: Modify elevation based on latitude to compensate for colder weather at the poles and warmer weather at the equator.
 			// valElev := math.Max(math.Min((elev/max)+(math.Sqrt(math.Abs(lat)/90.0)-0.5), max), 0)
 			valMois := m.r_rainfall[r] / maxMois
-			if m.r_territory[r] == 0 {
+			if territory[r] == 0 {
 				col = genbiome.GetWhittakerModBiomeColor(int(getMeanAnnualTemp(lat)-getTempFalloffFromAltitude(maxAltitudeFactor*valElev)), int(valMois*maxPrecipitation), val)
 			} else {
-				cr, cg, cb, _ := cols[terrToCol[m.r_territory[r]]].RGBA()
+				cr, cg, cb, _ := cols[terrToCol[territory[r]]].RGBA()
 				col.R = uint8(float64(255) * float64(cr) / float64(0xffff))
 				col.G = uint8(float64(255) * float64(cg) / float64(0xffff))
 				col.B = uint8(float64(255) * float64(cb) / float64(0xffff))

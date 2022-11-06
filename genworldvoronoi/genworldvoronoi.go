@@ -27,6 +27,8 @@ type Map struct {
 	plate_r         []int          // Plate seed points / regions
 	r_territory     []int          // (political) Point / region mapping to territory / empire
 	cities_r        []*City        // (political) City seed points / regions
+	r_cultures      []int          // (cultural) Point / region mapping to culture
+	cultures_r      []*Culture     // (cultural) Culture seed points / regions
 	r_res_metals    []byte         // (resources) Metal ores
 	r_res_gems      []byte         // (resources) Gemstones
 	r_res_stone     []byte         // (resources) Different types of stones or minerals
@@ -36,7 +38,8 @@ type Map struct {
 	NumCities       int            // Number of generated cities (regions)
 	NumMiningTowns  int
 	// NumFarmingTowns int
-	NumTerritories int           // Number of generated territories
+	NumTerritories int // Number of generated territories
+	NumCultures    int
 	QuadGeom       *QuadGeometry // Quad geometry generated from the mesh (?)
 }
 
@@ -85,8 +88,9 @@ func NewMap(seed int64, numPlates, numPoints int, jitter float64) (*Map, error) 
 		NumTerritories:  10,
 		NumCities:       150,
 		NumMiningTowns:  60,
-		//NumFarmingTowns: 60,
-		QuadGeom: NewQuadGeometry(),
+		// NumFarmingTowns: 60,
+		NumCultures: 30,
+		QuadGeom:    NewQuadGeometry(),
 	}
 	m.QuadGeom.setMesh(mesh)
 	m.generateTriangleCenters()
@@ -95,6 +99,8 @@ func NewMap(seed int64, numPlates, numPoints int, jitter float64) (*Map, error) 
 }
 
 func (m *Map) generateMap() {
+	// Build geography.
+
 	// Generate tectonic plates.
 	start := time.Now()
 	m.generatePlates()
@@ -128,6 +134,11 @@ func (m *Map) generateMap() {
 
 	// Place resources
 	m.placeResources()
+
+	// Place cultures.
+	start = time.Now()
+	m.rPlaceNCultures(m.NumCultures)
+	log.Println("Done cultures in ", time.Since(start).String())
 
 	// Place cities and territories in regions.
 	start = time.Now()
