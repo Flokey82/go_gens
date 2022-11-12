@@ -26,6 +26,7 @@ type Map struct {
 	PlateIsOcean    map[int]bool   // Plate was chosen to be an ocean plate
 	plate_r         []int          // Plate seed points / regions
 	r_territory     []int          // (political) Point / region mapping to territory / empire
+	r_city          []int          // (political) Point / region mapping to city / city state
 	cities_r        []*City        // (political) City seed points / regions
 	r_cultures      []int          // (cultural) Point / region mapping to culture
 	cultures_r      []*Culture     // (cultural) Culture seed points / regions
@@ -36,6 +37,7 @@ type Map struct {
 	NumVolcanoes    int            // Number of generated volcanoes
 	NumPoints       int            // Number of generated points / regions
 	NumCities       int            // Number of generated cities (regions)
+	NumCityStates   int            // Number of generated city states
 	NumMiningTowns  int
 	// NumFarmingTowns int
 	NumTerritories int // Number of generated territories
@@ -87,6 +89,7 @@ func NewMap(seed int64, numPlates, numPoints int, jitter float64) (*Map, error) 
 		NumPoints:       numPoints,
 		NumTerritories:  10,
 		NumCities:       150,
+		NumCityStates:   100,
 		NumMiningTowns:  60,
 		// NumFarmingTowns: 60,
 		NumCultures: 30,
@@ -135,6 +138,15 @@ func (m *Map) generateMap() {
 	// Place resources
 	m.placeResources()
 
+	// CIVILIZATION STUFF:
+	// Place and grow cultures.
+	// Place nature religions.
+	// ? Create sub branches of religions.
+	// Place cities.
+	// Grow city states.
+	// Create organized religions.
+	// Create empires.
+
 	// Place cultures.
 	start = time.Now()
 	m.rPlaceNCultures(m.NumCultures)
@@ -150,6 +162,10 @@ func (m *Map) generateMap() {
 	start = time.Now()
 	m.rPlaceNTerritories(m.NumTerritories)
 	log.Println("Done territories in ", time.Since(start).String())
+
+	start = time.Now()
+	m.rPlaceNCityStates(m.NumCityStates)
+	log.Println("Done city states in ", time.Since(start).String())
 
 	// Once we have established the territories, we can add trade towns
 	// (we need the territories for the trade routes).

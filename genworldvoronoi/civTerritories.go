@@ -6,6 +6,7 @@ import (
 )
 
 func (m *Map) rPlaceNTerritories(n int) {
+	m.resetRand()
 	// Territories are based on cities acting as their capital.
 	// Since the algorithm places the cities with the highes scores
 	// first, we use the top 'n' cities as the capitals for the
@@ -19,17 +20,19 @@ func (m *Map) rPlaceNTerritories(n int) {
 	}
 	weight := m.getTerritoryWeightFunc()
 	biomeWeight := m.getTerritoryBiomeWeightFunc()
+	cultureWeight := m.getTerritoryCultureWeightFunc()
 
 	m.r_territory = m.rPlaceNTerritoriesCustom(seedCities, func(o, u, v int) float64 {
 		if (m.r_elevation[u] > 0) != (m.r_elevation[v] > 0) || m.r_elevation[v] <= 0 {
 			return -1
 		}
-		return weight(o, u, v) + biomeWeight(o, u, v)
+		return weight(o, u, v) + biomeWeight(o, u, v) + cultureWeight(o, u, v)
 	})
 	m.rRelaxTerritories(m.r_territory, 15)
 }
 
-func (m *Map) rPlaceNCityStates(n int) []int {
+func (m *Map) rPlaceNCityStates(n int) {
+	m.resetRand()
 	// Territories are based on cities acting as their capital.
 	// Since the algorithm places the cities with the highes scores
 	// first, we use the top 'n' cities as the capitals for the
@@ -43,38 +46,55 @@ func (m *Map) rPlaceNCityStates(n int) []int {
 	}
 	weight := m.getTerritoryWeightFunc()
 	biomeWeight := m.getTerritoryBiomeWeightFunc()
+	cultureWeight := m.getTerritoryCultureWeightFunc()
 
-	cityStates := m.rPlaceNTerritoriesCustom(seedCities, func(o, u, v int) float64 {
+	m.r_city = m.rPlaceNTerritoriesCustom(seedCities, func(o, u, v int) float64 {
 		if m.r_territory[u] != m.r_territory[v] {
 			return -1
 		}
-		return weight(o, u, v) + biomeWeight(o, u, v)
+		return weight(o, u, v) + biomeWeight(o, u, v) + cultureWeight(o, u, v)
 	})
 
 	// Before relaxing the territories, we'd need to ensure that we only
 	// relax without changing the borders of the empire...
 	// So we'd only re-assign IDs that belong to the same territory.
 	// m.rRelaxTerritories(cityStates, 5)
-	return cityStates
+}
+
+func (m *Map) getTerritoryCultureWeightFunc() func(o, u, v int) float64 {
+	return func(o, u, v int) float64 {
+		var penalty float64
+		// TODO: Compare culture expansionism.
+		// If the destination has a higher culture expansionism than the
+		// origin culture, then it's less likely to expand into that territory.
+		if m.r_cultures[o] != m.r_cultures[v] {
+			penalty += 0.25
+		}
+		if m.r_cultures[u] != m.r_cultures[v] {
+			penalty += 0.75
+		}
+		return penalty
+	}
 }
 
 func (m *Map) getTerritoryBiomeWeightFunc() func(o, u, v int) float64 {
 	biomeFunc := m.getRWhittakerModBiomeFunc()
 	climatFunc := m.getFitnessClimate()
 	return func(o, u, v int) float64 {
-		// Changes in biomes are also considered natural boundaries.
-		biomePenalty := 0.0
-		if biomeFunc(u) != biomeFunc(v) {
-			// Penalty is higher for inhospitable climates.
-			biomePenalty = 1 - (climatFunc(v)+climatFunc(u))/2
-		}
+		var penalty float64
 
 		// Try to stick with original biome?
 		// if biomeFunc(o) != biomeFunc(v) {
 		//	// Penalty is higher for inhospitable climates.
-		//	biomePenalty += 1 - (climatFunc(o)+climatFunc(u))/2
+		//	penalty += 0.05 * (1 - (climatFunc(o)+climatFunc(v))/2)
 		// }
-		return biomePenalty
+
+		// Changes in biomes are also considered natural boundaries.
+		if biomeFunc(u) != biomeFunc(v) {
+			// Penalty is higher for inhospitable climates.
+			penalty += 0.1 + 0.9*(1-(climatFunc(u)+climatFunc(v))/2)
+		}
+		return penalty
 	}
 }
 

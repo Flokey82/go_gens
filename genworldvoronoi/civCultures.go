@@ -24,6 +24,7 @@ func (m *Map) rPlaceNCultures(n int) {
 		seeds = append(seeds, c.Origin)
 		originToCulture[c.Origin] = c
 	}
+	r_cellType := m.getRCellTypes()
 	_, maxElev := minMax(m.r_elevation)
 	twf := m.getTerritoryWeightFunc()
 	biomeWeight := m.getTerritoryBiomeWeightFunc()
@@ -31,11 +32,24 @@ func (m *Map) rPlaceNCultures(n int) {
 		c := originToCulture[o]
 		eleVal := m.r_elevation[v] / maxElev
 		gotBiome := m.getRBiomeTEMP(v, eleVal, maxElev)
-		biomePenalty := biomeWeight(o, u, v) * c.Type.BiomeAffinity(gotBiome) * float64(genbiome.AzgaarBiomeMovementCost[gotBiome]) / 100
-		return biomePenalty + twf(o, u, v)/c.Expansionism
+		biomePenalty := biomeWeight(o, u, v) * c.Type.BiomeCost(gotBiome) * float64(genbiome.AzgaarBiomeMovementCost[gotBiome]) / 100
+		cellTypePenalty := c.Type.CellTypeCost(r_cellType[v])
+		return biomePenalty + cellTypePenalty*twf(o, u, v)/c.Expansionism
 	})
 
 	// Update stats?
+	for _, c := range m.cultures_r {
+
+		// Collect all regions that are part of the
+		// current territory.
+		for r, cu := range m.r_cultures {
+			if cu == c.ID {
+				c.Regions = append(c.Regions, r)
+			}
+		}
+		c.Stats = m.getStats(c.Regions)
+		c.Log()
+	}
 }
 
 func (m *Map) placeNCultures(n int) []*Culture {
@@ -89,6 +103,13 @@ type Culture struct {
 	// Parent    *Culture
 	// Children  []*Culture
 	// Extinct   bool
+	Regions []int
+	*Stats
+}
+
+func (c *Culture) Log() {
+	log.Printf("The Folk of %s (%s): %d regions", c.Name, c.Type.String(), len(c.Regions))
+	c.Stats.Log()
 }
 
 func (m *Map) placeCulture(rctf func(int) CultureType, sf func(int) float64, distSeedFunc func() []int) *Culture {
@@ -182,14 +203,60 @@ func (t CultureType) Expansionism() float64 {
 	return roundToDecimals(((rand.Float64()*powerInputValue)/2+1)*base, 1)
 }
 
-func (t CultureType) BiomeAffinity(biome int) float64 {
+func (t CultureType) CellTypeCost(cellType int) float64 {
+	// TODO: Make use of this
+
+	// Land near coast / coastline / coastal land strip / "beach"?.
+	if cellType == 1 {
+		if t == CultureTypeNaval || t == CultureTypeLake {
+			// Naval cultures or lake cultures have an easier time navigating
+			// coastal areas or shores of lakes.
+			return 1.0
+		}
+		if t == CultureTypeNomadic {
+			// Nomadic cultures have a harder time navigating coastal areas or
+			// shores of lakes.
+			return 1.6
+		}
+		// All other cultures have a small penalty for coastal areas.
+		return 1.2
+	}
+
+	// Land slightly further inland.
+	if cellType == 2 {
+		if t == CultureTypeNaval || t == CultureTypeNomadic {
+			// Small penalty for land with distance 2 to ocean for navals and nomads.
+			return 1.3
+		}
+		// All other cultures do not have appreciable penalty.
+		return 1.0
+	}
+
+	// Not water near coast (deep ocean/inland/coastal land).
+	if cellType != -1 {
+		if t == CultureTypeNaval || t == CultureTypeLake {
+			// Penalty for mainland for naval and lake cultures
+			return 2.0
+		}
+	}
+	return 1.0
+}
+
+func (t CultureType) BiomeCost(biome int) float64 {
 	if t == CultureTypeHunting {
-		return 5 // non-native biome penalty for hunters
+		// Non-native biome penalty for hunters.
+		return 5.0
 	}
-	if t == CultureTypeNomadic && biome > 4 && biome < 10 {
-		return 10 // forest biome penalty for nomads
+	if t == CultureTypeNomadic && (biome == genbiome.AzgaarBiomeTropicalSeasonalForest ||
+		biome == genbiome.AzgaarBiomeTemperateDeciduousForest ||
+		biome == genbiome.AzgaarBiomeTropicalRainforest ||
+		biome == genbiome.AzgaarBiomeTemperateRainforest ||
+		biome == genbiome.AzgaarBiomeTaiga) {
+		// Forest biome penalty for nomads.
+		return 10.0
 	}
-	return 2 // general non-native biome penalty
+	// General non-native biome penalty.
+	return 2.0
 }
 
 // round value to d decimals
@@ -262,6 +329,15 @@ func (m *Map) getRCellTypes() []int {
 	return cellType
 }
 
+const (
+	FeatureTypeOcean     = "ocean"
+	FeatureTypeSea       = "sea"
+	FeatureTypeLake      = "lake"
+	FeatureTypeGulf      = "gulf"
+	FeatureTypeIsle      = "isle"
+	FeatureTypeContinent = "continent"
+)
+
 func (m *Map) getRFeatureTypeFunc() func(int) string {
 	r_waterbodies := m.getWaterBodies()
 	r_waterbody_size := m.getWaterBodySizes()
@@ -269,25 +345,26 @@ func (m *Map) getRFeatureTypeFunc() func(int) string {
 	r_landmass_size := m.getLandmassSizes()
 
 	return func(i int) string {
-		if i >= 0 {
-			if r_waterbodies[i] >= 0 {
-				if r_waterbody_size[r_waterbodies[i]] > m.mesh.numRegions/25 {
-					return "ocean"
-				}
-				if r_waterbody_size[r_waterbodies[i]] > m.mesh.numRegions/100 {
-					return "sea"
-				}
-				if r_waterbody_size[r_waterbodies[i]] > m.mesh.numRegions/500 {
-					return "gulf"
-				}
-				return "lake"
+		if i < 0 {
+			return ""
+		}
+		if wbID := r_waterbodies[i]; wbID >= 0 {
+			switch wbSize := r_waterbody_size[wbID]; {
+			case wbSize > m.mesh.numRegions/25:
+				return FeatureTypeOcean
+			case wbSize > m.mesh.numRegions/100:
+				return FeatureTypeSea
+			case wbSize > m.mesh.numRegions/500:
+				return FeatureTypeGulf
+			default:
+				return FeatureTypeLake
 			}
-			if r_landmasses[i] >= 0 {
-				if r_landmass_size[r_landmasses[i]] < m.mesh.numRegions/100 {
-					return "isle"
-				}
-				return "continent"
+		}
+		if lmID := r_landmasses[i]; lmID >= 0 {
+			if r_landmass_size[lmID] < m.mesh.numRegions/100 {
+				return FeatureTypeIsle
 			}
+			return FeatureTypeContinent
 		}
 		return ""
 	}
@@ -304,50 +381,68 @@ func (m *Map) getRCultureTypeFunc() func(int) CultureType {
 
 	r_waterbody_size := m.getWaterBodySizes()
 	_, maxElev := minMax(m.r_elevation)
-	// set culture type based on culture center position
+
+	// Return culture type based on culture center region.
 	return func(r int) CultureType {
 		eleVal := m.r_elevation[r] / maxElev
 		gotBiome := m.getRBiomeTEMP(r, eleVal, maxElev)
 		log.Println(gotBiome)
 		log.Println(wmf(r))
-		if eleVal < 0.7 {
-			if gotBiome == genbiome.AzgaarBiomeHotDesert ||
-				gotBiome == genbiome.AzgaarBiomeColdDesert ||
-				gotBiome == genbiome.AzgaarBiomeGrassland {
-				return CultureTypeNomadic // high penalty in forest biomes and near coastline
-			}
+
+		// Desert and grassland means a nomadic culture.
+		if eleVal < 0.7 && (gotBiome == genbiome.AzgaarBiomeHotDesert ||
+			gotBiome == genbiome.AzgaarBiomeColdDesert ||
+			gotBiome == genbiome.AzgaarBiomeGrassland) {
+			return CultureTypeNomadic // high penalty in forest biomes and near coastline
 		}
+
+		// Montane cultures in high elevations and hills
+		// that aren't deserts or grassland.
 		if eleVal > 0.3 {
 			return CultureTypeHighland // no penalty for hills and moutains, high for other elevations
 		}
-		haven, harbor := m.getRHaven(r)
-		havenType := getType(haven) // opposite feature
+
+		// Get the region (if any) that represents the haven for this region.
+		// A haven is the closest neighbor that is a water body.
+		// NOTE: harborSize indicates the number of neighbors that are water.
+		rHaven, harborSize := m.getRHaven(r)
+		havenType := getType(rHaven) // Get the type of the haven region.
 		rType := getType(r)
 		log.Println(havenType, rType)
-		if havenType == "lake" && r_waterbody_size[haven] > 5 {
-			// Ensure larger lakes.
+
+		// Ensure only larger lakes will result in the 'lake' culture type.
+		if havenType == FeatureTypeLake && r_waterbody_size[rHaven] > 5 {
 			return CultureTypeLake // low water cross penalty and high for growth not along coastline
 		}
-		if (harbor > 0 && havenType != "lake" && P(0.1)) ||
-			(harbor == 1 && P(0.6)) ||
-			(rType == "isle" && P(0.4)) {
+
+		// If we have a harbor (more than 1 water neighbor), or are on an island,
+		// we are potentially a naval culture.
+		if (harborSize > 0 && P(0.1) && havenType != FeatureTypeLake) ||
+			(harborSize == 1 && P(0.6)) ||
+			(rType == FeatureTypeIsle && P(0.4)) {
 			return CultureTypeNaval // low water cross penalty and high for non-along-coastline growth
 		}
-		if m.isBigRiver(r) { // cells.r[r] && cells.fl[r] > 100
+
+		// If we are on a big river (flux > 2*rainfall), we are a river culture.
+		if m.isBigRiver(r) {
 			return CultureTypeRiver // no River cross penalty, penalty for non-River growth
 		}
-		// Probably inland? Distance to ocean?
-		if cellType[r] > 2 {
-			if gotBiome == genbiome.AzgaarBiomeSavanna ||
-				gotBiome == genbiome.AzgaarBiomeTropicalRainforest ||
-				gotBiome == genbiome.AzgaarBiomeTemperateRainforest ||
-				gotBiome == genbiome.AzgaarBiomeTaiga ||
-				gotBiome == genbiome.AzgaarBiomeTundra ||
-				gotBiome == genbiome.AzgaarBiomeWetland {
-				return CultureTypeHunting // high penalty in non-native biomes
-			}
+
+		// If we are inland (cellType > 2) and in one of the listed biomes,
+		// we are a hunting culture.
+		if cellType[r] > 2 && (gotBiome == genbiome.AzgaarBiomeSavanna ||
+			gotBiome == genbiome.AzgaarBiomeTropicalRainforest ||
+			gotBiome == genbiome.AzgaarBiomeTemperateRainforest ||
+			gotBiome == genbiome.AzgaarBiomeWetland ||
+			gotBiome == genbiome.AzgaarBiomeTaiga ||
+			gotBiome == genbiome.AzgaarBiomeTundra ||
+			gotBiome == genbiome.AzgaarBiomeGlacier) {
+			return CultureTypeHunting // high penalty in non-native biomes
 		}
-		// TODO: Wildlands
+
+		// TODO: Wildlands?
+		// TODO: What culture would have originated in seasonal forests?
+		log.Println(gotBiome, gotBiome, gotBiome, gotBiome)
 		return CultureTypeGeneric
 	}
 }
@@ -368,31 +463,6 @@ func (m *Map) getBiomeCost(cultureCenter int, biome int, cType CultureType) int 
 		return genbiome.AzgaarBiomeMovementCost[biome] * 10 // forest biome penalty for nomads
 	}
 	return genbiome.AzgaarBiomeMovementCost[biome] * 2 // general non-native biome penalty
-}
-
-func (m *Map) getCellTypeCost(t int, cType CultureType) int {
-	if t == 1 {
-		if cType == CultureTypeNaval || cType == CultureTypeLake {
-			return 0
-		}
-		if cType == CultureTypeNomadic {
-			return 60
-		}
-		return 20 // penalty for coastline
-	}
-	if t == 2 {
-		if cType == CultureTypeNaval || cType == CultureTypeNomadic {
-			return 30
-		}
-		return 0 // low penalty for land level 2 for Navals and nomads
-	}
-	if t != -1 {
-		if cType == CultureTypeNaval || cType == CultureTypeLake {
-			return 100
-		}
-		return 0 // penalty for mainland for navals
-	}
-	return 0
 }
 
 func (m *Map) getHeightCost(i int, h float64, cType CultureType) int {

@@ -3,6 +3,8 @@ package genworldvoronoi
 import (
 	"log"
 	"math/rand"
+	"regexp"
+	"strings"
 )
 
 var approaches []string
@@ -38,7 +40,7 @@ type Religion struct {
 
 // This code is based on:
 // https://github.com/Azgaar/Fantasy-Map-Generator/blob/master/modules/religions-generator.js
-func (m *Map) genReligions() []*Religion {
+func (m *Map) genFolkReligions() []*Religion {
 	var religions []*Religion
 	// For every culture, there is a folk religion.
 	for _, c := range m.cultures_r {
@@ -65,6 +67,128 @@ func (m *Map) genReligions() []*Religion {
 		log.Println(r.Deity)
 	}
 	return religions
+}
+
+/*
+func (m *Map) genReligionOrganized() []*Religion {
+	var religions []*Religion
+	cities := m.cities_r
+	sort.Slice(cities, func(i, j int) bool {
+		return cities[i].Score > cities[j].Score
+	})
+	for _, c := range cities {
+		form := rw(forms[ReligionGroupOrganized])
+		//const state = cells.state[center];
+		culture := m.getRCulture(c.R)
+
+		var deity string
+		if form != ReligionFormNontheism {
+			deity = getDeityName(culture)
+		}
+		name, expansion := getReligionName(form, deity, center)
+		//if (expansion === "state" && !state) expansion = "global";
+		//if (expansion === "culture" && !culture) expansion = "global";
+
+		//if (expansion === "state" && Math.random() > 0.5) center = states[state].center;
+		//if (expansion === "culture" && Math.random() > 0.5) center = cultures[culture].center;
+
+		//if (!cells.burg[center] && cells.c[center].some(c => cells.burg[c]))
+		//  center = cells.c[center].find(c => cells.burg[c]);
+		//const [x, y] = cells.p[center];
+
+		//const s = spacing * gauss(1, 0.3, 0.2, 2, 2); // randomize to make the placement not uniform
+		//if (religionsTree.find(x, y, s) !== undefined) continue; // to close to existing religion
+
+		// add "Old" to name of the folk religion on this culture
+		//isFolkBased := expansion == "culture" || P(0.5)
+		//folk := isFolkBased && religions.find(r => r.culture === culture && r.type === "Folk");
+		//if (folk && expansion === "culture" && folk.name.slice(0, 3) !== "Old") folk.name = "Old " + folk.name;
+
+		//const origins = folk ? [folk.i] : getReligionsInRadius({x, y, r: 150 / count, max: 2});
+		//const expansionism = rand(3, 8);
+		//const baseColor = religions[culture]?.color || states[state]?.color || getRandomColor();
+		//const color = getMixedColor(baseColor, 0.3, 0);
+
+		religions.push({
+		  i: religions.length,
+		  name,
+		  color,
+		  culture,
+		  type: "Organized",
+		  form,
+		  deity,
+		  expansion,
+		  expansionism,
+		  center,
+		  origins
+		});
+	}
+	return religions
+}*/
+
+func (m *Map) getReligionName(form, deity string, center int) (string, string) {
+	//const {cells, cultures, burgs, states} = pack;
+
+	c := m.cultures_r[m.r_cultures[center]]
+	random := func() string {
+		return c.Language.MakeName()
+	}
+	rType := func() string { return rw(types[form]) }
+	deitySplit := regexp.MustCompile(`/[ ,]+/`)
+	supreme := func() string { return deitySplit.Split(deity, -1)[0] }
+	culture := func() string {
+		return c.Name
+	}
+	place := func(adj string) string {
+		/*	e:=m.r_empires[center]
+			const burgId = cells.burg[center];
+			const stateId = cells.state[center];
+
+			const base = burgId ? burgs[burgId].name : states[stateId].name;
+			let name = trimVowels(base.split(/[ ,]+/)[0]);
+			return adj ? getAdjective(name) : name;*/
+		return "TODO_PLACE"
+	}
+
+	me := rw(methods)
+	switch me {
+	case MethodRandomType:
+		return random() + " " + rType(), "global"
+	case MethodRandomIsm:
+		return trimVowels(random(), 3) + "ism", "global"
+	case MethodSurpremeIsm:
+		if deity != "" {
+			return trimVowels(supreme(), 3) + "ism", "global"
+		}
+	case MethodFaithOfSupreme:
+		if deity != "" {
+			return ra([]string{"Faith", "Way", "Path", "Word", "Witnesses"}) + " of " + supreme(), "global"
+		}
+	case MethodPlaceIsm:
+		return place("") + "ism", "state"
+	case MethodCultureIsm:
+		return trimVowels(culture(), 3) + "ism", "culture"
+	case MethodPlaceIanType:
+		return place("adj") + " " + rType(), "state"
+	case MethodCultureType:
+		return culture() + " " + rType(), "culture"
+	}
+	return trimVowels(random(), 3) + "ism", "global"
+}
+
+// chars that serve as vowels
+const VOWELS = `aeiouyɑ'əøɛœæɶɒɨɪɔɐʊɤɯаоиеёэыуюяàèìòùỳẁȁȅȉȍȕáéíóúýẃőűâêîôûŷŵäëïöüÿẅãẽĩõũỹąęįǫųāēīōūȳăĕĭŏŭǎěǐǒǔȧėȯẏẇạẹịọụỵẉḛḭṵṳ`
+
+func vowel(c rune) bool {
+	return strings.IndexRune(VOWELS, c) != -1
+}
+
+// remove vowels from the end of the string
+func trimVowels(str string, minLength int) string {
+	for len(str) > minLength && vowel(rune(str[len(str)-1])) {
+		str = str[:len(str)-1]
+	}
+	return str
 }
 
 // get supreme deity name

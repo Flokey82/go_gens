@@ -312,7 +312,7 @@ func (m *Map) ExportSVG(path string) error {
 
 	if drawBorders {
 		log.Println("TODO: Place city states first and grow empires from city states?")
-		drawPath(m.getCustomBorders(m.rPlaceNCityStates(m.NumCities)), true, "class=\"cityborder\"")
+		drawPath(m.getCustomBorders(m.r_city), true, "class=\"cityborder\"")
 		drawPath(m.getBorders(), true, "class=\"border\"")
 	}
 
