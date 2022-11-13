@@ -579,9 +579,12 @@ func (m *Map) ExportSVG(path string) error {
 			case TownTypeFarming:
 				col = "fill: rgb(55, 255, 0)"
 				radius = 1
+			case TownTypeDesertOasis:
+				col = "fill: rgb(55, 0, 255)"
+				radius = 1
 			}
-			drawCircle(m.r_latLon[r.R][0], m.r_latLon[r.R][1], radius, col)
-			drawText(m.r_latLon[r.R][0], m.r_latLon[r.R][1], r.Name, class)
+			drawCircle(m.r_latLon[r.ID][0], m.r_latLon[r.ID][1], radius, col)
+			drawText(m.r_latLon[r.ID][0], m.r_latLon[r.ID][1], r.Name, class)
 		}
 		// TODO: Move labels to avoid overlap.
 	}
@@ -624,7 +627,7 @@ func (m *Map) ExportPng(name string) {
 	terr := m.cultures_r
 	territory := m.r_cultures
 	for i, c := range terr {
-		terrToCol[c.Origin] = i
+		terrToCol[c.ID] = i
 		log.Printf("%d: %s %f", i, c.Type, c.Expansionism)
 	}
 	cols := grad.Colors(uint(len(terr)))

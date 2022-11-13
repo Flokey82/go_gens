@@ -23,6 +23,19 @@ type Stats struct {
 }
 
 func (m *Map) getStats(rr []int) *Stats {
+	// TODO:
+	// Calculate defensibility
+	// - Stone availability for better walls.
+	// - Wood availability for defensive structures.
+	// - Steepness of terrain
+	// - Rivers are hard to cross
+	// - Biomes navigatibility (swamp, ice, desert, forest)
+	// Calculate offensive potential
+	// - Metals can be used for weapons
+	// - (Wealth can be used for purchasing weapons or mercenaries)
+	// Calculate wealth
+	// - Gems and metals can be sold or traded
+	// - Metals can be used for weapons.
 	st := &Stats{
 		NumRegions: len(rr),
 		Biomes:     make(map[int]int),

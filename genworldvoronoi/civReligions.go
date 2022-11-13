@@ -35,7 +35,6 @@ type Religion struct {
 	Expansion    string
 	Expansionism int
 	Parent       *Religion
-	// Parents   *Religion
 }
 
 // This code is based on:

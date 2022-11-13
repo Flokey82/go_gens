@@ -16,7 +16,7 @@ func (m *Map) rPlaceNTerritories(n int) {
 		if i >= n {
 			break
 		}
-		seedCities = append(seedCities, c.R)
+		seedCities = append(seedCities, c.ID)
 	}
 	weight := m.getTerritoryWeightFunc()
 	biomeWeight := m.getTerritoryBiomeWeightFunc()
@@ -42,7 +42,7 @@ func (m *Map) rPlaceNCityStates(n int) {
 		if i >= n {
 			break
 		}
-		seedCities = append(seedCities, c.R)
+		seedCities = append(seedCities, c.ID)
 	}
 	weight := m.getTerritoryWeightFunc()
 	biomeWeight := m.getTerritoryBiomeWeightFunc()
@@ -52,6 +52,7 @@ func (m *Map) rPlaceNCityStates(n int) {
 		if m.r_territory[u] != m.r_territory[v] {
 			return -1
 		}
+		// TODO: Make sure we take in account expansionism, wealth, score, and culture.
 		return weight(o, u, v) + biomeWeight(o, u, v) + cultureWeight(o, u, v)
 	})
 
@@ -146,10 +147,7 @@ func (m *Map) rPlaceNTerritoriesCustom(seedPoints []int, weight func(o, u, v int
 
 	// 'terr' will hold a mapping of region to territory.
 	// The territory ID is the region number of the capital city.
-	terr := make([]int, m.mesh.numRegions)
-	for r := range terr {
-		terr[r] = -1
-	}
+	terr := initRegionSlice(m.mesh.numRegions)
 	for i := 0; i < len(seedPoints); i++ {
 		terr[seedPoints[i]] = seedPoints[i]
 		for _, v := range m.rNeighbors(seedPoints[i]) {
@@ -256,4 +254,27 @@ func (m *Map) rRelaxTerritories(terr []int, n int) {
 			}
 		}
 	}
+}
+
+// getRTerritoryNeighbors returns a list of territories neighboring the
+// territory with the ID 'r' based on the provided slice of len NumRegions
+// which maps the index (region id) to their respective territory ID.
+func (m *Map) getRTerritoryNeighbors(r int, r_terr []int) []int {
+	var res []int
+	seenTerritories := make(map[int]bool)
+	for i, rg := range r_terr {
+		if rg != r {
+			continue
+		}
+		for _, nb := range m.rNeighbors(i) {
+			// Determine territory ID.
+			terrID := r_terr[nb]
+			if terrID < 0 || terrID == r || seenTerritories[terrID] {
+				continue
+			}
+			seenTerritories[terrID] = true
+			res = append(res, terrID)
+		}
+	}
+	return res
 }

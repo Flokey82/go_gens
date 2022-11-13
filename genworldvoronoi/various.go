@@ -192,3 +192,11 @@ func isInIntList(l []int, i int) bool {
 	}
 	return false
 }
+
+func initRegionSlice(size int) []int {
+	res := make([]int, size)
+	for i := range res {
+		res[i] = -1
+	}
+	return res
+}

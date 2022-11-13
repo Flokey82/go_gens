@@ -3,20 +3,25 @@ package genworldvoronoi
 import (
 	"log"
 	"math"
+
+	"github.com/Flokey82/go_gens/genbiome"
 )
 
 const (
-	TownTypeDefault = "town"
-	TownTypeTrading = "trading"
-	TownTypeMining  = "mining"
-	TownTypeFarming = "agricultural"
+	TownTypeDefault     = "town"
+	TownTypeTrading     = "trading"
+	TownTypeMining      = "mining"
+	TownTypeFarming     = "agricultural"
+	TownTypeDesertOasis = "desert oasis"
 )
 
 type City struct {
-	R     int     // Region where the city is located
-	Score float64 // Score of the fitness function
-	Type  string  // Type of city
-	Name  string  // HACK HACK MOVE OUT OF HERE!!LSLDSJALSFJALKSLSAFKJfLJAFJLALKJAFSLK
+	ID       int     // Region where the city is located
+	Name     string  // TODO: Fill locally.
+	Type     string  // Type of city
+	Score    float64 // Score of the fitness function
+	Culture  *Culture
+	Language *Language
 }
 
 // rPlaceNCities places n cities with the highest fitness scores.
@@ -45,6 +50,23 @@ func (m *Map) rPlaceNCities(n int, cType string) {
 		sf = m.getFitnessSteepMountains()
 	case TownTypeFarming:
 		sf = m.getFitnessArableLand()
+	case TownTypeDesertOasis:
+		// TODO: Improve this fitness function.
+		// Right now the oasis are placed at the very edges of
+		// deserts, as there is the "best" climate.
+		// However, we want them to be trade hubs for desert
+		// crossings... so we'll need to place them in the middle
+		// of deserts instead.
+		fa := m.getFitnessClimate()
+		bf := m.getRWhittakerModBiomeFunc()
+		sf = func(r int) float64 {
+			biome := bf(r)
+			if biome == genbiome.WhittakerModBiomeColdDesert ||
+				biome == genbiome.WhittakerModBiomeSubtropicalDesert {
+				return fa(r)
+			}
+			return 0
+		}
 	default:
 		return
 	}
@@ -54,7 +76,7 @@ func (m *Map) rPlaceNCities(n int, cType string) {
 		var cities []int
 		for _, c := range m.cities_r {
 			if c.Type == cType {
-				cities = append(cities, c.R)
+				cities = append(cities, c.ID)
 			}
 		}
 		return cities
@@ -77,11 +99,30 @@ func (m *Map) rPlaceCity(cType string, sf func(int) float64, distSeedFunc func()
 			lastMax = val
 		}
 	}
-	m.cities_r = append(m.cities_r, &City{
-		R:     newcity,
-		Score: lastMax,
-		Type:  cType,
-	})
+	// TODO: Name city using local culture.
+	// If there is no local culture, generate one?
+	c := &City{
+		ID:      newcity,
+		Score:   lastMax,
+		Type:    cType,
+		Culture: m.getRCulture(newcity),
+	}
+
+	// If there is no known culture, generate a new one.
+	if c.Culture == nil {
+		// TODO: Deduplicate with civCultures.go
+		newCult := m.newCulture(newcity, m.getRCultureTypeFunc())
+		newCult.Regions = []int{newcity}
+		newCult.Stats = m.getStats(newCult.Regions)
+		m.cultures_r = append(m.cultures_r, newCult)
+		m.r_cultures[newcity] = newcity
+		c.Culture = newCult
+	}
+
+	// Use the local language to generate a new city name.
+	c.Language = c.Culture.Language
+	c.Name = c.Language.MakeCityName()
+	m.cities_r = append(m.cities_r, c)
 }
 
 // rCityScore calculates the fitness value for settlements for all regions.

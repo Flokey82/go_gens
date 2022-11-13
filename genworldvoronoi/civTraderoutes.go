@@ -25,7 +25,7 @@ func (r *Map) getTradeRoutes() ([][]int, [][]int) {
 	cities := r.cities_r
 	isCity := make(map[int]bool)
 	for _, c := range cities {
-		isCity[c.R] = true
+		isCity[c.ID] = true
 	}
 
 	_, maxElevation := minMax(r.r_elevation)
@@ -70,14 +70,14 @@ func (r *Map) getTradeRoutes() ([][]int, [][]int) {
 		sortCityIdx[i] = i
 	}
 	for i, startC := range cities {
-		start := startC.R
+		start := startC.ID
 		// Sort by distance to start as we try to connect the closest towns first.
 		// NOTE: Wouldn't it make sense to connect the largest cities first?
 		sort.Slice(sortCityIdx, func(j, k int) bool {
-			return r.getRDistance(start, cities[sortCityIdx[j]].R) < r.getRDistance(start, cities[sortCityIdx[k]].R)
+			return r.getRDistance(start, cities[sortCityIdx[j]].ID) < r.getRDistance(start, cities[sortCityIdx[k]].ID)
 		})
 		for _, j := range sortCityIdx {
-			end := cities[j].R
+			end := cities[j].ID
 			// We don't want to link a city to itself and we try to avoid double
 			// links (a->b and b->a) as well as we try to only connect towns within
 			// the same territory.

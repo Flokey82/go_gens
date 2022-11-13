@@ -9,7 +9,16 @@ import (
 )
 
 func (m *Map) getRCulture(r int) *Culture {
-	return m.cultures_r[m.r_cultures[r]]
+	// NOTE: This sucks. This should be done better.
+	if m.r_cultures[r] <= 0 {
+		return nil
+	}
+	for _, c := range m.cultures_r {
+		if c.ID == m.r_cultures[r] {
+			return c
+		}
+	}
+	return nil
 }
 
 // This code is based on:
@@ -17,12 +26,15 @@ func (m *Map) getRCulture(r int) *Culture {
 func (m *Map) rPlaceNCultures(n int) {
 	m.resetRand()
 	m.cultures_r = m.placeNCultures(n)
+	m.rExpandCultures()
+}
 
+func (m *Map) rExpandCultures() {
 	var seeds []int
 	originToCulture := make(map[int]*Culture)
 	for _, c := range m.cultures_r {
-		seeds = append(seeds, c.Origin)
-		originToCulture[c.Origin] = c
+		seeds = append(seeds, c.ID)
+		originToCulture[c.ID] = c
 	}
 	r_cellType := m.getRCellTypes()
 	_, maxElev := minMax(m.r_elevation)
@@ -37,11 +49,13 @@ func (m *Map) rPlaceNCultures(n int) {
 		return biomePenalty + cellTypePenalty*twf(o, u, v)/c.Expansionism
 	})
 
+	// TODO: There are small islands that do not have a culture...
+	// We should fix that.
+
 	// Update stats?
 	for _, c := range m.cultures_r {
-
-		// Collect all regions that are part of the
-		// current territory.
+		c.Regions = nil
+		// Collect all regions that are part of the current culture.
 		for r, cu := range m.r_cultures {
 			if cu == c.ID {
 				c.Regions = append(c.Regions, r)
@@ -72,13 +86,11 @@ func (m *Map) placeNCultures(n int) []*Culture {
 		return math.Sqrt((fc(r) + 3.0) / 4.0)
 	}
 
-	// For now we just maximize the distance to cities of the same type.
+	// For now we maximize the distance to other cultures.
 	dsf = func() []int {
 		var cultureSeeds []int
 		for _, c := range cultures {
-			//if c.Type == cType {
-			cultureSeeds = append(cultureSeeds, c.Origin)
-			//}
+			cultureSeeds = append(cultureSeeds, c.ID)
 		}
 		return cultureSeeds
 	}
@@ -93,16 +105,19 @@ func (m *Map) placeNCultures(n int) []*Culture {
 
 // Culture represents a culture.
 type Culture struct {
-	ID           int // unique ID
-	Origin       int // Same as ID... Remove
-	Name         string
-	Language     *Language
-	Type         CultureType
-	Expansionism float64
-	// Extremism float64
+	ID           int         // Region where the culture originates
+	Name         string      // Name of the culture
+	Type         CultureType // Type of the culture
+	Expansionism float64     // Expansionism of the culture
+	// Sophistication float64
+	// Martialism     float64
+	// Extremism      float64
 	// Parent    *Culture
 	// Children  []*Culture
 	// Extinct   bool
+	Language *Language // Language of the culture
+
+	// TODO: DO NOT CACHE THIS!
 	Regions []int
 	*Stats
 }
@@ -110,6 +125,18 @@ type Culture struct {
 func (c *Culture) Log() {
 	log.Printf("The Folk of %s (%s): %d regions", c.Name, c.Type.String(), len(c.Regions))
 	c.Stats.Log()
+}
+
+func (m *Map) newCulture(r int, rctf func(int) CultureType) *Culture {
+	cultureType := rctf(r)
+	lang := GenLanguage(m.seed + int64(r))
+	return &Culture{
+		ID:           r,
+		Name:         lang.MakeName(),
+		Type:         cultureType,
+		Expansionism: cultureType.Expansionism(),
+		Language:     lang,
+	}
 }
 
 func (m *Map) placeCulture(rctf func(int) CultureType, sf func(int) float64, distSeedFunc func() []int) *Culture {
@@ -122,16 +149,7 @@ func (m *Map) placeCulture(rctf func(int) CultureType, sf func(int) float64, dis
 			lastMax = val
 		}
 	}
-	cultureType := rctf(newculture)
-	lang := GenLanguage(m.seed + int64(newculture))
-	return &Culture{
-		ID:           newculture,
-		Origin:       newculture,
-		Name:         lang.MakeName(),
-		Type:         cultureType,
-		Expansionism: cultureType.Expansionism(),
-		Language:     lang,
-	}
+	return m.newCulture(newculture, rctf)
 }
 
 type CultureType int

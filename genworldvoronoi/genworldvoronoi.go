@@ -38,11 +38,12 @@ type Map struct {
 	NumPoints       int            // Number of generated points / regions
 	NumCities       int            // Number of generated cities (regions)
 	NumCityStates   int            // Number of generated city states
-	NumMiningTowns  int
-	// NumFarmingTowns int
-	NumTerritories int // Number of generated territories
-	NumCultures    int
-	QuadGeom       *QuadGeometry // Quad geometry generated from the mesh (?)
+	NumMiningTowns  int            // Number of generated mining towns
+	NumFarmingTowns int            // Number of generated farming towns
+	NumDesertOasis  int            // Number of generated desert oases
+	NumTerritories  int            // Number of generated territories
+	NumCultures     int            // (Min) Number of generated cultures
+	QuadGeom        *QuadGeometry  // Quad geometry generated from the mesh (?)
 }
 
 func NewMap(seed int64, numPlates, numPoints int, jitter float64) (*Map, error) {
@@ -84,16 +85,18 @@ func NewMap(seed int64, numPlates, numPoints int, jitter float64) (*Map, error) 
 		r_res_metals:    make([]byte, mesh.numRegions),
 		r_res_gems:      make([]byte, mesh.numRegions),
 		r_res_stone:     make([]byte, mesh.numRegions),
+		r_territory:     initRegionSlice(mesh.numRegions),
 		NumPlates:       numPlates,
 		NumVolcanoes:    numPlates, // TODO: Allow independent configuration.
 		NumPoints:       numPoints,
 		NumTerritories:  10,
 		NumCities:       150,
-		NumCityStates:   100,
+		NumCityStates:   150,
 		NumMiningTowns:  60,
-		// NumFarmingTowns: 60,
-		NumCultures: 30,
-		QuadGeom:    NewQuadGeometry(),
+		NumFarmingTowns: 60,
+		NumDesertOasis:  10,
+		NumCultures:     30,
+		QuadGeom:        NewQuadGeometry(),
 	}
 	m.QuadGeom.setMesh(mesh)
 	m.generateTriangleCenters()
@@ -156,7 +159,8 @@ func (m *Map) generateMap() {
 	start = time.Now()
 	m.rPlaceNCities(m.NumCities, TownTypeDefault)
 	m.rPlaceNCities(m.NumMiningTowns, TownTypeMining)
-	// m.rPlaceNCities(m.NumFarmingTowns, TownTypeFarming)
+	m.rPlaceNCities(m.NumFarmingTowns, TownTypeFarming)
+	m.rPlaceNCities(m.NumDesertOasis, TownTypeDesertOasis)
 	log.Println("Done cities in ", time.Since(start).String())
 
 	start = time.Now()
@@ -190,4 +194,6 @@ func (m *Map) generateMap() {
 	start = time.Now()
 	m.QuadGeom.setMap(m.mesh, m)
 	log.Println("Done quadgeom in ", time.Since(start).String())
+	//m.GetEmpires()
+	//m.GetEmpires2()
 }

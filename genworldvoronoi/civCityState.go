@@ -4,10 +4,13 @@ import (
 	"log"
 )
 
+// CityState represents a territory governed by a single city.
 type CityState struct {
-	ID      int // ID of the city.
-	Capital *City
-	Cities  []*City
+	ID      int     // Region where the city state originates
+	Capital *City   // Capital city
+	Cities  []*City // Cities within the city state
+
+	// TODO: DO NOT CACHE THIS!
 	Regions []int
 	*Stats
 }
@@ -18,17 +21,18 @@ func (c *CityState) Log() {
 }
 
 func (m *Map) GetCityStates() []*CityState {
+	// TODO: Deduplicate with GetEmpires.
 	var res []*CityState
 	for i := 0; i < m.NumCityStates; i++ {
 		c := &CityState{
-			ID:      m.cities_r[i].R,
+			ID:      m.cities_r[i].ID,
 			Capital: m.cities_r[i],
 		}
 
 		// Loop through all cities and gather all that
 		// are within the current city state.
 		for _, ct := range m.cities_r {
-			if m.r_city[ct.R] == c.ID {
+			if m.r_city[ct.ID] == c.ID {
 				c.Cities = append(c.Cities, ct)
 			}
 		}
@@ -45,4 +49,8 @@ func (m *Map) GetCityStates() []*CityState {
 		res = append(res, c)
 	}
 	return res
+}
+
+func (m *Map) getCityStateNeighbors(c *CityState) []int {
+	return m.getRTerritoryNeighbors(c.ID, m.r_city)
 }

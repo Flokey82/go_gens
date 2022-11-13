@@ -8,13 +8,15 @@ import (
 // TODO: Maybe drop the regions since we can get that info
 // relatively cheaply.
 type Empire struct {
-	ID       int // ID of the territory
-	Name     string
-	Emperor  string
+	ID       int     // Region where the empire originates (capital)
+	Name     string  // Name of the empire
+	Emperor  string  // Name of the ruler
 	Capital  *City   // Capital city
 	Cities   []*City // Cities within the territory
-	Regions  []int   // Regions that are part of the empire
 	Language *Language
+
+	// TODO: DO NOT CACHE THIS!
+	Regions []int // Regions that are part of the empire
 	*Stats
 }
 
@@ -25,23 +27,29 @@ func (e *Empire) Log() {
 }
 
 func (m *Map) GetEmpires() []*Empire {
+	// TODO: Deduplicate with GetCityStates.
 	var res []*Empire
 	for i := 0; i < m.NumTerritories; i++ {
-		lang := GenLanguage(m.seed + int64(i))
+		capital := m.cities_r[i]
+		var lang *Language
+		if c := m.getRCulture(capital.ID); c != nil && c.Language != nil {
+			lang = c.Language
+		} else {
+			lang = GenLanguage(m.seed + int64(i))
+		}
 		e := &Empire{
-			ID:       m.cities_r[i].R,
+			ID:       capital.ID,
 			Name:     lang.MakeName(),
 			Emperor:  lang.MakeFirstName() + " " + lang.MakeLastName(),
-			Capital:  m.cities_r[i],
+			Capital:  capital,
 			Language: lang,
 		}
-
-		// TODO: Name empire, name cities.
 
 		// Loop through all cities and gather all that
 		// are within the current territory.
 		for _, c := range m.cities_r {
-			if m.r_territory[c.R] == e.ID {
+			if m.r_territory[c.ID] == e.ID {
+				// TODO: Name cities based on local culture?
 				c.Name = e.Language.MakeCityName()
 				e.Cities = append(e.Cities, c)
 			}
