@@ -111,6 +111,7 @@ func (m *Map) rPlaceCity(cType string, sf func(int) float64, distSeedFunc func()
 	// If there is no known culture, generate a new one.
 	if c.Culture == nil {
 		// TODO: Deduplicate with civCultures.go
+		// TODO: Grow this culture.
 		newCult := m.newCulture(newcity, m.getRCultureTypeFunc())
 		newCult.Regions = []int{newcity}
 		newCult.Stats = m.getStats(newCult.Regions)

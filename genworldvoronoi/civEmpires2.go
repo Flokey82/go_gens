@@ -3,7 +3,6 @@ package genworldvoronoi
 import (
 	"container/heap"
 	"log"
-	"sort"
 )
 
 // NOTE: This is an alternative empire implementation where we expand based
@@ -17,26 +16,30 @@ type Empire2 struct {
 }
 
 func (m *Map) GetEmpires2() []*Empire2 {
-	numEmpires := 10
+	numEmpires := m.NumTerritories
 	if numEmpires > m.NumCityStates {
 		numEmpires = m.NumCityStates
 	}
-	sortCities := make([]*City, len(m.cities_r))
+	sortCities := make([]*City, numEmpires)
 	copy(sortCities, m.cities_r)
-	sort.Slice(sortCities, func(i, j int) bool {
-		exA := sortCities[i].Score
-		exB := sortCities[j].Score
 
-		cA := m.getRCulture(sortCities[i].ID)
-		if cA != nil {
-			exA *= cA.Expansionism
-		}
-		cB := m.getRCulture(sortCities[j].ID)
-		if cB != nil {
-			exB *= cB.Expansionism
-		}
-		return exA > exB
-	})
+	// TODO: Use cities with high expansionism.
+	/*
+		sort.Slice(sortCities, func(i, j int) bool {
+			exA := sortCities[i].Score
+			exB := sortCities[j].Score
+
+			cA := m.getRCulture(sortCities[i].ID)
+			if cA != nil {
+				exA *= cA.Expansionism
+			}
+			cB := m.getRCulture(sortCities[j].ID)
+			if cB != nil {
+				exB *= cB.Expansionism
+			}
+			return exA > exB
+		})
+	*/
 
 	var queue territoryQueue
 	heap.Init(&queue)
@@ -51,16 +54,13 @@ func (m *Map) GetEmpires2() []*Empire2 {
 	for _, c := range sortCities {
 		cc := m.getRCulture(c.ID)
 		if cc == nil {
+			log.Println("City has no culture", c.Name)
 			continue
 		}
 		terr[cityIDToIndex[c.ID]] = c.ID
 		for _, r := range m.getRTerritoryNeighbors(c.ID, m.r_city) {
 			log.Println("Adding", r, "to queue for", c.ID)
-			if terr[cityIDToIndex[r]] >= 0 {
-				continue
-			}
 			newdist := m.getCityScoreForexp(cityIDToCity[r])
-			terr[cityIDToIndex[r]] = c.ID
 			heap.Push(&queue, &queueRegionEntry{
 				score: newdist,
 				city:  c.ID,
@@ -86,7 +86,7 @@ func (m *Map) GetEmpires2() []*Empire2 {
 				continue
 			}
 			heap.Push(&queue, &queueRegionEntry{
-				score: u.score + newdist,
+				score: newdist / u.score,
 				city:  u.city,
 				vx:    v,
 			})
@@ -94,6 +94,17 @@ func (m *Map) GetEmpires2() []*Empire2 {
 	}
 
 	log.Println(terr)
+
+	// Now overwrite the territories with the new territories.
+	// For this we will have to copy the city states and
+	// set new territories.
+
+	copy(m.r_territory, m.r_city)
+	for i, t := range m.r_territory {
+		if tn := terr[cityIDToIndex[t]]; tn >= 0 {
+			m.r_territory[i] = tn
+		}
+	}
 
 	return nil
 }

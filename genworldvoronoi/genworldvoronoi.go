@@ -195,5 +195,5 @@ func (m *Map) generateMap() {
 	m.QuadGeom.setMap(m.mesh, m)
 	log.Println("Done quadgeom in ", time.Since(start).String())
 	//m.GetEmpires()
-	//m.GetEmpires2()
+	m.GetEmpires2()
 }

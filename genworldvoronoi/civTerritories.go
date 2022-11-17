@@ -59,7 +59,7 @@ func (m *Map) rPlaceNCityStates(n int) {
 	// Before relaxing the territories, we'd need to ensure that we only
 	// relax without changing the borders of the empire...
 	// So we'd only re-assign IDs that belong to the same territory.
-	// m.rRelaxTerritories(cityStates, 5)
+	// m.rRelaxTerritories(m.r_city, 5)
 }
 
 func (m *Map) getTerritoryCultureWeightFunc() func(o, u, v int) float64 {
