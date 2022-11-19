@@ -113,63 +113,7 @@ const (
 	ResVarGas
 )
 
-// getFitnessSteepMountains returns a fitness function with high scores for
-// steep terrain close to mountains.
-func (m *Map) getFitnessSteepMountains() func(int) float64 {
-	steepness := m.getRSteepness()
-	seedMountains, _, _, _ := m.findCollisions()
-	distMountains := m.assignDistanceField(seedMountains, make(map[int]bool))
-	return func(r int) float64 {
-		if m.r_elevation[r] <= 0 {
-			return -1.0
-		}
-		chance := steepness[r] * math.Sqrt(m.r_elevation[r])
-		chance /= (distMountains[r] + 1) / 2
-		return chance
-	}
-}
-
-// getFitnessInlandValleys returns a fitness function with high scores for
-// terrain that is not steep and far away from coastlines, mountains, and
-// oceans.
-func (m *Map) getFitnessInlandValleys() func(int) float64 {
-	steepness := m.getRSteepness()
-	seedMountains, seedCoastlines, seedOceans, _ := m.findCollisions()
-
-	// Combine all seed points so we can find the spots furthest away from them.
-	var seedAll []int
-	seedAll = append(seedAll, seedMountains...)
-	seedAll = append(seedAll, seedCoastlines...)
-	seedAll = append(seedAll, seedOceans...)
-	distAll := m.assignDistanceField(seedAll, make(map[int]bool))
-	return func(r int) float64 {
-		if m.r_elevation[r] <= 0 {
-			return -1.0
-		}
-		chance := 1 - steepness[r]
-		chance *= distAll[r]
-		return chance
-	}
-}
-
-func (m *Map) getFitnessArableLand() func(int) float64 {
-	// Prefer flat terrain with reasonable precipitation and at
-	// lower altitudes.
-	steepness := m.getRSteepness()
-	_, maxElev := minMax(m.r_elevation)
-	return func(r int) float64 {
-		temp := m.getRTemperature(r, maxElev)
-		if m.r_elevation[r] <= 0 || m.r_rainfall[r] < 0.1 || temp <= 0 {
-			return -1.0
-		}
-		chance := 1 - steepness[r]
-		chance *= m.r_rainfall[r]
-		chance *= 1 - m.r_elevation[r]*m.r_elevation[r]
-		return chance
-	}
-}
-
-func (m *Map) resourceFitness() []float64 {
+func (m *Geo) resourceFitness() []float64 {
 	fitness := make([]float64, m.mesh.numRegions)
 	f := m.getFitnessSteepMountains()
 	for r := range fitness {
@@ -178,7 +122,7 @@ func (m *Map) resourceFitness() []float64 {
 	return fitness
 }
 
-func (m *Map) placeResources() {
+func (m *Geo) placeResources() {
 	// NOTE: This currently sucks.
 	// TODO: Use fitness function instead or in addition.
 
@@ -205,7 +149,7 @@ func (m *Map) placeResources() {
 	// Place potential quarry sites.
 	// Potential quarry sites can be found mainly in mountains,
 
-	steepness := m.getRSteepness()
+	steepness := m.GetSteepness()
 	// distMountains, _, _, _ := m.findCollisions()
 
 	// https://www.reddit.com/r/worldbuilding/comments/kbmnd6/a_guide_to_placing_resources_on_fictional_worlds/
@@ -251,7 +195,7 @@ func (m *Map) placeResources() {
 			}
 		}
 	}
-	m.r_res_metals = metals
+	m.RegionToResMetals = metals
 
 	const (
 		chanceDiamond  = 0.005
@@ -266,7 +210,7 @@ func (m *Map) placeResources() {
 
 	gems := make([]byte, len(steepness))
 	for r := 0; r < m.mesh.numRegions; r++ {
-		if steepness[r] > 0.9 && m.r_elevation[r] > 0.5 {
+		if steepness[r] > 0.9 && m.Elevation[r] > 0.5 {
 			switch rv := math.Abs(m.rand.NormFloat64()); {
 			case rv < chanceDiamond:
 				gems[r] |= ResGemDiamond
@@ -287,7 +231,7 @@ func (m *Map) placeResources() {
 			}
 		}
 	}
-	m.r_res_gems = gems
+	m.RegionToResGems = gems
 
 	// This attempts some weird variation of:
 	// https://www.redblobgames.com/x/1736-resource-placement/

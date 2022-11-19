@@ -8,41 +8,45 @@ import (
 	"github.com/Flokey82/go_gens/genbiome"
 )
 
-func (m *Map) getRCulture(r int) *Culture {
+// GetCulture returns the culture of the given region (if any).
+func (m *Civ) GetCulture(r int) *Culture {
 	// NOTE: This sucks. This should be done better.
-	if m.r_cultures[r] <= 0 {
+	if m.RegionToCulture[r] <= 0 {
 		return nil
 	}
-	for _, c := range m.cultures_r {
-		if c.ID == m.r_cultures[r] {
+	for _, c := range m.Cultures {
+		if c.ID == m.RegionToCulture[r] {
 			return c
 		}
 	}
 	return nil
 }
 
+// PlaceNCultures places n cultures on the map.
 // This code is based on:
 // https://github.com/Azgaar/Fantasy-Map-Generator/blob/master/modules/cultures-generator.js
-func (m *Map) rPlaceNCultures(n int) {
+func (m *Civ) PlaceNCultures(n int) {
 	m.resetRand()
-	m.cultures_r = m.placeNCultures(n)
-	m.rExpandCultures()
+	m.placeNCultures(n)
+	m.ExpandCultures()
 }
 
-func (m *Map) rExpandCultures() {
+// ExpandCultures expands the cultures on the map based on their expansionism,
+// terrain preference, and distance to other cultures.
+func (m *Civ) ExpandCultures() {
 	var seeds []int
 	originToCulture := make(map[int]*Culture)
-	for _, c := range m.cultures_r {
+	for _, c := range m.Cultures {
 		seeds = append(seeds, c.ID)
 		originToCulture[c.ID] = c
 	}
 	r_cellType := m.getRCellTypes()
-	_, maxElev := minMax(m.r_elevation)
+	_, maxElev := minMax(m.Elevation)
 	twf := m.getTerritoryWeightFunc()
 	biomeWeight := m.getTerritoryBiomeWeightFunc()
-	m.r_cultures = m.rPlaceNTerritoriesCustom(seeds, func(o, u, v int) float64 {
+	m.RegionToCulture = m.rPlaceNTerritoriesCustom(seeds, func(o, u, v int) float64 {
 		c := originToCulture[o]
-		eleVal := m.r_elevation[v] / maxElev
+		eleVal := m.Elevation[v] / maxElev
 		gotBiome := m.getRBiomeTEMP(v, eleVal, maxElev)
 		biomePenalty := biomeWeight(o, u, v) * c.Type.BiomeCost(gotBiome) * float64(genbiome.AzgaarBiomeMovementCost[gotBiome]) / 100
 		cellTypePenalty := c.Type.CellTypeCost(r_cellType[v])
@@ -50,13 +54,11 @@ func (m *Map) rExpandCultures() {
 	})
 
 	// TODO: There are small islands that do not have a culture...
-	// We should fix that.
-
-	// Update stats?
-	for _, c := range m.cultures_r {
+	// We should (or could) fix that.
+	for _, c := range m.Cultures {
 		c.Regions = nil
 		// Collect all regions that are part of the current culture.
-		for r, cu := range m.r_cultures {
+		for r, cu := range m.RegionToCulture {
 			if cu == c.ID {
 				c.Regions = append(c.Regions, r)
 			}
@@ -66,7 +68,7 @@ func (m *Map) rExpandCultures() {
 	}
 }
 
-func (m *Map) placeNCultures(n int) []*Culture {
+func (m *Civ) placeNCultures(n int) {
 	// The fitness function, returning a score from
 	// 0.0 to 1.0 for a given region.
 	var sf func(int) float64
@@ -76,11 +78,10 @@ func (m *Map) placeNCultures(n int) []*Culture {
 	// away from.
 	var dsf func() []int
 
-	var cultures []*Culture
 	rctf := m.getRCultureTypeFunc()
 	fc := m.getFitnessClimate()
 	sf = func(r int) float64 {
-		if m.r_elevation[r] <= 0 {
+		if m.Elevation[r] <= 0 {
 			return 0
 		}
 		return math.Sqrt((fc(r) + 3.0) / 4.0)
@@ -89,18 +90,16 @@ func (m *Map) placeNCultures(n int) []*Culture {
 	// For now we maximize the distance to other cultures.
 	dsf = func() []int {
 		var cultureSeeds []int
-		for _, c := range cultures {
+		for _, c := range m.Cultures {
 			cultureSeeds = append(cultureSeeds, c.ID)
 		}
 		return cultureSeeds
 	}
 	// Place n cities of the given type.
 	for i := 0; i < n; i++ {
-		c := m.placeCulture(rctf, sf, dsf)
+		c := m.PlaceCulture(rctf, sf, dsf)
 		log.Printf("placing culture %d: %s", i, c.Name)
-		cultures = append(cultures, c)
 	}
-	return cultures
 }
 
 // Culture represents a culture.
@@ -127,9 +126,8 @@ func (c *Culture) Log() {
 	c.Stats.Log()
 }
 
-func (m *Map) newCulture(r int, rctf func(int) CultureType) *Culture {
-	cultureType := rctf(r)
-	lang := GenLanguage(m.seed + int64(r))
+func (m *Civ) newCulture(r int, cultureType CultureType) *Culture {
+	lang := GenLanguage(m.Seed + int64(r))
 	return &Culture{
 		ID:           r,
 		Name:         lang.MakeName(),
@@ -139,21 +137,37 @@ func (m *Map) newCulture(r int, rctf func(int) CultureType) *Culture {
 	}
 }
 
-func (m *Map) placeCulture(rctf func(int) CultureType, sf func(int) float64, distSeedFunc func() []int) *Culture {
+// PlaceCulture places another culture on the map at the region with the highest fitness score.
+func (m *Civ) PlaceCulture(rctf func(int) CultureType, sf func(int) float64, distSeedFunc func() []int) *Culture {
 	// Score all regions, pick highest score.
 	var newculture int
 	lastMax := math.Inf(-1)
-	for i, val := range m.rCityScore(sf, distSeedFunc) {
+	for i, val := range m.CalcCityScore(sf, distSeedFunc) {
 		if val > lastMax {
 			newculture = i
 			lastMax = val
 		}
 	}
-	return m.newCulture(newculture, rctf)
+	c := m.newCulture(newculture, rctf(newculture))
+	m.Cultures = append(m.Cultures, c)
+	return c
+}
+
+// PlaceCultureAt places a culture at the given region.
+// TODO: Allow specifying the culture type?
+func (m *Civ) PlaceCultureAt(r int) *Culture {
+	c := m.newCulture(r, m.getRCultureTypeFunc()(r))
+	c.Regions = []int{r}
+	c.Stats = m.getStats(c.Regions)
+	m.Cultures = append(m.Cultures, c)
+	m.RegionToCulture[r] = r
+	// TODO: Grow / Expand this culture.
+	return c
 }
 
 type CultureType int
 
+// Culture types.
 const (
 	CultureTypeWildland CultureType = iota
 	CultureTypeGeneric
@@ -165,6 +179,7 @@ const (
 	CultureTypeHighland
 )
 
+// String returns the string representation of a given culture type.
 func (c CultureType) String() string {
 	switch c {
 	case CultureTypeWildland:
@@ -188,6 +203,7 @@ func (c CultureType) String() string {
 	}
 }
 
+// Expansionism returns the expansionism of a given culture type.
 func (t CultureType) Expansionism() float64 {
 	// TODO: This is a random attractiveness value of the capital.
 	// https://azgaar.wordpress.com/2017/11/21/settlements/
@@ -221,6 +237,7 @@ func (t CultureType) Expansionism() float64 {
 	return roundToDecimals(((rand.Float64()*powerInputValue)/2+1)*base, 1)
 }
 
+// CellTypeCost returns the cost of crossing / navigating a given cell type for a given culture.
 func (t CultureType) CellTypeCost(cellType int) float64 {
 	// TODO: Make use of this
 
@@ -260,6 +277,7 @@ func (t CultureType) CellTypeCost(cellType int) float64 {
 	return 1.0
 }
 
+// BiomeCost returns the cost for traversion / expanding into a given biome.
 func (t CultureType) BiomeCost(biome int) float64 {
 	if t == CultureTypeHunting {
 		// Non-native biome penalty for hunters.
@@ -277,27 +295,24 @@ func (t CultureType) BiomeCost(biome int) float64 {
 	return 2.0
 }
 
-// round value to d decimals
-func roundToDecimals(v, d float64) float64 {
-	m := math.Pow(10, d)
-	return math.Round(v*m) / m
-}
-
-func (m *Map) getRHaven(i int) (int, int) {
+// getRHaven returns the closest neighbor region that is a water cell, which
+// can be used as a haven, and returns the number of water neighbors, indicating
+// the harbor size.
+func (m *Civ) getRHaven(i int) (int, int) {
 	// get all neighbors that are below or at sea level.
 	var water []int
-	for _, nb := range m.rNeighbors(i) {
-		if m.r_elevation[nb] <= 0.0 {
+	for _, nb := range m.GetRegionNeighbors(i) {
+		if m.Elevation[nb] <= 0.0 {
 			water = append(water, nb)
 		}
 	}
 	// Get distances of i to each water neighbor.
 	// get the closest water neighbor.
-	iLatLon := m.r_latLon[i]
+	iLatLon := m.LatLon[i]
 	closest := -1
 	var minDist float64
 	for _, nb := range water {
-		nbLatLon := m.r_latLon[nb]
+		nbLatLon := m.LatLon[nb]
 		dist := haversine(iLatLon[0], iLatLon[1], nbLatLon[0], nbLatLon[1])
 		if closest == -1 || dist < minDist {
 			minDist = dist
@@ -309,9 +324,9 @@ func (m *Map) getRHaven(i int) (int, int) {
 	return closest, len(water)
 }
 
-func (m *Map) getRCellTypes() []int {
+func (m *Civ) getRCellTypes() []int {
 	var ocean_r, land_r []int
-	for r, elev := range m.r_elevation {
+	for r, elev := range m.Elevation {
 		if elev <= 0.0 {
 			ocean_r = append(ocean_r, r)
 		} else {
@@ -324,7 +339,7 @@ func (m *Map) getRCellTypes() []int {
 	cellType := make([]int, m.mesh.numRegions)
 	for i := range cellType {
 		// Is it water?
-		if m.r_elevation[i] <= 0.0 {
+		if m.Elevation[i] <= 0.0 {
 			// Figure out if it has a land neighbor.
 			// If so, it is -1 (water near coast)
 			if r_distance_land[i] <= 1 {
@@ -356,11 +371,11 @@ const (
 	FeatureTypeContinent = "continent"
 )
 
-func (m *Map) getRFeatureTypeFunc() func(int) string {
+func (m *Civ) getRFeatureTypeFunc() func(int) string {
 	r_waterbodies := m.getWaterBodies()
 	r_waterbody_size := m.getWaterBodySizes()
-	r_landmasses := m.identifyLandmasses()
-	r_landmass_size := m.getLandmassSizes()
+	r_landmasses := m.IdentifyLandmasses()
+	r_landmass_size := m.GetLandmassSizes()
 
 	return func(i int) string {
 		if i < 0 {
@@ -388,21 +403,21 @@ func (m *Map) getRFeatureTypeFunc() func(int) string {
 	}
 }
 
-func (m *Map) getRBiomeTEMP(r int, elev, maxElev float64) int {
-	return genbiome.GetAzgaarBiome(int(20.0*m.r_moisture[r]), int(m.getRTemperature(r, maxElev)), int(elev*100))
+func (m *Civ) getRBiomeTEMP(r int, elev, maxElev float64) int {
+	return genbiome.GetAzgaarBiome(int(20.0*m.Moisture[r]), int(m.getRTemperature(r, maxElev)), int(elev*100))
 }
 
-func (m *Map) getRCultureTypeFunc() func(int) CultureType {
+func (m *Civ) getRCultureTypeFunc() func(int) CultureType {
 	cellType := m.getRCellTypes()
 	getType := m.getRFeatureTypeFunc()
 	wmf := m.getRWhittakerModBiomeFunc()
 
 	r_waterbody_size := m.getWaterBodySizes()
-	_, maxElev := minMax(m.r_elevation)
+	_, maxElev := minMax(m.Elevation)
 
 	// Return culture type based on culture center region.
 	return func(r int) CultureType {
-		eleVal := m.r_elevation[r] / maxElev
+		eleVal := m.Elevation[r] / maxElev
 		gotBiome := m.getRBiomeTEMP(r, eleVal, maxElev)
 		log.Println(gotBiome)
 		log.Println(wmf(r))
@@ -611,14 +626,3 @@ func (m *Map) getHeightCost(i int, h float64, cType CultureType) int {
     if (t !== -1) return type === "Naval" || type === "Lake" ? 100 : 0; // penalty for mainland for navals
     return 0;
   }*/
-
-// probability shorthand
-func P(probability float64) bool {
-	if probability >= 1.0 {
-		return true
-	}
-	if probability <= 0 {
-		return false
-	}
-	return rand.Float64() < probability
-}

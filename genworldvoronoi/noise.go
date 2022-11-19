@@ -16,7 +16,7 @@ func init() {
 }
 
 // fbm_noise returns a noise value for the given xyz coordinate.
-func (m *Map) fbm_noise(nx, ny, nz float64) float64 {
+func (m *Geo) fbm_noise(nx, ny, nz float64) float64 {
 	sum := 0.0
 	sumOfAmplitudes := 0.0
 	for octave := 0; octave < len(amplitudes); octave++ {
@@ -27,10 +27,10 @@ func (m *Map) fbm_noise(nx, ny, nz float64) float64 {
 	return sum / sumOfAmplitudes
 }
 
-func (m *Map) fbm_noise2(octaves int, persistence, mx, my, mz, dx, dy, dz float64) func(int) float64 {
+func (m *Geo) fbm_noise2(octaves int, persistence, mx, my, mz, dx, dy, dz float64) func(int) float64 {
 	// https://thebookofshaders.com/13/
 	return func(r int) float64 {
-		nx, ny, nz := m.r_xyz[3*r]*mx+dx, m.r_xyz[3*r+1]*my+dy, m.r_xyz[3*r+2]*mz+dz
+		nx, ny, nz := m.XYZ[3*r]*mx+dx, m.XYZ[3*r+1]*my+dy, m.XYZ[3*r+2]*mz+dz
 		var sum float64
 		var sumOfAmplitudes float64
 		amplitude := 1.0

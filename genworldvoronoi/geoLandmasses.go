@@ -5,9 +5,9 @@ import (
 	"log"
 )
 
-// identifyLandmasses returns a mapping from region to landmass ID.
+// IdentifyLandmasses returns a mapping from region to landmass ID.
 // A landmass is a connected number of regions above sealevel.
-func (m *Map) identifyLandmasses() []int {
+func (m *Geo) IdentifyLandmasses() []int {
 	// NOTE: this is still in need of refinement.
 	landMasses := make([]int, m.mesh.numRegions)
 	for r := range landMasses {
@@ -15,7 +15,7 @@ func (m *Map) identifyLandmasses() []int {
 	}
 	var landID int
 	var landSizes []int
-	for r, h := range m.r_elevation {
+	for r, h := range m.Elevation {
 		// Skip if the current region has already been allocated
 		// or is below sealevel.
 		if landMasses[r] != -1 || h < 0 {
@@ -26,15 +26,15 @@ func (m *Map) identifyLandmasses() []int {
 		enqueue := func(r int) {
 			// Skip if the current region has already been allocated
 			// or is below sealevel.
-			if landMasses[r] != -1 || m.r_elevation[r] < 0 {
+			if landMasses[r] != -1 || m.Elevation[r] < 0 {
 				return
 			}
 			landMasses[r] = landID // Assign current landID to the region.
 			currentLandSize++      // Increase size of known landmass.
-			for _, nb := range m.rNeighbors(r) {
+			for _, nb := range m.GetRegionNeighbors(r) {
 				// Skip if the neighbor region has already been allocated
 				// or is below sealevel.
-				if landMasses[nb] != -1 || m.r_elevation[nb] < 0 {
+				if landMasses[nb] != -1 || m.Elevation[nb] < 0 {
 					continue
 				}
 				queue.PushBack(nb)
@@ -61,9 +61,10 @@ func (m *Map) identifyLandmasses() []int {
 	return landMasses
 }
 
-func (m *Map) getLandmassSizes() map[int]int {
+// GetLandmassSizes returns a mapping of landmass ID to size in regions.
+func (m *Geo) GetLandmassSizes() map[int]int {
 	lmSize := make(map[int]int)
-	for _, lm := range m.identifyLandmasses() {
+	for _, lm := range m.IdentifyLandmasses() {
 		if lm >= 0 {
 			lmSize[lm]++ // Only count regions that are set to a valid ID.
 		}

@@ -5,32 +5,32 @@ import (
 	"math"
 )
 
-// rErode erodes all region by the given amount.
+// Erode erodes all region by the given amount and returns the resulting heightmap.
 //
 // NOTE: This is based on mewo2's erosion code but limits the eroded height
 // to a fraction of the height difference to the downhill neighbor, which
 // prevents extreme sinks from forming.
 //
 // See: https://github.com/mewo2/terrain
-func (m *Map) rErode(amount float64) []float64 {
+func (m *Geo) Erode(amount float64) []float64 {
 	// Get downhill height diffs so we can ensure that we do not erode
 	// any more than that, which would produce sinks (which we try to avoid).
 	dhDiff := make([]float64, m.mesh.numRegions)
-	for r, dhr := range m.getDownhill(false) {
+	for r, dhr := range m.GetDownhill(false) {
 		// Skip all sinks which have a downhill value of -1
 		if dhr < 0 {
 			// NOTE: Sinks have no height diff, but in theory we could give it a
 			// negative height diff to fill the sinks during the erosion steps?
 			continue
 		}
-		dhDiff[r] = m.r_elevation[r] - m.r_elevation[dhr]
+		dhDiff[r] = m.Elevation[r] - m.Elevation[dhr]
 	}
 
 	// This will hold our new heightmap.
 	newh := make([]float64, m.mesh.numRegions)
 
 	// Get the erosion rate for all regions.
-	er := m.rErosionRate()
+	er := m.GetErosionRate()
 
 	// Get the maximum erosion rate, so we can normalize the erosion values.
 	_, maxr := minMax(er)
@@ -38,15 +38,15 @@ func (m *Map) rErode(amount float64) []float64 {
 	// Calculate the new heightmap by applying the erosion rates we have calculated.
 	for r, e := range er {
 		// We can at most erode amount*dhDiff[r].
-		newh[r] = m.r_elevation[r] - amount*dhDiff[r]*(e/maxr)
+		newh[r] = m.Elevation[r] - amount*dhDiff[r]*(e/maxr)
 	}
 	return newh
 }
 
-// rErosionRate returns the erosion rate per region.
+// GetErosionRate returns the erosion rate per region.
 // NOTE: This is based on mewo2's erosion code
 // See: https://github.com/mewo2/terrain
-func (m *Map) rErosionRate() []float64 {
+func (m *Geo) GetErosionRate() []float64 {
 	// TODO: Change to distance so that it is independent of resolution.
 	const nbErosionFactor = 0.125
 
@@ -62,13 +62,13 @@ func (m *Map) rErosionRate() []float64 {
 	_, maxFlux := minMax(flux)
 
 	// Get the slope values for all regions.
-	slope := m.getRSlope()
+	slope := m.GetSlope()
 
 	// This will hold the erosion values for each region.
 	newh := make([]float64, m.mesh.numRegions)
 
 	// Get the max height value so we can normalize the elevation values.
-	_, maxH := minMax(m.r_elevation) // TODO: Cache somewhere?
+	_, maxH := minMax(m.Elevation) // TODO: Cache somewhere?
 
 	// erodeRegion sets the erosion rate for the given region and
 	// traverses the neighbor graph up to the remaining depth (rem).
@@ -93,7 +93,7 @@ func (m *Map) rErosionRate() []float64 {
 		// Additionally visit all neighbors and erode them by a certain
 		// fraction of the given erosion value.
 		toErode *= nbErosionFactor
-		for _, nb := range m.rNeighbors(r) {
+		for _, nb := range m.GetRegionNeighbors(r) {
 			erodeRegion(nb, rem, toErode)
 		}
 	}
@@ -129,10 +129,10 @@ func (m *Map) rErosionRate() []float64 {
 	return newh
 }
 
-// rErosionRate2 is an alternative erosion calculation which takes in account
+// GetErosionRate2 is an alternative erosion calculation which takes in account
 // the steepness and flux of each region to determine the shape of eroded
 // riverbeds and valleys.
-func (m *Map) rErosionRate2() []float64 {
+func (m *Geo) GetErosionRate2() []float64 {
 	const (
 		// HACK: That's about 3 neighbors away at 400.000 points. This should not be hardcoded.
 		maxErosionDistance = 3 * 0.006
@@ -141,7 +141,7 @@ func (m *Map) rErosionRate2() []float64 {
 	)
 
 	// Get the steepness of each region to its downhill neighbor.
-	steeps := m.getRSteepness()
+	steeps := m.GetSteepness()
 
 	// This will collect the erosion values for each region.
 	toE := make([]float64, m.mesh.numRegions)
@@ -197,13 +197,13 @@ func (m *Map) rErosionRate2() []float64 {
 
 		// Get lat/lon of the current region to calculate the great arc
 		// distance of each neighbor visited by doErode().
-		rLatLon := m.r_latLon[r]
+		rLatLon := m.LatLon[r]
 
 		// If we have a downhill neighbor, use its lat lon coordinates
 		// for the arc segment distance.
 		dLatLon := rLatLon
-		if rdh := m.r_downhill[r]; rdh >= 0 {
-			dLatLon = m.r_latLon[rdh]
+		if rdh := m.Downhill[r]; rdh >= 0 {
+			dLatLon = m.LatLon[rdh]
 		}
 
 		// seen will keep track of all regions whose neighbors doErode()
@@ -225,8 +225,8 @@ func (m *Map) rErosionRate2() []float64 {
 			seen[reg] = true
 
 			// Visit all neighbors of reg and calculate the erosion rate for each.
-			for _, nb := range m.rNeighbors(reg) {
-				nbLatLon := m.r_latLon[nb]
+			for _, nb := range m.GetRegionNeighbors(reg) {
+				nbLatLon := m.LatLon[nb]
 
 				// Calculate distance to the arc/line segment of the river (r->rdh).
 				dist := crossArc(rLatLon[0], rLatLon[1], dLatLon[0], dLatLon[1], nbLatLon[0], nbLatLon[1])

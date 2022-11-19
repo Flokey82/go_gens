@@ -20,26 +20,26 @@ func (c *CityState) Log() {
 	c.Stats.Log()
 }
 
-func (m *Map) GetCityStates() []*CityState {
+func (m *Civ) GetCityStates() []*CityState {
 	// TODO: Deduplicate with GetEmpires.
 	var res []*CityState
 	for i := 0; i < m.NumCityStates; i++ {
 		c := &CityState{
-			ID:      m.cities_r[i].ID,
-			Capital: m.cities_r[i],
+			ID:      m.Cities[i].ID,
+			Capital: m.Cities[i],
 		}
 
 		// Loop through all cities and gather all that
 		// are within the current city state.
-		for _, ct := range m.cities_r {
-			if m.r_city[ct.ID] == c.ID {
+		for _, ct := range m.Cities {
+			if m.RegionToCityState[ct.ID] == c.ID {
 				c.Cities = append(c.Cities, ct)
 			}
 		}
 
 		// Collect all regions that are part of the
 		// current territory.
-		for r, terr := range m.r_city {
+		for r, terr := range m.RegionToCityState {
 			if terr == c.ID {
 				c.Regions = append(c.Regions, r)
 			}
@@ -51,6 +51,8 @@ func (m *Map) GetCityStates() []*CityState {
 	return res
 }
 
-func (m *Map) getCityStateNeighbors(c *CityState) []int {
-	return m.getRTerritoryNeighbors(c.ID, m.r_city)
+// getCityStateNeighbors returns all city states that are neighbors of the
+// given city state.
+func (m *Civ) getCityStateNeighbors(c *CityState) []int {
+	return m.getTerritoryNeighbors(c.ID, m.RegionToCityState)
 }

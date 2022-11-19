@@ -8,7 +8,7 @@ func (m *BaseObject) getWaterBodies() []int {
 	// Initialize the waterbody (ocean) mapping.
 	done := make([]int, m.mesh.numRegions)
 	for i := range done {
-		if m.r_elevation[i] > 0 {
+		if m.Elevation[i] > 0 {
 			done[i] = -2 // Non-ocean regions above sealevel.
 		} else {
 			done[i] = -1 // Ocean regions that have not been visited yet.
@@ -33,9 +33,9 @@ func (m *BaseObject) getWaterBodies() []int {
 		// the execution stack might go.
 		var diveDeeper func(rd int)
 		diveDeeper = func(rd int) {
-			for _, nbs := range m.rNeighbors(rd) {
+			for _, nbs := range m.GetRegionNeighbors(rd) {
 				// If we have reached land or already visited nbs, skip.
-				if m.r_elevation[nbs] > 0 || done[nbs] != -1 {
+				if m.Elevation[nbs] > 0 || done[nbs] != -1 {
 					continue
 				}
 				// Assign the source region index to nbs.
@@ -58,7 +58,7 @@ func (m *BaseObject) getWaterBodies() []int {
 // associated with each waterbody ID.
 func (m *BaseObject) getWaterBodySizes() map[int]int {
 	wbSize := make(map[int]int)
-	for _, wb := range m.r_waterbodies {
+	for _, wb := range m.Waterbodies {
 		if wb >= 0 {
 			wbSize[wb]++ // Only count regions that are set to a valid ID.
 		}
@@ -70,7 +70,7 @@ func (m *BaseObject) getWaterBodySizes() map[int]int {
 // drain to this point, effectively summing up the size of each lake.
 func (m *BaseObject) getLakeSizes() map[int]int {
 	lakeSize := make(map[int]int)
-	for _, drain := range m.r_drainage {
+	for _, drain := range m.Drainage {
 		if drain != -1 {
 			lakeSize[drain]++ // Only count regions that have a drainage point assigned.
 		}
@@ -81,11 +81,11 @@ func (m *BaseObject) getLakeSizes() map[int]int {
 // getRLakeOrWaterBodySize returns the size of the lake or waterbody that the
 // provided region is part of.
 func (m *BaseObject) getRLakeOrWaterBodySize(r int) int {
-	if m.r_waterbodies[r] >= 0 {
-		return m.r_waterbody_size[m.r_waterbodies[r]]
+	if m.Waterbodies[r] >= 0 {
+		return m.WaterbodySize[m.Waterbodies[r]]
 	}
-	if m.r_drainage[r] >= 0 {
-		return m.r_lake_size[m.r_drainage[r]]
+	if m.Drainage[r] >= 0 {
+		return m.LakeSize[m.Drainage[r]]
 	}
 	return 0
 }

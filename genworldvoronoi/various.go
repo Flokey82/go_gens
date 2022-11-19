@@ -1,7 +1,9 @@
 package genworldvoronoi
 
 import (
+	"log"
 	"math"
+	"math/rand"
 	"sort"
 
 	"github.com/Flokey82/go_gens/vectors"
@@ -199,4 +201,116 @@ func initRegionSlice(size int) []int {
 		res[i] = -1
 	}
 	return res
+}
+
+// mergeIndexSegments matches up the ends of the segments (region pairs) and returns
+// a slice containing all continuous, connected segments as sequence of connected regions.
+func mergeIndexSegments(segs [][2]int) [][]int {
+	log.Println("start adj")
+	adj := make(map[int][]int)
+	for i := 0; i < len(segs); i++ {
+		seg := segs[i]
+		adj[seg[0]] = append(adj[seg[0]], seg[1])
+		adj[seg[1]] = append(adj[seg[1]], seg[0])
+	}
+	var maxSegIdx int
+	for s := range adj {
+		if s > maxSegIdx {
+			maxSegIdx = s
+		}
+	}
+	done := make([]bool, maxSegIdx)
+	var paths [][]int
+	var path []int
+	log.Println("start paths")
+	for {
+		if path == nil {
+			for i := 0; i < len(segs); i++ {
+				if done[i] {
+					continue
+				}
+				done[i] = true
+				path = []int{segs[i][0], segs[i][1]}
+				break
+			}
+			if path == nil {
+				break
+			}
+		}
+		var changed bool
+		for i := 0; i < len(segs); i++ {
+			if done[i] {
+				continue
+			}
+			if len(adj[path[0]]) == 2 {
+				if segs[i][0] == path[0] {
+					path = unshiftIndexPath(path, segs[i][1])
+					done[i] = true
+					changed = true
+					break
+				}
+				if segs[i][1] == path[0] {
+					path = unshiftIndexPath(path, segs[i][0])
+					done[i] = true
+					changed = true
+					break
+				}
+			}
+			if len(adj[path[len(path)-1]]) == 2 {
+				if segs[i][0] == path[len(path)-1] {
+					path = append(path, segs[i][1])
+					done[i] = true
+					changed = true
+					break
+				}
+				if segs[i][1] == path[len(path)-1] {
+					path = append(path, segs[i][0])
+					done[i] = true
+					changed = true
+					break
+				}
+			}
+		}
+		if !changed {
+			//log.Println("done paths", len(paths), "pathlen", len(path))
+			paths = append(paths, path)
+			path = nil
+		}
+	}
+	return paths
+}
+
+func unshiftIndexPath(path []int, p int) []int {
+	res := make([]int, len(path)+1)
+	res[0] = p
+	copy(res[1:], path)
+	return res
+}
+
+// round value to d decimals
+func roundToDecimals(v, d float64) float64 {
+	m := math.Pow(10, d)
+	return math.Round(v*m) / m
+}
+
+// turn weighted array into simple array
+func weightedToArray(weighted map[string]int) []string {
+	var res []string
+	for key, weight := range weighted {
+		for j := 0; j < weight; j++ {
+			res = append(res, key)
+		}
+	}
+	return res
+}
+
+// probability shorthand
+func P(probability float64) bool {
+	if probability >= 1.0 {
+		return true
+	}
+	if probability <= 0 {
+		return false
+	}
+	return rand.Float64() < probability
 }

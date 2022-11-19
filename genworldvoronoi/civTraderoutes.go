@@ -8,7 +8,7 @@ import (
 	"github.com/chsc/astar"
 )
 
-func (r *Map) getTradeRoutes() ([][]int, [][]int) {
+func (m *Civ) getTradeRoutes() ([][]int, [][]int) {
 	// TODO: Allow persistent trading routes, so we can run multiple times without
 	//       destroying existing routes.
 	// Major cities will produce major trading routes that ensure that trade will be
@@ -20,19 +20,19 @@ func (r *Map) getTradeRoutes() ([][]int, [][]int) {
 	// to consider later.
 	log.Println("Generating trade routes...")
 	nodeCache := make(map[int]*TradeNode)
-	steepness := r.getRSteepness()
+	steepness := m.GetSteepness()
 
-	cities := r.cities_r
+	cities := m.Cities
 	isCity := make(map[int]bool)
 	for _, c := range cities {
 		isCity[c.ID] = true
 	}
 
-	_, maxElevation := minMax(r.r_elevation)
+	_, maxElevation := minMax(m.Elevation)
 
 	// linking will store which cities are linked through a trade route crossing
 	// the given region.
-	linking := make([][]int, r.mesh.numRegions)
+	linking := make([][]int, m.mesh.numRegions)
 	var getNode func(i int) *TradeNode
 	getNode = func(i int) *TradeNode {
 		// Make sure we re-use pre-existing nodes.
@@ -45,7 +45,7 @@ func (r *Map) getTradeRoutes() ([][]int, [][]int) {
 		// create a new one.
 		n = &TradeNode{
 			steepness:    steepness,
-			r:            r,
+			r:            m,
 			index:        i,
 			getNode:      getNode,
 			isCity:       isCity,
@@ -74,14 +74,14 @@ func (r *Map) getTradeRoutes() ([][]int, [][]int) {
 		// Sort by distance to start as we try to connect the closest towns first.
 		// NOTE: Wouldn't it make sense to connect the largest cities first?
 		sort.Slice(sortCityIdx, func(j, k int) bool {
-			return r.getRDistance(start, cities[sortCityIdx[j]].ID) < r.getRDistance(start, cities[sortCityIdx[k]].ID)
+			return m.GetDistance(start, cities[sortCityIdx[j]].ID) < m.GetDistance(start, cities[sortCityIdx[k]].ID)
 		})
 		for _, j := range sortCityIdx {
 			end := cities[j].ID
 			// We don't want to link a city to itself and we try to avoid double
 			// links (a->b and b->a) as well as we try to only connect towns within
 			// the same territory.
-			if i == j || visited[[2]int{start, end}] || visited[[2]int{end, start}] || r.r_territory[start] != r.r_territory[end] { //  || math.Abs(float64(i-j)) > float64(5)
+			if i == j || visited[[2]int{start, end}] || visited[[2]int{end, start}] || m.RegionToTerritory[start] != m.RegionToTerritory[end] { //  || math.Abs(float64(i-j)) > float64(5)
 				continue
 			}
 			// Make sure we note that we have visited this city pair.
@@ -118,7 +118,7 @@ func (r *Map) getTradeRoutes() ([][]int, [][]int) {
 }
 
 type TradeNode struct {
-	r            *Map
+	r            *Civ
 	getNode      func(int) *TradeNode
 	index        int          // node index / region number
 	used         int          // number of times this node was used for a trade route
@@ -132,29 +132,29 @@ func (n *TradeNode) SetUsed() {
 }
 
 func (n *TradeNode) NumNeighbours() int {
-	return len(n.r.rNeighbors(n.index))
+	return len(n.r.GetRegionNeighbors(n.index))
 }
 
 func (n *TradeNode) Neighbour(i int) astar.Node {
 	// TODO: Fix this... this is highly inefficient.
-	return n.getNode(n.r.rNeighbors(n.index)[i])
+	return n.getNode(n.r.GetRegionNeighbors(n.index)[i])
 }
 
 func (n *TradeNode) Cost(i int) float32 {
 	// Discourage underwater paths.
-	if n.r.r_elevation[n.index] <= 0 {
+	if n.r.Elevation[n.index] <= 0 {
 		return 999.00
 	}
 	// TODO: Fix this... this is highly inefficient.
-	nIdx := n.r.rNeighbors(n.index)[i]
-	if n.r.r_elevation[nIdx] <= 0 {
+	nIdx := n.r.GetRegionNeighbors(n.index)[i]
+	if n.r.Elevation[nIdx] <= 0 {
 		return 999.00
 	}
 
 	cost := float32(1.0)
 
 	// Altitude changes come with a cost.
-	cost *= 1.0 - float32(math.Abs(n.r.r_elevation[nIdx]-n.r.r_elevation[n.index])/n.maxElevation)
+	cost *= 1.0 - float32(math.Abs(n.r.Elevation[nIdx]-n.r.Elevation[n.index])/n.maxElevation)
 	//	if n.used > 0 {
 	//		cost *= 0.75
 	//	} else {
@@ -177,8 +177,8 @@ func (n *TradeNode) Cost(i int) float32 {
 	}
 
 	// Bonus if along coast.
-	for _, nbnb := range n.r.rNeighbors(nIdx) {
-		if n.r.r_elevation[nbnb] <= 0 {
+	for _, nbnb := range n.r.GetRegionNeighbors(nIdx) {
+		if n.r.Elevation[nbnb] <= 0 {
 			cost *= 0.65
 			break
 		}
@@ -195,7 +195,7 @@ func (n *TradeNode) Cost(i int) float32 {
 	}
 
 	// Penalty for crossing into a new territory
-	if n.r.r_territory[n.index] != n.r.r_territory[nIdx] {
+	if n.r.RegionToTerritory[n.index] != n.r.RegionToTerritory[nIdx] {
 		cost += 1.2
 	}
 
@@ -213,5 +213,5 @@ func (n *TradeNode) Cost(i int) float32 {
 }
 
 func estimateFunction(start, end astar.Node) float32 {
-	return float32(start.(*TradeNode).r.getRDistance(start.(*TradeNode).index, end.(*TradeNode).index))
+	return float32(start.(*TradeNode).r.GetDistance(start.(*TradeNode).index, end.(*TradeNode).index))
 }

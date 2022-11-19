@@ -7,6 +7,7 @@ import (
 	"github.com/Flokey82/go_gens/genbiome"
 )
 
+// The different types of cities.
 const (
 	TownTypeDefault     = "town"
 	TownTypeTrading     = "trading"
@@ -15,17 +16,18 @@ const (
 	TownTypeDesertOasis = "desert oasis"
 )
 
+// City represents a city in the world.
 type City struct {
-	ID       int     // Region where the city is located
-	Name     string  // TODO: Fill locally.
-	Type     string  // Type of city
-	Score    float64 // Score of the fitness function
-	Culture  *Culture
-	Language *Language
+	ID       int       // Region where the city is located
+	Name     string    // TODO: Fill locally.
+	Type     string    // Type of city
+	Score    float64   // Score of the fitness function
+	Culture  *Culture  // Culture of the city region
+	Language *Language // Language of the city
 }
 
-// rPlaceNCities places n cities with the highest fitness scores.
-func (m *Map) rPlaceNCities(n int, cType string) {
+// PlaceNCities places n cities with the highest fitness scores.
+func (m *Civ) PlaceNCities(n int, cType string) {
 	// The fitness function, returning a score from
 	// 0.0 to 1.0 for a given region.
 	var sf func(int) float64
@@ -74,7 +76,7 @@ func (m *Map) rPlaceNCities(n int, cType string) {
 	// For now we just maximize the distance to cities of the same type.
 	dsf = func() []int {
 		var cities []int
-		for _, c := range m.cities_r {
+		for _, c := range m.Cities {
 			if c.Type == cType {
 				cities = append(cities, c.ID)
 			}
@@ -84,16 +86,16 @@ func (m *Map) rPlaceNCities(n int, cType string) {
 
 	// Place n cities of the given type.
 	for i := 0; i < n; i++ {
-		log.Println("placing "+cType+" city", i)
-		m.rPlaceCity(cType, sf, dsf)
+		c := m.PlaceCity(cType, sf, dsf)
+		log.Printf("placing %s city %d: %s", cType, i, c.Name)
 	}
 }
 
-// rPlaceCity places another city at the region with the highest fitness score.
-func (m *Map) rPlaceCity(cType string, sf func(int) float64, distSeedFunc func() []int) {
+// PlaceCity places another city at the region with the highest fitness score.
+func (m *Civ) PlaceCity(cType string, sf func(int) float64, distSeedFunc func() []int) *City {
 	var newcity int
 	lastMax := math.Inf(-1)
-	for i, val := range m.rCityScore(sf, distSeedFunc) {
+	for i, val := range m.CalcCityScore(sf, distSeedFunc) {
 		if val > lastMax {
 			newcity = i
 			lastMax = val
@@ -105,31 +107,27 @@ func (m *Map) rPlaceCity(cType string, sf func(int) float64, distSeedFunc func()
 		ID:      newcity,
 		Score:   lastMax,
 		Type:    cType,
-		Culture: m.getRCulture(newcity),
+		Culture: m.GetCulture(newcity),
 	}
 
 	// If there is no known culture, generate a new one.
 	if c.Culture == nil {
-		// TODO: Deduplicate with civCultures.go
-		// TODO: Grow this culture.
-		newCult := m.newCulture(newcity, m.getRCultureTypeFunc())
-		newCult.Regions = []int{newcity}
-		newCult.Stats = m.getStats(newCult.Regions)
-		m.cultures_r = append(m.cultures_r, newCult)
-		m.r_cultures[newcity] = newcity
-		c.Culture = newCult
+		c.Culture = m.PlaceCultureAt(newcity) // TODO: Grow this culture.
 	}
 
 	// Use the local language to generate a new city name.
 	c.Language = c.Culture.Language
 	c.Name = c.Language.MakeCityName()
-	m.cities_r = append(m.cities_r, c)
+	m.Cities = append(m.Cities, c)
+	return c
 }
 
-// rCityScore calculates the fitness value for settlements for all regions.
-// distSeedFunc returns a number of regions from which we maximize the distance when
+// CalcCityScore calculates the fitness value for settlements for all regions.
+//
+// - 'sf' is the fitness function for scoring a region.
+// - 'distSeedFunc' returns a number of regions from which we maximize the distance when
 // calculating the fitness score.
-func (m *Map) rCityScore(sf func(int) float64, distSeedFunc func() []int) []float64 {
+func (m *Civ) CalcCityScore(sf func(int) float64, distSeedFunc func() []int) []float64 {
 	// TODO: Create different fitness functions for different types of settlement.
 	//   - Capital
 	//   - Cities / Settlements
@@ -150,7 +148,7 @@ func (m *Map) rCityScore(sf func(int) float64, distSeedFunc func() []int) []floa
 	for i := 0; i < m.mesh.numRegions; i++ {
 		// If we are below (or at) sea level, or we are in a pool of water,
 		// assign lowest score and continue.
-		if m.r_elevation[i] <= 0 || m.r_pool[i] > 0 {
+		if m.Elevation[i] <= 0 || m.Waterpool[i] > 0 {
 			score[i] = -1.0
 			continue
 		}
@@ -175,7 +173,7 @@ func (m *Map) rCityScore(sf func(int) float64, distSeedFunc func() []int) []floa
 	return score
 }
 
-func (m *Map) getFitnessTradingTowns() func(int) float64 {
+func (m *Civ) getFitnessTradingTowns() func(int) float64 {
 	// TODO: Fix this.
 	// I think this function should avoid the penalty wrt.
 	// proximity to towns of other types.
@@ -185,40 +183,25 @@ func (m *Map) getFitnessTradingTowns() func(int) float64 {
 	}
 }
 
-// getFitnessClimate returns a fitness function that returns high
-// scores for regions with high rainfall and high temperatures.
-func (m *Map) getFitnessClimate() func(int) float64 {
-	_, maxRain := minMax(m.r_rainfall)
-	_, maxElev := minMax(m.r_elevation)
-
-	return func(r int) float64 {
-		rTemp := m.getRTemperature(r, maxElev)
-		if rTemp < 0 {
-			return 0.1
-		}
-		return 0.1 + 0.9*(m.r_rainfall[r]/maxRain)*math.Sqrt(rTemp/maxTemp)
-	}
-}
-
-func (m *Map) getFitnessCityDefault() func(int) float64 {
-	_, maxFlux := minMax(m.r_flux)
-	steepness := m.getRSteepness()
+func (m *Civ) getFitnessCityDefault() func(int) float64 {
+	_, maxFlux := minMax(m.Flux)
+	steepness := m.GetSteepness()
 
 	return func(i int) float64 {
 		// If we are below (or at) sea level, or we are in a pool of water,
 		// assign lowest score and continue.
-		if m.r_elevation[i] <= 0 || m.r_pool[i] > 0 {
+		if m.Elevation[i] <= 0 || m.Waterpool[i] > 0 {
 			return -1.0
 		}
 
 		// Visit all neighbors and modify the score based on their properties.
 		var hasWaterBodyBonus bool
-		nbs := m.rNeighbors(i)
+		nbs := m.GetRegionNeighbors(i)
 
 		// Initialize fitness score with the normalized flux value.
 		// This will favor placing cities along (and at the end of)
 		// large rivers.
-		score := math.Sqrt(m.r_flux[i] / maxFlux)
+		score := math.Sqrt(m.Flux[i] / maxFlux)
 		for _, nb := range nbs {
 			// Add bonus if near ocean or lake.
 			if m.isRBelowOrAtSeaLevelOrPool(nb) {

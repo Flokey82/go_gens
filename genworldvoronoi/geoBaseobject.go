@@ -11,32 +11,32 @@ import (
 )
 
 type BaseObject struct {
-	r_xyz            []float64    // Point / region xyz coordinates
-	r_latLon         [][2]float64 // Point / region latitude and longitude
-	r_elevation      []float64    // Point / region elevation
-	r_moisture       []float64    // Point / region moisture
-	r_rainfall       []float64    // Point / region rainfall
-	r_flux           []float64    // Point / region hydrology: throughflow of rainfall
-	r_pool           []float64
-	r_downhill       []int // Point / region mapping to its lowest neighbor
-	r_drainage       []int
-	r_waterbodies    []int
-	r_waterbody_size map[int]int
-	r_lake_size      map[int]int
-	t_moisture       []float64 // Triangle moisture
-	t_elevation      []float64 // Triangle elevation
-	t_xyz            []float64 // Triangle xyz coordinates
-	t_pool           []float64
-	t_latLon         [][2]float64
-	seed             int64             // Seed for random number generators
-	rand             *rand.Rand        // Rand initialized with above seed
-	noise            opensimplex.Noise // Opensimplex noise initialized with above seed
-	mesh             *TriangleMesh     // Triangle mesh containing the sphere information
+	XYZ           []float64         // Point / region xyz coordinates
+	LatLon        [][2]float64      // Point / region latitude and longitude
+	Elevation     []float64         // Point / region elevation
+	Moisture      []float64         // Point / region moisture
+	Rainfall      []float64         // Point / region rainfall
+	Flux          []float64         // Point / region hydrology: throughflow of rainfall
+	Waterpool     []float64         // Point / region hydrology: water pool depth
+	Downhill      []int             // Point / region mapping to its lowest neighbor
+	Drainage      []int             // Point / region mapping of pool to its drainage region
+	Waterbodies   []int             // Point / region mapping of pool to waterbody ID
+	WaterbodySize map[int]int       // Waterbody ID to size mapping
+	LakeSize      map[int]int       // Lake ID to size mapping
+	t_moisture    []float64         // Triangle moisture
+	t_elevation   []float64         // Triangle elevation
+	t_xyz         []float64         // Triangle xyz coordinates
+	t_pool        []float64         // Triangle water pool depth
+	t_latLon      [][2]float64      // Triangle latitude and longitude
+	Seed          int64             // Seed for random number generators
+	rand          *rand.Rand        // Rand initialized with above seed
+	noise         opensimplex.Noise // Opensimplex noise initialized with above seed
+	mesh          *TriangleMesh     // Triangle mesh containing the sphere information
 }
 
 // resetRand resets the random number generator to its initial state.
 func (m *BaseObject) resetRand() {
-	m.rand.Seed(m.seed)
+	m.rand.Seed(m.Seed)
 }
 
 // pickRandomRegions picks n random points/regions from the given mesh.
@@ -66,9 +66,9 @@ func (m *BaseObject) generateTriangleCenters() {
 		b := m.mesh.s_begin_r(3*t + 1)
 		c := m.mesh.s_begin_r(3*t + 2)
 		v3 := getCentroidOfTriangle(
-			m.r_xyz[3*a:3*a+3],
-			m.r_xyz[3*b:3*b+3],
-			m.r_xyz[3*c:3*c+3])
+			m.XYZ[3*a:3*a+3],
+			m.XYZ[3*b:3*b+3],
+			m.XYZ[3*c:3*c+3])
 		t_xyz = append(t_xyz, v3.X, v3.Y, v3.Z)
 		nla, nlo := latLonFromVec3(v3, 1.0)
 		t_latLon = append(t_latLon, [2]float64{nla, nlo})
@@ -81,9 +81,9 @@ func (m *BaseObject) generateTriangleCenters() {
 // assignTriangleValues averages out the values of the mesh points / regions and assigns them
 // to the triangles of the mesh (or the triangle centroid).
 func (m *BaseObject) assignTriangleValues() {
-	r_elevation := m.r_elevation
-	r_moisture := m.r_moisture
-	r_pool := m.r_pool
+	r_elevation := m.Elevation
+	r_moisture := m.Moisture
+	r_pool := m.Waterpool
 	t_elevation := m.t_elevation
 	t_moisture := m.t_moisture
 	t_pool := m.t_pool
@@ -107,7 +107,7 @@ func (m *BaseObject) assignTriangleValues() {
 		for i := 0; i < 3; i++ {
 			s := 3*t + i
 			r := m.mesh.s_begin_r(s)
-			moisture += m.r_rainfall[r] / 3
+			moisture += m.Rainfall[r] / 3
 		}
 		t_moisture[t] = moisture
 	}
@@ -120,22 +120,26 @@ func (m *BaseObject) assignTriangleValues() {
 // NOTE: This is based on mewo2's terrain generation code
 // See: https://github.com/mewo2/terrain
 func (m *BaseObject) assignDownhill(usePool bool) {
-	m.r_downhill = m.getDownhill(usePool)
+	m.Downhill = m.GetDownhill(usePool)
 }
 
-func (m *BaseObject) getDownhill(usePool bool) []int {
+// GetDownhill will return a mapping of region to lowest neighbor region.
+//
+// If usePool is true, then the lowest neighbor will be calculated using
+// the water pool depth plus the elevation of the region.
+func (m *BaseObject) GetDownhill(usePool bool) []int {
 	// Here we will map each region to the lowest neighbor.
 	r_downhill := make([]int, m.mesh.numRegions)
 	for r := range r_downhill {
 		lowest_r := -1
-		lowest_elevation := m.r_elevation[r]
+		lowest_elevation := m.Elevation[r]
 		if usePool {
-			lowest_elevation += m.r_pool[r]
+			lowest_elevation += m.Waterpool[r]
 		}
-		for _, neighbor_r := range m.rNeighbors(r) {
-			elev := m.r_elevation[neighbor_r]
+		for _, neighbor_r := range m.GetRegionNeighbors(r) {
+			elev := m.Elevation[neighbor_r]
 			if usePool {
-				elev += m.r_pool[neighbor_r]
+				elev += m.Waterpool[neighbor_r]
 			}
 			if elev < lowest_elevation {
 				lowest_elevation = elev
@@ -147,23 +151,25 @@ func (m *BaseObject) getDownhill(usePool bool) []int {
 	return r_downhill
 }
 
-// Calculate distance using the lat long and haversine.
-func (m *BaseObject) getRDistance(r1, r2 int) float64 {
-	la1, lo1 := m.r_latLon[r1][0], m.r_latLon[r1][1]
-	la2, lo2 := m.r_latLon[r2][0], m.r_latLon[r2][1]
+// GetDistance calculate the distance between two regions using
+// the lat long and haversine.
+func (m *BaseObject) GetDistance(r1, r2 int) float64 {
+	la1, lo1 := m.LatLon[r1][0], m.LatLon[r1][1]
+	la2, lo2 := m.LatLon[r2][0], m.LatLon[r2][1]
 	return haversine(la1, lo1, la2, lo2)
 }
 
-func (m *BaseObject) rNeighbors(r int) []int {
+// GetRegionNeighbors returns the neighbor regions of a region.
+func (m *BaseObject) GetRegionNeighbors(r int) []int {
 	return m.mesh.r_circulate_r(nil, r)
 }
 
 func (m *BaseObject) getLowestNeighbor(r int) int {
 	lowest_r := -1
 	lowest_elevation := 999.0
-	rElev := m.r_elevation[r]
-	for _, neighbor_r := range m.rNeighbors(r) {
-		elev := m.r_elevation[neighbor_r]
+	rElev := m.Elevation[r]
+	for _, neighbor_r := range m.GetRegionNeighbors(r) {
+		elev := m.Elevation[neighbor_r]
 		if elev < lowest_elevation && elev < rElev {
 			lowest_elevation = elev
 			lowest_r = neighbor_r
@@ -175,16 +181,16 @@ func (m *BaseObject) getLowestNeighbor(r int) int {
 func (m *BaseObject) TestAreas() {
 	var tot float64
 	for i := 0; i < m.mesh.numRegions; i++ {
-		a := m.getRegionArea(i)
+		a := m.GetRegionArea(i)
 		tot += a
 		log.Println(a)
 	}
 	log.Println(tot)
 }
 
-// getRegionArea returns the surface area of a region on a unit sphere.
-func (m *BaseObject) getRegionArea(r int) float64 {
-	rLatLon := m.r_latLon[r]
+// GetRegionArea returns the surface area of a region on a unit sphere.
+func (m *BaseObject) GetRegionArea(r int) float64 {
+	rLatLon := m.LatLon[r]
 	ts := m.mesh.r_circulate_t(nil, r)
 	dists := make([]float64, len(ts))
 	for i, t := range ts {
@@ -206,31 +212,31 @@ func (m *BaseObject) getRegionArea(r int) float64 {
 }
 
 func (m *BaseObject) isRBelowOrAtSeaLevelOrPool(r int) bool {
-	return m.r_elevation[r] <= 0 || m.r_pool[r] > 0
+	return m.Elevation[r] <= 0 || m.Waterpool[r] > 0
 }
 
 func (m *BaseObject) isRLakeOrWaterBody(r int) bool {
-	return m.r_waterbodies[r] >= 0 || m.r_drainage[r] >= 0
+	return m.Waterbodies[r] >= 0 || m.Drainage[r] >= 0
 }
 
 func (m *BaseObject) isRiver(r int) bool {
-	return m.r_flux[r] > m.r_rainfall[r]
+	return m.Flux[r] > m.Rainfall[r]
 }
 
 func (m *BaseObject) isBigRiver(r int) bool {
-	return m.r_flux[r] > m.r_rainfall[r]*2
+	return m.Flux[r] > m.Rainfall[r]*2
 }
 
-// getRSlope returns the region slope by averaging the slopes of the triangles
+// GetSlope returns the region slope by averaging the slopes of the triangles
 // around a given region.
 //
 // NOTE: This is based on mewo2's erosion code but uses rPolySlope instead of
 // rSlope, which determines the slope based on all neighbors.
 //
 // See: https://github.com/mewo2/terrain
-func (m *BaseObject) getRSlope() []float64 {
+func (m *BaseObject) GetSlope() []float64 {
 	slope := make([]float64, m.mesh.numRegions)
-	for r, dhr := range m.getDownhill(false) {
+	for r, dhr := range m.GetDownhill(false) {
 		// Sinks have no slope, so we skip them.
 		if dhr < 0 {
 			continue
@@ -246,16 +252,16 @@ func (m *BaseObject) getRSlope() []float64 {
 	return slope
 }
 
-// getRSteepness returns the steepness per region.
+// GetSteepness returns the steepness of every region to their downhill neighbor.
 //
 // NOTE: We define steepness as the angle to a region from its downhill neighbor
 // expressed as a value between 0.0 to 1.0 (representing an angle from 0° to 90°).
-func (m *BaseObject) getRSteepness() []float64 {
+func (m *BaseObject) GetSteepness() []float64 {
 	// This will collect the steepness for each region.
 	steeps := make([]float64, m.mesh.numRegions)
 
 	// Get the downhill neighbors for all regions (ignoring water pools for now).
-	dh := m.getDownhill(false)
+	dh := m.GetDownhill(false)
 	for r, d := range dh {
 		if d < 0 {
 			continue // Skip all sinks.
@@ -278,11 +284,11 @@ func (m *BaseObject) getRSteepness() []float64 {
 		// steepness = angle * 2 / Pi
 
 		// Calculate height difference between r and dh[r].
-		hDiff := m.r_elevation[r] - m.r_elevation[d]
+		hDiff := m.Elevation[r] - m.Elevation[d]
 
 		// Great arc distance between the lat/lon coordinates of r and dh[r].
-		rLatLon := m.r_latLon[r]
-		dLatLon := m.r_latLon[d]
+		rLatLon := m.LatLon[r]
+		dLatLon := m.LatLon[d]
 		dist := haversine(rLatLon[0], rLatLon[1], dLatLon[0], dLatLon[1])
 
 		// Calculate the the angle (0°-90°) expressed as range from 0.0 to 1.0.
@@ -311,11 +317,11 @@ func (m *BaseObject) rPolySlope(i int) [2]float64 {
 	// End Function
 
 	var normal [3]float64
-	nbs := m.rNeighbors(i)
+	nbs := m.GetRegionNeighbors(i)
 	for j, r := range nbs {
 		jNext := nbs[(j+1)%len(nbs)]
-		current := convToVec3(m.r_xyz[r*3:])
-		next := convToVec3(m.r_xyz[jNext*3:])
+		current := convToVec3(m.XYZ[r*3:])
+		next := convToVec3(m.XYZ[jNext*3:])
 		normal[0] += (current.Z - next.Z) * (current.Y + next.Y)
 		normal[1] += (current.Y - next.Y) * (current.X + next.X)
 		normal[2] += (current.X - next.X) * (current.Z + next.Z)
@@ -373,16 +379,16 @@ func (m *BaseObject) rTriSlope(nbs []int) [2]float64 {
 	//
 	// End Function
 
-	p0 := convToVec3(m.r_xyz[nbs[0]*3:])
-	p1 := convToVec3(m.r_xyz[nbs[1]*3:])
-	p2 := convToVec3(m.r_xyz[nbs[2]*3:])
+	p0 := convToVec3(m.XYZ[nbs[0]*3:])
+	p1 := convToVec3(m.XYZ[nbs[1]*3:])
+	p2 := convToVec3(m.XYZ[nbs[2]*3:])
 
 	x1 := p1.X - p0.X
 	x2 := p2.X - p0.X
 	y1 := p1.Y - p0.Y
 	y2 := p2.Y - p0.Y
-	z1 := m.r_elevation[nbs[1]] - m.r_elevation[nbs[0]]
-	z2 := m.r_elevation[nbs[2]] - m.r_elevation[nbs[0]]
+	z1 := m.Elevation[nbs[1]] - m.Elevation[nbs[0]]
+	z2 := m.Elevation[nbs[2]] - m.Elevation[nbs[0]]
 
 	det := x1*y2 - y1*x2 // negative Z?
 	return [2]float64{
@@ -391,21 +397,21 @@ func (m *BaseObject) rTriSlope(nbs []int) [2]float64 {
 	}
 }
 
-// getSinks returns all regions that do not have a downhill neighbor.
+// GetSinks returns all regions that do not have a downhill neighbor.
 // If 'skipSinksBelowSea' is true, regions below sea level are excluded.
 // If 'usePool' is true, water pool data is used to determine if the sink is a lake.
-func (m *BaseObject) getSinks(skipSinksBelowSea, usePool bool) []int {
+func (m *BaseObject) GetSinks(skipSinksBelowSea, usePool bool) []int {
 	// Identify sinks above sea level.
 	var r_sinks []int
-	for r, lowest_r := range m.getDownhill(usePool) {
-		if lowest_r == -1 && (!skipSinksBelowSea || m.r_elevation[r] >= 0) { // && m.r_drainage[r] < 0
+	for r, lowest_r := range m.GetDownhill(usePool) {
+		if lowest_r == -1 && (!skipSinksBelowSea || m.Elevation[r] >= 0) { // && m.r_drainage[r] < 0
 			r_sinks = append(r_sinks, r)
 		}
 	}
 	return r_sinks
 }
 
-// fillSinks is an implementation of the algorithm described in
+// FillSinks is an implementation of the algorithm described in
 // https://www.researchgate.net/publication/240407597_A_fast_simple_and_versatile_algorithm_to_fill_the_depressions_of_digital_elevation_models
 // and a partial port of the implementation in:
 // https://github.com/Rob-Voss/Learninator/blob/master/js/lib/Terrain.js
@@ -414,7 +420,7 @@ func (m *BaseObject) getSinks(skipSinksBelowSea, usePool bool) []int {
 // in very artificially looking rivers. It lacks some kind of variation like
 // noise. It's very fast and less destructive than my other, home-grown algorithm.
 // Maybe it's worth to combine the two in some way?
-func (m *BaseObject) fillSinks() []float64 {
+func (m *BaseObject) FillSinks() []float64 {
 	// Reset the RNG.
 	m.resetRand()
 
@@ -422,10 +428,10 @@ func (m *BaseObject) fillSinks() []float64 {
 	baseEpsilon := 1.0 / (float64(m.mesh.numRegions) * 1000.0)
 	newHeight := make([]float64, m.mesh.numRegions)
 	for i := range newHeight {
-		if m.r_elevation[i] <= 0 {
+		if m.Elevation[i] <= 0 {
 			// Set the elevation at or below sea level to the current
 			// elevation.
-			newHeight[i] = m.r_elevation[i]
+			newHeight[i] = m.Elevation[i]
 		} else {
 			// Set the elevation above sea level to infinity.
 			newHeight[i] = inf
@@ -449,15 +455,15 @@ func (m *BaseObject) fillSinks() []float64 {
 
 		// By shuffling the order in which we parse regions,
 		// we ensure a more natural look.
-		for _, r := range m.rand.Perm(len(m.r_elevation)) {
+		for _, r := range m.rand.Perm(len(m.Elevation)) {
 			// Skip all regions that have the same elevation as in
 			// the current heightmap.
-			if newHeight[r] == m.r_elevation[r] {
+			if newHeight[r] == m.Elevation[r] {
 				continue
 			}
 
 			// Iterate over all neighbors in a random order.
-			nbs := m.rNeighbors(r)
+			nbs := m.GetRegionNeighbors(r)
 			for _, i := range m.rand.Perm(len(nbs)) {
 				nb := nbs[i]
 				// Since we have set all inland regions to infinity,
@@ -469,8 +475,8 @@ func (m *BaseObject) fillSinks() []float64 {
 				// the coast, comparing each region with the processed / set
 				// neighbors (that aren't set to infinity) in the new heightmap
 				// until we run out of regions that need change.
-				if m.r_elevation[r] >= newHeight[nb]+epsilon {
-					newHeight[r] = m.r_elevation[r]
+				if m.Elevation[r] >= newHeight[nb]+epsilon {
+					newHeight[r] = m.Elevation[r]
 					changed = true
 					break
 				}
@@ -491,7 +497,7 @@ func (m *BaseObject) fillSinks() []float64 {
 				//
 				// TODO: Simplify this comment word salad.
 				oh := newHeight[nb] + epsilon
-				if newHeight[r] > oh && oh > m.r_elevation[r] {
+				if newHeight[r] > oh && oh > m.Elevation[r] {
 					newHeight[r] = oh
 					changed = true
 				}
@@ -651,13 +657,13 @@ func (m *BaseObject) interpolate(rr []int) (*interpolated, error) {
 	seen := make(map[[2]int]bool)
 	for _, r := range rr {
 		ipl.num_r++
-		rxyz := m.r_xyz[r*3 : (r*3)+3]
-		ipl.r_xyz = append(ipl.r_xyz, rxyz...)
-		ipl.r_moisture = append(ipl.r_moisture, m.r_moisture[r])
-		ipl.r_rainfall = append(ipl.r_rainfall, m.r_rainfall[r])
-		ipl.r_flux = append(ipl.r_flux, m.r_flux[r])
-		ipl.r_pool = append(ipl.r_pool, m.r_pool[r])
-		ipl.r_elevation = append(ipl.r_elevation, m.r_elevation[r])
+		rxyz := m.XYZ[r*3 : (r*3)+3]
+		ipl.XYZ = append(ipl.XYZ, rxyz...)
+		ipl.Moisture = append(ipl.Moisture, m.Moisture[r])
+		ipl.Rainfall = append(ipl.Rainfall, m.Rainfall[r])
+		ipl.Flux = append(ipl.Flux, m.Flux[r])
+		ipl.Waterpool = append(ipl.Waterpool, m.Waterpool[r])
+		ipl.Elevation = append(ipl.Elevation, m.Elevation[r])
 
 		// Circulate_r all points and add midpoints.
 		for _, rn := range m.mesh.r_circulate_r(nil, r) {
@@ -676,39 +682,39 @@ func (m *BaseObject) interpolate(rr []int) (*interpolated, error) {
 			seen[check] = true
 
 			// Generate midpoint and average values.
-			rnxyz := m.r_xyz[rn*3 : (rn*3)+3]
+			rnxyz := m.XYZ[rn*3 : (rn*3)+3]
 			mid := convToVec3([]float64{
 				(rxyz[0] + rnxyz[0]) / 2,
 				(rxyz[1] + rnxyz[1]) / 2,
 				(rxyz[2] + rnxyz[2]) / 2,
 			}).Normalize()
-			ipl.r_xyz = append(ipl.r_xyz, mid.X, mid.Y, mid.Z)
+			ipl.XYZ = append(ipl.XYZ, mid.X, mid.Y, mid.Z)
 			ipl.num_r++
 
 			// Calculate diff and use noise to add variation.
 			nvl := (m.noise.Eval3(mid.X, mid.Y, mid.Z) + 1) / 2
-			diffElevation := m.r_elevation[rn] - m.r_elevation[r]
-			diffMoisture := m.r_moisture[rn] - m.r_moisture[r]
-			diffRainfall := m.r_rainfall[rn] - m.r_rainfall[r]
-			diffFlux := m.r_flux[rn] - m.r_flux[r]
-			diffPool := m.r_pool[rn] - m.r_pool[r]
+			diffElevation := m.Elevation[rn] - m.Elevation[r]
+			diffMoisture := m.Moisture[rn] - m.Moisture[r]
+			diffRainfall := m.Rainfall[rn] - m.Rainfall[r]
+			diffFlux := m.Flux[rn] - m.Flux[r]
+			diffPool := m.Waterpool[rn] - m.Waterpool[r]
 
 			// TODO: Add some better variation with the water pool and stuff.
 			// TODO: Add flood fill, downhill and flux?
 
-			ipl.r_elevation = append(ipl.r_elevation, m.r_elevation[r]+(diffElevation*nvl))
-			ipl.r_moisture = append(ipl.r_moisture, m.r_moisture[r]+(diffMoisture*nvl))
-			ipl.r_rainfall = append(ipl.r_rainfall, m.r_rainfall[r]+(diffRainfall*nvl))
-			ipl.r_flux = append(ipl.r_flux, m.r_flux[r]+(diffFlux*nvl))
-			ipl.r_pool = append(ipl.r_pool, m.r_pool[r]+(diffPool*nvl))
+			ipl.Elevation = append(ipl.Elevation, m.Elevation[r]+(diffElevation*nvl))
+			ipl.Moisture = append(ipl.Moisture, m.Moisture[r]+(diffMoisture*nvl))
+			ipl.Rainfall = append(ipl.Rainfall, m.Rainfall[r]+(diffRainfall*nvl))
+			ipl.Flux = append(ipl.Flux, m.Flux[r]+(diffFlux*nvl))
+			ipl.Waterpool = append(ipl.Waterpool, m.Waterpool[r]+(diffPool*nvl))
 		}
 	}
-	for r := 0; r < len(ipl.r_xyz); r += 3 {
+	for r := 0; r < len(ipl.XYZ); r += 3 {
 		// HACKY! Fix this properly!
-		nla, nlo := latLonFromVec3(convToVec3(ipl.r_xyz[r:r+3]).Normalize(), 1.0)
-		ipl.r_latLon = append(ipl.r_latLon, [2]float64{nla, nlo})
+		nla, nlo := latLonFromVec3(convToVec3(ipl.XYZ[r:r+3]).Normalize(), 1.0)
+		ipl.LatLon = append(ipl.LatLon, [2]float64{nla, nlo})
 	}
-	xy := stereographicProjection(ipl.r_xyz)
+	xy := stereographicProjection(ipl.XYZ)
 	var pts []delaunay.Point
 	for i := 0; i < len(xy); i += 2 {
 		pts = append(pts, delaunay.Point{X: xy[i], Y: xy[i+1]})
@@ -727,8 +733,8 @@ func (m *BaseObject) interpolate(rr []int) (*interpolated, error) {
 	ipl.assignDownhill(true)
 	ipl.assignTriangleValues()
 	ipl.generateTriangleCenters()
-	ipl.seed = m.seed
-	ipl.rand = rand.New(rand.NewSource(m.seed))
+	ipl.Seed = m.Seed
+	ipl.rand = rand.New(rand.NewSource(m.Seed))
 	ipl.noise = m.noise
 	return &ipl, nil
 }

@@ -22,7 +22,7 @@ type Stats struct {
 	Wetlands   int
 }
 
-func (m *Map) getStats(rr []int) *Stats {
+func (m *Geo) getStats(rr []int) *Stats {
 	// TODO:
 	// Calculate defensibility
 	// - Stone availability for better walls.
@@ -42,19 +42,19 @@ func (m *Map) getStats(rr []int) *Stats {
 	}
 	biomeFunc := m.getRWhittakerModBiomeFunc()
 	for _, r := range rr {
-		st.TotalArea += m.getRegionArea(r)
+		st.TotalArea += m.GetRegionArea(r)
 		for i := 0; i < ResMaxMetals; i++ {
-			if m.r_res_metals[r]&(1<<i) != 0 {
+			if m.RegionToResMetals[r]&(1<<i) != 0 {
 				st.ResMetal[i]++
 			}
 		}
 		for i := 0; i < ResMaxGems; i++ {
-			if m.r_res_gems[r]&(1<<i) != 0 {
+			if m.RegionToResGems[r]&(1<<i) != 0 {
 				st.ResGems[i]++
 			}
 		}
 		for i := 0; i < ResMaxStones; i++ {
-			if m.r_res_stone[r]&(1<<i) != 0 {
+			if m.RegionToResStones[r]&(1<<i) != 0 {
 				st.ResStones[i]++
 			}
 		}

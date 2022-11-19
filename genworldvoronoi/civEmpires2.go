@@ -15,13 +15,13 @@ type Empire2 struct {
 	Cities  []*City  // Cities within the territory
 }
 
-func (m *Map) GetEmpires2() []*Empire2 {
+func (m *Civ) GetEmpires2() []*Empire2 {
 	numEmpires := m.NumTerritories
 	if numEmpires > m.NumCityStates {
 		numEmpires = m.NumCityStates
 	}
 	sortCities := make([]*City, numEmpires)
-	copy(sortCities, m.cities_r)
+	copy(sortCities, m.Cities)
 
 	// TODO: Use cities with high expansionism.
 	/*
@@ -44,21 +44,21 @@ func (m *Map) GetEmpires2() []*Empire2 {
 	var queue territoryQueue
 	heap.Init(&queue)
 
-	terr := initRegionSlice(len(m.cities_r))
+	terr := initRegionSlice(len(m.Cities))
 	cityIDToIndex := make(map[int]int)
 	cityIDToCity := make(map[int]*City)
-	for i, c := range m.cities_r {
+	for i, c := range m.Cities {
 		cityIDToIndex[c.ID] = i
 		cityIDToCity[c.ID] = c
 	}
 	for _, c := range sortCities {
-		cc := m.getRCulture(c.ID)
+		cc := m.GetCulture(c.ID)
 		if cc == nil {
 			log.Println("City has no culture", c.Name)
 			continue
 		}
 		terr[cityIDToIndex[c.ID]] = c.ID
-		for _, r := range m.getRTerritoryNeighbors(c.ID, m.r_city) {
+		for _, r := range m.getTerritoryNeighbors(c.ID, m.RegionToCityState) {
 			log.Println("Adding", r, "to queue for", c.ID)
 			newdist := m.getCityScoreForexp(cityIDToCity[r])
 			heap.Push(&queue, &queueRegionEntry{
@@ -77,7 +77,7 @@ func (m *Map) GetEmpires2() []*Empire2 {
 			continue
 		}
 		terr[cityIDToIndex[u.vx]] = u.city
-		for _, v := range m.getRTerritoryNeighbors(u.vx, m.r_city) {
+		for _, v := range m.getTerritoryNeighbors(u.vx, m.RegionToCityState) {
 			if terr[cityIDToIndex[v]] >= 0 {
 				continue
 			}
@@ -99,18 +99,18 @@ func (m *Map) GetEmpires2() []*Empire2 {
 	// For this we will have to copy the city states and
 	// set new territories.
 
-	copy(m.r_territory, m.r_city)
-	for i, t := range m.r_territory {
+	copy(m.RegionToTerritory, m.RegionToCityState)
+	for i, t := range m.RegionToTerritory {
 		if tn := terr[cityIDToIndex[t]]; tn >= 0 {
-			m.r_territory[i] = tn
+			m.RegionToTerritory[i] = tn
 		}
 	}
 
 	return nil
 }
 
-func (m *Map) getCityScoreForexp(c *City) float64 {
-	cc := m.getRCulture(c.ID)
+func (m *Civ) getCityScoreForexp(c *City) float64 {
+	cc := m.GetCulture(c.ID)
 	if cc == nil {
 		return c.Score
 	}

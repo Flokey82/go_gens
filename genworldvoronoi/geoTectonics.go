@@ -10,7 +10,7 @@ import (
 
 // generatePlates generates a number of plate seed points and starts growing the plates
 // starting from those seeds in a random order.
-func (m *Map) generatePlates() {
+func (m *Geo) generatePlates() {
 	m.resetRand()
 	mesh := m.mesh
 	r_plate := make([]int, mesh.numRegions)
@@ -52,7 +52,7 @@ func (m *Map) generatePlates() {
 	}
 
 	// Assign a random movement vector for each plate
-	r_xyz := m.r_xyz
+	r_xyz := m.XYZ
 	plateVectors := make([]vectors.Vec3, mesh.numRegions)
 	for _, center_r := range plate_r {
 		neighbor_r := mesh.r_circulate_r(nil, center_r)[0]
@@ -61,16 +61,16 @@ func (m *Map) generatePlates() {
 		plateVectors[center_r] = vectors.Sub3(p1, p0).Normalize()
 	}
 
-	m.plate_r = plate_r
-	m.r_plate = r_plate
-	m.PlateVectors = plateVectors
+	m.PlateRegions = plate_r
+	m.RegionToPlate = r_plate
+	m.PlateToVector = plateVectors
 }
 
 // assignOceanPlates randomly assigns approx. 50% of the plates as ocean plates.
-func (m *Map) assignOceanPlates() {
+func (m *Geo) assignOceanPlates() {
 	m.resetRand()
 	m.PlateIsOcean = make(map[int]bool)
-	for _, r := range m.plate_r {
+	for _, r := range m.PlateRegions {
 		if m.rand.Intn(10) < 5 {
 			m.PlateIsOcean[r] = true
 			// TODO: either make tiny plates non-ocean, or make sure tiny plates don't create seeds for rivers
@@ -91,10 +91,10 @@ const collisionThreshold = 0.75
 //
 // FIXME: The smaller the distance of the cells, the more likely a plate moves past the neighbor plate.
 // This causes all kinds of issues.
-func (m *Map) findCollisions() ([]int, []int, []int, map[int]float64) {
+func (m *Geo) findCollisions() ([]int, []int, []int, map[int]float64) {
 	plateIsOcean := m.PlateIsOcean
-	r_plate := m.r_plate
-	plateVectors := m.PlateVectors
+	r_plate := m.RegionToPlate
+	plateVectors := m.PlateToVector
 	numRegions := m.mesh.numRegions
 	compression_r := make(map[int]float64)
 	nInf := math.Inf(-1)
@@ -115,8 +115,8 @@ func (m *Map) findCollisions() ([]int, []int, []int, map[int]float64) {
 		for _, neighbor_r := range r_out {
 			if r_plate[current_r] != r_plate[neighbor_r] {
 				// sometimes I regret storing xyz in a compact array...
-				current_pos := convToVec3(m.r_xyz[3*current_r : 3*current_r+3])
-				neighbor_pos := convToVec3(m.r_xyz[3*neighbor_r : 3*neighbor_r+3])
+				current_pos := convToVec3(m.XYZ[3*current_r : 3*current_r+3])
+				neighbor_pos := convToVec3(m.XYZ[3*neighbor_r : 3*neighbor_r+3])
 
 				// simulate movement for deltaTime seconds
 				distanceBefore := vectors.Dist3(current_pos, neighbor_pos)
@@ -151,8 +151,8 @@ func (m *Map) findCollisions() ([]int, []int, []int, map[int]float64) {
 
 		enablePlateCheck := true
 		if enablePlateCheck {
-			current_plate := m.r_plate[current_r]
-			best_plate := m.r_plate[best_r]
+			current_plate := m.RegionToPlate[current_r]
+			best_plate := m.RegionToPlate[best_r]
 			if plateIsOcean[current_plate] && plateIsOcean[best_plate] {
 				// If both plates are ocean plates and they collide, a coastline is produced,
 				// while if they "drift apart" (which is not quite correct in our code, since
@@ -206,13 +206,13 @@ const (
 // elevation for each point on the sphere accordingly, which will result in
 // mountains, coastlines, etc.
 // To ensure variation, opensimplex noise is used to break up any uniformity.
-func (m *Map) assignRegionElevation() {
+func (m *Geo) assignRegionElevation() {
 	useDistanceFieldWithCompression := true
 
 	// TODO: Use collision values to determine intensity of generated landscape features.
 	mountain_r, coastline_r, ocean_r, compression_r := m.findCollisions()
 	for r := 0; r < m.mesh.numRegions; r++ {
-		if m.r_plate[r] == r && m.PlateIsOcean[r] {
+		if m.RegionToPlate[r] == r && m.PlateIsOcean[r] {
 			ocean_r = append(ocean_r, r)
 		}
 	}
@@ -278,26 +278,26 @@ func (m *Map) assignRegionElevation() {
 	// Since we want a "wave" like appearance, we could use one dimensional noise based on the
 	// distance to the faultline with some variation for a more natural look.
 	const epsilon = 1e-3
-	r_xyz := m.r_xyz
+	r_xyz := m.XYZ
 	for r := 0; r < m.mesh.numRegions; r++ {
 		a := r_distance_a[r] + epsilon // Distance from mountains
 		b := r_distance_b[r] + epsilon // Distance from oceans
 		c := r_distance_c[r] + epsilon // Distance from coastline
-		if m.PlateIsOcean[m.r_plate[r]] {
+		if m.PlateIsOcean[m.RegionToPlate[r]] {
 			// Ocean plates are slightly lower than other plates.
-			m.r_elevation[r] = -0.1
+			m.Elevation[r] = -0.1
 		}
 		if math.IsInf(r_distance_a[r], 0) && math.IsInf(r_distance_b[r], 0) {
 			// If the distance from mountains and oceans is unset (infinity),
 			// we increase the elevation by 0.1 since we wouldn't be able to
 			// calculate the harmonic mean.
-			m.r_elevation[r] += 0.1
+			m.Elevation[r] += 0.1
 		} else {
 			// The height is calculated as weighted harmonic mean of the
 			// three distance values.
 			f := (1/a - 1/b) / (1/a + 1/b + 1/c)
-			m.r_elevation[r] += f
+			m.Elevation[r] += f
 		}
-		m.r_elevation[r] += m.fbm_noise(r_xyz[3*r], r_xyz[3*r+1], r_xyz[3*r+2])*2 - 1 // Noise from -1.0 to 1.0
+		m.Elevation[r] += m.fbm_noise(r_xyz[3*r], r_xyz[3*r+1], r_xyz[3*r+2])*2 - 1 // Noise from -1.0 to 1.0
 	}
 }

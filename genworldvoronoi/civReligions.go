@@ -13,17 +13,7 @@ func init() {
 	approaches = weightedToArray(approach)
 }
 
-// turn weighted array into simple array
-func weightedToArray(weighted map[string]int) []string {
-	var res []string
-	for key, weight := range weighted {
-		for j := 0; j < weight; j++ {
-			res = append(res, key)
-		}
-	}
-	return res
-}
-
+// Religion represents a religion in the world.
 type Religion struct {
 	ID           int
 	Origin       int
@@ -39,10 +29,10 @@ type Religion struct {
 
 // This code is based on:
 // https://github.com/Azgaar/Fantasy-Map-Generator/blob/master/modules/religions-generator.js
-func (m *Map) genFolkReligions() []*Religion {
+func (m *Civ) genFolkReligions() []*Religion {
 	var religions []*Religion
 	// For every culture, there is a folk religion.
-	for _, c := range m.cultures_r {
+	for _, c := range m.Cultures {
 		form := rw(forms[ReligionGroupFolk])
 		name := c.Name + " " + rw(types[form])
 		var deity string
@@ -128,7 +118,7 @@ func (m *Map) genReligionOrganized() []*Religion {
 func (m *Map) getReligionName(form, deity string, center int) (string, string) {
 	//const {cells, cultures, burgs, states} = pack;
 
-	c := m.cultures_r[m.r_cultures[center]]
+	c := m.Cultures[m.RegionToCulture[center]]
 	random := func() string {
 		return c.Language.MakeName()
 	}

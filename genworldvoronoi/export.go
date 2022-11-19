@@ -59,7 +59,7 @@ type QueryResult struct {
 func (m *BaseObject) getBB(lat1, lon1, lat2, lon2 float64) *QueryResult {
 	r := &QueryResult{}
 	// TODO: Add convenience function to check against bounding box.
-	for i, ll := range m.r_latLon {
+	for i, ll := range m.LatLon {
 		if l0, l1 := ll[0], ll[1]; l0 < lat1 || l0 >= lat2 || l1 < lon1 || l1 >= lon2 {
 			continue
 		}
@@ -184,11 +184,11 @@ func (m *Map) ExportSVG(path string) error {
 		//_, maxS := minMax(cityScore)
 		//fitScore := m.genNoise()
 		//_, maxFit := minMax(fitScore)
-		min, max := minMax(m.r_elevation)
-		_, maxMois := minMax(m.r_moisture)
+		min, max := minMax(m.Elevation)
+		_, maxMois := minMax(m.Moisture)
 		for i := 0; i < em.mesh.numRegions; i++ {
-			rLat := em.r_latLon[i][0]
-			rLon := em.r_latLon[i][1]
+			rLat := em.LatLon[i][0]
+			rLon := em.LatLon[i][1]
 			rX, rY := latLonToPixels(rLat, rLon, zoom)
 			var skip bool
 			for _, j := range em.mesh.r_circulate_t(nil, i) {
@@ -206,7 +206,7 @@ func (m *Map) ExportSVG(path string) error {
 				x, y := latLonToPixels(em.t_latLon[j][0], em.t_latLon[j][1], zoom)
 				path = append(path, [2]float64{x, y})
 			}
-			elev := em.r_elevation[i]
+			elev := em.Elevation[i]
 			val := (elev - min) / (max - min)
 			//val = cityScore[i] / maxS
 			//val = fitScore[i] / maxFit
@@ -215,7 +215,7 @@ func (m *Map) ExportSVG(path string) error {
 				col = genBlue(val)
 			} else {
 				valElev := elev / max
-				valMois := em.r_moisture[i] / maxMois
+				valMois := em.Moisture[i] / maxMois
 				col = genbiome.GetWhittakerModBiomeColor(int(getMeanAnnualTemp(rLat)-getTempFalloffFromAltitude(maxAltitudeFactor*valElev)), int(valMois*maxPrecipitation), val)
 			}
 			svg.Path(svgGenD(path), fmt.Sprintf("fill: rgb(%d, %d, %d)", col.R, col.G, col.B), "class=\"terrain\"")
@@ -231,10 +231,10 @@ func (m *Map) ExportSVG(path string) error {
 			var skip bool
 			var poolCount int
 			for _, j := range em.mesh.Triangles[i : i+3] {
-				if em.r_pool[j] > 0 {
+				if em.Waterpool[j] > 0 {
 					poolCount++
 				}
-				x, y := latLonToPixels(em.r_latLon[j][0], em.r_latLon[j][1], zoom)
+				x, y := latLonToPixels(em.LatLon[j][0], em.LatLon[j][1], zoom)
 				if dist2([2]float64{x, y}, [2]float64{triX, triY}) > filterPathDist {
 					skip = true
 					break
@@ -246,7 +246,7 @@ func (m *Map) ExportSVG(path string) error {
 
 			var path [][2]float64
 			for _, j := range em.mesh.Triangles[i : i+3] {
-				x, y := latLonToPixels(em.r_latLon[j][0], em.r_latLon[j][1], zoom)
+				x, y := latLonToPixels(em.LatLon[j][0], em.LatLon[j][1], zoom)
 				path = append(path, [2]float64{x, y})
 			}
 			elev := em.t_elevation[i/3]
@@ -279,7 +279,7 @@ func (m *Map) ExportSVG(path string) error {
 
 	// drawPath draws a bunch of paths with the given style attributes.
 	drawPath := func(paths [][]int, useTriangles bool, style ...string) {
-		latLon := m.r_latLon
+		latLon := m.LatLon
 		if useTriangles {
 			latLon = m.t_latLon
 		}
@@ -312,7 +312,7 @@ func (m *Map) ExportSVG(path string) error {
 
 	if drawBorders {
 		log.Println("TODO: Place city states first and grow empires from city states?")
-		drawPath(m.getCustomBorders(m.r_city), true, "class=\"cityborder\"")
+		drawPath(m.getCustomBorders(m.RegionToCityState), true, "class=\"cityborder\"")
 		drawPath(m.getBorders(), true, "class=\"border\"")
 	}
 
@@ -321,7 +321,7 @@ func (m *Map) ExportSVG(path string) error {
 	}
 
 	if drawLandmassContour {
-		drawPath(m.getLandmassContour(), true, "class=\"contour\"")
+		drawPath(m.getLandmassBorders(), true, "class=\"contour\"")
 	}
 
 	// Rivers (based on regions)
@@ -369,9 +369,9 @@ func (m *Map) ExportSVG(path string) error {
 
 	// Sinks
 	if drawSinks {
-		for r, rdh := range m.r_downhill {
-			if rdh < 0 && m.r_drainage[r] < 0 && m.r_elevation[r] > 0 {
-				drawCircle(m.r_latLon[r][0], m.r_latLon[r][1], 2, "fill: rgb(0, 255, 0)")
+		for r, rdh := range m.Downhill {
+			if rdh < 0 && m.Drainage[r] < 0 && m.Elevation[r] > 0 {
+				drawCircle(m.LatLon[r][0], m.LatLon[r][1], 2, "fill: rgb(0, 255, 0)")
 			}
 		}
 	}
@@ -382,19 +382,19 @@ func (m *Map) ExportSVG(path string) error {
 		for _, r := range ord {
 			rdh := wind_sort[r]
 			col := genGreen((rdh - minFlux) / (maxFlux - minFlux))
-			drawCircle(m.r_latLon[r][0], m.r_latLon[r][1], 1, fmt.Sprintf("fill: rgb(%d, %d, %d)", col.R, col.R, col.R))
+			drawCircle(m.LatLon[r][0], m.LatLon[r][1], 1, fmt.Sprintf("fill: rgb(%d, %d, %d)", col.R, col.R, col.R))
 		}
 	}
 
 	if drawWindDir {
 		windAng := make([]float64, m.mesh.numRegions)
-		for i, vec := range m.r_windvec {
+		for i, vec := range m.RegionToWindVec {
 			windAng[i] = math.Atan2(vec[0], vec[1])
 		}
 		minFlux, maxFlux := minMax(windAng)
 		for r, rdh := range windAng {
 			col := genGreen((rdh - minFlux) / (maxFlux - minFlux))
-			drawCircle(m.r_latLon[r][0], m.r_latLon[r][1], 1, fmt.Sprintf("fill: rgb(%d, %d, %d)", col.R, col.R, col.R))
+			drawCircle(m.LatLon[r][0], m.LatLon[r][1], 1, fmt.Sprintf("fill: rgb(%d, %d, %d)", col.R, col.R, col.R))
 		}
 	}
 
@@ -410,128 +410,128 @@ func (m *Map) ExportSVG(path string) error {
 			}
 		}
 		for _, r := range mountain_r {
-			drawCircle(m.r_latLon[r][0], m.r_latLon[r][1], 2, "fill: rgb(255, 128, 128)")
+			drawCircle(m.LatLon[r][0], m.LatLon[r][1], 2, "fill: rgb(255, 128, 128)")
 		}
 		for _, r := range coastline_r {
-			drawCircle(m.r_latLon[r][0], m.r_latLon[r][1], 2, "fill: rgb(128, 255, 128)")
+			drawCircle(m.LatLon[r][0], m.LatLon[r][1], 2, "fill: rgb(128, 255, 128)")
 		}
 		for _, r := range ocean_r {
-			drawCircle(m.r_latLon[r][0], m.r_latLon[r][1], 2, "fill: rgb(128, 128, 255)")
+			drawCircle(m.LatLon[r][0], m.LatLon[r][1], 2, "fill: rgb(128, 128, 255)")
 		}
 		for r := 0; r < m.mesh.numSides; r++ {
 			if compression_r[r] != 0 {
 				col := genGreen((compression_r[r] - minComp) / (maxComp - minComp))
-				drawCircle(m.r_latLon[r][0], m.r_latLon[r][1], 1, fmt.Sprintf("fill: rgb(%d, %d, %d)", col.R, col.R, col.R))
+				drawCircle(m.LatLon[r][0], m.LatLon[r][1], 1, fmt.Sprintf("fill: rgb(%d, %d, %d)", col.R, col.R, col.R))
 			}
 		}
 	}
 
 	if drawFlux {
-		minFlux, maxFlux := minMax(m.r_flux)
-		for r, rdh := range m.r_flux {
+		minFlux, maxFlux := minMax(m.Flux)
+		for r, rdh := range m.Flux {
 			if rdh > 0 {
 				col := genGreen((rdh - minFlux) / (maxFlux - minFlux))
 				col = genGreen(rdh / maxFlux)
-				drawCircle(m.r_latLon[r][0], m.r_latLon[r][1], 1, fmt.Sprintf("fill: rgb(%d, %d, %d)", col.R, col.R, col.R))
+				drawCircle(m.LatLon[r][0], m.LatLon[r][1], 1, fmt.Sprintf("fill: rgb(%d, %d, %d)", col.R, col.R, col.R))
 			}
 		}
 	}
 
 	if drawHumidity {
-		minHumid, maxHumid := minMax(m.r_moisture)
-		for r, rdh := range m.r_moisture {
+		minHumid, maxHumid := minMax(m.Moisture)
+		for r, rdh := range m.Moisture {
 			if rdh > 0 {
 				col := genGreen((rdh - minHumid) / (maxHumid - minHumid))
-				drawCircle(m.r_latLon[r][0], m.r_latLon[r][1], 1, fmt.Sprintf("fill: rgb(%d, %d, %d)", col.R, col.R, col.R))
+				drawCircle(m.LatLon[r][0], m.LatLon[r][1], 1, fmt.Sprintf("fill: rgb(%d, %d, %d)", col.R, col.R, col.R))
 			}
 		}
 	}
 
 	if drawRainfall {
-		minRain, maxRain := minMax(m.r_rainfall)
-		for r, rdh := range m.r_rainfall {
+		minRain, maxRain := minMax(m.Rainfall)
+		for r, rdh := range m.Rainfall {
 			if rdh > 0 {
 				col := genGreen((rdh - minRain) / (maxRain - minRain))
-				drawCircle(m.r_latLon[r][0], m.r_latLon[r][1], 1, fmt.Sprintf("fill: rgb(%d, %d, %d)", col.R, col.R, col.R))
+				drawCircle(m.LatLon[r][0], m.LatLon[r][1], 1, fmt.Sprintf("fill: rgb(%d, %d, %d)", col.R, col.R, col.R))
 			}
 		}
 	}
 
 	if drawErosion {
-		er := m.rErosionRate()
+		er := m.GetErosionRate()
 		minFlux, maxFlux := minMax(er)
-		for r, rdh := range m.r_flux {
+		for r, rdh := range m.Flux {
 			if rdh > 0 {
 				col := genBlue((rdh - minFlux) / (maxFlux - minFlux))
-				drawCircle(m.r_latLon[r][0], m.r_latLon[r][1], 1, fmt.Sprintf("fill: rgb(%d, %d, %d)", col.R, col.G, col.G))
+				drawCircle(m.LatLon[r][0], m.LatLon[r][1], 1, fmt.Sprintf("fill: rgb(%d, %d, %d)", col.R, col.G, col.G))
 			}
 		}
 	}
 
 	if drawErosion2 {
-		er := m.rErosionRate2()
+		er := m.GetErosionRate2()
 		minFlux, maxFlux := minMax(er)
-		for r, rdh := range m.r_flux {
+		for r, rdh := range m.Flux {
 			if rdh > 0 {
 				col := genBlue((rdh - minFlux) / (maxFlux - minFlux))
-				drawCircle(m.r_latLon[r][0], m.r_latLon[r][1], 1, fmt.Sprintf("fill: rgb(%d, %d, %d)", col.R, col.G, col.G))
+				drawCircle(m.LatLon[r][0], m.LatLon[r][1], 1, fmt.Sprintf("fill: rgb(%d, %d, %d)", col.R, col.G, col.G))
 			}
 		}
 	}
 
 	if drawAltitude {
-		er := m.r_elevation
+		er := m.Elevation
 		minHeight, maxHeight := minMax(er)
 		minHeight = 0
-		for r, rdh := range m.r_elevation {
+		for r, rdh := range m.Elevation {
 			if rdh > 0 && r%2 == 0 {
 				col := genBlue((rdh - minHeight) / (maxHeight - minHeight))
-				drawCircle(m.r_latLon[r][0], m.r_latLon[r][1], 1, fmt.Sprintf("fill: rgb(%d, %d, %d)", col.R, col.G, col.G))
+				drawCircle(m.LatLon[r][0], m.LatLon[r][1], 1, fmt.Sprintf("fill: rgb(%d, %d, %d)", col.R, col.G, col.G))
 			}
 		}
 	}
 
 	if drawTemperature {
-		er := m.r_elevation
+		er := m.Elevation
 		_, maxHeight := minMax(er)
-		for r, rdh := range m.r_elevation {
+		for r, rdh := range m.Elevation {
 			if rdh > 0 && r%2 == 0 {
 				t := m.getRTemperature(r, maxHeight)
 				col := genBlue((t - minTemp) / (maxTemp - minTemp))
-				drawCircle(m.r_latLon[r][0], m.r_latLon[r][1], 1, fmt.Sprintf("fill: rgb(%d, %d, %d)", col.R, col.G, col.G))
+				drawCircle(m.LatLon[r][0], m.LatLon[r][1], 1, fmt.Sprintf("fill: rgb(%d, %d, %d)", col.R, col.G, col.G))
 			}
 		}
 	}
 
 	if drawBelow {
-		for r, pVal := range m.r_elevation {
+		for r, pVal := range m.Elevation {
 			if pVal <= 0 {
-				drawCircle(m.r_latLon[r][0], m.r_latLon[r][1], 2, "fill: rgb(0, 0, 255)")
+				drawCircle(m.LatLon[r][0], m.LatLon[r][1], 2, "fill: rgb(0, 0, 255)")
 			}
 		}
 	}
 
 	// Water pools
 	if drawPools {
-		for r, pVal := range m.r_pool {
+		for r, pVal := range m.Waterpool {
 			if pVal > 0 {
-				drawCircle(m.r_latLon[r][0], m.r_latLon[r][1], 2, "fill: rgb(0, 0, 255)")
+				drawCircle(m.LatLon[r][0], m.LatLon[r][1], 2, "fill: rgb(0, 0, 255)")
 			}
 		}
 	}
 
 	if drawDrains {
 		drains := make(map[int]bool)
-		for r, drain := range m.r_drainage {
+		for r, drain := range m.Drainage {
 			if drain >= 0 {
-				drawCircle(m.r_latLon[r][0], m.r_latLon[r][1], 1, "fill: rgb(255, 0, 255)")
+				drawCircle(m.LatLon[r][0], m.LatLon[r][1], 1, "fill: rgb(255, 0, 255)")
 			}
 			if drain != -1 {
 				drains[drain] = true
 			}
 		}
 		for r := range drains {
-			drawCircle(m.r_latLon[r][0], m.r_latLon[r][1], 1, "fill: rgb(255, 255, 0)")
+			drawCircle(m.LatLon[r][0], m.LatLon[r][1], 1, "fill: rgb(255, 255, 0)")
 		}
 	}
 
@@ -540,7 +540,7 @@ func (m *Map) ExportSVG(path string) error {
 		cols := grad.Colors(uint(ResMaxMetals))
 
 		// NOTE: This sucks right now.
-		res := m.r_res_metals
+		res := m.RegionToResMetals
 		radius := 1
 		count := make([]int, ResMaxMetals)
 		for i := 0; i < ResMaxMetals; i++ {
@@ -549,7 +549,7 @@ func (m *Map) ExportSVG(path string) error {
 			for r, t := range res {
 				if t&(1<<i) > 0 {
 					count[i]++
-					drawCircle(m.r_latLon[r][0], m.r_latLon[r][1], radius, col)
+					drawCircle(m.LatLon[r][0], m.LatLon[r][1], radius, col)
 				}
 			}
 		}
@@ -560,7 +560,7 @@ func (m *Map) ExportSVG(path string) error {
 
 	// Cities
 	if drawCities {
-		for i, r := range m.cities_r {
+		for i, r := range m.Cities {
 			radius := 2
 			class := "class=\"city\""
 			col := "fill: rgb(255, 165, 0)"
@@ -583,18 +583,18 @@ func (m *Map) ExportSVG(path string) error {
 				col = "fill: rgb(55, 0, 255)"
 				radius = 1
 			}
-			drawCircle(m.r_latLon[r.ID][0], m.r_latLon[r.ID][1], radius, col)
-			drawText(m.r_latLon[r.ID][0], m.r_latLon[r.ID][1], r.Name, class)
+			drawCircle(m.LatLon[r.ID][0], m.LatLon[r.ID][1], radius, col)
+			drawText(m.LatLon[r.ID][0], m.LatLon[r.ID][1], r.Name, class)
 		}
 		// TODO: Move labels to avoid overlap.
 	}
 
 	if drawCityscore {
-		scores := m.rCityScore(m.getFitnessCityDefault(), func() []int { return nil })
+		scores := m.CalcCityScore(m.getFitnessCityDefault(), func() []int { return nil })
 		minScore, maxScore := minMax(scores)
 		for r, score := range scores {
 			col := genBlue((score - minScore) / (maxScore - minScore))
-			drawCircle(m.r_latLon[r][0], m.r_latLon[r][1], 1, fmt.Sprintf("fill: rgb(%d, %d, %d)", col.R, col.G, col.G))
+			drawCircle(m.LatLon[r][0], m.LatLon[r][1], 1, fmt.Sprintf("fill: rgb(%d, %d, %d)", col.R, col.G, col.G))
 		}
 	}
 
@@ -624,8 +624,8 @@ func (m *Map) ExportPng(name string) {
 	//	terrToCol[terr.R] = i
 	//}
 	//territory := m.r_territory
-	terr := m.cultures_r
-	territory := m.r_cultures
+	terr := m.Cultures
+	territory := m.RegionToCulture
 	for i, c := range terr {
 		terrToCol[c.ID] = i
 		log.Printf("%d: %s %f", i, c.Type, c.Expansionism)
@@ -636,22 +636,22 @@ func (m *Map) ExportPng(name string) {
 	size := sizeFromZoom(zoom)
 	// Create a colored image of the given width and height.
 	img := image.NewNRGBA(image.Rect(0, 0, size, size))
-	min, max := minMax(m.r_elevation)
-	_, maxMois := minMax(m.r_rainfall)
+	min, max := minMax(m.Elevation)
+	_, maxMois := minMax(m.Rainfall)
 	for r := 0; r < m.mesh.numRegions; r++ {
-		lat := m.r_latLon[r][0]
-		lon := m.r_latLon[r][1]
+		lat := m.LatLon[r][0]
+		lon := m.LatLon[r][1]
 		// log.Println(lat, lon)
 		x, y := latLonToPixels(lat, lon, zoom)
-		val := (m.r_elevation[r] - min) / (max - min)
+		val := (m.Elevation[r] - min) / (max - min)
 		var col color.NRGBA
-		if elev := m.r_elevation[r]; elev <= 0 || m.r_pool[r] > 0 || m.r_flux[r] > 1000 {
+		if elev := m.Elevation[r]; elev <= 0 || m.Waterpool[r] > 0 || m.Flux[r] > 1000 {
 			col = genBlue(val)
 		} else {
 			valElev := elev / max
 			// Hacky: Modify elevation based on latitude to compensate for colder weather at the poles and warmer weather at the equator.
 			// valElev := math.Max(math.Min((elev/max)+(math.Sqrt(math.Abs(lat)/90.0)-0.5), max), 0)
-			valMois := m.r_rainfall[r] / maxMois
+			valMois := m.Rainfall[r] / maxMois
 			if territory[r] == 0 {
 				col = genbiome.GetWhittakerModBiomeColor(int(getMeanAnnualTemp(lat)-getTempFalloffFromAltitude(maxAltitudeFactor*valElev)), int(valMois*maxPrecipitation), val)
 			} else {
@@ -707,8 +707,8 @@ func (m *Map) ExportOBJ(path string) error {
 	*/
 
 	// Vertices
-	for i := 0; i < len(m.r_xyz); i += 3 {
-		ve := convToVec3(m.r_xyz[i:]).Mul(1.0 + 0.01*(m.r_elevation[i/3]+m.r_pool[i/3]))
+	for i := 0; i < len(m.XYZ); i += 3 {
+		ve := convToVec3(m.XYZ[i:]).Mul(1.0 + 0.01*(m.Elevation[i/3]+m.Waterpool[i/3]))
 		w.WriteString(fmt.Sprintf("v %f %f %f \n", ve.X, ve.Y, ve.Z))
 	}
 
@@ -737,7 +737,7 @@ func (m *Map) ExportOBJ(path string) error {
 				if m.t_elevation[inner_t] < 0 && m.t_elevation[outer_t] < 0 {
 					continue
 				}
-				w.WriteString(fmt.Sprintf("l %d %d \n", (len(m.r_xyz)/3)+inner_t+1, (len(m.r_xyz)/3)+outer_t+1))
+				w.WriteString(fmt.Sprintf("l %d %d \n", (len(m.XYZ)/3)+inner_t+1, (len(m.XYZ)/3)+outer_t+1))
 				w.Flush()
 			}
 		}
@@ -749,10 +749,10 @@ func (m *Map) ExportOBJ(path string) error {
 		for s := 0; s < m.mesh.numSides; s++ {
 			begin_r := m.mesh.s_begin_r(s)
 			end_r := m.mesh.s_end_r(s)
-			if m.r_plate[begin_r] != m.r_plate[end_r] {
+			if m.RegionToPlate[begin_r] != m.RegionToPlate[end_r] {
 				inner_t := m.mesh.s_inner_t(s)
 				outer_t := m.mesh.s_outer_t(s)
-				w.WriteString(fmt.Sprintf("l %d %d \n", (len(m.r_xyz)/3)+inner_t+1, (len(m.r_xyz)/3)+outer_t+1))
+				w.WriteString(fmt.Sprintf("l %d %d \n", (len(m.XYZ)/3)+inner_t+1, (len(m.XYZ)/3)+outer_t+1))
 			}
 			w.Flush()
 		}

@@ -26,16 +26,16 @@ func (e *Empire) Log() {
 	e.Stats.Log()
 }
 
-func (m *Map) GetEmpires() []*Empire {
+func (m *Civ) GetEmpires() []*Empire {
 	// TODO: Deduplicate with GetCityStates.
 	var res []*Empire
 	for i := 0; i < m.NumTerritories; i++ {
-		capital := m.cities_r[i]
+		capital := m.Cities[i]
 		var lang *Language
-		if c := m.getRCulture(capital.ID); c != nil && c.Language != nil {
+		if c := m.GetCulture(capital.ID); c != nil && c.Language != nil {
 			lang = c.Language
 		} else {
-			lang = GenLanguage(m.seed + int64(i))
+			lang = GenLanguage(m.Seed + int64(i))
 		}
 		e := &Empire{
 			ID:       capital.ID,
@@ -47,8 +47,8 @@ func (m *Map) GetEmpires() []*Empire {
 
 		// Loop through all cities and gather all that
 		// are within the current territory.
-		for _, c := range m.cities_r {
-			if m.r_territory[c.ID] == e.ID {
+		for _, c := range m.Cities {
+			if m.RegionToTerritory[c.ID] == e.ID {
 				// TODO: Name cities based on local culture?
 				c.Name = e.Language.MakeCityName()
 				e.Cities = append(e.Cities, c)
@@ -57,7 +57,7 @@ func (m *Map) GetEmpires() []*Empire {
 
 		// Collect all regions that are part of the
 		// current territory.
-		for r, terr := range m.r_territory {
+		for r, terr := range m.RegionToTerritory {
 			if terr == e.ID {
 				e.Regions = append(e.Regions, r)
 			}

@@ -10,13 +10,13 @@ import (
 	"github.com/Flokey82/go_gens/vectors"
 )
 
-func (m *Map) getRWhittakerModBiomeFunc() func(r int) int {
-	_, maxElev := minMax(m.r_elevation)
-	_, maxMois := minMax(m.r_moisture)
+func (m *Geo) getRWhittakerModBiomeFunc() func(r int) int {
+	_, maxElev := minMax(m.Elevation)
+	_, maxMois := minMax(m.Moisture)
 	return func(r int) int {
-		valElev := m.r_elevation[r] / maxElev
-		valMois := m.r_moisture[r] / maxMois
-		rLat := m.r_latLon[r][0]
+		valElev := m.Elevation[r] / maxElev
+		valMois := m.Moisture[r] / maxMois
+		rLat := m.LatLon[r][0]
 		return genbiome.GetWhittakerModBiome(int(getMeanAnnualTemp(rLat)-getTempFalloffFromAltitude(maxAltitudeFactor*valElev)), int(valMois*maxPrecipitation))
 	}
 }
@@ -53,13 +53,13 @@ func getMeanAnnualTemp(lat float64) float64 {
 const maxAltitudeFactor = gameconstants.EarthMaxElevation // How tall is the tallest mountain with an elevation of 1.0?
 
 // getRTemperature returns the average yearly temperature of the given region at the surface.
-func (m *Map) getRTemperature(r int, maxElev float64) float64 {
+func (m *Geo) getRTemperature(r int, maxElev float64) float64 {
 	// TODO: Fix maxElev caching!!!
-	return getMeanAnnualTemp(m.r_latLon[r][0]) - getTempFalloffFromAltitude(maxAltitudeFactor*m.r_elevation[r]/maxElev)
+	return getMeanAnnualTemp(m.LatLon[r][0]) - getTempFalloffFromAltitude(maxAltitudeFactor*m.Elevation[r]/maxElev)
 }
 
 // getRTemperature returns the average yearly temperature of the given triangle at the surface.
-func (m *Map) getTTemperature(t int, maxElev float64) float64 {
+func (m *Geo) getTTemperature(t int, maxElev float64) float64 {
 	// TODO: Fix maxElev caching!!!
 	return getMeanAnnualTemp(m.t_latLon[t][0]) - getTempFalloffFromAltitude(maxAltitudeFactor*m.t_elevation[t]/maxElev)
 }
@@ -108,15 +108,15 @@ func getGlobalWindVector(rLat float64) Vertex {
 // assignWindVectors constructs faux global wind cells reminiscent of a simplified earth model.
 // NOTE: This function includes an experimental part that calculates local winds that are influenced
 // by the topography / elevation changes. Please note that the code for local winds is incomplete.
-func (m *Map) assignWindVectors() {
+func (m *Geo) assignWindVectors() {
 	r_windvec := make([]Vertex, m.mesh.numRegions)
 	// Based on latitude of each region, we calculate the wind vector.
 	for i := range r_windvec {
-		r_windvec[i] = getGlobalWindVector(m.r_latLon[i][0])
+		r_windvec[i] = getGlobalWindVector(m.LatLon[i][0])
 	}
 
 	r_windvec_local := make([]Vertex, m.mesh.numRegions)
-	_, maxElev := minMax(m.r_elevation)
+	_, maxElev := minMax(m.Elevation)
 
 	useTempGradient := false
 
@@ -134,17 +134,17 @@ func (m *Map) assignWindVectors() {
 		// Determine all sea regions.
 		var sea_r []int
 		for r := 0; r < m.mesh.numRegions; r++ {
-			if m.r_elevation[r] <= 0 {
+			if m.Elevation[r] <= 0 {
 				sea_r = append(sea_r, r)
 			}
 		}
 		r_distance_sea := m.assignDistanceField(sea_r, make(map[int]bool))
 		for r := range r_windvec_local {
 			rVec := r_windvec[r]
-			lat := m.r_latLon[r][0]
-			lon := m.r_latLon[r][1]
-			temp_r := getMeanAnnualTemp(lat) - getTempFalloffFromAltitude(8850*m.r_elevation[r]/maxElev)
-			if m.r_elevation[r] < 0 {
+			lat := m.LatLon[r][0]
+			lon := m.LatLon[r][1]
+			temp_r := getMeanAnnualTemp(lat) - getTempFalloffFromAltitude(8850*m.Elevation[r]/maxElev)
+			if m.Elevation[r] < 0 {
 				// TODO: Use actual distance from ocean to calculate temperature falloff.
 				temp_r -= 1 / (r_distance_sea[r] + 1)
 			}
@@ -153,11 +153,11 @@ func (m *Map) assignWindVectors() {
 				X: rVec[0],
 				Y: rVec[1],
 			})
-			for _, nb := range m.rNeighbors(r) {
-				nbLat := m.r_latLon[nb][0]
-				nbLon := m.r_latLon[nb][1]
-				temp_nb := getMeanAnnualTemp(nbLat) - getTempFalloffFromAltitude(8850*m.r_elevation[nb]/maxElev)
-				if m.r_elevation[nb] < 0 {
+			for _, nb := range m.GetRegionNeighbors(r) {
+				nbLat := m.LatLon[nb][0]
+				nbLon := m.LatLon[nb][1]
+				temp_nb := getMeanAnnualTemp(nbLat) - getTempFalloffFromAltitude(8850*m.Elevation[nb]/maxElev)
+				if m.Elevation[nb] < 0 {
 					// TODO: Use actual distance from ocean to calculate temperature falloff.
 					temp_nb -= 1 / (r_distance_sea[nb] + 1)
 				}
@@ -172,24 +172,24 @@ func (m *Map) assignWindVectors() {
 		for r := range r_windvec_local {
 			rVec := r_windvec[r]
 			// Get XYZ Position of r.
-			rXYZ := convToVec3(m.r_xyz[r*3 : r*3+3])
+			rXYZ := convToVec3(m.XYZ[r*3 : r*3+3])
 			// Convert to polar coordinates.
-			rLat := m.r_latLon[r][0]
-			rLon := m.r_latLon[r][1]
-			h := m.r_elevation[r]
+			rLat := m.LatLon[r][0]
+			rLon := m.LatLon[r][1]
+			h := m.Elevation[r]
 			// Add wind vector to neighbor lat/lon to get the "wind vector lat long" or something like that..
 			rwXYZ := convToVec3(latLonToCartesian(rLat+r_windvec[r][1], rLon+r_windvec[r][0])).Normalize()
 			v := vectors.Normalize(vectors.Vec2{
 				X: rVec[0],
 				Y: rVec[1],
 			}) //v.Mul(h / maxElev)
-			for _, neighbor_r := range m.rNeighbors(r) {
+			for _, neighbor_r := range m.GetRegionNeighbors(r) {
 				// if is_sea[neighbor_r] {
 				//	continue
 				// }
 				// Calculate dot product of wind vector to vector r -> neighbor_r.
 				// Get XYZ Position of r_neighbor.
-				rnXYZ := convToVec3(m.r_xyz[neighbor_r*3 : neighbor_r*3+3])
+				rnXYZ := convToVec3(m.XYZ[neighbor_r*3 : neighbor_r*3+3])
 
 				// Calculate Vector between r and neighbor_r.
 				va := vectors.Sub3(rnXYZ, rXYZ).Normalize()
@@ -202,10 +202,10 @@ func (m *Map) assignWindVectors() {
 				// current neighbor.
 				// See: https://www.scratchapixel.com/lessons/3d-basic-rendering/introduction-to-shading/shading-normals
 				dotV := vectors.Dot3(va, vb)
-				hnb := m.r_elevation[neighbor_r]
+				hnb := m.Elevation[neighbor_r]
 				if dotV > 0 && hnb != h && h >= 0 && hnb >= 0 {
-					nbLat := m.r_latLon[neighbor_r][0]
-					nbLon := m.r_latLon[neighbor_r][1]
+					nbLat := m.LatLon[neighbor_r][0]
+					nbLon := m.LatLon[neighbor_r][1]
 					ve := calcVecFromLatLong(rLat, rLon, nbLat, nbLon)
 					// The higher the dot product (the more direct the neighbor is in wind direction), the higher
 					// the influence of an elevation change. So a steep mountain ahead will slow the wind down.
@@ -220,13 +220,13 @@ func (m *Map) assignWindVectors() {
 	// Average wind vectors using neighbor vectors.
 	interpolationSteps := 0
 
-	m.r_windvec_local = m.interpolateWindVecs(r_windvec_local, interpolationSteps)
-	m.r_windvec = m.interpolateWindVecs(r_windvec, interpolationSteps)
+	m.RegionToWindVecLocal = m.interpolateWindVecs(r_windvec_local, interpolationSteps)
+	m.RegionToWindVec = m.interpolateWindVecs(r_windvec, interpolationSteps)
 }
 
 // interpolateWindVecs interpolates the given wind vectors at their respective regions by
 // mixing them with the wind vectors of their neighbor regions.
-func (m *Map) interpolateWindVecs(in []Vertex, steps int) []Vertex {
+func (m *Geo) interpolateWindVecs(in []Vertex, steps int) []Vertex {
 	// Average wind vectors using neighbor vectors.
 	for i := 0; i < steps; i++ {
 		r_windvec_interpol := make([]Vertex, m.mesh.numRegions)
@@ -236,7 +236,7 @@ func (m *Map) interpolateWindVecs(in []Vertex, steps int) []Vertex {
 				in[r][1],
 			}
 			var count int
-			for _, neighbor_r := range m.rNeighbors(r) {
+			for _, neighbor_r := range m.GetRegionNeighbors(r) {
 				resVec[0] += in[neighbor_r][0]
 				resVec[1] += in[neighbor_r][1]
 				count++
@@ -267,7 +267,7 @@ const (
 // of moisture across the globe based on global winds using distinct approaches.
 // Unfortunately, this is highly bugged and not as useful as the simpler version
 // 'assignRainfallBasic'.
-func (m *Map) assignRainfall(numSteps, transferMode, sortOrder int) {
+func (m *Geo) assignRainfall(numSteps, transferMode, sortOrder int) {
 	biomesParam := biomesParams{
 		raininess:   0.9,
 		rain_shadow: 0.9,
@@ -279,7 +279,7 @@ func (m *Map) assignRainfall(numSteps, transferMode, sortOrder int) {
 	var sea_r, land_r []int
 	is_sea := make([]bool, m.mesh.numRegions)
 	for r := 0; r < m.mesh.numRegions; r++ {
-		if m.r_elevation[r] < 0 {
+		if m.Elevation[r] < 0 {
 			is_sea[r] = true
 			sea_r = append(sea_r, r)
 		} else {
@@ -297,7 +297,7 @@ func (m *Map) assignRainfall(numSteps, transferMode, sortOrder int) {
 		r_distance_sea := m.assignDistanceField(sea_r, make(map[int]bool))
 		sort.Slice(dist_order_r, func(a, b int) bool {
 			if r_distance_sea[dist_order_r[a]] == r_distance_sea[dist_order_r[b]] {
-				return m.r_elevation[dist_order_r[a]] < m.r_elevation[dist_order_r[b]]
+				return m.Elevation[dist_order_r[a]] < m.Elevation[dist_order_r[b]]
 			}
 			return r_distance_sea[dist_order_r[a]] < r_distance_sea[dist_order_r[b]]
 		})
@@ -310,11 +310,11 @@ func (m *Map) assignRainfall(numSteps, transferMode, sortOrder int) {
 
 	// 1.3. Assign wind vector for every region
 	m.assignWindVectors()
-	r_windvec := m.r_windvec
-	_, maxH := minMax(m.r_elevation)
+	r_windvec := m.RegionToWindVec
+	_, maxH := minMax(m.Elevation)
 
 	calcRainfall := func(r int, humidity float64) float64 {
-		r_elev := m.r_elevation[r]
+		r_elev := m.Elevation[r]
 		if r_elev < 0 {
 			r_elev = 0 // Set to sea-level
 		}
@@ -332,23 +332,23 @@ func (m *Map) assignRainfall(numSteps, transferMode, sortOrder int) {
 		// 2. Assign initial moisture of 1.0 to all regions below or at sea level or replenish
 		// moisture through evaporation if our moisture is below 0.
 		for _, r := range sea_r {
-			if m.r_moisture[r] < 1.0 {
-				m.r_moisture[r] = 1.0
+			if m.Moisture[r] < 1.0 {
+				m.Moisture[r] = 1.0
 			}
 			// m.r_rainfall[r] += biomesParam.raininess * m.r_moisture[r]
 		}
 
 		// Rivers should experience some evaporation.
-		for r, fluxval := range m.r_flux {
-			if m.r_moisture[r] < fluxval && m.r_moisture[r] < 1.0 {
-				m.r_moisture[r] = 1.0 // TODO: Should depend on available water.
+		for r, fluxval := range m.Flux {
+			if m.Moisture[r] < fluxval && m.Moisture[r] < 1.0 {
+				m.Moisture[r] = 1.0 // TODO: Should depend on available water.
 			}
 		}
 
 		// Water pools should experience some evaporation.
-		for r, poolval := range m.r_pool {
-			if poolval > 0 && m.r_moisture[r] < 1.0 {
-				m.r_moisture[r] = 1.0 // TODO: Should depend on available water.
+		for r, poolval := range m.Waterpool {
+			if poolval > 0 && m.Moisture[r] < 1.0 {
+				m.Moisture[r] = 1.0 // TODO: Should depend on available water.
 			}
 		}
 		// m.interpolateRainfallMoisture(1)
@@ -362,20 +362,20 @@ func (m *Map) assignRainfall(numSteps, transferMode, sortOrder int) {
 			for _, r := range sort_order {
 				count := 0
 				// Get XYZ Position of r.
-				rXYZ := convToVec3(m.r_xyz[r*3 : r*3+3])
+				rXYZ := convToVec3(m.XYZ[r*3 : r*3+3])
 				// Convert to polar coordinates.
-				rLat := m.r_latLon[r][0]
-				rLon := m.r_latLon[r][1]
+				rLat := m.LatLon[r][0]
+				rLon := m.LatLon[r][1]
 
 				// Add wind vector to neighbor lat/lon to get the "wind vector lat long" or something like that..
 				rwXYZ := convToVec3(latLonToCartesian(rLat+r_windvec[r][1], rLon+r_windvec[r][0])).Normalize()
-				for _, neighbor_r := range m.rNeighbors(r) {
+				for _, neighbor_r := range m.GetRegionNeighbors(r) {
 					if is_sea[neighbor_r] {
 						continue
 					}
 					// Calculate dot product of wind vector to vector r -> neighbor_r.
 					// Get XYZ Position of r_neighbor.
-					rnXYZ := convToVec3(m.r_xyz[neighbor_r*3 : neighbor_r*3+3])
+					rnXYZ := convToVec3(m.XYZ[neighbor_r*3 : neighbor_r*3+3])
 
 					// Calculate Vector between r and neighbor_r.
 					va := vectors.Sub3(rnXYZ, rXYZ).Normalize()
@@ -391,8 +391,8 @@ func (m *Map) assignRainfall(numSteps, transferMode, sortOrder int) {
 					if dotV > 0 {
 						// Only positive dot products mean that we lie within 90°, so 'in wind direction'.
 						count++
-						humidity := m.r_moisture[neighbor_r] + m.r_moisture[r]*dotV
-						rainfall := m.r_rainfall[neighbor_r] // + biomesParam.raininess*m.r_moisture[r]*dotV
+						humidity := m.Moisture[neighbor_r] + m.Moisture[r]*dotV
+						rainfall := m.Rainfall[neighbor_r] // + biomesParam.raininess*m.r_moisture[r]*dotV
 						orographicRainfall := calcRainfall(neighbor_r, humidity)
 						if orographicRainfall > 0.0 {
 							rainfall += biomesParam.raininess * orographicRainfall
@@ -402,8 +402,8 @@ func (m *Map) assignRainfall(numSteps, transferMode, sortOrder int) {
 						// WARNING: The humidity calculation is off.
 						// humidity = math.Min(humidity, 1.0)
 						// rainfall = math.Min(rainfall, 1.0)
-						m.r_rainfall[neighbor_r] = rainfall
-						m.r_moisture[neighbor_r] = humidity
+						m.Rainfall[neighbor_r] = rainfall
+						m.Moisture[neighbor_r] = humidity
 					}
 				}
 			}
@@ -415,15 +415,15 @@ func (m *Map) assignRainfall(numSteps, transferMode, sortOrder int) {
 				count := 0
 				sum := 0.0
 				// Get XYZ Position of r.
-				rXYZ := convToVec3(m.r_xyz[r*3 : r*3+3])
-				for _, neighbor_r := range m.rNeighbors(r) {
+				rXYZ := convToVec3(m.XYZ[r*3 : r*3+3])
+				for _, neighbor_r := range m.GetRegionNeighbors(r) {
 					// Calculate dot product of wind vector to vector r -> neighbor_r.
 					// Get XYZ Position of r_neighbor.
-					rnXYZ := convToVec3(m.r_xyz[neighbor_r*3 : neighbor_r*3+3])
+					rnXYZ := convToVec3(m.XYZ[neighbor_r*3 : neighbor_r*3+3])
 
 					// Convert to polar coordinates.
-					rLat := m.r_latLon[neighbor_r][0]
-					rLon := m.r_latLon[neighbor_r][1]
+					rLat := m.LatLon[neighbor_r][0]
+					rLon := m.LatLon[neighbor_r][1]
 
 					// Add wind vector to neighbor lat/lon to get the "wind vector lat long" or something like that..
 					rnwXYZ := convToVec3(latLonToCartesian(rLat+r_windvec[neighbor_r][1], rLon+r_windvec[neighbor_r][0])).Normalize()
@@ -442,30 +442,30 @@ func (m *Map) assignRainfall(numSteps, transferMode, sortOrder int) {
 					if dotV > 0 {
 						// Only positive dot products mean that we lie within 90°, so 'in wind direction'.
 						count++
-						sum += m.r_moisture[neighbor_r] * dotV
+						sum += m.Moisture[neighbor_r] * dotV
 					}
 				}
 
 				var humidity, rainfall float64
-				humidity = m.r_moisture[r]
+				humidity = m.Moisture[r]
 				if count > 0 {
 					// TODO: Calculate max humidity at current altitude, temperature, rain off the rest.
 					// WARNING: The humidity calculation is off.
 					humidity = math.Min(humidity+sum, 1.0) // / float64(count)
 					rainfall = math.Min(rainfall+biomesParam.raininess*sum, 1.0)
 				}
-				if m.r_elevation[r] <= 0.0 {
+				if m.Elevation[r] <= 0.0 {
 					// evaporation := biomesParam.evaporation * (-m.r_elevation[r])
 					// humidity = evaporation
-					humidity = m.r_moisture[r]
+					humidity = m.Moisture[r]
 				}
 				orographicRainfall := calcRainfall(r, humidity)
 				if orographicRainfall > 0.0 {
 					rainfall += biomesParam.raininess * orographicRainfall
 					humidity -= orographicRainfall
 				}
-				m.r_rainfall[r] = rainfall
-				m.r_moisture[r] = humidity
+				m.Rainfall[r] = rainfall
+				m.Moisture[r] = humidity
 			}
 		}
 
@@ -474,18 +474,18 @@ func (m *Map) assignRainfall(numSteps, transferMode, sortOrder int) {
 	}
 }
 
-func (m *Map) getWindSortOrder() ([]float64, []int) {
+func (m *Geo) getWindSortOrder() ([]float64, []int) {
 	m.assignWindVectors()
 	// TODO: Add bool parameter to switch between local winds and global winds.
 	//r_windvec := m.r_windvec
-	r_windvec := m.r_windvec_local
+	r_windvec := m.RegionToWindVecLocal
 	wind_order_r := make([]int, m.mesh.numRegions)
 	r_wind_sort := make([]float64, m.mesh.numRegions)
 	for r := 0; r < m.mesh.numRegions; r++ {
 		wind_order_r[r] = r
 		// TODO: modify the sort order by ensuring longitude wraps around...??
-		lat := (m.r_latLon[r][0]) * r_windvec[r][1] / math.Abs(r_windvec[r][1]) // radToDeg(r_windvec[r][1])
-		lon := (m.r_latLon[r][1]) * r_windvec[r][0] / math.Abs(r_windvec[r][0]) // radToDeg(r_windvec[r][0])
+		lat := (m.LatLon[r][0]) * r_windvec[r][1] / math.Abs(r_windvec[r][1]) // radToDeg(r_windvec[r][1])
+		lon := (m.LatLon[r][1]) * r_windvec[r][0] / math.Abs(r_windvec[r][0]) // radToDeg(r_windvec[r][0])
 		r_wind_sort[r] = (lat + lon)
 	}
 
@@ -497,7 +497,7 @@ func (m *Map) getWindSortOrder() ([]float64, []int) {
 	return r_wind_sort, wind_order_r
 }
 
-func (m *Map) assignRainfallBasic() {
+func (m *Geo) assignRainfallBasic() {
 	// NOTE: This still has issues with the wrap around at +/- 180° long
 	biomesParam := biomesParams{
 		raininess:   0.9,
@@ -511,12 +511,12 @@ func (m *Map) assignRainfallBasic() {
 	// Sort the indices in wind-order so we can ensure that we push the moisture
 	// in their logical sequence across the globe.
 	_, wind_order_r := m.getWindSortOrder()
-	r_windvec := m.r_windvec_local
+	r_windvec := m.RegionToWindVecLocal
 
 	// calcRainfall returns the amount of rain shed given the region and humidity.
-	_, maxH := minMax(m.r_elevation)
+	_, maxH := minMax(m.Elevation)
 	calcRainfall := func(r int, humidity float64) float64 {
-		r_elev := m.r_elevation[r]
+		r_elev := m.Elevation[r]
 		if r_elev < 0 {
 			r_elev = 0 // Set to sea-level
 		}
@@ -530,25 +530,25 @@ func (m *Map) assignRainfallBasic() {
 	// Evaporation.
 	// 1. Assign initial moisture of 1.0 to all regions below or at sea level or replenish
 	// moisture through evaporation if our moisture is below 0.
-	for r, h := range m.r_elevation {
-		if h < 0 && m.r_moisture[r] < humidityFromSea {
-			m.r_moisture[r] = humidityFromSea
+	for r, h := range m.Elevation {
+		if h < 0 && m.Moisture[r] < humidityFromSea {
+			m.Moisture[r] = humidityFromSea
 		}
 	}
 
 	// Rivers should experience some evaporation.
 	if evaporateRivers {
-		for r, fluxval := range m.r_flux {
-			if m.r_moisture[r] < fluxval && m.r_moisture[r] < humidityFromRiver {
-				m.r_moisture[r] = humidityFromRiver // TODO: Should depend on available water.
+		for r, fluxval := range m.Flux {
+			if m.Moisture[r] < fluxval && m.Moisture[r] < humidityFromRiver {
+				m.Moisture[r] = humidityFromRiver // TODO: Should depend on available water.
 			}
 		}
 	}
 
 	// Water pools should experience some evaporation.
-	for r, poolval := range m.r_pool {
-		if m.r_moisture[r] < humidityFromSea && poolval > 0 {
-			m.r_moisture[r] = humidityFromSea // TODO: Should depend on available water.
+	for r, poolval := range m.Waterpool {
+		if m.Moisture[r] < humidityFromSea && poolval > 0 {
+			m.Moisture[r] = humidityFromSea // TODO: Should depend on available water.
 		}
 	}
 
@@ -559,9 +559,9 @@ func (m *Map) assignRainfallBasic() {
 			var humidity float64
 
 			// Calculate humidity.
-			for _, neighbor_r := range m.rNeighbors(r) {
-				rL := m.r_latLon[r]
-				nL := m.r_latLon[neighbor_r]
+			for _, neighbor_r := range m.GetRegionNeighbors(r) {
+				rL := m.LatLon[r]
+				nL := m.LatLon[neighbor_r]
 
 				// TODO: Check dot product of wind vector (r) and neighbour->r.
 				vVec := normal2(calcVecFromLatLong(nL[0], nL[1], nL[0]+r_windvec[neighbor_r][1], nL[1]+r_windvec[neighbor_r][0]))
@@ -576,7 +576,7 @@ func (m *Map) assignRainfallBasic() {
 				// sitting at 0° etc.
 				// NOTE: This needs to be thoroughly checked if this fix works for the border regions.
 				if dotV > 0.0 {
-					humidity += m.r_moisture[neighbor_r] * dotV
+					humidity += m.Moisture[neighbor_r] * dotV
 				}
 			}
 
@@ -586,11 +586,11 @@ func (m *Map) assignRainfallBasic() {
 			// Evaporation.
 			// TODO: Remove the evaporation here if possible and instead
 			// rely on the evaporation step above.
-			if m.r_elevation[r] < 0 {
-				evaporation := biomesParam.evaporation * (-m.r_elevation[r])
+			if m.Elevation[r] < 0 {
+				evaporation := biomesParam.evaporation * (-m.Elevation[r])
 				humidity += evaporation
 			} else if evaporateRivers {
-				evaporation := biomesParam.evaporation * m.r_flux[r]
+				evaporation := biomesParam.evaporation * m.Flux[r]
 				humidity += evaporation
 			}
 
@@ -600,36 +600,36 @@ func (m *Map) assignRainfallBasic() {
 				rainfall += biomesParam.raininess * orographicRainfall
 				humidity -= orographicRainfall
 			}
-			m.r_rainfall[r] = rainfall
-			m.r_moisture[r] = humidity
+			m.Rainfall[r] = rainfall
+			m.Moisture[r] = humidity
 		}
 	}
 	m.interpolateRainfallMoisture(5)
 }
 
-func (m *Map) interpolateRainfallMoisture(interpolationSteps int) {
+func (m *Geo) interpolateRainfallMoisture(interpolationSteps int) {
 	for i := 0; i < interpolationSteps; i++ {
 		r_moisture_interpol := make([]float64, m.mesh.numRegions)
 		r_rainfall_interpol := make([]float64, m.mesh.numRegions)
 		for r := range r_moisture_interpol {
-			rMoist := m.r_moisture[r]
-			rRain := m.r_rainfall[r]
+			rMoist := m.Moisture[r]
+			rRain := m.Rainfall[r]
 			var count int
-			for _, neighbor_r := range m.rNeighbors(r) {
+			for _, neighbor_r := range m.GetRegionNeighbors(r) {
 				// Gravity! Water moves downwards.
 				// This is not super-accurate since you'd have to take
 				// in account how steep the slope is etc.
-				if m.r_elevation[r] >= m.r_elevation[neighbor_r] {
+				if m.Elevation[r] >= m.Elevation[neighbor_r] {
 					continue
 				}
-				rMoist += m.r_moisture[neighbor_r]
-				rRain += m.r_rainfall[neighbor_r]
+				rMoist += m.Moisture[neighbor_r]
+				rRain += m.Rainfall[neighbor_r]
 				count++
 			}
 			r_moisture_interpol[r] = rMoist / float64(count+1)
 			r_rainfall_interpol[r] = rRain / float64(count+1)
 		}
-		m.r_moisture = r_moisture_interpol
-		m.r_rainfall = r_rainfall_interpol
+		m.Moisture = r_moisture_interpol
+		m.Rainfall = r_rainfall_interpol
 	}
 }

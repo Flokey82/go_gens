@@ -2,52 +2,29 @@ package genworldvoronoi
 
 // getBorders returns the borders of each territory as list of triangle center points.
 func (m *Map) getBorders() [][]int {
-	return m.getCustomBorders(m.r_territory)
+	return m.getCustomBorders(m.RegionToTerritory)
 }
 
 // getLakeBorders returns the borders of each lake (regions with same drainage region) as list of triangle center points.
 func (m *Map) getLakeBorders() [][]int {
-	return m.getCustomBorders(m.r_drainage)
+	return m.getCustomBorders(m.Drainage)
 }
 
-func (m *Map) getCustomBorders(territories []int) [][]int {
-	return m.getCustomContour(func(idxA, idxB int) bool {
-		if m.r_elevation[idxA] < 0 || m.r_elevation[idxB] < 0 ||
-			(territories[idxA] < 0 && territories[idxB] < 0) {
+// getCustomBorders returns the borders/contours of all region in the supplied slice that have the same value.
+func (m *Map) getCustomBorders(regionToID []int) [][]int {
+	return m.GetCustomContour(func(idxA, idxB int) bool {
+		if m.Elevation[idxA] < 0 || m.Elevation[idxB] < 0 ||
+			(regionToID[idxA] < 0 && regionToID[idxB] < 0) {
 			return false
 		}
-		return territories[idxA] != territories[idxB]
+		return regionToID[idxA] != regionToID[idxB]
 	})
 }
 
-func (m *Map) getLandmassContour() [][]int {
-	return m.getCustomContour(func(idxA, idxB int) bool {
-		return m.r_elevation[idxA] >= 0 && m.r_elevation[idxB] < 0 || m.r_elevation[idxA] < 0 && m.r_elevation[idxB] >= 0
+// getLandmassBorders returns the borders of each landmass (neighboring regions above sea level)
+// as list of triangle center points.
+func (m *Map) getLandmassBorders() [][]int {
+	return m.GetCustomContour(func(idxA, idxB int) bool {
+		return m.Elevation[idxA] >= 0 && m.Elevation[idxB] < 0 || m.Elevation[idxA] < 0 && m.Elevation[idxB] >= 0
 	})
-}
-
-func (m *Map) getCustomContour(f func(idxA, idxB int) bool) [][]int {
-	var edges [][2]int
-	seen := make(map[[2]int]bool)
-	for i := 0; i < len(m.mesh.Halfedges); i++ {
-		idxA := m.mesh.s_begin_r(i)
-		idxB := m.mesh.s_end_r(i)
-		var vx [2]int
-		if idxA > idxB {
-			vx[0] = m.mesh.s_outer_t(i)
-			vx[1] = m.mesh.s_inner_t(i)
-		} else {
-			vx[0] = m.mesh.s_inner_t(i)
-			vx[1] = m.mesh.s_outer_t(i)
-		}
-		if seen[vx] {
-			continue
-		}
-		seen[vx] = true
-		if f(idxA, idxB) {
-			edges = append(edges, vx)
-		}
-	}
-
-	return mergeIndexSegments(edges)
 }
