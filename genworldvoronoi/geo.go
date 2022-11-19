@@ -2,28 +2,20 @@ package genworldvoronoi
 
 import (
 	"log"
-	"math/rand"
 	"time"
 
 	"github.com/Flokey82/go_gens/vectors"
-	opensimplex "github.com/ojrac/opensimplex-go"
 )
 
 type Geo struct {
-	BaseObject
-	t_flow               []float64      // Triangle flow intensity (rainfall)
-	t_downflow_s         []int          // Triangle mapping to side through which water flows downhill.
-	order_t              []int          // Triangles in uphill order of elevation.
-	s_flow               []float64      // Flow intensity through sides
+	*BaseObject
+	*Resources                          // Natural resources.
 	PlateToVector        []vectors.Vec3 // Plate tectonics / movement vectors
 	PlateIsOcean         map[int]bool   // Plate was chosen to be an ocean plate
 	PlateRegions         []int          // Plate seed points / regions
 	RegionToWindVec      []Vertex       // Point / region wind vector
 	RegionToWindVecLocal []Vertex       // Point / region wind vector (local)
 	RegionToPlate        []int          // Point / region to plate mapping
-	RegionToResMetals    []byte         // (resources) Metal ores
-	RegionToResGems      []byte         // (resources) Gemstones
-	RegionToResStones    []byte         // (resources) Different types of stones or minerals
 	NumPlates            int            // Number of generated plates
 	NumVolcanoes         int            // Number of generated volcanoes
 	NumPoints            int            // Number of generated points / regions
@@ -38,37 +30,11 @@ func newGeo(seed int64, numPlates, numPoints int, jitter float64) (*Geo, error) 
 	mesh := result.mesh
 
 	m := &Geo{
-		PlateIsOcean: make(map[int]bool),
-		BaseObject: BaseObject{
-			XYZ:           result.r_xyz,
-			LatLon:        result.r_latLon,
-			Elevation:     make([]float64, mesh.numRegions),
-			Moisture:      make([]float64, mesh.numRegions),
-			Flux:          make([]float64, mesh.numRegions),
-			Waterpool:     make([]float64, mesh.numRegions),
-			Rainfall:      make([]float64, mesh.numRegions),
-			Downhill:      make([]int, mesh.numRegions),
-			Drainage:      make([]int, mesh.numRegions),
-			t_pool:        make([]float64, mesh.numTriangles),
-			t_elevation:   make([]float64, mesh.numTriangles),
-			t_moisture:    make([]float64, mesh.numTriangles),
-			Waterbodies:   make([]int, mesh.numRegions),
-			WaterbodySize: make(map[int]int),
-			LakeSize:      make(map[int]int),
-			Seed:          seed,
-			rand:          rand.New(rand.NewSource(seed)),
-			noise:         opensimplex.NewNormalized(seed),
-			mesh:          result.mesh,
-		},
-		t_downflow_s:         make([]int, mesh.numTriangles),
-		order_t:              make([]int, mesh.numTriangles),
-		t_flow:               make([]float64, mesh.numTriangles),
-		s_flow:               make([]float64, mesh.numSides),
+		PlateIsOcean:         make(map[int]bool),
+		BaseObject:           newBaseObject(seed, result),
+		Resources:            newResources(mesh.numRegions),
 		RegionToWindVec:      make([]Vertex, mesh.numRegions),
 		RegionToWindVecLocal: make([]Vertex, mesh.numRegions),
-		RegionToResMetals:    make([]byte, mesh.numRegions),
-		RegionToResGems:      make([]byte, mesh.numRegions),
-		RegionToResStones:    make([]byte, mesh.numRegions),
 		NumPlates:            numPlates,
 		NumVolcanoes:         numPlates, // TODO: Allow independent configuration.
 		NumPoints:            numPoints,

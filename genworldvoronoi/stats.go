@@ -44,17 +44,17 @@ func (m *Geo) getStats(rr []int) *Stats {
 	for _, r := range rr {
 		st.TotalArea += m.GetRegionArea(r)
 		for i := 0; i < ResMaxMetals; i++ {
-			if m.RegionToResMetals[r]&(1<<i) != 0 {
+			if m.Metals[r]&(1<<i) != 0 {
 				st.ResMetal[i]++
 			}
 		}
 		for i := 0; i < ResMaxGems; i++ {
-			if m.RegionToResGems[r]&(1<<i) != 0 {
+			if m.Gems[r]&(1<<i) != 0 {
 				st.ResGems[i]++
 			}
 		}
 		for i := 0; i < ResMaxStones; i++ {
-			if m.RegionToResStones[r]&(1<<i) != 0 {
+			if m.Stones[r]&(1<<i) != 0 {
 				st.ResStones[i]++
 			}
 		}

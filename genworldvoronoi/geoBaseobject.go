@@ -1,6 +1,7 @@
 package genworldvoronoi
 
 import (
+	"container/heap"
 	"log"
 	"math"
 	"math/rand"
@@ -28,10 +29,43 @@ type BaseObject struct {
 	t_xyz         []float64         // Triangle xyz coordinates
 	t_pool        []float64         // Triangle water pool depth
 	t_latLon      [][2]float64      // Triangle latitude and longitude
+	t_flow        []float64         // Triangle flow intensity (rainfall)
+	t_downflow_s  []int             // Triangle mapping to side through which water flows downhill.
+	order_t       []int             // Triangles in uphill order of elevation.
+	s_flow        []float64         // Flow intensity through sides
 	Seed          int64             // Seed for random number generators
 	rand          *rand.Rand        // Rand initialized with above seed
 	noise         opensimplex.Noise // Opensimplex noise initialized with above seed
 	mesh          *TriangleMesh     // Triangle mesh containing the sphere information
+}
+
+func newBaseObject(seed int64, sphere *SphereMesh) *BaseObject {
+	mesh := sphere.mesh
+	return &BaseObject{
+		XYZ:           sphere.r_xyz,
+		LatLon:        sphere.r_latLon,
+		Elevation:     make([]float64, mesh.numRegions),
+		Moisture:      make([]float64, mesh.numRegions),
+		Flux:          make([]float64, mesh.numRegions),
+		Waterpool:     make([]float64, mesh.numRegions),
+		Rainfall:      make([]float64, mesh.numRegions),
+		Downhill:      make([]int, mesh.numRegions),
+		Drainage:      make([]int, mesh.numRegions),
+		t_pool:        make([]float64, mesh.numTriangles),
+		t_elevation:   make([]float64, mesh.numTriangles),
+		t_moisture:    make([]float64, mesh.numTriangles),
+		t_downflow_s:  make([]int, mesh.numTriangles),
+		order_t:       make([]int, mesh.numTriangles),
+		t_flow:        make([]float64, mesh.numTriangles),
+		s_flow:        make([]float64, mesh.numSides),
+		Waterbodies:   make([]int, mesh.numRegions),
+		WaterbodySize: make(map[int]int),
+		LakeSize:      make(map[int]int),
+		Seed:          seed,
+		rand:          rand.New(rand.NewSource(seed)),
+		noise:         opensimplex.NewNormalized(seed),
+		mesh:          sphere.mesh,
+	}
 }
 
 // resetRand resets the random number generator to its initial state.
@@ -45,16 +79,11 @@ func (m *BaseObject) pickRandomRegions(n int) []int {
 	m.resetRand()
 
 	// Pick n random regions.
-	chosen_r := make(map[int]bool) // Equivalent of JS new Set()
-	for len(chosen_r) < n && len(chosen_r) < m.mesh.numRegions {
-		chosen_r[m.rand.Intn(m.mesh.numRegions)] = true
+	var res []int
+	for len(res) < n && len(res) < m.mesh.numRegions {
+		res = append(res, m.rand.Intn(m.mesh.numRegions))
 	}
-
-	// Convert map back to a slice (yikes).
-	//
-	// TODO: Do something more clever and efficient than a map that
-	// we convert back to a map anyway.
-	return convToArray(chosen_r)
+	return res
 }
 
 // generateTriangleCenters iterates through all triangles and generates the centroids for each.
@@ -149,6 +178,101 @@ func (m *BaseObject) GetDownhill(usePool bool) []int {
 		r_downhill[r] = lowest_r
 	}
 	return r_downhill
+}
+
+// assignDownflow starts with triangles that are considered "ocean" and works its way
+// uphill to build a graph of child/parents that will allow us later to determine water
+// flux and whatnot.
+//
+// NOTE: This is the original code that Amit uses in his procedural planets project.
+// He uses triangle centroids for his river generation, where I prefer to use the regions
+// directly.
+func (m *BaseObject) assignDownflow() {
+	// Use a priority queue, starting with the ocean triangles and
+	// moving upwards using elevation as the priority, to visit all
+	// the land triangles.
+	_queue := make(PriorityQueue, 0)
+	numTriangles := m.mesh.numTriangles
+	queue_in := 0
+	for i := range m.t_downflow_s {
+		m.t_downflow_s[i] = -999
+	}
+	heap.Init(&_queue)
+
+	// Part 1: ocean triangles get downslope assigned to the lowest neighbor.
+	for t := 0; t < numTriangles; t++ {
+		if m.t_elevation[t] < 0 {
+			best_s := -1
+			best_e := m.t_elevation[t]
+			for j := 0; j < 3; j++ {
+				s := 3*t + j
+				e := m.t_elevation[m.mesh.s_outer_t(s)]
+				if e < best_e {
+					best_e = e
+					best_s = s
+				}
+			}
+			m.order_t[queue_in] = t
+			queue_in++
+			m.t_downflow_s[t] = best_s
+			heap.Push(&_queue, &Item{ID: t, Value: m.t_elevation[t], Index: t})
+		}
+	}
+
+	// Part 2: land triangles get visited in elevation priority.
+	for queue_out := 0; queue_out < numTriangles; queue_out++ {
+		current_t := heap.Pop(&_queue).(*Item).ID
+		for j := 0; j < 3; j++ {
+			s := 3*current_t + j
+			neighbor_t := m.mesh.s_outer_t(s) // uphill from current_t
+			if m.t_downflow_s[neighbor_t] == -999 && m.t_elevation[neighbor_t] >= 0.0 {
+				m.t_downflow_s[neighbor_t] = m.mesh.s_opposite_s(s)
+				m.order_t[queue_in] = neighbor_t
+				queue_in++
+				heap.Push(&_queue, &Item{ID: neighbor_t, Value: m.t_elevation[neighbor_t]})
+			}
+		}
+	}
+}
+
+type Item struct {
+	ID    int
+	Value float64
+	Index int // The index of the item in the heap.
+}
+
+type PriorityQueue []*Item
+
+func (pq PriorityQueue) Len() int { return len(pq) }
+
+func (pq PriorityQueue) Less(i, j int) bool {
+	// We want Pop to give us the lowest based on expiration number as the priority
+	// The lower the expiry, the higher the priority
+	return pq[i].Value < pq[j].Value
+}
+
+// We just implement the pre-defined function in interface of heap.
+
+func (pq *PriorityQueue) Pop() interface{} {
+	old := *pq
+	n := len(old)
+	item := old[n-1]
+	item.Index = -1
+	*pq = old[0 : n-1]
+	return item
+}
+
+func (pq *PriorityQueue) Push(x interface{}) {
+	n := len(*pq)
+	item := x.(*Item)
+	item.Index = n
+	*pq = append(*pq, item)
+}
+
+func (pq PriorityQueue) Swap(i, j int) {
+	pq[i], pq[j] = pq[j], pq[i]
+	pq[i].Index = i
+	pq[j].Index = j
 }
 
 // GetDistance calculate the distance between two regions using
@@ -730,9 +854,15 @@ func (m *BaseObject) interpolate(rr []int) (*interpolated, error) {
 	ipl.t_pool = make([]float64, mesh.numTriangles)
 	ipl.t_elevation = make([]float64, mesh.numTriangles)
 	ipl.t_moisture = make([]float64, mesh.numTriangles)
+	ipl.t_downflow_s = make([]int, mesh.numTriangles)
+	ipl.order_t = make([]int, mesh.numTriangles)
+	ipl.t_flow = make([]float64, mesh.numTriangles)
+	ipl.s_flow = make([]float64, mesh.numSides)
 	ipl.assignDownhill(true)
 	ipl.assignTriangleValues()
 	ipl.generateTriangleCenters()
+	ipl.assignDownflow()
+	ipl.assignFlow()
 	ipl.Seed = m.Seed
 	ipl.rand = rand.New(rand.NewSource(m.Seed))
 	ipl.noise = m.noise

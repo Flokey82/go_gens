@@ -1,8 +1,64 @@
 package genworldvoronoi
 
 import (
+	"log"
 	"math"
 )
+
+// Resources maps regions to natural resources.
+type Resources struct {
+	Metals []byte // Metal ores
+	Gems   []byte // Gemstones
+	Stones []byte // Rocks or minerals
+}
+
+func newResources(size int) *Resources {
+	return &Resources{
+		Metals: make([]byte, size),
+		Gems:   make([]byte, size),
+		Stones: make([]byte, size),
+	}
+}
+
+func (m *Geo) resourceFitness() []float64 {
+	fitness := make([]float64, m.mesh.numRegions)
+	f := m.getFitnessSteepMountains()
+	for r := range fitness {
+		fitness[r] = f(r)
+	}
+	return fitness
+}
+
+func (m *Geo) placeResources() {
+	// NOTE: This currently sucks.
+	// TODO: Use fitness function instead or in addition.
+
+	// Place metals.
+	// Metals can be found mainly in mountains, so steepness
+	// will be an indicator along with the distance from the
+	// mountain seed points.
+	m.placeMetals()
+
+	// Place gemstones.
+	// Gemstones can be found mainly in inland valleys, so
+	// distance from the coastlines, mountains, and oceans
+	// will be an indicator.
+	m.placeGems()
+
+	// Place forests.
+	// Forests can be found mainly in valleys, so steepness
+	// will be an indicator along with the distance from the
+	// valley's center.
+
+	// Place arable land.
+	// Arable land can be found mainly in valleys, so steepness
+	// will be an indicator along with the distance from the
+	// valley's center.
+
+	// Place potential quarry sites.
+	// Potential quarry sites can be found mainly in mountains,
+	m.placeStones()
+}
 
 // Metal resource flags starting with the cheapest metal.
 const (
@@ -38,117 +94,7 @@ func metalToString(metalID int) string {
 
 const ResMaxMetals = 7
 
-// Gemstone resource flags starting with the cheapest gem.
-const (
-	ResGemAmethyst = 1 << iota
-	ResGemTopaz
-	ResGemSapphire
-	ResGemEmerald
-	ResGemRuby
-	ResGemDiamond
-)
-
-func gemToString(gemsID int) string {
-	switch 1 << gemsID {
-	case ResGemAmethyst:
-		return "Amethyst"
-	case ResGemTopaz:
-		return "Topaz"
-	case ResGemSapphire:
-		return "Sapphire"
-	case ResGemEmerald:
-		return "Emerald"
-	case ResGemRuby:
-		return "Ruby"
-	case ResGemDiamond:
-		return "Diamond"
-	default:
-		return "Unknown"
-	}
-}
-
-const ResMaxGems = 6
-
-// Stone resource flags starting with the most common stone.
-// NOTE: Clay?
-const (
-	ResStoSandstone = 1 << iota
-	ResStoLimestone
-	ResStoChalk
-	ResStoMarble
-	ResStoGranite
-	ResStoBasalt
-	ResStoObsidian
-)
-
-func stoneToString(stoneID int) string {
-	switch 1 << stoneID {
-	case ResStoSandstone:
-		return "Sandstone"
-	case ResStoLimestone:
-		return "Limestone"
-	case ResStoChalk:
-		return "Chalk"
-	case ResStoMarble:
-		return "Marble"
-	case ResStoGranite:
-		return "Granite"
-	case ResStoBasalt:
-		return "Basalt"
-	case ResStoObsidian:
-		return "Obsidian"
-	default:
-		return "Unknown"
-	}
-}
-
-const ResMaxStones = 7
-
-const (
-	ResVarClay = 1 << iota
-	ResVarSulfur
-	ResVarSalt
-	ResVarCoal
-	ResVarOil
-	ResVarGas
-)
-
-func (m *Geo) resourceFitness() []float64 {
-	fitness := make([]float64, m.mesh.numRegions)
-	f := m.getFitnessSteepMountains()
-	for r := range fitness {
-		fitness[r] = f(r)
-	}
-	return fitness
-}
-
-func (m *Geo) placeResources() {
-	// NOTE: This currently sucks.
-	// TODO: Use fitness function instead or in addition.
-
-	// Place metals.
-	// Metals can be found mainly in mountains, so steepness
-	// will be an indicator along with the distance from the
-	// mountain seed points.
-
-	// Place gemstones.
-	// Gemstones can be found mainly in inland valleys, so
-	// distance from the coastlines, mountains, and oceans
-	// will be an indicator.
-
-	// Place forests.
-	// Forests can be found mainly in valleys, so steepness
-	// will be an indicator along with the distance from the
-	// valley's center.
-
-	// Place arable land.
-	// Arable land can be found mainly in valleys, so steepness
-	// will be an indicator along with the distance from the
-	// valley's center.
-
-	// Place potential quarry sites.
-	// Potential quarry sites can be found mainly in mountains,
-
+func (m *Geo) placeMetals() {
 	steepness := m.GetSteepness()
 	// distMountains, _, _, _ := m.findCollisions()
 
@@ -195,43 +141,7 @@ func (m *Geo) placeResources() {
 			}
 		}
 	}
-	m.RegionToResMetals = metals
-
-	const (
-		chanceDiamond  = 0.005
-		chanceRuby     = chanceDiamond + 0.025
-		chanceEmerald  = chanceRuby + 0.04
-		chanceSapphire = chanceEmerald + 0.05
-		chanceTopaz    = chanceSapphire + 0.06
-		chanceAmethyst = chanceTopaz + 0.1
-		// chanceQuartz   = 0.75 // Usually goes hand in hand with gold?
-		// chanceFlint    = 0.9
-	)
-
-	gems := make([]byte, len(steepness))
-	for r := 0; r < m.mesh.numRegions; r++ {
-		if steepness[r] > 0.9 && m.Elevation[r] > 0.5 {
-			switch rv := math.Abs(m.rand.NormFloat64()); {
-			case rv < chanceDiamond:
-				gems[r] |= ResGemDiamond
-			case rv < chanceRuby:
-				gems[r] |= ResGemRuby
-			case rv < chanceEmerald:
-				gems[r] |= ResGemEmerald
-			case rv < chanceSapphire:
-				gems[r] |= ResGemSapphire
-			case rv < chanceTopaz:
-				gems[r] |= ResGemTopaz
-			case rv < chanceAmethyst:
-				gems[r] |= ResGemAmethyst
-				// case rv < chanceQuartz:
-				//	gems[r] |= ResGemQuartz
-				// case rv < chanceFlint:
-				//	gems[r] |= ResGemFlint
-			}
-		}
-	}
-	m.RegionToResGems = gems
+	m.Metals = metals
 
 	// This attempts some weird variation of:
 	// https://www.redblobgames.com/x/1736-resource-placement/
@@ -269,4 +179,122 @@ func (m *Geo) placeResources() {
 	*/
 
 	//m.r_metals = resources
+}
+
+// Gemstone resource flags starting with the cheapest gem.
+const (
+	ResGemAmethyst = 1 << iota
+	ResGemTopaz
+	ResGemSapphire
+	ResGemEmerald
+	ResGemRuby
+	ResGemDiamond
+)
+
+func gemToString(gemsID int) string {
+	switch 1 << gemsID {
+	case ResGemAmethyst:
+		return "Amethyst"
+	case ResGemTopaz:
+		return "Topaz"
+	case ResGemSapphire:
+		return "Sapphire"
+	case ResGemEmerald:
+		return "Emerald"
+	case ResGemRuby:
+		return "Ruby"
+	case ResGemDiamond:
+		return "Diamond"
+	default:
+		return "Unknown"
+	}
+}
+
+const ResMaxGems = 6
+
+func (m *Geo) placeGems() {
+	steepness := m.GetSteepness()
+	const (
+		chanceDiamond  = 0.005
+		chanceRuby     = chanceDiamond + 0.025
+		chanceEmerald  = chanceRuby + 0.04
+		chanceSapphire = chanceEmerald + 0.05
+		chanceTopaz    = chanceSapphire + 0.06
+		chanceAmethyst = chanceTopaz + 0.1
+		// chanceQuartz   = 0.75 // Usually goes hand in hand with gold?
+		// chanceFlint    = 0.9
+	)
+
+	gems := make([]byte, len(steepness))
+	for r := 0; r < m.mesh.numRegions; r++ {
+		if steepness[r] > 0.9 && m.Elevation[r] > 0.5 {
+			switch rv := math.Abs(m.rand.NormFloat64()); {
+			case rv < chanceDiamond:
+				gems[r] |= ResGemDiamond
+			case rv < chanceRuby:
+				gems[r] |= ResGemRuby
+			case rv < chanceEmerald:
+				gems[r] |= ResGemEmerald
+			case rv < chanceSapphire:
+				gems[r] |= ResGemSapphire
+			case rv < chanceTopaz:
+				gems[r] |= ResGemTopaz
+			case rv < chanceAmethyst:
+				gems[r] |= ResGemAmethyst
+				// case rv < chanceQuartz:
+				//	gems[r] |= ResGemQuartz
+				// case rv < chanceFlint:
+				//	gems[r] |= ResGemFlint
+			}
+		}
+	}
+	m.Gems = gems
+}
+
+// Stone resource flags starting with the most common stone.
+// NOTE: Clay?
+const (
+	ResStoSandstone = 1 << iota
+	ResStoLimestone
+	ResStoChalk
+	ResStoMarble
+	ResStoGranite
+	ResStoBasalt
+	ResStoObsidian
+)
+
+func stoneToString(stoneID int) string {
+	switch 1 << stoneID {
+	case ResStoSandstone:
+		return "Sandstone"
+	case ResStoLimestone:
+		return "Limestone"
+	case ResStoChalk:
+		return "Chalk"
+	case ResStoMarble:
+		return "Marble"
+	case ResStoGranite:
+		return "Granite"
+	case ResStoBasalt:
+		return "Basalt"
+	case ResStoObsidian:
+		return "Obsidian"
+	default:
+		return "Unknown"
+	}
+}
+
+const ResMaxStones = 7
+
+const (
+	ResVarClay = 1 << iota
+	ResVarSulfur
+	ResVarSalt
+	ResVarCoal
+	ResVarOil
+	ResVarGas
+)
+
+func (m *Geo) placeStones() {
+	log.Println("placing stones is not implemented")
 }

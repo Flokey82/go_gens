@@ -540,7 +540,7 @@ func (m *Map) ExportSVG(path string) error {
 		cols := grad.Colors(uint(ResMaxMetals))
 
 		// NOTE: This sucks right now.
-		res := m.RegionToResMetals
+		res := m.Metals
 		radius := 1
 		count := make([]int, ResMaxMetals)
 		for i := 0; i < ResMaxMetals; i++ {
