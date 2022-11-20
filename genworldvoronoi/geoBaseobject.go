@@ -5,6 +5,7 @@ import (
 	"log"
 	"math"
 	"math/rand"
+	"sort"
 
 	opensimplex "github.com/ojrac/opensimplex-go"
 
@@ -83,6 +84,7 @@ func (m *BaseObject) pickRandomRegions(n int) []int {
 	for len(res) < n && len(res) < m.mesh.numRegions {
 		res = append(res, m.rand.Intn(m.mesh.numRegions))
 	}
+	sort.Ints(res)
 	return res
 }
 
@@ -160,22 +162,22 @@ func (m *BaseObject) GetDownhill(usePool bool) []int {
 	// Here we will map each region to the lowest neighbor.
 	r_downhill := make([]int, m.mesh.numRegions)
 	for r := range r_downhill {
-		lowest_r := -1
-		lowest_elevation := m.Elevation[r]
+		lowestRegion := -1
+		lowestElevation := m.Elevation[r]
 		if usePool {
-			lowest_elevation += m.Waterpool[r]
+			lowestElevation += m.Waterpool[r]
 		}
 		for _, neighbor_r := range m.GetRegionNeighbors(r) {
 			elev := m.Elevation[neighbor_r]
 			if usePool {
 				elev += m.Waterpool[neighbor_r]
 			}
-			if elev < lowest_elevation {
-				lowest_elevation = elev
-				lowest_r = neighbor_r
+			if elev < lowestElevation {
+				lowestElevation = elev
+				lowestRegion = neighbor_r
 			}
 		}
-		r_downhill[r] = lowest_r
+		r_downhill[r] = lowestRegion
 	}
 	return r_downhill
 }
@@ -191,88 +193,55 @@ func (m *BaseObject) assignDownflow() {
 	// Use a priority queue, starting with the ocean triangles and
 	// moving upwards using elevation as the priority, to visit all
 	// the land triangles.
-	_queue := make(PriorityQueue, 0)
+	queue := make(ascPriorityQueue, 0)
 	numTriangles := m.mesh.numTriangles
-	queue_in := 0
+	queueIn := 0
 	for i := range m.t_downflow_s {
 		m.t_downflow_s[i] = -999
 	}
-	heap.Init(&_queue)
+	heap.Init(&queue)
 
 	// Part 1: ocean triangles get downslope assigned to the lowest neighbor.
 	for t := 0; t < numTriangles; t++ {
 		if m.t_elevation[t] < 0 {
-			best_s := -1
-			best_e := m.t_elevation[t]
+			bestSide := -1
+			bestElevation := m.t_elevation[t]
 			for j := 0; j < 3; j++ {
-				s := 3*t + j
-				e := m.t_elevation[m.mesh.s_outer_t(s)]
-				if e < best_e {
-					best_e = e
-					best_s = s
+				side := 3*t + j
+				elevation := m.t_elevation[m.mesh.s_outer_t(side)]
+				if elevation < bestElevation {
+					bestSide = side
+					bestElevation = elevation
 				}
 			}
-			m.order_t[queue_in] = t
-			queue_in++
-			m.t_downflow_s[t] = best_s
-			heap.Push(&_queue, &Item{ID: t, Value: m.t_elevation[t], Index: t})
+			m.order_t[queueIn] = t
+			queueIn++
+			m.t_downflow_s[t] = bestSide
+			heap.Push(&queue, &queueEntry{
+				destination: t,
+				score:       m.t_elevation[t],
+				index:       t,
+			})
 		}
 	}
 
 	// Part 2: land triangles get visited in elevation priority.
-	for queue_out := 0; queue_out < numTriangles; queue_out++ {
-		current_t := heap.Pop(&_queue).(*Item).ID
+	for queueOut := 0; queueOut < numTriangles; queueOut++ {
+		current_t := heap.Pop(&queue).(*queueEntry).destination
 		for j := 0; j < 3; j++ {
 			s := 3*current_t + j
 			neighbor_t := m.mesh.s_outer_t(s) // uphill from current_t
 			if m.t_downflow_s[neighbor_t] == -999 && m.t_elevation[neighbor_t] >= 0.0 {
 				m.t_downflow_s[neighbor_t] = m.mesh.s_opposite_s(s)
-				m.order_t[queue_in] = neighbor_t
-				queue_in++
-				heap.Push(&_queue, &Item{ID: neighbor_t, Value: m.t_elevation[neighbor_t]})
+				m.order_t[queueIn] = neighbor_t
+				queueIn++
+				heap.Push(&queue, &queueEntry{
+					destination: neighbor_t,
+					score:       m.t_elevation[neighbor_t],
+				})
 			}
 		}
 	}
-}
-
-type Item struct {
-	ID    int
-	Value float64
-	Index int // The index of the item in the heap.
-}
-
-type PriorityQueue []*Item
-
-func (pq PriorityQueue) Len() int { return len(pq) }
-
-func (pq PriorityQueue) Less(i, j int) bool {
-	// We want Pop to give us the lowest based on expiration number as the priority
-	// The lower the expiry, the higher the priority
-	return pq[i].Value < pq[j].Value
-}
-
-// We just implement the pre-defined function in interface of heap.
-
-func (pq *PriorityQueue) Pop() interface{} {
-	old := *pq
-	n := len(old)
-	item := old[n-1]
-	item.Index = -1
-	*pq = old[0 : n-1]
-	return item
-}
-
-func (pq *PriorityQueue) Push(x interface{}) {
-	n := len(*pq)
-	item := x.(*Item)
-	item.Index = n
-	*pq = append(*pq, item)
-}
-
-func (pq PriorityQueue) Swap(i, j int) {
-	pq[i], pq[j] = pq[j], pq[i]
-	pq[i].Index = i
-	pq[j].Index = j
 }
 
 // GetDistance calculate the distance between two regions using
@@ -302,6 +271,9 @@ func (m *BaseObject) getLowestNeighbor(r int) int {
 	return lowest_r
 }
 
+// TestAreas essentially sums up the surface area of all the regions
+// and prints the total.. which shows that we're pretty close to the
+// surface area of a unit sphere. :) Yay!
 func (m *BaseObject) TestAreas() {
 	var tot float64
 	for i := 0; i < m.mesh.numRegions; i++ {

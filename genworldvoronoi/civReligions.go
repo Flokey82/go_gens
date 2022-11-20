@@ -14,6 +14,36 @@ func init() {
 }
 
 // Religion represents a religion in the world.
+//
+// TODO: Ensure we can infer symbolisms from events and other things.
+//
+// For example, if they worship the 99 beer bottles on the wall, we should
+// be able to infer that they highly value beer and the number 99, as well
+// as walls. They might be fearful of the number 100, and might have a
+// taboo against the number 1.
+// They might look kindly on people who can drink 99 beers in a row.
+//
+// Another example: If they worship the sun, we should be able to infer
+// that they highly value the sun, and that they might be fearful of the
+// moon. They might have a celebration during the summer solstice and consider
+// a total eclipse of the sun to be a bad omen and a moon eclipse to be a good
+// omen.
+//
+// # DEITIES AND SYMBOLS
+//
+// Folk religions that are purely based on the culture might warship
+// nature itself, such as the sun, summer, the rain, a particular animal,
+// or a particular plant. They might worship one or multiple deities that
+// represent nature, like the sun god, the rain god, the god of the forest.
+//
+// Organized religions might either worship one or multiple gods, or a single
+// person that is considered to be a god (or chosen).
+//
+// # GRAPH
+//
+// All these themes and connections could be represented as a graph, which
+// would allow us to infer the relationships between deities and symbols and
+// if mundane events hold any significance for a particular religion.
 type Religion struct {
 	ID           int
 	Origin       int

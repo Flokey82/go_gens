@@ -4,6 +4,34 @@ import (
 	"log"
 )
 
+func (m *Civ) rPlaceNCityStates(n int) {
+	m.resetRand()
+	// Territories are based on cities acting as their capital.
+	// Since the algorithm places the cities with the highes scores
+	// first, we use the top 'n' cities as the capitals for the
+	// territories.
+	var seedCities []int
+	for i, c := range m.Cities {
+		if i >= n {
+			break
+		}
+		seedCities = append(seedCities, c.ID)
+	}
+	weight := m.getTerritoryWeightFunc()
+	biomeWeight := m.getTerritoryBiomeWeightFunc()
+	cultureWeight := m.getTerritoryCultureWeightFunc()
+
+	m.RegionToCityState = m.rPlaceNTerritoriesCustom(seedCities, func(o, u, v int) float64 {
+		// TODO: Make sure we take in account expansionism, wealth, score, and culture.
+		return weight(o, u, v) + biomeWeight(o, u, v) + cultureWeight(o, u, v)
+	})
+
+	// Before relaxing the territories, we'd need to ensure that we only
+	// relax without changing the borders of the empire...
+	// So we'd only re-assign IDs that belong to the same territory.
+	// m.rRelaxTerritories(m.r_city, 5)
+}
+
 // CityState represents a territory governed by a single city.
 type CityState struct {
 	ID      int     // Region where the city state originates

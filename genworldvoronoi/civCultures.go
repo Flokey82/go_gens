@@ -31,43 +31,7 @@ func (m *Civ) PlaceNCultures(n int) {
 	m.ExpandCultures()
 }
 
-// ExpandCultures expands the cultures on the map based on their expansionism,
-// terrain preference, and distance to other cultures.
-func (m *Civ) ExpandCultures() {
-	var seeds []int
-	originToCulture := make(map[int]*Culture)
-	for _, c := range m.Cultures {
-		seeds = append(seeds, c.ID)
-		originToCulture[c.ID] = c
-	}
-	r_cellType := m.getRCellTypes()
-	_, maxElev := minMax(m.Elevation)
-	twf := m.getTerritoryWeightFunc()
-	biomeWeight := m.getTerritoryBiomeWeightFunc()
-	m.RegionToCulture = m.rPlaceNTerritoriesCustom(seeds, func(o, u, v int) float64 {
-		c := originToCulture[o]
-		eleVal := m.Elevation[v] / maxElev
-		gotBiome := m.getRBiomeTEMP(v, eleVal, maxElev)
-		biomePenalty := biomeWeight(o, u, v) * c.Type.BiomeCost(gotBiome) * float64(genbiome.AzgaarBiomeMovementCost[gotBiome]) / 100
-		cellTypePenalty := c.Type.CellTypeCost(r_cellType[v])
-		return biomePenalty + cellTypePenalty*twf(o, u, v)/c.Expansionism
-	})
-
-	// TODO: There are small islands that do not have a culture...
-	// We should (or could) fix that.
-	for _, c := range m.Cultures {
-		c.Regions = nil
-		// Collect all regions that are part of the current culture.
-		for r, cu := range m.RegionToCulture {
-			if cu == c.ID {
-				c.Regions = append(c.Regions, r)
-			}
-		}
-		c.Stats = m.getStats(c.Regions)
-		c.Log()
-	}
-}
-
+// placeNCultures places n cultures on the map.
 func (m *Civ) placeNCultures(n int) {
 	// The fitness function, returning a score from
 	// 0.0 to 1.0 for a given region.
@@ -78,7 +42,7 @@ func (m *Civ) placeNCultures(n int) {
 	// away from.
 	var dsf func() []int
 
-	rctf := m.getRCultureTypeFunc()
+	rctf := m.getRegionCultureTypeFunc()
 	fc := m.getFitnessClimate()
 	sf = func(r int) float64 {
 		if m.Elevation[r] <= 0 {
@@ -102,15 +66,107 @@ func (m *Civ) placeNCultures(n int) {
 	}
 }
 
+// ExpandCultures expands the cultures on the map based on their expansionism,
+// terrain preference, and distance to other cultures.
+func (m *Civ) ExpandCultures() {
+	// The cultural centers will be the seed points for the expansion.
+	var seeds []int
+	originToCulture := make(map[int]*Culture)
+	for _, c := range m.Cultures {
+		seeds = append(seeds, c.ID)
+		originToCulture[c.ID] = c
+	}
+
+	r_cellType := m.getRegionCellTypes()
+	_, maxElev := minMax(m.Elevation)
+	twf := m.getTerritoryWeightFunc()
+	biomeWeight := m.getTerritoryBiomeWeightFunc()
+	m.RegionToCulture = m.rPlaceNTerritoriesCustom(seeds, func(o, u, v int) float64 {
+		c := originToCulture[o]
+
+		// Get the cost to expand to this biome.
+		gotBiome := m.getAzgaarRegionBiome(v, m.Elevation[v]/maxElev, maxElev)
+		biomePenalty := biomeWeight(o, u, v) * float64(genbiome.AzgaarBiomeMovementCost[gotBiome]) / 100
+
+		// Check if we have a non-native biome, if so we apply an additional penalty.
+		// NOTE: This check has been disabled for now.
+		// if m.getAzgaarRegionBiome(o, m.Elevation[o]/maxElev, maxElev) != gotBiome {
+		biomePenalty *= c.Type.BiomeCost(gotBiome)
+		// }
+
+		cellTypePenalty := c.Type.CellTypeCost(r_cellType[v])
+		return biomePenalty + cellTypePenalty*twf(o, u, v)/c.Expansionism
+	})
+
+	// TODO: There are small islands that do not have a culture...
+	// We should (or could) fix that.
+	for _, c := range m.Cultures {
+		c.Regions = nil
+		// Collect all regions that are part of the current culture.
+		for r, cu := range m.RegionToCulture {
+			if cu == c.ID {
+				c.Regions = append(c.Regions, r)
+			}
+		}
+		c.Stats = m.getStats(c.Regions)
+		c.Log()
+	}
+}
+
 // Culture represents a culture.
+//
+// TODO:
+//
+// # VALUES
+//
+// The type of culture will also influence their values.
+// For example, a nomadic or a hunting culture will have
+// higher regart for martial skills and lower regard for
+// sophistication.
+//
+// I would propose to have a point pool for these attributes
+// and then randomly assign them to the various skills with
+// a certain distribution based on the culture type.
+//
+// # CRAFTS AND SKILLS
+//
+// The culture will also have a set of crafts, arts, and skills
+// that they are good at. This will be based on their values and
+// the environment they live in.
+//
+// For example, a nomadic culture will be good at hunting and
+// tracking. They might be exceptional at crafting leather wares
+// (like saddles), and bows.
+//
+// A river culture will have a ready supply of clay, and will
+// be good at pottery, but not at crafin leather wares like
+// saddles.
+//
+// A mountain culture will be good at mining, prospecting, and
+// stone carving. If they mine precious metals, they will be
+// good at jewelry making.
+//
+// A naval culture will be good at ship building, and sailing.
+// Since they might have sea shells as a ready supply, they
+// might be good at jewelry making.
+//
+// # ARTS
+//
+// Arts will be based on the environment and the values of the
+// culture. For example, a river culture might focus on water
+// and rivers, as well as the flora and fauna related to rivers.
+//
+// A mountain culture might use iconography to represent the
+// harshness of the mountains, and the gifts of the mines.
 type Culture struct {
 	ID           int         // Region where the culture originates
 	Name         string      // Name of the culture
 	Type         CultureType // Type of the culture
 	Expansionism float64     // Expansionism of the culture
+	Martialism   float64     // Martial skills of the culture
 	// Sophistication float64
-	// Martialism     float64
-	// Extremism      float64
+	// Extremism      float64 ?
+	// Openness       float64 ?
 	// Parent    *Culture
 	// Children  []*Culture
 	// Extinct   bool
@@ -133,6 +189,7 @@ func (m *Civ) newCulture(r int, cultureType CultureType) *Culture {
 		Name:         lang.MakeName(),
 		Type:         cultureType,
 		Expansionism: cultureType.Expansionism(),
+		Martialism:   cultureType.Martialism(),
 		Language:     lang,
 	}
 }
@@ -156,7 +213,7 @@ func (m *Civ) PlaceCulture(rctf func(int) CultureType, sf func(int) float64, dis
 // PlaceCultureAt places a culture at the given region.
 // TODO: Allow specifying the culture type?
 func (m *Civ) PlaceCultureAt(r int) *Culture {
-	c := m.newCulture(r, m.getRCultureTypeFunc()(r))
+	c := m.newCulture(r, m.getRegionCultureTypeFunc()(r))
 	c.Regions = []int{r}
 	c.Stats = m.getStats(c.Regions)
 	m.Cultures = append(m.Cultures, c)
@@ -237,6 +294,27 @@ func (t CultureType) Expansionism() float64 {
 	return roundToDecimals(((rand.Float64()*powerInputValue)/2+1)*base, 1)
 }
 
+// Martialism returns the martialism of a given culture type.
+func (t CultureType) Martialism() float64 {
+	powerInputValue := 1.0
+	base := 1.0 // Generic
+	switch t {
+	case CultureTypeLake:
+		base = 0.8
+	case CultureTypeNaval:
+		base = 1.5
+	case CultureTypeRiver:
+		base = 0.9
+	case CultureTypeNomadic:
+		base = 1.4
+	case CultureTypeHunting:
+		base = 1.4
+	case CultureTypeHighland:
+		base = 1.1
+	}
+	return roundToDecimals(((rand.Float64()*powerInputValue)/2+1)*base, 1)
+}
+
 // CellTypeCost returns the cost of crossing / navigating a given cell type for a given culture.
 func (t CultureType) CellTypeCost(cellType int) float64 {
 	// TODO: Make use of this
@@ -267,7 +345,7 @@ func (t CultureType) CellTypeCost(cellType int) float64 {
 		return 1.0
 	}
 
-	// Not water near coast (deep ocean/inland/coastal land).
+	// Not water near coast (deep ocean/coastal land).
 	if cellType != -1 {
 		if t == CultureTypeNaval || t == CultureTypeLake {
 			// Penalty for mainland for naval and lake cultures
@@ -295,10 +373,12 @@ func (t CultureType) BiomeCost(biome int) float64 {
 	return 2.0
 }
 
-// getRHaven returns the closest neighbor region that is a water cell, which
+// getRegionHaven returns the closest neighbor region that is a water cell, which
 // can be used as a haven, and returns the number of water neighbors, indicating
 // the harbor size.
-func (m *Civ) getRHaven(i int) (int, int) {
+//
+// If no haven is found, -1 is returned.
+func (m *Civ) getRegionHaven(i int) (int, int) {
 	// get all neighbors that are below or at sea level.
 	var water []int
 	for _, nb := range m.GetRegionNeighbors(i) {
@@ -306,6 +386,12 @@ func (m *Civ) getRHaven(i int) (int, int) {
 			water = append(water, nb)
 		}
 	}
+
+	// No water neighbors, return -1.
+	if len(water) == 0 {
+		return -1, 0
+	}
+
 	// Get distances of i to each water neighbor.
 	// get the closest water neighbor.
 	iLatLon := m.LatLon[i]
@@ -324,7 +410,20 @@ func (m *Civ) getRHaven(i int) (int, int) {
 	return closest, len(water)
 }
 
-func (m *Civ) getRCellTypes() []int {
+// getRegionCellTypes maps the region to its cell type.
+//
+// NOTE: Currently this depends on the region graph, which will break
+// things once we increas or decrease the number of regions on the map as
+// the distance between regions will change with the region density.
+//
+// Value meanings:
+//
+// -2: deep ocean or large lake
+// -1: region is a water cell next to a land cell (lake shore/coastal water)
+// +1: region is a land cell next to a water cell (lake shore/coastal land)
+// +2: region is a land cell next to a coastal land cell
+// >2: region is inland
+func (m *Civ) getRegionCellTypes() []int {
 	var ocean_r, land_r []int
 	for r, elev := range m.Elevation {
 		if elev <= 0.0 {
@@ -362,6 +461,7 @@ func (m *Civ) getRCellTypes() []int {
 	return cellType
 }
 
+// Landmark feature types.
 const (
 	FeatureTypeOcean     = "ocean"
 	FeatureTypeSea       = "sea"
@@ -371,7 +471,9 @@ const (
 	FeatureTypeContinent = "continent"
 )
 
-func (m *Civ) getRFeatureTypeFunc() func(int) string {
+// getRegionFeatureTypeFunc returns a function that returns the feature type of
+// a given region.
+func (m *Civ) getRegionFeatureTypeFunc() func(int) string {
 	r_waterbodies := m.getWaterBodies()
 	r_waterbody_size := m.getWaterBodySizes()
 	r_landmasses := m.IdentifyLandmasses()
@@ -403,13 +505,15 @@ func (m *Civ) getRFeatureTypeFunc() func(int) string {
 	}
 }
 
-func (m *Civ) getRBiomeTEMP(r int, elev, maxElev float64) int {
+// getAzgaarRegionBiome returns the biome for a given region as per Azgaar's map generator.
+func (m *Civ) getAzgaarRegionBiome(r int, elev, maxElev float64) int {
 	return genbiome.GetAzgaarBiome(int(20.0*m.Moisture[r]), int(m.getRTemperature(r, maxElev)), int(elev*100))
 }
 
-func (m *Civ) getRCultureTypeFunc() func(int) CultureType {
-	cellType := m.getRCellTypes()
-	getType := m.getRFeatureTypeFunc()
+// getRegionCutureTypeFunc returns a function that returns the culture type suitable for a given region.
+func (m *Civ) getRegionCultureTypeFunc() func(int) CultureType {
+	cellType := m.getRegionCellTypes()
+	getType := m.getRegionFeatureTypeFunc()
 	wmf := m.getRWhittakerModBiomeFunc()
 
 	r_waterbody_size := m.getWaterBodySizes()
@@ -418,11 +522,12 @@ func (m *Civ) getRCultureTypeFunc() func(int) CultureType {
 	// Return culture type based on culture center region.
 	return func(r int) CultureType {
 		eleVal := m.Elevation[r] / maxElev
-		gotBiome := m.getRBiomeTEMP(r, eleVal, maxElev)
+		gotBiome := m.getAzgaarRegionBiome(r, eleVal, maxElev)
 		log.Println(gotBiome)
 		log.Println(wmf(r))
 
 		// Desert and grassland means a nomadic culture.
+		// BUT: Grassland is extremely well suited for farming... Which is not nomadic.
 		if eleVal < 0.7 && (gotBiome == genbiome.AzgaarBiomeHotDesert ||
 			gotBiome == genbiome.AzgaarBiomeColdDesert ||
 			gotBiome == genbiome.AzgaarBiomeGrassland) {
@@ -438,10 +543,10 @@ func (m *Civ) getRCultureTypeFunc() func(int) CultureType {
 		// Get the region (if any) that represents the haven for this region.
 		// A haven is the closest neighbor that is a water body.
 		// NOTE: harborSize indicates the number of neighbors that are water.
-		rHaven, harborSize := m.getRHaven(r)
+		rHaven, harborSize := m.getRegionHaven(r)
 		havenType := getType(rHaven) // Get the type of the haven region.
-		rType := getType(r)
-		log.Println(havenType, rType)
+		regionType := getType(r)
+		log.Println(havenType, regionType)
 
 		// Ensure only larger lakes will result in the 'lake' culture type.
 		if havenType == FeatureTypeLake && r_waterbody_size[rHaven] > 5 {
@@ -452,7 +557,7 @@ func (m *Civ) getRCultureTypeFunc() func(int) CultureType {
 		// we are potentially a naval culture.
 		if (harborSize > 0 && P(0.1) && havenType != FeatureTypeLake) ||
 			(harborSize == 1 && P(0.6)) ||
-			(rType == FeatureTypeIsle && P(0.4)) {
+			(regionType == FeatureTypeIsle && P(0.4)) {
 			return CultureTypeNaval // low water cross penalty and high for non-along-coastline growth
 		}
 
@@ -468,7 +573,7 @@ func (m *Civ) getRCultureTypeFunc() func(int) CultureType {
 			gotBiome == genbiome.AzgaarBiomeTemperateRainforest ||
 			gotBiome == genbiome.AzgaarBiomeWetland ||
 			gotBiome == genbiome.AzgaarBiomeTaiga ||
-			gotBiome == genbiome.AzgaarBiomeTundra ||
+			gotBiome == genbiome.AzgaarBiomeTundra || // Tundra is also nomadic?
 			gotBiome == genbiome.AzgaarBiomeGlacier) {
 			return CultureTypeHunting // high penalty in non-native biomes
 		}

@@ -49,15 +49,20 @@ func (m *Geo) placeResources() {
 	// Forests can be found mainly in valleys, so steepness
 	// will be an indicator along with the distance from the
 	// valley's center.
+	m.placeForests()
+
+	// Place potential quarry sites.
+	// Potential quarry sites can be found mainly in mountains,
+	m.placeStones()
+
+	// Place energy sources.
+	// Oil, coal, and natural gas, as well as geothermal energy
+	// and magical handwavium.
 
 	// Place arable land.
 	// Arable land can be found mainly in valleys, so steepness
 	// will be an indicator along with the distance from the
 	// valley's center.
-
-	// Place potential quarry sites.
-	// Potential quarry sites can be found mainly in mountains,
-	m.placeStones()
 }
 
 // Metal resource flags starting with the cheapest metal.
@@ -70,6 +75,8 @@ const (
 	ResMetGold
 	ResMetPlatinum
 )
+
+const ResMaxMetals = 7
 
 func metalToString(metalID int) string {
 	switch 1 << metalID {
@@ -91,8 +98,6 @@ func metalToString(metalID int) string {
 		return "Unknown"
 	}
 }
-
-const ResMaxMetals = 7
 
 func (m *Geo) placeMetals() {
 	steepness := m.GetSteepness()
@@ -191,6 +196,8 @@ const (
 	ResGemDiamond
 )
 
+const ResMaxGems = 6
+
 func gemToString(gemsID int) string {
 	switch 1 << gemsID {
 	case ResGemAmethyst:
@@ -209,8 +216,6 @@ func gemToString(gemsID int) string {
 		return "Unknown"
 	}
 }
-
-const ResMaxGems = 6
 
 func (m *Geo) placeGems() {
 	steepness := m.GetSteepness()
@@ -263,6 +268,8 @@ const (
 	ResStoObsidian
 )
 
+const ResMaxStones = 7
+
 func stoneToString(stoneID int) string {
 	switch 1 << stoneID {
 	case ResStoSandstone:
@@ -284,8 +291,6 @@ func stoneToString(stoneID int) string {
 	}
 }
 
-const ResMaxStones = 7
-
 const (
 	ResVarClay = 1 << iota
 	ResVarSulfur
@@ -297,4 +302,11 @@ const (
 
 func (m *Geo) placeStones() {
 	log.Println("placing stones is not implemented")
+}
+
+func (m *Geo) placeForests() {
+	log.Println("placing forests is not implemented")
+	// Get all biomes that are forested.
+	// Place trees in those biomes based on the biome's tree type(s).
+	// Profit!
 }

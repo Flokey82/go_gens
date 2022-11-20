@@ -5,67 +5,14 @@ import (
 	"math"
 )
 
-func (m *Civ) rPlaceNTerritories(n int) {
-	m.resetRand()
-	// Territories are based on cities acting as their capital.
-	// Since the algorithm places the cities with the highes scores
-	// first, we use the top 'n' cities as the capitals for the
-	// territories.
-	var seedCities []int
-	for i, c := range m.Cities {
-		if i >= n {
-			break
-		}
-		seedCities = append(seedCities, c.ID)
-	}
-	weight := m.getTerritoryWeightFunc()
-	biomeWeight := m.getTerritoryBiomeWeightFunc()
-	cultureWeight := m.getTerritoryCultureWeightFunc()
-
-	m.RegionToTerritory = m.rPlaceNTerritoriesCustom(seedCities, func(o, u, v int) float64 {
-		if (m.Elevation[u] > 0) != (m.Elevation[v] > 0) || m.Elevation[v] <= 0 {
-			return -1
-		}
-		return weight(o, u, v) + biomeWeight(o, u, v) + cultureWeight(o, u, v)
-	})
-	m.rRelaxTerritories(m.RegionToTerritory, 15)
-}
-
-func (m *Civ) rPlaceNCityStates(n int) {
-	m.resetRand()
-	// Territories are based on cities acting as their capital.
-	// Since the algorithm places the cities with the highes scores
-	// first, we use the top 'n' cities as the capitals for the
-	// territories.
-	var seedCities []int
-	for i, c := range m.Cities {
-		if i >= n {
-			break
-		}
-		seedCities = append(seedCities, c.ID)
-	}
-	weight := m.getTerritoryWeightFunc()
-	biomeWeight := m.getTerritoryBiomeWeightFunc()
-	cultureWeight := m.getTerritoryCultureWeightFunc()
-
-	m.RegionToCityState = m.rPlaceNTerritoriesCustom(seedCities, func(o, u, v int) float64 {
-		if m.RegionToTerritory[u] != m.RegionToTerritory[v] {
-			return -1
-		}
-		// TODO: Make sure we take in account expansionism, wealth, score, and culture.
-		return weight(o, u, v) + biomeWeight(o, u, v) + cultureWeight(o, u, v)
-	})
-
-	// Before relaxing the territories, we'd need to ensure that we only
-	// relax without changing the borders of the empire...
-	// So we'd only re-assign IDs that belong to the same territory.
-	// m.rRelaxTerritories(m.r_city, 5)
-}
-
+// getTerritoryCultureWeightFunc returns a weight function which returns a penalty
+// for expanding from a region into a region with a different culture.
+// An additional penalty is applied if the destination region has a different
+// culture than the origin region.
 func (m *Civ) getTerritoryCultureWeightFunc() func(o, u, v int) float64 {
 	return func(o, u, v int) float64 {
 		var penalty float64
-		// TODO: Compare culture expansionism.
+		// TODO: Compare culture expansionism?
 		// If the destination has a higher culture expansionism than the
 		// origin culture, then it's less likely to expand into that territory.
 		if m.RegionToCulture[o] != m.RegionToCulture[v] {
@@ -78,6 +25,8 @@ func (m *Civ) getTerritoryCultureWeightFunc() func(o, u, v int) float64 {
 	}
 }
 
+// getTerritoryBiomeWeightFunc returns a weight function which returns a penalty
+// for expanding from a region into a region with a different biome.
 func (m *Civ) getTerritoryBiomeWeightFunc() func(o, u, v int) float64 {
 	biomeFunc := m.getRWhittakerModBiomeFunc()
 	climatFunc := m.getFitnessClimate()
@@ -99,6 +48,9 @@ func (m *Civ) getTerritoryBiomeWeightFunc() func(o, u, v int) float64 {
 	}
 }
 
+// getTerritoryWeightFunc returns a weight function which returns a penalty
+// depending on the slope of the terrain, the distance, and changes in
+// flux (river crossings).
 func (m *Civ) getTerritoryWeightFunc() func(o, u, v int) float64 {
 	// Get maxFlux and maxElev for normalizing.
 	_, maxFlux := minMax(m.Flux)
@@ -142,7 +94,7 @@ func (m *Civ) getTerritoryWeightFunc() func(o, u, v int) float64 {
 // u: The region we expand from
 // v: The region we expand to
 func (m *Civ) rPlaceNTerritoriesCustom(seedPoints []int, weight func(o, u, v int) float64) []int {
-	var queue territoryQueue
+	var queue ascPriorityQueue
 	heap.Init(&queue)
 
 	// 'terr' will hold a mapping of region to territory.
@@ -155,77 +107,37 @@ func (m *Civ) rPlaceNTerritoriesCustom(seedPoints []int, weight func(o, u, v int
 			if newdist < 0 {
 				continue
 			}
-			heap.Push(&queue, &queueRegionEntry{
-				score: newdist,
-				city:  seedPoints[i],
-				vx:    v,
+			heap.Push(&queue, &queueEntry{
+				score:       newdist,
+				origin:      seedPoints[i],
+				destination: v,
 			})
 		}
 	}
 
 	// Extend territories until the queue is empty.
 	for queue.Len() > 0 {
-		u := heap.Pop(&queue).(*queueRegionEntry)
-		if terr[u.vx] >= 0 {
+		u := heap.Pop(&queue).(*queueEntry)
+		if terr[u.destination] >= 0 {
 			continue
 		}
-		terr[u.vx] = u.city
-		for _, v := range m.GetRegionNeighbors(u.vx) {
+		terr[u.destination] = u.origin
+		for _, v := range m.GetRegionNeighbors(u.destination) {
 			if terr[v] >= 0 {
 				continue
 			}
-			newdist := weight(u.city, u.vx, v)
+			newdist := weight(u.origin, u.destination, v)
 			if newdist < 0 {
 				continue
 			}
-			heap.Push(&queue, &queueRegionEntry{
-				score: u.score + newdist,
-				city:  u.city,
-				vx:    v,
+			heap.Push(&queue, &queueEntry{
+				score:       u.score + newdist,
+				origin:      u.origin,
+				destination: v,
 			})
 		}
 	}
 	return terr
-}
-
-type queueRegionEntry struct {
-	index int // The index of the item in the heap.
-	score float64
-	city  int
-	vx    int
-}
-
-// territoryQueue implements heap.Interface and holds Items.
-type territoryQueue []*queueRegionEntry
-
-func (pq territoryQueue) Len() int { return len(pq) }
-
-func (pq territoryQueue) Less(i, j int) bool {
-	// We want Pop to give us the highest, not lowest, priority so we use greater than here.
-	// return pq[i].score > pq[j].score // 3, 2, 1
-	return pq[i].score < pq[j].score // 1, 2, 3
-}
-
-func (pq territoryQueue) Swap(i, j int) {
-	pq[i], pq[j] = pq[j], pq[i]
-	pq[i].index, pq[j].index = i, j
-}
-
-func (pq *territoryQueue) Push(x interface{}) {
-	n := len(*pq)
-	item := x.(*queueRegionEntry)
-	item.index = n
-	*pq = append(*pq, item)
-}
-
-func (pq *territoryQueue) Pop() interface{} {
-	old := *pq
-	n := len(old)
-	item := old[n-1]
-	old[n-1] = nil  // avoid memory leak
-	item.index = -1 // for safety
-	*pq = old[0 : n-1]
-	return item
 }
 
 func (m *Civ) rRelaxTerritories(terr []int, n int) {

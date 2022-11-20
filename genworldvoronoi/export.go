@@ -566,7 +566,7 @@ func (m *Map) ExportSVG(path string) error {
 			col := "fill: rgb(255, 165, 0)"
 
 			// Capital cities are bigger!
-			if i < m.NumTerritories {
+			if i < m.NumEmpires {
 				radius = 4
 				class = "class=\"capital\""
 				col = "fill: rgb(255, 0, 0)"

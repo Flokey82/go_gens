@@ -259,7 +259,6 @@ func (m *Geo) assignRegionElevation() {
 		r_distance_c = m.assignDistanceFieldWithIntensity(coastline_r, stop_r, compression_r)
 	} else {
 		// Calculate distance fields.
-
 		// Graph distance from mountains (stops at ocean regions).
 		r_distance_a = m.assignDistanceField(mountain_r, convToMap(ocean_r))
 		// Graph distance from ocean (stops at coastline regions).

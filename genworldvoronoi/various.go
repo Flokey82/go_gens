@@ -314,3 +314,47 @@ func P(probability float64) bool {
 	}
 	return rand.Float64() < probability
 }
+
+// queueEntry is a single entry in the priority queue.
+type queueEntry struct {
+	index       int     // index of the item in the heap.
+	score       float64 // priority of the item in the queue.
+	origin      int     // origin region / ID
+	destination int     // destination region / ID
+}
+
+// ascPriorityQueue implements heap.Interface and holds Items.
+// Priority is ascending (lowest score first).
+type ascPriorityQueue []*queueEntry
+
+func (pq ascPriorityQueue) Len() int { return len(pq) }
+
+func (pq ascPriorityQueue) Less(i, j int) bool {
+	// We want Pop to give us the highest, not lowest, priority so we use greater than here.
+	// return pq[i].score > pq[j].score // 3, 2, 1
+
+	// We want Pop to give us the lowest, not highest, priority so we use less than here.
+	return pq[i].score < pq[j].score // 1, 2, 3
+}
+
+func (pq *ascPriorityQueue) Pop() interface{} {
+	old := *pq
+	n := len(old)
+	item := old[n-1]
+	old[n-1] = nil  // avoid memory leak
+	item.index = -1 // for safety
+	*pq = old[0 : n-1]
+	return item
+}
+
+func (pq *ascPriorityQueue) Push(x interface{}) {
+	n := len(*pq)
+	item := x.(*queueEntry)
+	item.index = n
+	*pq = append(*pq, item)
+}
+
+func (pq ascPriorityQueue) Swap(i, j int) {
+	pq[i], pq[j] = pq[j], pq[i]
+	pq[i].index, pq[j].index = i, j
+}

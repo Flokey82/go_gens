@@ -81,7 +81,7 @@ func (m *Civ) getTradeRoutes() ([][]int, [][]int) {
 			// We don't want to link a city to itself and we try to avoid double
 			// links (a->b and b->a) as well as we try to only connect towns within
 			// the same territory.
-			if i == j || visited[[2]int{start, end}] || visited[[2]int{end, start}] || m.RegionToTerritory[start] != m.RegionToTerritory[end] { //  || math.Abs(float64(i-j)) > float64(5)
+			if i == j || visited[[2]int{start, end}] || visited[[2]int{end, start}] || m.RegionToEmpire[start] != m.RegionToEmpire[end] { //  || math.Abs(float64(i-j)) > float64(5)
 				continue
 			}
 			// Make sure we note that we have visited this city pair.
@@ -195,7 +195,7 @@ func (n *TradeNode) Cost(i int) float32 {
 	}
 
 	// Penalty for crossing into a new territory
-	if n.r.RegionToTerritory[n.index] != n.r.RegionToTerritory[nIdx] {
+	if n.r.RegionToEmpire[n.index] != n.r.RegionToEmpire[nIdx] {
 		cost += 1.2
 	}
 

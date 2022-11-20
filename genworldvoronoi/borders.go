@@ -2,7 +2,7 @@ package genworldvoronoi
 
 // getBorders returns the borders of each territory as list of triangle center points.
 func (m *Map) getBorders() [][]int {
-	return m.getCustomBorders(m.RegionToTerritory)
+	return m.getCustomBorders(m.RegionToEmpire)
 }
 
 // getLakeBorders returns the borders of each lake (regions with same drainage region) as list of triangle center points.
