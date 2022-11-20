@@ -171,6 +171,7 @@ type Culture struct {
 	// Children  []*Culture
 	// Extinct   bool
 	Language *Language // Language of the culture
+	Religion *Religion // Religion of the culture
 
 	// TODO: DO NOT CACHE THIS!
 	Regions []int
@@ -179,12 +180,13 @@ type Culture struct {
 
 func (c *Culture) Log() {
 	log.Printf("The Folk of %s (%s): %d regions", c.Name, c.Type.String(), len(c.Regions))
+	log.Printf("Followers of %s (%s)", c.Religion.Name, c.Religion.Type)
 	c.Stats.Log()
 }
 
 func (m *Civ) newCulture(r int, cultureType CultureType) *Culture {
 	lang := GenLanguage(m.Seed + int64(r))
-	return &Culture{
+	c := &Culture{
 		ID:           r,
 		Name:         lang.MakeName(),
 		Type:         cultureType,
@@ -192,6 +194,8 @@ func (m *Civ) newCulture(r int, cultureType CultureType) *Culture {
 		Martialism:   cultureType.Martialism(),
 		Language:     lang,
 	}
+	c.Religion = m.genFolkReligion(c)
+	return c
 }
 
 // PlaceCulture places another culture on the map at the region with the highest fitness score.

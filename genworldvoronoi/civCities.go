@@ -19,7 +19,7 @@ const (
 // City represents a city in the world.
 type City struct {
 	ID       int       // Region where the city is located
-	Name     string    // TODO: Fill locally.
+	Name     string    // Name of the city
 	Type     string    // Type of city
 	Score    float64   // Score of the fitness function
 	Culture  *Culture  // Culture of the city region
@@ -101,8 +101,7 @@ func (m *Civ) PlaceCity(cType string, sf func(int) float64, distSeedFunc func() 
 			lastMax = val
 		}
 	}
-	// TODO: Name city using local culture.
-	// If there is no local culture, generate one?
+
 	c := &City{
 		ID:      newcity,
 		Score:   lastMax,

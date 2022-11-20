@@ -1,7 +1,6 @@
 package genworldvoronoi
 
 import (
-	"log"
 	"math/rand"
 	"regexp"
 	"strings"
@@ -59,33 +58,20 @@ type Religion struct {
 
 // This code is based on:
 // https://github.com/Azgaar/Fantasy-Map-Generator/blob/master/modules/religions-generator.js
-func (m *Civ) genFolkReligions() []*Religion {
-	var religions []*Religion
-	// For every culture, there is a folk religion.
-	for _, c := range m.Cultures {
-		form := rw(forms[ReligionGroupFolk])
-		name := c.Name + " " + rw(types[form])
-		var deity string
-		if form == ReligionFormAnimism {
-			deity = ""
-		} else {
-			deity = getDeityName(c)
-		}
-		religions = append(religions, &Religion{
-			Origin:  c.ID,
-			Name:    name,
-			Culture: c,
-			Type:    "Folk",
-			Form:    form,
-			Deity:   deity,
-		})
+func (m *Civ) genFolkReligion(c *Culture) *Religion {
+	form := rw(forms[ReligionGroupFolk])
+	r := &Religion{
+		Origin:  c.ID,
+		Name:    c.Name + " " + rw(types[form]),
+		Culture: c,
+		Type:    "Folk",
+		Form:    form,
 	}
-
-	for _, r := range religions {
-		log.Println(r.Name)
-		log.Println(r.Deity)
+	if form != ReligionFormAnimism {
+		r.Deity = getDeityName(c)
 	}
-	return religions
+	m.Religions = append(m.Religions, r)
+	return r
 }
 
 /*
@@ -152,9 +138,13 @@ func (m *Map) getReligionName(form, deity string, center int) (string, string) {
 	random := func() string {
 		return c.Language.MakeName()
 	}
-	rType := func() string { return rw(types[form]) }
+	rType := func() string {
+		return rw(types[form])
+	}
 	deitySplit := regexp.MustCompile(`/[ ,]+/`)
-	supreme := func() string { return deitySplit.Split(deity, -1)[0] }
+	supreme := func() string {
+		return deitySplit.Split(deity, -1)[0]
+	}
 	culture := func() string {
 		return c.Name
 	}
@@ -169,8 +159,7 @@ func (m *Map) getReligionName(form, deity string, center int) (string, string) {
 		return "TODO_PLACE"
 	}
 
-	me := rw(methods)
-	switch me {
+	switch rw(methods) {
 	case MethodRandomType:
 		return random() + " " + rType(), "global"
 	case MethodRandomIsm:
@@ -221,8 +210,7 @@ func getDeityName(culture *Culture) string {
 }
 
 func generateMeaning() string {
-	a := ra(approaches) // select generation approach
-	switch a {
+	switch ra(approaches) { // select generation approach
 	case ApproachNumber:
 		return ra(base["number"])
 	case ApproachBeing:

@@ -12,13 +12,14 @@ type Civ struct {
 	Cities            []*City    // (political) City seed points / regions
 	RegionToCulture   []int      // (cultural) Point / region mapping to culture
 	Cultures          []*Culture // (cultural) Culture seed points / regions
-	NumCities         int        // Number of generated cities (regions)
-	NumCityStates     int        // Number of generated city states
-	NumMiningTowns    int        // Number of generated mining towns
-	NumFarmingTowns   int        // Number of generated farming towns
-	NumDesertOasis    int        // Number of generated desert oases
-	NumEmpires        int        // Number of generated territories
-	NumCultures       int        // (Min) Number of generated cultures
+	Religions         []*Religion
+	NumCities         int // Number of generated cities (regions)
+	NumCityStates     int // Number of generated city states
+	NumMiningTowns    int // Number of generated mining towns
+	NumFarmingTowns   int // Number of generated farming towns
+	NumDesertOasis    int // Number of generated desert oases
+	NumEmpires        int // Number of generated territories
+	NumCultures       int // (Min) Number of generated cultures
 }
 
 func NewCiv(geo *Geo) *Civ {
