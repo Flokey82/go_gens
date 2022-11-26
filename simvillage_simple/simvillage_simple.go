@@ -8,6 +8,7 @@ import (
 
 	"github.com/Flokey82/genetics"
 	"github.com/Flokey82/genetics/geneticshuman"
+	"github.com/Flokey82/go_gens/gameconstants"
 	"github.com/Flokey82/go_gens/utils"
 	"github.com/s0rg/fantasyname"
 )
@@ -221,16 +222,8 @@ func (v *Village) popDeath() {
 	// - Increase chances of death if there is a famine or other states.
 	var livingPeople []*Person
 	for _, p := range v.People {
-		// TODO: Figure out proper chance of death.
-		// TODO: Child mortality?
-		// From: https://github.com/Kontari/Village/blob/master/src/death.py
-		if 35 < p.age && p.age < 50 { // Adult
-			p.dead = rand.Intn(241995) == 0
-		} else if 50 < p.age && p.age < 70 { // Old Person
-			p.dead = rand.Intn(29380579) == 0
-		} else if p.age > 70 { // Elderly
-			p.dead = rand.Intn(5475) == 0
-		}
+		// Check if villager dies of natural causes.
+		p.dead = gameconstants.DiesAtAge(p.age)
 
 		// Filter out dead people.
 		if !p.dead {

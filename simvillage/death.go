@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"math/rand"
 	"strings"
+
+	"github.com/Flokey82/go_gens/gameconstants"
 )
 
 // Death controls chance of death, and death events
@@ -58,22 +60,9 @@ func (d *Death) Tick() []string {
 
 // tick_death check if the villager will die today by aging
 func (d *Death) tick_death(v *Person) {
-	// TODO: refactor < 35 random death
-	if 35 < v.age && v.age < 50 { // Adult
-		if rand.Intn(241995) == 0 {
-			d.kill_villager(v, "")
-			return
-		}
-	} else if 50 < v.age && v.age < 70 { // Old Person
-		if rand.Intn(29380579) == 0 {
-			d.kill_villager(v, "")
-			return
-		}
-	} else if v.age > 70 { // Elder
-		if rand.Intn(5475) == 0 {
-			d.kill_villager(v, "")
-			return
-		}
+	// Check if the villager dies of natural causes.
+	if gameconstants.DiesAtAge(v.age) {
+		d.kill_villager(v, "")
 	}
 
 	// Check if the villager is depressed
