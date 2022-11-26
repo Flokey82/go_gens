@@ -619,11 +619,8 @@ func (m *Map) ExportPng(name string) {
 
 	terrToCol := make(map[int]int)
 
-	//terr := m.cities_r[:m.NumTerritories]
-	//for i, terr := range terr {
-	//	terrToCol[terr.R] = i
-	//}
-	//territory := m.r_territory
+	// terr := m.Cities[:m.NumCityStates]
+	// territory := m.RegionToCityState
 	terr := m.Cultures
 	territory := m.RegionToCulture
 	for i, c := range terr {

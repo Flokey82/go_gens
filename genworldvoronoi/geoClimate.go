@@ -504,9 +504,14 @@ func (m *Geo) assignRainfallBasic() {
 		rain_shadow: 0.9,
 		evaporation: 0.9,
 	}
-	humidityFromRiver := 0.25
+	humidityFromRiver := 1.0
 	humidityFromSea := 1.0
-	evaporateRivers := false
+	humidityFromPool := 1.0
+	evaporateRivers := true
+	evaporatePools := false
+
+	_, maxFlux := minMax(m.Flux)
+	_, maxPool := minMax(m.Waterpool)
 
 	// Sort the indices in wind-order so we can ensure that we push the moisture
 	// in their logical sequence across the globe.
@@ -531,29 +536,39 @@ func (m *Geo) assignRainfallBasic() {
 	// 1. Assign initial moisture of 1.0 to all regions below or at sea level or replenish
 	// moisture through evaporation if our moisture is below 0.
 	for r, h := range m.Elevation {
-		if h < 0 && m.Moisture[r] < humidityFromSea {
-			m.Moisture[r] = humidityFromSea
+		if h <= 0 {
+			m.Moisture[r] = math.Max(m.Moisture[r], humidityFromSea)
 		}
 	}
 
 	// Rivers should experience some evaporation.
 	if evaporateRivers {
 		for r, fluxval := range m.Flux {
-			if m.Moisture[r] < fluxval && m.Moisture[r] < humidityFromRiver {
-				m.Moisture[r] = humidityFromRiver // TODO: Should depend on available water.
+			if m.isBigRiver(r) {
+				evaporation := humidityFromRiver * fluxval / maxFlux
+				m.Moisture[r] = math.Max(m.Moisture[r], math.Pow(evaporation, 4))
 			}
 		}
 	}
 
 	// Water pools should experience some evaporation.
-	for r, poolval := range m.Waterpool {
-		if m.Moisture[r] < humidityFromSea && poolval > 0 {
-			m.Moisture[r] = humidityFromSea // TODO: Should depend on available water.
+	//
+	// NOTE: Currently this is not used since flood algorithms are deactivated so
+	// the value for water pools is always 0.
+	if evaporatePools {
+		for r, poolval := range m.Waterpool {
+			if poolval > 0 {
+				evaporation := humidityFromPool * poolval / maxPool
+				m.Moisture[r] = math.Max(m.Moisture[r], evaporation)
+			}
 		}
 	}
 
 	// Visit regions in wind order and copy the moisture from the neighbor regious that are
 	// up-wind.
+	//
+	// NOTE: Since we start and stop at +- 180° long, we need to run the code several times
+	// to ensure that moisture is pushed across the longitude wrap-around.
 	for i := 0; i < 4; i++ {
 		for _, r := range wind_order_r {
 			var humidity float64
@@ -570,38 +585,28 @@ func (m *Geo) assignRainfallBasic() {
 				nVec := normal2(calcVecFromLatLong(nL[0], nL[1], rL[0], rL[1]))
 				dotV := dot2(vVec, nVec)
 
-				// Check if the neighbor region is up-wind (that the wind blows from neighbor_r to r).
-				// We use both the wind-order using modulo (wrap around 360° longitude) and the normal order to
-				// catch cases like a neighbor being at a negative order, or just at 360° longitude, blowing across to a neighbor
-				// sitting at 0° etc.
-				// NOTE: This needs to be thoroughly checked if this fix works for the border regions.
+				// Check if the neighbor region is up-wind (that the wind blows from neighbor_r to r) / dotV is positive.
 				if dotV > 0.0 {
 					humidity += m.Moisture[neighbor_r] * dotV
 				}
 			}
 
-			// Set base rainfall.
-			rainfall := biomesParam.raininess * humidity
-
 			// Evaporation.
-			// TODO: Remove the evaporation here if possible and instead
-			// rely on the evaporation step above.
-			if m.Elevation[r] < 0 {
+			if m.Elevation[r] <= 0 {
 				evaporation := biomesParam.evaporation * (-m.Elevation[r])
-				humidity += evaporation
-			} else if evaporateRivers {
-				evaporation := biomesParam.evaporation * m.Flux[r]
-				humidity += evaporation
+				humidity = math.Max(humidity, evaporation)
+			} else if evaporateRivers && m.isBigRiver(r) {
+				evaporation := biomesParam.evaporation * humidityFromRiver * m.Flux[r] / maxFlux
+				humidity = math.Max(humidity, math.Pow(evaporation, 4))
+			} else if evaporatePools && m.Waterpool[r] > 0 {
+				evaporation := biomesParam.evaporation * humidityFromPool * m.Waterpool[r] / maxPool
+				humidity = math.Max(humidity, evaporation)
 			}
 
 			// Calculate orographic rainfall caused by elevation changes.
-			orographicRainfall := calcRainfall(r, humidity)
-			if orographicRainfall > 0.0 {
-				rainfall += biomesParam.raininess * orographicRainfall
-				humidity -= orographicRainfall
-			}
+			rainfall := biomesParam.raininess * calcRainfall(r, humidity)
 			m.Rainfall[r] = rainfall
-			m.Moisture[r] = humidity
+			m.Moisture[r] = humidity - rainfall
 		}
 	}
 	m.interpolateRainfallMoisture(5)
