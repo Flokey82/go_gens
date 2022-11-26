@@ -110,6 +110,26 @@ func newFantasyName() (fmt.Stringer, error) {
 	return fantasyname.Compile("")
 }
 
+type NameGenerators struct {
+	Desert        *BasicGenerator
+	Mountain      *BasicGenerator
+	MountainRange *BasicGenerator
+	Forest        *BasicGenerator
+	Swamp         *BasicGenerator
+	River         *RiverGenerator
+}
+
+func NewNameGenerators(seed int64) *NameGenerators {
+	return &NameGenerators{
+		Desert:        NewDesertGenerator(seed),
+		Mountain:      NewMountainGenerator(seed),
+		MountainRange: NewMountainRangeGenerator(seed),
+		Forest:        NewForestGenerator(seed),
+		Swamp:         NewSwampGenerator(seed),
+		River:         NewRiverGenerator(seed),
+	}
+}
+
 var largeAreaSuffix = []string{
 	"land",
 	"plains",

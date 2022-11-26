@@ -13,6 +13,7 @@ I draw further inspiration from various other projects such as https://github.co
 
 * Climate is surprisingly humid along equator?
   * Note: That is actually correct... the dryest climate is around +30° latitude, which is the subtropical desert. The equator is not dry at all.
+  * Add desert oases that are fed from underground aquifers. Look at these examples: https://www.google.com/maps/d/viewer?mid=1BvY10l3yzWt48IwCXqDcyeuawpA&hl=en&ll=26.715853962142784%2C28.408963168787885&z=6
 * Winds
   * Make winds push temperature around, not just humidity
   * Re-evaluate rainfall and moisture distribution
@@ -28,6 +29,8 @@ I draw further inspiration from various other projects such as https://github.co
   * Empires
     * Provide simpler means to query information over an empire
     * Introduce empires with capitals
+  * Cultures
+    * Add fitness function for "natural" population density estimates
 * Resources
   * Improve resource distribution
     * Fitness functions

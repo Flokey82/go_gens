@@ -3,6 +3,8 @@ package genworldvoronoi
 import (
 	"log"
 	"time"
+
+	"github.com/Flokey82/go_gens/genbiome"
 )
 
 type Civ struct {
@@ -20,6 +22,7 @@ type Civ struct {
 	NumDesertOasis    int // Number of generated desert oases
 	NumEmpires        int // Number of generated territories
 	NumCultures       int // (Min) Number of generated cultures
+	NameGen           *NameGenerators
 }
 
 func NewCiv(geo *Geo) *Civ {
@@ -35,6 +38,7 @@ func NewCiv(geo *Geo) *Civ {
 		NumFarmingTowns:   60,
 		NumDesertOasis:    10,
 		NumCultures:       30,
+		NameGen:           NewNameGenerators(geo.Seed),
 	}
 }
 
@@ -86,4 +90,19 @@ func (m *Civ) generateCivilization() {
 	// log.Println("Done trade cities in ", time.Since(start).String())
 
 	//m.GetEmpires()
+}
+
+func (m *Civ) getRegionName(r int) string {
+	switch m.getRWhittakerModBiomeFunc()(r) {
+	case genbiome.WhittakerModBiomeBorealForestTaiga,
+		genbiome.WhittakerModBiomeTemperateRainForest,
+		genbiome.WhittakerModBiomeTemperateSeasonalForest,
+		genbiome.WhittakerModBiomeTropicalRainForest,
+		genbiome.WhittakerModBiomeTropicalSeasonalForest:
+		return m.NameGen.Forest.Generate(int64(r), r%2 == 0)
+	case genbiome.WhittakerModBiomeHotSwamp,
+		genbiome.WhittakerModBiomeWetlands:
+		return m.NameGen.Swamp.Generate(int64(r), r%2 == 0)
+	}
+	return ""
 }
