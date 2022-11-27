@@ -512,6 +512,7 @@ func (m *Geo) assignRainfallBasic() {
 
 	_, maxFlux := minMax(m.Flux)
 	_, maxPool := minMax(m.Waterpool)
+	_, maxElev := minMax(m.Elevation)
 
 	// Sort the indices in wind-order so we can ensure that we push the moisture
 	// in their logical sequence across the globe.
@@ -519,13 +520,12 @@ func (m *Geo) assignRainfallBasic() {
 	r_windvec := m.RegionToWindVecLocal
 
 	// calcRainfall returns the amount of rain shed given the region and humidity.
-	_, maxH := minMax(m.Elevation)
 	calcRainfall := func(r int, humidity float64) float64 {
-		r_elev := m.Elevation[r]
-		if r_elev < 0 {
-			r_elev = 0 // Set to sea-level
+		elev := m.Elevation[r]
+		if elev < 0 {
+			elev = 0 // Set to sea-level
 		}
-		heightVal := 1 - (r_elev / maxH)
+		heightVal := 1 - (elev / maxElev)
 		if humidity > heightVal {
 			return biomesParam.rain_shadow * (humidity - heightVal)
 		}
@@ -580,8 +580,6 @@ func (m *Geo) assignRainfallBasic() {
 
 				// TODO: Check dot product of wind vector (r) and neighbour->r.
 				vVec := normal2(calcVecFromLatLong(nL[0], nL[1], nL[0]+r_windvec[neighbor_r][1], nL[1]+r_windvec[neighbor_r][0]))
-
-				//nVec := normal2([2]float64{rL[1] - nL[1], rL[0] - nL[0]})
 				nVec := normal2(calcVecFromLatLong(nL[0], nL[1], rL[0], rL[1]))
 				dotV := dot2(vVec, nVec)
 

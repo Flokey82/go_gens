@@ -358,3 +358,14 @@ func (pq ascPriorityQueue) Swap(i, j int) {
 	pq[i], pq[j] = pq[j], pq[i]
 	pq[i].index, pq[j].index = i, j
 }
+
+// getDiversionFromRange returns the amount a value diverges from a range.
+func getDiversionFromRange(x float64, rng [2]float64) float64 {
+	if x < rng[0] {
+		return rng[0] - x
+	}
+	if x > rng[1] {
+		return x - rng[1]
+	}
+	return 0
+}

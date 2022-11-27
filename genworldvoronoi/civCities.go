@@ -30,12 +30,12 @@ type City struct {
 func (m *Civ) PlaceNCities(n int, cType string) {
 	// The fitness function, returning a score from
 	// 0.0 to 1.0 for a given region.
-	var sf func(int) float64
+	var scoreFunc func(int) float64
 
 	// The distance seed point function, returning
 	// seed points/regions that we want to be far
 	// away from.
-	var dsf func() []int
+	var distSeedFunc func() []int
 
 	// Select the fitness function based on the
 	// city type.
@@ -43,15 +43,15 @@ func (m *Civ) PlaceNCities(n int, cType string) {
 	case TownTypeDefault:
 		fa := m.getFitnessClimate()
 		fb := m.getFitnessCityDefault()
-		sf = func(r int) float64 {
+		scoreFunc = func(r int) float64 {
 			return fa(r) * fb(r)
 		}
 	case TownTypeTrading:
-		sf = m.getFitnessTradingTowns()
+		scoreFunc = m.getFitnessTradingTowns()
 	case TownTypeMining:
-		sf = m.getFitnessSteepMountains()
+		scoreFunc = m.getFitnessSteepMountains()
 	case TownTypeFarming:
-		sf = m.getFitnessArableLand()
+		scoreFunc = m.getFitnessArableLand()
 	case TownTypeDesertOasis:
 		// TODO: Improve this fitness function.
 		// Right now the oasis are placed at the very edges of
@@ -61,7 +61,7 @@ func (m *Civ) PlaceNCities(n int, cType string) {
 		// of deserts instead.
 		fa := m.getFitnessClimate()
 		bf := m.getRWhittakerModBiomeFunc()
-		sf = func(r int) float64 {
+		scoreFunc = func(r int) float64 {
 			biome := bf(r)
 			if biome == genbiome.WhittakerModBiomeColdDesert ||
 				biome == genbiome.WhittakerModBiomeSubtropicalDesert {
@@ -74,7 +74,7 @@ func (m *Civ) PlaceNCities(n int, cType string) {
 	}
 
 	// For now we just maximize the distance to cities of the same type.
-	dsf = func() []int {
+	distSeedFunc = func() []int {
 		var cities []int
 		for _, c := range m.Cities {
 			if c.Type == cType {
@@ -86,16 +86,16 @@ func (m *Civ) PlaceNCities(n int, cType string) {
 
 	// Place n cities of the given type.
 	for i := 0; i < n; i++ {
-		c := m.PlaceCity(cType, sf, dsf)
+		c := m.PlaceCity(cType, scoreFunc, distSeedFunc)
 		log.Printf("placing %s city %d: %s", cType, i, c.Name)
 	}
 }
 
 // PlaceCity places another city at the region with the highest fitness score.
-func (m *Civ) PlaceCity(cType string, sf func(int) float64, distSeedFunc func() []int) *City {
+func (m *Civ) PlaceCity(cType string, scoreFunc func(int) float64, distSeedFunc func() []int) *City {
 	var newcity int
 	lastMax := math.Inf(-1)
-	for i, val := range m.CalcCityScore(sf, distSeedFunc) {
+	for i, val := range m.CalcCityScore(scoreFunc, distSeedFunc) {
 		if val > lastMax {
 			newcity = i
 			lastMax = val
@@ -135,41 +135,18 @@ func (m *Civ) CalcCityScore(sf func(int) float64, distSeedFunc func() []int) []f
 	//   - Mining
 	//   - ...
 
-	score := make([]float64, m.mesh.numRegions)
-
-	// Get distance to other cities returned by the distSeedFunc.
-	r_distance_c := m.assignDistanceField(distSeedFunc(), make(map[int]bool))
-
-	// Get the max distance for normalizing the distance.
-	_, maxDistC := minMax(r_distance_c)
-
-	// Calculate the fitness score for each region
-	for i := 0; i < m.mesh.numRegions; i++ {
+	// TODO: Clean this up a little better and move this to the original
+	// fitness functions for cities (sf).
+	sfCity := func(r int) float64 {
 		// If we are below (or at) sea level, or we are in a pool of water,
 		// assign lowest score and continue.
-		if m.Elevation[i] <= 0 || m.Waterpool[i] > 0 {
-			score[i] = -1.0
-			continue
+		if m.Elevation[r] <= 0 || m.Waterpool[r] > 0 {
+			return -1.0
 		}
-		score[i] = sf(i)
-
-		// Penalty for proximity / bonus for higher distance to other cities.
-		//
-		// We multiply the score by the distance to other cities, amplifying
-		// positive scores.
-		//
-		// NOTE: Originally this was done with some constant values, which might be better
-		// since we are here dependent on the current score we have assigned and cannot
-		// recover an initially bad score caused by a low water flux.
-
-		// TODO: Allow for distance to other cities / city types to be a parameter.
-		if math.IsInf(r_distance_c[i], 0) {
-			continue
-		}
-		dist := (r_distance_c[i] / maxDistC)
-		score[i] *= dist // originally: -= 0.02 / (float64(r_distance_c[i]) + 1e-9)
+		return sf(r)
 	}
-	return score
+
+	return m.CalcFitnessScore(sfCity, distSeedFunc)
 }
 
 func (m *Civ) getFitnessTradingTowns() func(int) float64 {

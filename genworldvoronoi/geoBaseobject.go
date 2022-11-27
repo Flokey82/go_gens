@@ -312,7 +312,15 @@ func (m *BaseObject) isRBelowOrAtSeaLevelOrPool(r int) bool {
 }
 
 func (m *BaseObject) isRLakeOrWaterBody(r int) bool {
-	return m.Waterbodies[r] >= 0 || m.Drainage[r] >= 0
+	return m.isWaterBody(r) || m.isLake(r)
+}
+
+func (m *BaseObject) isWaterBody(r int) bool {
+	return m.Waterbodies[r] >= 0
+}
+
+func (m *BaseObject) isLake(r int) bool {
+	return m.Drainage[r] >= 0 || m.Waterpool[r] > 0
 }
 
 func (m *BaseObject) isRiver(r int) bool {

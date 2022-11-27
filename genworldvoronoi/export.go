@@ -619,13 +619,13 @@ func (m *Map) ExportPng(name string) {
 
 	terrToCol := make(map[int]int)
 
-	// terr := m.Cities[:m.NumCityStates]
-	// territory := m.RegionToCityState
-	terr := m.Cultures
-	territory := m.RegionToCulture
+	terr := m.Cities[:m.NumCityStates]
+	territory := m.RegionToCityState
+	//terr := m.Cultures
+	//territory := m.RegionToCulture
 	for i, c := range terr {
 		terrToCol[c.ID] = i
-		log.Printf("%d: %s %f", i, c.Type, c.Expansionism)
+		//log.Printf("%d: %s %f", i, c.Type, c.Expansionism)
 	}
 	cols := grad.Colors(uint(len(terr)))
 

@@ -7,6 +7,7 @@ package genworldvoronoi
 type Map struct {
 	*Geo // Geography / geology
 	*Civ // Civilization
+	*Bio // Plants / animals / funghi
 }
 
 func NewMap(seed int64, numPlates, numPoints int, jitter float64) (*Map, error) {
@@ -20,6 +21,7 @@ func NewMap(seed int64, numPlates, numPoints int, jitter float64) (*Map, error) 
 	m := &Map{
 		Geo: geo,
 		Civ: NewCiv(geo),
+		Bio: newBio(geo),
 	}
 	m.generateMap()
 	return m, nil
@@ -31,4 +33,7 @@ func (m *Map) generateMap() {
 
 	// Build civilization.
 	m.generateCivilization()
+
+	// Build plants / animals / funghi.
+	m.generateBiology()
 }
