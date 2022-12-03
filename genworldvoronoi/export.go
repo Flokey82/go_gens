@@ -184,6 +184,8 @@ func (m *Map) ExportSVG(path string) error {
 		//_, maxS := minMax(cityScore)
 		//fitScore := m.genNoise()
 		//_, maxFit := minMax(fitScore)
+		//solarRad := m.calcSolarRadiation(172 / 2)
+		//minSol, maxSol := minMax(solarRad)
 		min, max := minMax(m.Elevation)
 		_, maxMois := minMax(m.Moisture)
 		for i := 0; i < em.mesh.numRegions; i++ {
@@ -208,6 +210,7 @@ func (m *Map) ExportSVG(path string) error {
 			}
 			elev := em.Elevation[i]
 			val := (elev - min) / (max - min)
+			//val = (solarRad[i] - minSol) / (maxSol - minSol)
 			//val = cityScore[i] / maxS
 			//val = fitScore[i] / maxFit
 			var col color.NRGBA
