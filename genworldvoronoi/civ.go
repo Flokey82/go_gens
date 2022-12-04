@@ -100,18 +100,18 @@ func (m *Civ) Tick() {
 		m.TickCity(c)
 	}
 	// TODO:
-	// 1: Update city states.
-	// 1.1: Update wealth / taxation.
-	// 1.2: Update trade.
-	// 1.3: Update politics.
+	// Update city states.
+	// 1: Update wealth / taxation.
+	// 2: Update trade.
+	// 3: Update politics.
 	// (Alliances, wars, taxes, laws, etc.)
-	// 1.4: Update population sentiment.
-	// 2: Update empires.
+	// 4: Update population sentiment.
+	// Update empires.
 	// (Similar as city states.)
-	// 3: Update cultures.
-	// 3.1: Expansion, assimilation, etc.
-	// 3.2: Update culture sentiments.
-	// 4: Update religions.
+	// Update cultures.
+	// 1: Expansion, assimilation, etc.
+	// 2: Update culture sentiments.
+	// Update religions.
 	// (same as cultures)
 
 	// NOTE: In theory we can partially de-duplicate code relating

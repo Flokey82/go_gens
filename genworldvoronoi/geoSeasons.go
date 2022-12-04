@@ -60,6 +60,8 @@ func (m *Geo) GetSolarRadiation(lat float64) float64 {
 	return calcSolarRadiation(degToRad(lat), m.GetDayOfYear())
 }
 
+// calcMinMaxTemperature calculates the minimum and maximum temperature for
+// every region on the current day of the year.
 func (m *Geo) calcMinMaxTemperature() [][2]float64 {
 	res := make([][2]float64, m.mesh.numRegions)
 	for i := range res {
@@ -69,13 +71,19 @@ func (m *Geo) calcMinMaxTemperature() [][2]float64 {
 	return res
 }
 
+// GetMinMaxTemperature returns the minimum and maximum temperature for the
+// current day of the year and the given latitude.
 func (m *Geo) GetMinMaxTemperature(lat float64) (min, max float64) {
+	return m.getMinMaxTemperatureOfDay(lat, m.GetDayOfYear())
+}
+
+func (m *Geo) getMinMaxTemperatureOfDay(lat float64, dayOfYear int) (min, max float64) {
 	// Get yearly average temperature for the given latitude.
 	tmp := getMeanAnnualTemp(lat)
 	// TODO: Compensate for altitude.
 
 	// Now get the average day and night duration for the given latitude.
-	dayLen := calcDaylightHoursByLatitudeAndDayOfYear(degToRad(lat), m.GetDayOfYear())
+	dayLen := calcDaylightHoursByLatitudeAndDayOfYear(degToRad(lat), dayOfYear)
 	nightLen := 24.0 - dayLen
 
 	// Given the mean temperature and the day and night duration, we can
