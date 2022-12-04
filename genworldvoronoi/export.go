@@ -708,6 +708,24 @@ func (m *Map) getImage(drawTerritories bool) image.Image {
 			}
 			// col = GetWhittakerModBiomeColor(int(getMeanAnnualTemp(lat)-getTempFalloffFromAltitude(8850*valElev)), int(valMois*45), val)
 		}
+		// Above a certain latitude, we need to draw more pixels since the
+		// distance between regions increases due to the mercator projection.
+		// NOTE: I know this is dumb. Don't judge me.
+		if math.Abs(lat) > 60 {
+			img.Set(int(x)+1, int(y), col)
+		}
+		if math.Abs(lat) > 70 {
+			img.Set(int(x)+2, int(y), col)
+		}
+		if math.Abs(lat) > 75 {
+			img.Set(int(x)+3, int(y), col)
+		}
+		if math.Abs(lat) > 80 {
+			img.Set(int(x)+4, int(y), col)
+		}
+		if math.Abs(lat) > 85 {
+			img.Set(int(x)+5, int(y), col)
+		}
 		img.Set(int(x), int(y), col)
 	}
 	return img
