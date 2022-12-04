@@ -13,6 +13,14 @@ func NewCalendar() *Calendar {
 	}
 }
 
+func (c *Calendar) GetDayOfYear() int {
+	return c.t.YearDay()
+}
+
+func (c *Calendar) Step() {
+	c.t = c.t.Add(time.Hour * 24)
+}
+
 // GetYearProgress returns the progress of the current year in 0.0-1.0.
 func (c *Calendar) GetYearProgress() float64 {
 	return float64(c.t.YearDay()) / float64(365)

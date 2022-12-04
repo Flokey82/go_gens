@@ -8,6 +8,7 @@ import (
 )
 
 type Geo struct {
+	*Calendar
 	*BaseObject
 	*Resources                          // Natural resources.
 	PlateToVector        []vectors.Vec3 // Plate tectonics / movement vectors
@@ -30,6 +31,7 @@ func newGeo(seed int64, numPlates, numPoints int, jitter float64) (*Geo, error) 
 	mesh := result.mesh
 
 	m := &Geo{
+		Calendar:             NewCalendar(),
 		PlateIsOcean:         make(map[int]bool),
 		BaseObject:           newBaseObject(seed, result),
 		Resources:            newResources(mesh.numRegions),

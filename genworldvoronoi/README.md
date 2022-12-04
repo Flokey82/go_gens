@@ -48,5 +48,8 @@ Here some old pictures what it does...
 ## Simulates climate (-ish)
 ![alt text](https://raw.githubusercontent.com/Flokey82/go_gens/master/genworldvoronoi/images/climate.png "Screenshot of Biomes!")
 
+## Simulates seasons (-ish)
+![alt text](https://raw.githubusercontent.com/Flokey82/go_gens/master/genworldvoronoi/images/seasons.webp "Screenshot of Seasons!")
+
 ## Exports to Wavefront OBJ
 ![alt text](https://raw.githubusercontent.com/Flokey82/go_gens/master/genworldvoronoi/images/obj.png "Screenshot of OBJ Export in Blender!")

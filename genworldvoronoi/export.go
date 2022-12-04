@@ -14,6 +14,7 @@ import (
 	svgo "github.com/ajstarks/svgo"
 	"github.com/davvo/mercator"
 	"github.com/mazznoer/colorgrad"
+	"github.com/sizeofint/webpanimation"
 )
 
 const tileSize = 256
@@ -617,7 +618,45 @@ func svgGenD(path [][2]float64) string {
 	return str
 }
 
-func (m *Map) ExportPng(name string) {
+func (m *Map) ExportWebp(name string) {
+	zoom := 1
+	size := sizeFromZoom(zoom)
+	webpanim := webpanimation.NewWebpAnimation(size, size, 0)
+	webpanim.WebPAnimEncoderOptions.SetKmin(9)
+	webpanim.WebPAnimEncoderOptions.SetKmax(17)
+	defer webpanim.ReleaseMemory() // don't forget call this or you will have memory leaks
+	webpConfig := webpanimation.NewWebpConfig()
+	webpConfig.SetLossless(1)
+
+	timeline := 0
+	timestep := 50
+	for i := 0; i < 366; i++ {
+		m.Step()
+		if err := webpanim.AddFrame(m.getImage(), timeline, webpConfig); err != nil {
+			log.Fatal(err)
+		}
+		timeline += timestep
+	}
+
+	if err := webpanim.AddFrame(nil, timeline, webpConfig); err != nil {
+		log.Fatal(err)
+	}
+
+	f, err := os.Create(name)
+	if err != nil {
+		log.Fatal(err)
+	}
+	// encode animation and write result bytes in buffer
+	if err = webpanim.Encode(f); err != nil {
+		log.Fatal(err)
+	}
+
+	if err := f.Close(); err != nil {
+		log.Fatal(err)
+	}
+}
+
+func (m *Map) getImage() image.Image {
 	grad := colorgrad.Rainbow()
 
 	terrToCol := make(map[int]int)
@@ -652,19 +691,26 @@ func (m *Map) ExportPng(name string) {
 			// Hacky: Modify elevation based on latitude to compensate for colder weather at the poles and warmer weather at the equator.
 			// valElev := math.Max(math.Min((elev/max)+(math.Sqrt(math.Abs(lat)/90.0)-0.5), max), 0)
 			valMois := m.Rainfall[r] / maxMois
-			if territory[r] == 0 {
-				col = genbiome.GetWhittakerModBiomeColor(int(getMeanAnnualTemp(lat)-getTempFalloffFromAltitude(maxAltitudeFactor*valElev)), int(valMois*maxPrecipitation), val)
-			} else {
+			if territory[r] != 0 && false {
 				cr, cg, cb, _ := cols[terrToCol[territory[r]]].RGBA()
 				col.R = uint8(float64(255) * float64(cr) / float64(0xffff))
 				col.G = uint8(float64(255) * float64(cg) / float64(0xffff))
 				col.B = uint8(float64(255) * float64(cb) / float64(0xffff))
 				col.A = 255
+			} else {
+				temMin, temMax := m.GetMinMaxTemperature(lat)
+				temAvg := (temMin + temMax) / 2
+				col = genbiome.GetWhittakerModBiomeColor(int(temAvg-getTempFalloffFromAltitude(maxAltitudeFactor*valElev)), int(valMois*maxPrecipitation), val)
 			}
 			// col = GetWhittakerModBiomeColor(int(getMeanAnnualTemp(lat)-getTempFalloffFromAltitude(8850*valElev)), int(valMois*45), val)
 		}
 		img.Set(int(x), int(y), col)
 	}
+	return img
+}
+
+func (m *Map) ExportPng(name string) {
+	img := m.getImage()
 
 	f, err := os.Create(name)
 	if err != nil {

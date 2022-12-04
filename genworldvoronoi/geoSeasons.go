@@ -4,6 +4,96 @@ import (
 	"math"
 )
 
+const (
+	SeasonSpring = iota
+	SeasonSummer
+	SeasonAutumn
+	SeasonWinter
+)
+
+const (
+	SpringEquinoxDayOfYear  = 80
+	SummerSolsticeDayOfYear = 172
+	AutumnEquinoxDayOfYear  = 263
+	WinterSolsticeDayOfYear = 355
+)
+
+// GetSeason returns the season for the current day of the year and the given
+// latitude.
+func (m *Geo) GetSeason(lat float64) int {
+	// If we are in the northern hemisphere, the seasons are "normal".
+	if lat > 0 {
+		if m.GetDayOfYear() < SpringEquinoxDayOfYear {
+			return SeasonWinter
+		}
+		if m.GetDayOfYear() < SummerSolsticeDayOfYear {
+			return SeasonSpring
+		}
+		if m.GetDayOfYear() < AutumnEquinoxDayOfYear {
+			return SeasonSummer
+		}
+		if m.GetDayOfYear() < WinterSolsticeDayOfYear {
+			return SeasonAutumn
+		}
+		return SeasonWinter
+	}
+
+	// If we are in the southern hemisphere, the seasons are reversed.
+	if m.GetDayOfYear() < SpringEquinoxDayOfYear {
+		return SeasonSummer
+	}
+	if m.GetDayOfYear() < SummerSolsticeDayOfYear {
+		return SeasonAutumn
+	}
+	if m.GetDayOfYear() < AutumnEquinoxDayOfYear {
+		return SeasonWinter
+	}
+	if m.GetDayOfYear() < WinterSolsticeDayOfYear {
+		return SeasonSpring
+	}
+	return SeasonSummer
+}
+
+// GetSolarRadiation returns the solar radiation for the current day of the year
+// and the given latitude.
+func (m *Geo) GetSolarRadiation(lat float64) float64 {
+	return calcSolarRadiation(degToRad(lat), m.GetDayOfYear())
+}
+
+func (m *Geo) calcMinMaxTemperature() [][2]float64 {
+	res := make([][2]float64, m.mesh.numRegions)
+	for i := range res {
+		lat := m.LatLon[i][0]
+		res[i][0], res[i][1] = m.GetMinMaxTemperature(lat)
+	}
+	return res
+}
+
+func (m *Geo) GetMinMaxTemperature(lat float64) (min, max float64) {
+	// Get yearly average temperature for the given latitude.
+	tmp := getMeanAnnualTemp(lat)
+	// TODO: Compensate for altitude.
+
+	// Now get the average day and night duration for the given latitude.
+	dayLen := calcDaylightHoursByLatitudeAndDayOfYear(degToRad(lat), m.GetDayOfYear())
+	nightLen := 24.0 - dayLen
+
+	// Given the mean temperature and the day and night duration, we can
+	// calculate the minimum and maximum temperature for the current day.
+
+	// TODO: Of course the amplitude of the temperature variation is
+	// dependent on the latitude. We should use a more accurate formula.
+	// Also the solar radiation would influence how fast the air heats
+	// up during the day. The cooling down at night should be relatively
+	// constant, and only depends on the type of ground and how much
+	// energy is retained by the ground.
+	// TODO: Humidity is a big factor that keeps the air from cooling down
+	// during the night, that's why it's so cold in the desert at night.
+	min = tmp - (0.71 * nightLen)
+	max = tmp + (0.71 * dayLen)
+	return min, max
+}
+
 // The seasons of the year change the day/night cycle as a sine wave,
 // which has an effect on the day/night temperature.
 // The extremes are at the poles, where days become almost 24 hours long or

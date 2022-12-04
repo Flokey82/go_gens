@@ -15,6 +15,7 @@ func main() {
 	exportPNG := true
 	exportOBJ := true
 	exportSVG := true
+	exportWebp := true
 	if exportPNG {
 		sp.ExportPng("test.png")
 	}
@@ -23,5 +24,8 @@ func main() {
 	}
 	if exportSVG {
 		sp.ExportSVG("test.svg")
+	}
+	if exportWebp {
+		sp.ExportWebp("test.webp")
 	}
 }
