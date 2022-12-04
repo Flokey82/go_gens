@@ -6,38 +6,6 @@ import (
 	"sort"
 )
 
-// rPlaceNTerritories places n territories on the map. (deprecated)
-// This is essentially generating large city states that we
-// treat as empires.
-/*func (m *Civ) rPlaceNTerritories(n int) {
-	m.resetRand()
-	// Territories are based on cities acting as their capital.
-	// Since the algorithm places the cities with the highes scores
-	// first, we use the top 'n' cities as the capitals for the
-	// territories.
-	var seedCities []int
-	for i, c := range m.Cities {
-		if i >= n {
-			break
-		}
-		seedCities = append(seedCities, c.ID)
-	}
-	weight := m.getTerritoryWeightFunc()
-	biomeWeight := m.getTerritoryBiomeWeightFunc()
-	cultureWeight := m.getTerritoryCultureWeightFunc()
-
-	m.RegionToTerritory = m.rPlaceNTerritoriesCustom(seedCities, func(o, u, v int) float64 {
-		if (m.Elevation[u] > 0) != (m.Elevation[v] > 0) || m.Elevation[v] <= 0 {
-			return -1
-		}
-		return weight(o, u, v) + biomeWeight(o, u, v) + cultureWeight(o, u, v)
-	})
-	m.rRelaxTerritories(m.RegionToTerritory, 15)
-}*/
-
-// NOTE: This is an alternative empire implementation where we expand based
-// on city states.
-
 func (m *Civ) rPlaceNEmpires(n int) {
 	// NOTE: This is not very thought through.
 	// This will need quite a bit of tweaking.

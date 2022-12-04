@@ -98,6 +98,11 @@ func (m *Geo) generateGeology() {
 	log.Println("Done quadgeom in ", time.Since(start).String())
 }
 
+func (m *Geo) Tick() {
+	// Advance the calendar.
+	m.Calendar.Tick()
+}
+
 // GetCustomContour returns a countour by tracing the region borders determined
 // by the function. The result is a list of sequential triangle center points.
 // Each sequence represents a continous border around regions of the same type.

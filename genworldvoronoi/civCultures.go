@@ -115,6 +115,8 @@ func (m *Civ) ExpandCultures() {
 
 // Culture represents a culture.
 //
+// Also see: https://ck3.paradoxwikis.com/Culture
+//
 // TODO:
 //
 // # VALUES

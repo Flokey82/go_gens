@@ -37,3 +37,10 @@ func (m *Map) generateMap() {
 	// Build plants / animals / funghi.
 	m.generateBiology()
 }
+
+// Tick advances the map by one tick.
+func (m *Map) Tick() {
+	m.Geo.Tick()
+	m.Bio.Tick()
+	m.Civ.Tick()
+}

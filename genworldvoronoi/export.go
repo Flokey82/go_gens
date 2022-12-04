@@ -630,9 +630,14 @@ func (m *Map) ExportWebp(name string) {
 
 	timeline := 0
 	timestep := 50
+
+	// Draw an entire year.
 	for i := 0; i < 366; i++ {
-		m.Step()
-		if err := webpanim.AddFrame(m.getImage(), timeline, webpConfig); err != nil {
+		// Advance the map by one day.
+		m.Tick()
+
+		// Write the current map to the animation.
+		if err := webpanim.AddFrame(m.getImage(false), timeline, webpConfig); err != nil {
 			log.Fatal(err)
 		}
 		timeline += timestep
@@ -646,7 +651,8 @@ func (m *Map) ExportWebp(name string) {
 	if err != nil {
 		log.Fatal(err)
 	}
-	// encode animation and write result bytes in buffer
+
+	// Encode animation and write result bytes in buffer.
 	if err = webpanim.Encode(f); err != nil {
 		log.Fatal(err)
 	}
@@ -656,20 +662,18 @@ func (m *Map) ExportWebp(name string) {
 	}
 }
 
-func (m *Map) getImage() image.Image {
-	grad := colorgrad.Rainbow()
-
-	terrToCol := make(map[int]int)
-
+func (m *Map) getImage(drawTerritories bool) image.Image {
+	colorGrad := colorgrad.Rainbow()
+	terrToColor := make(map[int]int)
 	terr := m.Cities[:m.NumCityStates]
 	territory := m.RegionToCityState
 	//terr := m.Cultures
 	//territory := m.RegionToCulture
 	for i, c := range terr {
-		terrToCol[c.ID] = i
-		//log.Printf("%d: %s %f", i, c.Type, c.Expansionism)
+		terrToColor[c.ID] = i
+		// log.Printf("%d: %s %f", i, c.Type, c.Expansionism)
 	}
-	cols := grad.Colors(uint(len(terr)))
+	cols := colorGrad.Colors(uint(len(terr)))
 
 	zoom := 1
 	size := sizeFromZoom(zoom)
@@ -691,8 +695,8 @@ func (m *Map) getImage() image.Image {
 			// Hacky: Modify elevation based on latitude to compensate for colder weather at the poles and warmer weather at the equator.
 			// valElev := math.Max(math.Min((elev/max)+(math.Sqrt(math.Abs(lat)/90.0)-0.5), max), 0)
 			valMois := m.Rainfall[r] / maxMois
-			if territory[r] != 0 && false {
-				cr, cg, cb, _ := cols[terrToCol[territory[r]]].RGBA()
+			if territory[r] != 0 && drawTerritories {
+				cr, cg, cb, _ := cols[terrToColor[territory[r]]].RGBA()
 				col.R = uint8(float64(255) * float64(cr) / float64(0xffff))
 				col.G = uint8(float64(255) * float64(cg) / float64(0xffff))
 				col.B = uint8(float64(255) * float64(cb) / float64(0xffff))
@@ -710,7 +714,7 @@ func (m *Map) getImage() image.Image {
 }
 
 func (m *Map) ExportPng(name string) {
-	img := m.getImage()
+	img := m.getImage(true)
 
 	f, err := os.Create(name)
 	if err != nil {

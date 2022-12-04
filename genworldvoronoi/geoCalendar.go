@@ -13,11 +13,13 @@ func NewCalendar() *Calendar {
 	}
 }
 
+// GetDayOfYear returns the current day of the year.
 func (c *Calendar) GetDayOfYear() int {
 	return c.t.YearDay()
 }
 
-func (c *Calendar) Step() {
+// Tick advances the calendar by one day.
+func (c *Calendar) Tick() {
 	c.t = c.t.Add(time.Hour * 24)
 }
 
