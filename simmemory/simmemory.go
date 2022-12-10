@@ -345,8 +345,10 @@ func (m *Memory) PromoteToCore(t Thought) {
 // of the two, the new thought and the existing memory, will be kept and the other
 // discarded.
 //
+// !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 // NOTE: Below are examples that only apply once "emotion" is implemented, which
 // effectively changes the intensity of a thought.
+// !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 //
 // So if a dwarf is in a particularly bad mood, getting shat on by a bird might
 // be felt more intensely than if they were in a good mood.
