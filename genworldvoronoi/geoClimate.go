@@ -1,6 +1,7 @@
 package genworldvoronoi
 
 import (
+	"image/color"
 	"log"
 	"math"
 	"sort"
@@ -17,8 +18,16 @@ func (m *Geo) getRWhittakerModBiomeFunc() func(r int) int {
 		valElev := m.Elevation[r] / maxElev
 		valMois := m.Moisture[r] / maxMois
 		rLat := m.LatLon[r][0]
-		return genbiome.GetWhittakerModBiome(int(getMeanAnnualTemp(rLat)-getTempFalloffFromAltitude(maxAltitudeFactor*valElev)), int(valMois*maxPrecipitation))
+		return getWhittakerModBiome(rLat, valElev, valMois)
 	}
+}
+
+func getWhittakerModBiome(latitude, elevation, moisture float64) int {
+	return genbiome.GetWhittakerModBiome(int(getMeanAnnualTemp(latitude)-getTempFalloffFromAltitude(maxAltitudeFactor*elevation)), int(moisture*maxPrecipitation))
+}
+
+func getWhittakerModBiomeColor(latitude, elevation, moisture, intensity float64) color.NRGBA {
+	return genbiome.GetWhittakerModBiomeColor(int(getMeanAnnualTemp(latitude)-getTempFalloffFromAltitude(maxAltitudeFactor*elevation)), int(moisture*maxPrecipitation), intensity)
 }
 
 // getTempFalloffFromAltitude returns the temperature falloff at a given altitude in meters

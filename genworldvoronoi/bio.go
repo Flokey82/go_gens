@@ -3,16 +3,18 @@ package genworldvoronoi
 // Bio handles the generation of life on the map (plants, animals, etc.).
 type Bio struct {
 	*Geo
-	Species    []*Species // All species on the map.
-	GrowthDays []int      // Number of days within the growth period for each region.
-	NumSpecies int        // Number of species to generate.
+	Species          []*Species // All species on the map.
+	GrowthDays       []int      // Number of days within the growth period for each region.
+	GrowthInsolation []float64  // Average insolation for each region during the growth period.
+	NumSpecies       int        // Number of species to generate.
 }
 
 func newBio(geo *Geo) *Bio {
 	return &Bio{
-		Geo:        geo,
-		GrowthDays: make([]int, geo.mesh.numRegions),
-		NumSpecies: 100,
+		Geo:              geo,
+		GrowthDays:       make([]int, geo.mesh.numRegions),
+		GrowthInsolation: make([]float64, geo.mesh.numRegions),
+		NumSpecies:       100,
 	}
 }
 
@@ -41,9 +43,13 @@ func (b *Bio) generateBiology() {
 // calcGrowthPeriod calculates the duration of the potential growth
 // period for each region (dormancy can be inferred), which will
 // give us the potential for agricultural output (nr of harvests etc).
+// Furthermore, it calculates the average insolation for each region
+// during the growth period, which will influence the amount of
+// agricultural output.
 func (b *Bio) calcGrowthPeriod() {
 	for r := range b.GrowthDays {
 		var growthDays int
+		var totalInsolation float64
 		for i := 0; i < 356; i++ {
 			// Calculate daily average temperature.
 			min, max := b.getMinMaxTemperatureOfDay(b.LatLon[r][0], i)
@@ -55,9 +61,12 @@ func (b *Bio) calcGrowthPeriod() {
 			// We should also take in account when there is precipitation.
 			if avg > 0 && b.Rainfall[r] > 0 {
 				growthDays++
+				totalInsolation += calcSolarRadiation(b.LatLon[r][0], i)
 			}
 		}
 		b.GrowthDays[r] = growthDays
+		// NOTE: We should take in account the altitude of the region.
+		b.GrowthInsolation[r] = totalInsolation / float64(growthDays)
 	}
 }
 

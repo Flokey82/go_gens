@@ -64,6 +64,7 @@ func (b *Bio) PlaceSpecies(sf func(int) float64, distSeedFunc func() []int) *Spe
 // PlaceSpeciesAt places a species at the given region.
 // TODO: Allow specifying the species type/subtype?
 func (b *Bio) PlaceSpeciesAt(r int) *Species {
+	// TODO: Pick species type based on biome through a weighted random array.
 	s := b.newSpecies(r, SpeciesTypes[b.rand.Intn(len(SpeciesTypes))])
 	b.Species = append(b.Species, s)
 	return s

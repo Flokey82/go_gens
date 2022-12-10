@@ -220,7 +220,7 @@ func (m *Map) ExportSVG(path string) error {
 			} else {
 				valElev := elev / max
 				valMois := em.Moisture[i] / maxMois
-				col = genbiome.GetWhittakerModBiomeColor(int(getMeanAnnualTemp(rLat)-getTempFalloffFromAltitude(maxAltitudeFactor*valElev)), int(valMois*maxPrecipitation), val)
+				col = getWhittakerModBiomeColor(rLat, valElev, valMois, val)
 			}
 			svg.Path(svgGenD(path), fmt.Sprintf("fill: rgb(%d, %d, %d)", col.R, col.G, col.B), "class=\"terrain\"")
 		}
@@ -263,7 +263,7 @@ func (m *Map) ExportSVG(path string) error {
 				// Hacky: Modify elevation based on latitude to compensate for colder weather at the poles and warmer weather at the equator.
 				// valElev := math.Max(math.Min((elev/max)+(math.Sqrt(math.Abs(triLat)/90.0)-0.5), max), 0)
 				valMois := em.t_moisture[i/3] / maxMois
-				col = genbiome.GetWhittakerModBiomeColor(int(getMeanAnnualTemp(triLat)-getTempFalloffFromAltitude(maxAltitudeFactor*valElev)), int(valMois*maxPrecipitation), val)
+				col = getWhittakerModBiomeColor(triLat, valElev, valMois, val)
 			}
 			svg.Path(svgGenD(path), fmt.Sprintf("fill: rgb(%d, %d, %d)", col.R, col.G, col.B), "class=\"terrain\"")
 		}
@@ -637,7 +637,7 @@ func (m *Map) ExportWebp(name string) {
 		m.Tick()
 
 		// Write the current map to the animation.
-		if err := webpanim.AddFrame(m.getImage(false), timeline, webpConfig); err != nil {
+		if err := webpanim.AddFrame(m.getImage(false, true), timeline, webpConfig); err != nil {
 			log.Fatal(err)
 		}
 		timeline += timestep
@@ -662,7 +662,7 @@ func (m *Map) ExportWebp(name string) {
 	}
 }
 
-func (m *Map) getImage(drawTerritories bool) image.Image {
+func (m *Map) getImage(drawTerritories, drawSeasonalBiome bool) image.Image {
 	colorGrad := colorgrad.Rainbow()
 	terrToColor := make(map[int]int)
 	terr := m.Cities[:m.NumCityStates]
@@ -701,10 +701,12 @@ func (m *Map) getImage(drawTerritories bool) image.Image {
 				col.G = uint8(float64(255) * float64(cg) / float64(0xffff))
 				col.B = uint8(float64(255) * float64(cb) / float64(0xffff))
 				col.A = 255
-			} else {
+			} else if drawSeasonalBiome {
 				temMin, temMax := m.GetMinMaxTemperature(lat)
 				temAvg := (temMin + temMax) / 2
 				col = genbiome.GetWhittakerModBiomeColor(int(temAvg-getTempFalloffFromAltitude(maxAltitudeFactor*valElev)), int(valMois*maxPrecipitation), val)
+			} else {
+				col = getWhittakerModBiomeColor(lat, valElev, valMois, val)
 			}
 			// col = GetWhittakerModBiomeColor(int(getMeanAnnualTemp(lat)-getTempFalloffFromAltitude(8850*valElev)), int(valMois*45), val)
 		}
@@ -732,7 +734,7 @@ func (m *Map) getImage(drawTerritories bool) image.Image {
 }
 
 func (m *Map) ExportPng(name string) {
-	img := m.getImage(true)
+	img := m.getImage(true, false)
 
 	f, err := os.Create(name)
 	if err != nil {
