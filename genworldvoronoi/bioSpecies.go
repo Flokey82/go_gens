@@ -56,7 +56,7 @@ func (b *Bio) PlaceSpecies(sf func(int) float64, distSeedFunc func() []int) *Spe
 			lastMax = val
 		}
 	}
-	s := b.newSpecies(newspecies, SpeciesTypes[b.rand.Intn(len(SpeciesTypes))])
+	s := b.newSpecies(newspecies, SpeciesKingdoms[b.rand.Intn(len(SpeciesKingdoms))])
 	b.Species = append(b.Species, s)
 	return s
 }
@@ -65,19 +65,19 @@ func (b *Bio) PlaceSpecies(sf func(int) float64, distSeedFunc func() []int) *Spe
 // TODO: Allow specifying the species type/subtype?
 func (b *Bio) PlaceSpeciesAt(r int) *Species {
 	// TODO: Pick species type based on biome through a weighted random array.
-	s := b.newSpecies(r, SpeciesTypes[b.rand.Intn(len(SpeciesTypes))])
+	s := b.newSpecies(r, SpeciesKingdoms[b.rand.Intn(len(SpeciesKingdoms))])
 	b.Species = append(b.Species, s)
 	return s
 }
 
-func (b *Bio) newSpecies(r int, t SpeciesType) *Species {
+func (b *Bio) newSpecies(r int, t SpeciesKingdom) *Species {
 	rnd := rand.New(rand.NewSource(b.Seed + int64(r)))
 
 	// TODO: Get culture and language from the region and use it to generate the name.
 	s := &Species{
 		Origin:    r,
 		Size:      SpeciesSizes[rnd.Intn(len(SpeciesSizes))],
-		Type:      t,
+		Kingdom:   t,
 		Ecosphere: b.getEcosphere(r),
 	}
 
@@ -108,17 +108,17 @@ func (b *Bio) newSpecies(r int, t SpeciesType) *Species {
 	// Pick subtype and mode of locomotion.
 	switch s.Ecosphere {
 	case EcosphereTypeOcean, EcosphereTypeLake, EcosphereTypeRiver:
-		subTypes := speciesTypeToSubTypesWater[s.Type]
-		s.SubType = subTypes[rnd.Intn(len(subTypes))]
-		s.Locomotion = SpeciesSubTypesToLocomotion[s.SubType]
+		subTypes := speciesKingdomToFamiliesWater[s.Kingdom]
+		s.Family = subTypes[rnd.Intn(len(subTypes))]
+		s.Locomotion = SpeciesFamiliesToLocomotion[s.Family]
 		// There is further a remote chance that we have another way of locomotion.
 		if rnd.Float64() < 0.01 {
 			s.Locomotion |= LocomotionTypesWater[rnd.Intn(len(LocomotionTypesWater))]
 		}
 	default:
-		subTypes := speciesTypeToSubTypesLand[s.Type]
-		s.SubType = subTypes[rnd.Intn(len(subTypes))]
-		s.Locomotion = SpeciesSubTypesToLocomotion[s.SubType]
+		subTypes := speciesKingdomToFamiliesLand[s.Kingdom]
+		s.Family = subTypes[rnd.Intn(len(subTypes))]
+		s.Locomotion = SpeciesFamiliesToLocomotion[s.Family]
 		// There is further a remote chance that we have another way of locomotion.
 		if rnd.Float64() < 0.02 {
 			s.Locomotion |= LocomotionTypesLand[rnd.Intn(len(LocomotionTypesLand))]
@@ -126,7 +126,7 @@ func (b *Bio) newSpecies(r int, t SpeciesType) *Species {
 	}
 
 	// Pick a random type of prey.
-	digestiveSystems := SpeciesTypesToDigestiveSystems[s.Type]
+	digestiveSystems := SpeciesKingdomToDigestiveSystems[s.Kingdom]
 	s.Digestion = digestiveSystems[rnd.Intn(len(digestiveSystems))]
 
 	// If we are not in the ocean, we probably have a preferred biome.
@@ -176,8 +176,8 @@ func (b *Bio) getSpeciesScore(s *Species, r int, maxElev float64, bf func(int) i
 type Species struct {
 	Name            string
 	Origin          int             // The region where the species originated, acts as a seed.
-	Type            SpeciesType     // General type of the species.
-	SubType         SpeciesSubType  // Subtype of the species.
+	Kingdom         SpeciesKingdom  // General type of the species.
+	Family          SpeciesFamily   // Subtype of the species.
 	Digestion       DigestiveSystem // What kind of food the species can eat.
 	Size            SpeciesSize     // Size of the species.
 	Locomotion      Locomotion      // How the species moves. (TODO: Primary locomotion)
@@ -189,7 +189,7 @@ type Species struct {
 }
 
 func (s *Species) String() string {
-	str := fmt.Sprintf("%s (%s, %s %s), lives at %s", s.Name, s.Type, s.Size, s.SubType, s.Ecosphere)
+	str := fmt.Sprintf("%s (%s, %s %s), lives at %s", s.Name, s.Kingdom, s.Size, s.Family, s.Ecosphere)
 	if s.Locomotion != LocomotionNone {
 		str += fmt.Sprintf(", can: %s", s.Locomotion)
 	}
@@ -267,43 +267,43 @@ var LocomotionTypesWater = []Locomotion{
 	LocomotionSlither,
 }
 
-type SpeciesType int
+type SpeciesKingdom int
 
 const (
-	SpeciesTypeFlora SpeciesType = iota
-	SpeciesTypeFauna             // Maybe split this up into different types of fauna?
-	SpeciesTypeFunga
+	SpeciesKingdomFlora SpeciesKingdom = iota
+	SpeciesKingdomFauna                // Maybe split this up into different types of fauna?
+	SpeciesKingdomFunga
 )
 
-func (s SpeciesType) String() string {
+func (s SpeciesKingdom) String() string {
 	switch s {
-	case SpeciesTypeFlora:
+	case SpeciesKingdomFlora:
 		return "flora"
-	case SpeciesTypeFauna:
+	case SpeciesKingdomFauna:
 		return "fauna"
-	case SpeciesTypeFunga:
+	case SpeciesKingdomFunga:
 		return "funga"
 	}
 	return "unknown"
 }
 
-var SpeciesTypes = []SpeciesType{
-	SpeciesTypeFauna,
-	SpeciesTypeFlora,
-	SpeciesTypeFunga,
+var SpeciesKingdoms = []SpeciesKingdom{
+	SpeciesKingdomFauna,
+	SpeciesKingdomFlora,
+	SpeciesKingdomFunga,
 }
 
-var SpeciesTypesToDigestiveSystems = map[SpeciesType][]DigestiveSystem{
-	SpeciesTypeFlora: {
+var SpeciesKingdomToDigestiveSystems = map[SpeciesKingdom][]DigestiveSystem{
+	SpeciesKingdomFlora: {
 		// TODO: Allow weighted selection. Some plants can eat other plants or animals.
 		DigestivePhotosynthetic,
 	},
-	SpeciesTypeFauna: {
+	SpeciesKingdomFauna: {
 		DigestiveSystemCarnivore,
 		DigestiveSystemHerbivore,
 		DigestiveSystemOmnivore,
 	},
-	SpeciesTypeFunga: {
+	SpeciesKingdomFunga: {
 		DigestivePhotosynthetic,
 		DigestiveDecomposer,
 		DigestiveSystemCarnivore, // rare
@@ -344,157 +344,163 @@ var DigestiveSystems = []DigestiveSystem{
 	DigestiveDecomposer,
 }
 
-type SpeciesSubType int
+type SpeciesFamily int
 
 const (
-	SpeciesSubTypeNone SpeciesSubType = iota
-	SpeciesSubTypeTree
-	SpeciesSubTypeShrub
-	SpeciesSubTypeGrass
-	SpeciesSubTypeHerb
-	SpeciesSubTypeFlower
-	SpeciesSubTypeFern
-	SpeciesSubTypeMoss
-	SpeciesSubTypeCactus
-	SpeciesSubTypeSucculent
-	SpeciesSubTypeInsect
-	SpeciesSubTypeArachnid
-	SpeciesSubTypeMammal
-	SpeciesSubTypeBird
-	SpeciesSubTypeFish
-	SpeciesSubTypeCrustacean
-	SpeciesSubTypeMollusk
-	SpeciesSubTypeAmphibian
-	SpeciesSubTypeReptileSerpent
-	SpeciesSubTypeReptileLizard
-	SpeciesSubTypeRodent
-	SpeciesSubTypeWorm
-	SpeciesSubTypeMushroom
-	SpeciesSubTypeMold
+	SpeciesFamilyNone SpeciesFamily = iota
+	SpeciesFamilyTree
+	SpeciesFamilyShrub
+	SpeciesFamilyGrass
+	SpeciesFamilyReed
+	SpeciesFamilyHerb
+	SpeciesFamilyFlower
+	SpeciesFamilyFern
+	SpeciesFamilyMoss
+	SpeciesFamilyVine
+	SpeciesFamilyCactus
+	SpeciesFamilySucculent
+	SpeciesFamilyInsect
+	SpeciesFamilyArachnid
+	SpeciesFamilyMammal
+	SpeciesFamilyBird
+	SpeciesFamilyFish
+	SpeciesFamilyCrustacean
+	SpeciesFamilyMollusk
+	SpeciesFamilyMolluskClam
+	SpeciesFamilyMolluskSnail
+	SpeciesFamilyAmphibian
+	SpeciesFamilyReptileSerpent
+	SpeciesFamilyReptileLizard
+	SpeciesFamilyRodent
+	SpeciesFamilyWorm
+	SpeciesFamilyMushroom
+	SpeciesFamilyMold
 )
 
-func (s SpeciesSubType) String() string {
+func (s SpeciesFamily) String() string {
 	switch s {
-	case SpeciesSubTypeNone:
+	case SpeciesFamilyNone:
 		return "none"
-	case SpeciesSubTypeTree:
+	case SpeciesFamilyTree:
 		return "tree"
-	case SpeciesSubTypeShrub:
+	case SpeciesFamilyShrub:
 		return "shrub"
-	case SpeciesSubTypeGrass:
+	case SpeciesFamilyGrass:
 		return "grass"
-	case SpeciesSubTypeHerb:
+	case SpeciesFamilyReed:
+		return "reed"
+	case SpeciesFamilyHerb:
 		return "herb"
-	case SpeciesSubTypeFlower:
+	case SpeciesFamilyFlower:
 		return "flower"
-	case SpeciesSubTypeFern:
+	case SpeciesFamilyFern:
 		return "fern"
-	case SpeciesSubTypeMoss:
+	case SpeciesFamilyMoss:
 		return "moss"
-	case SpeciesSubTypeCactus:
+	case SpeciesFamilyVine:
+		return "vine"
+	case SpeciesFamilyCactus:
 		return "cactus"
-	case SpeciesSubTypeSucculent:
+	case SpeciesFamilySucculent:
 		return "succulent"
-	case SpeciesSubTypeInsect:
+	case SpeciesFamilyInsect:
 		return "insect"
-	case SpeciesSubTypeArachnid:
+	case SpeciesFamilyArachnid:
 		return "arachnid"
-	case SpeciesSubTypeMammal:
+	case SpeciesFamilyMammal:
 		return "mammal"
-	case SpeciesSubTypeBird:
+	case SpeciesFamilyBird:
 		return "bird"
-	case SpeciesSubTypeFish:
+	case SpeciesFamilyFish:
 		return "fish"
-	case SpeciesSubTypeCrustacean:
+	case SpeciesFamilyCrustacean:
 		return "crustacean"
-	case SpeciesSubTypeMollusk:
+	case SpeciesFamilyMollusk:
 		return "mollusk"
-	case SpeciesSubTypeAmphibian:
+	case SpeciesFamilyMolluskClam:
+		return "clam"
+	case SpeciesFamilyMolluskSnail:
+		return "snail"
+	case SpeciesFamilyAmphibian:
 		return "amphibian"
-	case SpeciesSubTypeReptileSerpent:
+	case SpeciesFamilyReptileSerpent:
 		return "serpent"
-	case SpeciesSubTypeReptileLizard:
+	case SpeciesFamilyReptileLizard:
 		return "lizard"
-	case SpeciesSubTypeRodent:
+	case SpeciesFamilyRodent:
 		return "rodent"
-	case SpeciesSubTypeWorm:
+	case SpeciesFamilyWorm:
 		return "worm"
-	case SpeciesSubTypeMushroom:
+	case SpeciesFamilyMushroom:
 		return "mushroom"
-	case SpeciesSubTypeMold:
+	case SpeciesFamilyMold:
 		return "mold"
 	}
 	return "unknown"
 }
 
-var SpeciesSubTypesToLocomotion = map[SpeciesSubType]Locomotion{
-	SpeciesSubTypeTree:           LocomotionNone,
-	SpeciesSubTypeShrub:          LocomotionNone,
-	SpeciesSubTypeGrass:          LocomotionNone,
-	SpeciesSubTypeHerb:           LocomotionNone,
-	SpeciesSubTypeFlower:         LocomotionNone,
-	SpeciesSubTypeFern:           LocomotionNone,
-	SpeciesSubTypeMoss:           LocomotionNone,
-	SpeciesSubTypeCactus:         LocomotionNone,
-	SpeciesSubTypeSucculent:      LocomotionNone,
-	SpeciesSubTypeInsect:         LocomotionWalk,
-	SpeciesSubTypeArachnid:       LocomotionWalk,
-	SpeciesSubTypeMammal:         LocomotionWalk,
-	SpeciesSubTypeBird:           LocomotionFly,
-	SpeciesSubTypeFish:           LocomotionSwim,
-	SpeciesSubTypeCrustacean:     LocomotionSwim,
-	SpeciesSubTypeMollusk:        LocomotionNone,
-	SpeciesSubTypeAmphibian:      LocomotionWalk | LocomotionSwim,
-	SpeciesSubTypeReptileSerpent: LocomotionSlither,
-	SpeciesSubTypeReptileLizard:  LocomotionWalk | LocomotionClimb,
-	SpeciesSubTypeRodent:         LocomotionWalk | LocomotionClimb | LocomotionBurrow,
-	SpeciesSubTypeWorm:           LocomotionSlither | LocomotionBurrow,
-	SpeciesSubTypeMushroom:       LocomotionNone,
-	SpeciesSubTypeMold:           LocomotionNone,
+var SpeciesFamiliesToLocomotion = map[SpeciesFamily]Locomotion{
+	SpeciesFamilyInsect:         LocomotionWalk,
+	SpeciesFamilyArachnid:       LocomotionWalk,
+	SpeciesFamilyMammal:         LocomotionWalk,
+	SpeciesFamilyBird:           LocomotionFly,
+	SpeciesFamilyFish:           LocomotionSwim,
+	SpeciesFamilyCrustacean:     LocomotionSwim,
+	SpeciesFamilyMollusk:        LocomotionSwim | LocomotionWalk,
+	SpeciesFamilyMolluskSnail:   LocomotionSlither | LocomotionClimb,
+	SpeciesFamilyAmphibian:      LocomotionWalk | LocomotionSwim,
+	SpeciesFamilyReptileSerpent: LocomotionSlither,
+	SpeciesFamilyReptileLizard:  LocomotionWalk | LocomotionClimb,
+	SpeciesFamilyRodent:         LocomotionWalk | LocomotionClimb | LocomotionBurrow,
+	SpeciesFamilyWorm:           LocomotionSlither | LocomotionBurrow,
 }
 
-var speciesTypeToSubTypesLand = map[SpeciesType][]SpeciesSubType{
-	SpeciesTypeFlora: {
-		SpeciesSubTypeTree,
-		SpeciesSubTypeShrub,
-		SpeciesSubTypeGrass,
-		SpeciesSubTypeHerb,
-		SpeciesSubTypeFlower,
-		SpeciesSubTypeFern,
-		SpeciesSubTypeMoss,
-		SpeciesSubTypeCactus,
-		SpeciesSubTypeSucculent,
+var speciesKingdomToFamiliesLand = map[SpeciesKingdom][]SpeciesFamily{
+	SpeciesKingdomFlora: {
+		SpeciesFamilyTree,
+		SpeciesFamilyShrub,
+		SpeciesFamilyGrass,
+		SpeciesFamilyReed,
+		SpeciesFamilyHerb,
+		SpeciesFamilyFlower,
+		SpeciesFamilyFern,
+		SpeciesFamilyMoss,
+		SpeciesFamilyVine,
+		SpeciesFamilyCactus,
+		SpeciesFamilySucculent,
 	},
-	SpeciesTypeFauna: {
-		SpeciesSubTypeInsect,
-		SpeciesSubTypeArachnid,
-		SpeciesSubTypeMammal,
-		SpeciesSubTypeBird,
-		SpeciesSubTypeAmphibian,
-		SpeciesSubTypeReptileSerpent,
-		SpeciesSubTypeReptileLizard,
-		SpeciesSubTypeRodent,
-		SpeciesSubTypeMollusk,
+	SpeciesKingdomFauna: {
+		SpeciesFamilyInsect,
+		SpeciesFamilyArachnid,
+		SpeciesFamilyMammal,
+		SpeciesFamilyBird,
+		SpeciesFamilyAmphibian,
+		SpeciesFamilyReptileSerpent,
+		SpeciesFamilyReptileLizard,
+		SpeciesFamilyMolluskSnail,
+		SpeciesFamilyRodent,
+		SpeciesFamilyMollusk,
 	},
-	SpeciesTypeFunga: {
-		SpeciesSubTypeMushroom,
-		SpeciesSubTypeMold,
+	SpeciesKingdomFunga: {
+		SpeciesFamilyMushroom,
+		SpeciesFamilyMold,
 	},
 }
 
-var speciesTypeToSubTypesWater = map[SpeciesType][]SpeciesSubType{
-	SpeciesTypeFlora: {
-		SpeciesSubTypeGrass,
-		SpeciesSubTypeHerb,
+var speciesKingdomToFamiliesWater = map[SpeciesKingdom][]SpeciesFamily{
+	SpeciesKingdomFlora: {
+		SpeciesFamilyGrass,
+		SpeciesFamilyHerb,
 	},
-	SpeciesTypeFauna: {
-		SpeciesSubTypeFish,
-		SpeciesSubTypeCrustacean,
-		SpeciesSubTypeMollusk,
-		SpeciesSubTypeReptileSerpent,
+	SpeciesKingdomFauna: {
+		SpeciesFamilyFish,
+		SpeciesFamilyCrustacean,
+		SpeciesFamilyMollusk,
+		SpeciesFamilyMolluskClam,
+		SpeciesFamilyReptileSerpent,
 	},
-	SpeciesTypeFunga: {
-		SpeciesSubTypeMushroom,
+	SpeciesKingdomFunga: {
+		SpeciesFamilyMushroom,
 	},
 }
 
