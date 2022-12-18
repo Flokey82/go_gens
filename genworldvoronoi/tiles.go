@@ -102,10 +102,6 @@ func (m *Map) GetTile(x, y, zoom int) image.Image {
 		gc.SetFillColor(col)
 		gc.SetStrokeColor(col)
 		gc.SetLineWidth(0)
-		if rLat > 60 {
-			gc.SetStrokeColor(color.NRGBA{0, 0, 0, 255})
-			gc.SetLineWidth(1)
-		}
 		gc.BeginPath()
 		gc.MoveTo(path[0][0], path[0][1])
 		for _, p := range path[1:] {
