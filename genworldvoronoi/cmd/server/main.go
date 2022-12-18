@@ -42,8 +42,38 @@ func main() {
 	// Start the server.
 	router := mux.NewRouter()
 	router.HandleFunc("/tiles/{z}/{x}/{y}", tileHandler)
+	router.HandleFunc("/geojson/{z}/{la1}/{lo1}/{la2}/{lo2}", geoJSONHandler)
 	router.PathPrefix("/").Handler(http.FileServer(http.Dir("static")))
 	log.Fatal(http.ListenAndServe(":3333", router))
+}
+
+func geoJSONHandler(res http.ResponseWriter, req *http.Request) {
+	// Get the tile coordinates and zoom level.
+	vars := mux.Vars(req)
+	tileLa1, err := strconv.ParseFloat(vars["la1"], 64)
+	if err != nil {
+		panic(err)
+	}
+	tileLa2, err := strconv.ParseFloat(vars["la2"], 64)
+	if err != nil {
+		panic(err)
+	}
+	tileLo1, err := strconv.ParseFloat(vars["lo1"], 64)
+	if err != nil {
+		panic(err)
+	}
+	tileLo2, err := strconv.ParseFloat(vars["lo2"], 64)
+	if err != nil {
+		panic(err)
+	}
+	tileZ, err := strconv.Atoi(vars["z"])
+	if err != nil {
+		panic(err)
+	}
+	data := worldmap.GetGeoJSON(tileLa1, tileLo1, tileLa2, tileLo2, tileZ)
+	res.Header().Set("Content-Type", "application/json")
+	res.Header().Set("Content-Length", strconv.Itoa(len(data)))
+	res.Write(data)
 }
 
 func tileHandler(res http.ResponseWriter, req *http.Request) {

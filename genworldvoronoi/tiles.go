@@ -3,22 +3,18 @@ package genworldvoronoi
 import (
 	"image"
 	"image/color"
+	"log"
+	"math"
 
 	"github.com/llgcode/draw2d/draw2dimg"
+	geojson "github.com/paulmach/go.geojson"
 )
 
 // GetTile returns the image of the tile at the given coordinates and zoom level.
-// NOTE: This is definitely upside down. :(
 func (m *Map) GetTile(x, y, zoom int) image.Image {
 	// Wrap the tile coordinates.
-	x = x % (1 << uint(zoom))
-	if x < 0 {
-		x += 1 << uint(zoom)
-	}
-	y = y % (1 << uint(zoom))
-	if y < 0 {
-		y += 1 << uint(zoom)
-	}
+	x, y = wrapTileCoordinates(x, y, zoom)
+
 	// log.Println("tile", x, y, "zoom", zoom)
 
 	tbb := tileBoundingBox(x, y, zoom)
@@ -66,7 +62,7 @@ func (m *Map) GetTile(x, y, zoom int) image.Image {
 
 			// Calculate the coordinates of the path point.
 			x, y := latLonToPixels(tLat, tLon, zoom)
-			path = append(path, [2]float64{(x - dx), tileSize - (y - dy2)})
+			path = append(path, [2]float64{(x - dx), (y - dy2)})
 		}
 
 		// Now check if the region we are looking at has wrapped around the world /
@@ -112,4 +108,184 @@ func (m *Map) GetTile(x, y, zoom int) image.Image {
 	}
 
 	return dest
+}
+
+func wrapTileCoordinates(x, y, zoom int) (int, int) {
+	// Wrap the tile coordinates.
+	x = x % (1 << uint(zoom))
+	if x < 0 {
+		x += 1 << uint(zoom)
+	}
+	y = y % (1 << uint(zoom))
+	if y < 0 {
+		y += 1 << uint(zoom)
+	}
+	return x, y
+}
+
+func wrapLatLon(la, lo float64) (float64, float64) {
+	// Wrap the lat lon coordinates.
+	la = math.Mod(la, 180)
+	if la < -90 {
+		la += 180
+	} else if la > 90 {
+		la -= 180
+	}
+	lo = math.Mod(lo, 360)
+	if lo < -180 {
+		lo += 360
+	} else if lo > 180 {
+		lo -= 360
+	}
+	return la, lo
+}
+
+func limitLatLon(la, lo float64) (float64, float64) {
+	// Limit the lat lon coordinates.
+	if la < -90 {
+		la = -90
+	} else if la > 90 {
+		la = 90
+	}
+	if lo < -180 {
+		lo = -180
+	} else if lo > 180 {
+		lo = 180
+	}
+	return la, lo
+}
+
+type latLonBounds struct {
+	la1, lo1, la2, lo2 float64
+}
+
+// InBounds checks if the given lat lon coordinates are within the bounds.
+// NOTE: We need to take in account that the bounds might have wrapped around the world.
+func (b latLonBounds) InBounds(la, lo float64) bool {
+	if b.la1 < b.la2 {
+		// We wrapped around north or south.
+		if la > b.la1 && la < b.la2 {
+			return false
+		}
+	} else {
+		if la > b.la1 || la < b.la2 {
+			return false
+		}
+	}
+	if b.lo1 > b.lo2 {
+		// We wrapped around east or west.
+		if lo < b.lo1 && lo > b.lo2 {
+			return false
+		}
+	} else {
+		if lo < b.lo1 || lo > b.lo2 {
+			return false
+		}
+	}
+	return true
+}
+
+func wrapLatitude(la float64) float64 {
+	// Wrap the latitude.
+	la = math.Mod(la, 180)
+	if la < -90 {
+		la += 180
+	} else if la > 90 {
+		la -= 180
+	}
+	return la
+}
+
+func wrapLongitude(lo float64) float64 {
+	// Wrap the longitude.
+	lo = math.Mod(lo, 360)
+	if lo < -180 {
+		lo += 360
+	} else if lo > 180 {
+		lo -= 360
+	}
+	return lo
+}
+
+func limitLatitude(la float64) float64 {
+	// Limit the latitude.
+	if la < -90 {
+		la = -90
+	} else if la > 90 {
+		la = 90
+	}
+	return la
+}
+
+func limitLongitude(lo float64) float64 {
+	// Limit the longitude.
+	if lo < -180 {
+		lo = -180
+	} else if lo > 180 {
+		lo = 180
+	}
+	return lo
+}
+
+// GetGeoJSON returns the GeoJSON of the tile at the given coordinates and zoom level.
+func (m *Map) GetGeoJSON(la1, lo1, la2, lo2 float64, zoom int) []byte {
+	geoJSON := geojson.NewFeatureCollection()
+
+	// Fix the bounds if la1, lo1, la2, lo2 are not in the correct order.
+	//if la1 < la2 {
+	//	la1, la2 = la2, la1
+	//}
+	//if lo1 > lo2 {
+	//	lo1, lo2 = lo2, lo1
+	//}
+	// Limit the lat lon coordinates.
+	//la1, lo1 = limitLatLon(la1, lo1)
+	//la2, lo2 = limitLatLon(la2, lo2)
+
+	// Wrap the latitude only if we see less than 180 degrees, otherwise just limit it.
+	if math.Abs(la1-la2) < 180 {
+		la1 = wrapLatitude(la1)
+		la2 = wrapLatitude(la2)
+	} else {
+		la1 = limitLatitude(la1)
+		la2 = limitLatitude(la2)
+	}
+	// Wrap the longitude only if we see less than 360 degrees.
+	if math.Abs(lo1-lo2) < 360 {
+		lo1 = wrapLongitude(lo1)
+		lo2 = wrapLongitude(lo2)
+	} else {
+		lo1 = limitLongitude(lo1)
+		lo2 = limitLongitude(lo2)
+	}
+	lbb := latLonBounds{la1, lo1, la2, lo2}
+	log.Println(la1, lo1, la2, lo2)
+
+	// Loop through all the cities and check if they are within the tile.
+	for _, c := range m.Cities {
+		cLat := m.LatLon[c.ID][0]
+		cLon := m.LatLon[c.ID][1]
+
+		// Check if we are within the tile with a small margin.
+		if !lbb.InBounds(cLat, cLon) {
+			continue
+		}
+
+		// Add the city to the GeoJSON as a feature.
+		f := geojson.NewPointFeature([]float64{cLon, cLat})
+		f.SetProperty("id", c.ID)
+		f.SetProperty("name", c.Name)
+		f.SetProperty("type", c.Type)
+		f.SetProperty("culture", c.Culture.Name)
+		geoJSON.AddFeature(f)
+	}
+
+	log.Println("%d out of %d cities in tile", len(geoJSON.Features), len(m.Cities))
+
+	// Now encode the GeoJSON.
+	geoJSONBytes, err := geoJSON.MarshalJSON()
+	if err != nil {
+		panic(err)
+	}
+	return geoJSONBytes
 }
