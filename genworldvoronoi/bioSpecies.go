@@ -110,7 +110,7 @@ func (b *Bio) newSpecies(r int, t SpeciesKingdom) *Species {
 	case EcosphereTypeOcean, EcosphereTypeLake, EcosphereTypeRiver:
 		subTypes := speciesKingdomToFamiliesWater[s.Kingdom]
 		s.Family = subTypes[rnd.Intn(len(subTypes))]
-		s.Locomotion = SpeciesFamiliesToLocomotion[s.Family]
+		s.Locomotion = s.Family.Locomotion()
 		// There is further a remote chance that we have another way of locomotion.
 		if rnd.Float64() < 0.01 {
 			s.Locomotion |= LocomotionTypesWater[rnd.Intn(len(LocomotionTypesWater))]
@@ -118,7 +118,7 @@ func (b *Bio) newSpecies(r int, t SpeciesKingdom) *Species {
 	default:
 		subTypes := speciesKingdomToFamiliesLand[s.Kingdom]
 		s.Family = subTypes[rnd.Intn(len(subTypes))]
-		s.Locomotion = SpeciesFamiliesToLocomotion[s.Family]
+		s.Locomotion = s.Family.Locomotion()
 		// There is further a remote chance that we have another way of locomotion.
 		if rnd.Float64() < 0.02 {
 			s.Locomotion |= LocomotionTypesLand[rnd.Intn(len(LocomotionTypesLand))]
@@ -126,7 +126,7 @@ func (b *Bio) newSpecies(r int, t SpeciesKingdom) *Species {
 	}
 
 	// Pick a random type of prey.
-	digestiveSystems := SpeciesKingdomToDigestiveSystems[s.Kingdom]
+	digestiveSystems := s.Kingdom.DigestiveSystems()
 	s.Digestion = digestiveSystems[rnd.Intn(len(digestiveSystems))]
 
 	// If we are not in the ocean, we probably have a preferred biome.
@@ -287,27 +287,33 @@ func (s SpeciesKingdom) String() string {
 	return "unknown"
 }
 
+func (s SpeciesKingdom) DigestiveSystems() []DigestiveSystem {
+	switch s {
+	case SpeciesKingdomFlora:
+		return []DigestiveSystem{
+			// TODO: Allow weighted selection. Some plants can eat other plants or animals.
+			DigestivePhotosynthetic,
+		}
+	case SpeciesKingdomFauna:
+		return []DigestiveSystem{
+			DigestiveSystemCarnivore,
+			DigestiveSystemHerbivore,
+			DigestiveSystemOmnivore,
+		}
+	case SpeciesKingdomFunga:
+		return []DigestiveSystem{
+			DigestivePhotosynthetic,
+			DigestiveDecomposer,
+			DigestiveSystemCarnivore, // rare
+		}
+	}
+	return nil
+}
+
 var SpeciesKingdoms = []SpeciesKingdom{
 	SpeciesKingdomFauna,
 	SpeciesKingdomFlora,
 	SpeciesKingdomFunga,
-}
-
-var SpeciesKingdomToDigestiveSystems = map[SpeciesKingdom][]DigestiveSystem{
-	SpeciesKingdomFlora: {
-		// TODO: Allow weighted selection. Some plants can eat other plants or animals.
-		DigestivePhotosynthetic,
-	},
-	SpeciesKingdomFauna: {
-		DigestiveSystemCarnivore,
-		DigestiveSystemHerbivore,
-		DigestiveSystemOmnivore,
-	},
-	SpeciesKingdomFunga: {
-		DigestivePhotosynthetic,
-		DigestiveDecomposer,
-		DigestiveSystemCarnivore, // rare
-	},
 }
 
 type DigestiveSystem int
@@ -439,20 +445,36 @@ func (s SpeciesFamily) String() string {
 	return "unknown"
 }
 
-var SpeciesFamiliesToLocomotion = map[SpeciesFamily]Locomotion{
-	SpeciesFamilyInsect:         LocomotionWalk,
-	SpeciesFamilyArachnid:       LocomotionWalk,
-	SpeciesFamilyMammal:         LocomotionWalk,
-	SpeciesFamilyBird:           LocomotionFly,
-	SpeciesFamilyFish:           LocomotionSwim,
-	SpeciesFamilyCrustacean:     LocomotionSwim,
-	SpeciesFamilyMollusk:        LocomotionSwim | LocomotionWalk,
-	SpeciesFamilyMolluskSnail:   LocomotionSlither | LocomotionClimb,
-	SpeciesFamilyAmphibian:      LocomotionWalk | LocomotionSwim,
-	SpeciesFamilyReptileSerpent: LocomotionSlither,
-	SpeciesFamilyReptileLizard:  LocomotionWalk | LocomotionClimb,
-	SpeciesFamilyRodent:         LocomotionWalk | LocomotionClimb | LocomotionBurrow,
-	SpeciesFamilyWorm:           LocomotionSlither | LocomotionBurrow,
+func (s SpeciesFamily) Locomotion() Locomotion {
+	switch s {
+	case SpeciesFamilyInsect:
+		return LocomotionWalk
+	case SpeciesFamilyArachnid:
+		return LocomotionWalk
+	case SpeciesFamilyMammal:
+		return LocomotionWalk
+	case SpeciesFamilyBird:
+		return LocomotionFly
+	case SpeciesFamilyFish:
+		return LocomotionSwim
+	case SpeciesFamilyCrustacean:
+		return LocomotionSwim
+	case SpeciesFamilyMollusk:
+		return LocomotionSwim | LocomotionWalk
+	case SpeciesFamilyMolluskSnail:
+		return LocomotionSlither | LocomotionClimb
+	case SpeciesFamilyAmphibian:
+		return LocomotionWalk | LocomotionSwim
+	case SpeciesFamilyReptileSerpent:
+		return LocomotionSlither
+	case SpeciesFamilyReptileLizard:
+		return LocomotionWalk | LocomotionClimb
+	case SpeciesFamilyRodent:
+		return LocomotionWalk | LocomotionClimb | LocomotionBurrow
+	case SpeciesFamilyWorm:
+		return LocomotionSlither | LocomotionBurrow
+	}
+	return LocomotionNone
 }
 
 var speciesKingdomToFamiliesLand = map[SpeciesKingdom][]SpeciesFamily{
@@ -504,44 +526,6 @@ var speciesKingdomToFamiliesWater = map[SpeciesKingdom][]SpeciesFamily{
 	},
 }
 
-type EcosphereType int
-
-const (
-	EcosphereTypeOcean EcosphereType = iota
-	EcosphereTypeRiver
-	EcosphereTypeLake
-	EcosphereTypeLand
-)
-
-// getEcosphere returns the ecosphere of the given region.
-func (b *Bio) getEcosphere(r int) EcosphereType {
-	// Get the ecosphere we are in.
-	if b.Elevation[r] <= 0.0 {
-		return EcosphereTypeOcean
-	}
-	if b.isRiver(r) {
-		return EcosphereTypeRiver
-	}
-	if b.isLake(r) {
-		return EcosphereTypeLake
-	}
-	return EcosphereTypeLand
-}
-
-func (e EcosphereType) String() string {
-	switch e {
-	case EcosphereTypeOcean:
-		return "ocean"
-	case EcosphereTypeRiver:
-		return "river"
-	case EcosphereTypeLake:
-		return "lake"
-	case EcosphereTypeLand:
-		return "land"
-	}
-	return "unknown"
-}
-
 type SpeciesSize int
 
 const (
@@ -584,4 +568,42 @@ func easeInOutCubic(x float64) float64 {
 		return 4 * x * x * x
 	}
 	return 1 - math.Pow(-2*x+2, 3)/2
+}
+
+type EcosphereType int
+
+const (
+	EcosphereTypeOcean EcosphereType = iota
+	EcosphereTypeRiver
+	EcosphereTypeLake
+	EcosphereTypeLand
+)
+
+// getEcosphere returns the ecosphere of the given region.
+func (b *Bio) getEcosphere(r int) EcosphereType {
+	// Get the ecosphere we are in.
+	if b.Elevation[r] <= 0.0 {
+		return EcosphereTypeOcean
+	}
+	if b.isRiver(r) {
+		return EcosphereTypeRiver
+	}
+	if b.isLake(r) {
+		return EcosphereTypeLake
+	}
+	return EcosphereTypeLand
+}
+
+func (e EcosphereType) String() string {
+	switch e {
+	case EcosphereTypeOcean:
+		return "ocean"
+	case EcosphereTypeRiver:
+		return "river"
+	case EcosphereTypeLake:
+		return "lake"
+	case EcosphereTypeLand:
+		return "land"
+	}
+	return "unknown"
 }

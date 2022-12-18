@@ -52,3 +52,6 @@ genmap2derosion/cmd/tmp.obj
 simmarket/cmd/runner
 genmapvoronoi/cmd/tmp.obj
 genworldvoronoi/cmd/test copy.png
+simciv/cmd/runner
+simmemory/cmd/runner
+genworldvoronoi/cmd/server/main
