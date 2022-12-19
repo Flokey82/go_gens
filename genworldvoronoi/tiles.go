@@ -12,6 +12,9 @@ import (
 
 // GetTile returns the image of the tile at the given coordinates and zoom level.
 func (m *Map) GetTile(x, y, zoom int) image.Image {
+	// Skip drawing rivers for now.
+	drawRivers := false
+
 	// Wrap the tile coordinates.
 	x, y = wrapTileCoordinates(x, y, zoom)
 
@@ -107,6 +110,32 @@ func (m *Map) GetTile(x, y, zoom int) image.Image {
 		gc.FillStroke()
 	}
 
+	// Now we do something completely inefficient and
+	// fetch all the rivers and filter them by the tile.
+	// We should filter this stuff before we generate the rivers.
+	if drawRivers {
+		rivers := m.getRivers(0.0001)
+		_, maxFlux := minMax(m.Flux)
+
+		for _, river := range rivers {
+			gc.SetStrokeColor(color.NRGBA{0, 0, 255, 255})
+			gc.SetLineWidth(1)
+			gc.BeginPath()
+			// Move to the first point.
+			rLat, rLon := m.LatLon[river[0]][0], m.LatLon[river[0]][1]
+			x, y := latLonToPixels(rLat, rLon, zoom)
+			gc.MoveTo(x-dx, y-dy2)
+			for _, p := range river[1:] {
+				gc.SetLineWidth(1 + 2*(m.Flux[p]/maxFlux))
+
+				// Set the line width based on the flux of the river.
+				rLat, rLon = m.LatLon[p][0], m.LatLon[p][1]
+				x, y := latLonToPixels(rLat, rLon, zoom)
+				gc.LineTo(x-dx, y-dy2)
+			}
+			gc.Stroke()
+		}
+	}
 	return dest
 }
 
@@ -227,8 +256,8 @@ func limitLongitude(lo float64) float64 {
 	return lo
 }
 
-// GetGeoJSON returns the GeoJSON of the tile at the given coordinates and zoom level.
-func (m *Map) GetGeoJSON(la1, lo1, la2, lo2 float64, zoom int) []byte {
+// GetGeoJSONCities returns all cities as GeoJSON within the given bounds and zoom level.
+func (m *Map) GetGeoJSONCities(la1, lo1, la2, lo2 float64, zoom int) []byte {
 	geoJSON := geojson.NewFeatureCollection()
 
 	// Fix the bounds if la1, lo1, la2, lo2 are not in the correct order.
@@ -282,6 +311,34 @@ func (m *Map) GetGeoJSON(la1, lo1, la2, lo2 float64, zoom int) []byte {
 
 	log.Println("%d out of %d cities in tile", len(geoJSON.Features), len(m.Cities))
 
+	// Now encode the GeoJSON.
+	geoJSONBytes, err := geoJSON.MarshalJSON()
+	if err != nil {
+		panic(err)
+	}
+	return geoJSONBytes
+}
+
+// GetGeoJSONBorders returns all borders as GeoJSON within the given bounds and zoom level.
+func (m *Map) GetGeoJSONBorders(la1, lo1, la2, lo2 float64, zoom int) []byte {
+	geoJSON := geojson.NewFeatureCollection()
+
+	// Get all borders and add them to the GeoJSON.
+	// Right now we ignore the bounds and zoom level.
+	for i, border := range m.getBorders() {
+		// Now get the coordinates for each point of the border.
+		var borderLatLons [][]float64
+		for _, p := range border {
+			// Get the lat lon coordinates of the point.
+			la := m.t_latLon[p][0]
+			lo := m.t_latLon[p][1]
+			borderLatLons = append(borderLatLons, []float64{lo, la})
+		}
+		// Add the border to the GeoJSON as a feature.
+		f := geojson.NewLineStringFeature(borderLatLons)
+		f.ID = i
+		geoJSON.AddFeature(f)
+	}
 	// Now encode the GeoJSON.
 	geoJSONBytes, err := geoJSON.MarshalJSON()
 	if err != nil {

@@ -38,6 +38,7 @@
       tms: true,
     }).addTo(map);
 
+
     var layerGroup = L.layerGroup().addTo(map);
 
     var geojsonLayer = L.geoJSON().addTo(map);
@@ -48,8 +49,6 @@
       xhr.open('GET', url);
       xhr.onload = function () {
         if (xhr.status === 200) {
-          // First clear the geojson layer
-          geojsonLayer.clearLayers();
           var geojson = JSON.parse(xhr.responseText);
           L.geoJSON(geojson, options).addTo(geojsonLayer);
         } else {
@@ -61,15 +60,58 @@
 
     // Load the geojson layer when we load a tile
     map.on('moveend', function () {
+      // First clear the geojson layer
+      geojsonLayer.clearLayers();
       var bounds = map.getBounds();
       var zoom = map.getZoom();
-      var url = 'geojson/' + zoom + '/' + bounds.getNorth() + '/' + bounds.getWest() + '/' + bounds.getSouth() + '/' + bounds.getEast();
-      loadGeoJSON(url, {
+      var params = zoom + '/' + bounds.getNorth() + '/' + bounds.getWest() + '/' + bounds.getSouth() + '/' + bounds.getEast();
+
+      // Load city markers.
+      loadGeoJSON('geojson_cities/' + params, {
         onEachFeature: function (feature, layer) {
           layer.bindPopup('Name: ' + feature.properties.name + '<br/>Type: ' + feature.properties.type + '<br/>Culture: ' + feature.properties.culture);
         }
       });
+
+      // Load all borders.
+      loadGeoJSON('geojson_borders/' + params, {
+        style: function (feature) {
+          return {
+            color: 'darkred',
+            opacity: 0.5,
+          };
+        },
+        onEachFeature: function (feature, layer) {
+          layer.bindPopup('ID: ' + feature.id);
+        }
+      });
     });
+
+    // Add our custom control for toggling borders.
+    var borderControl = L.Control.extend({
+      options: {
+        position: 'topleft'
+        //control position - allowed: 'topleft', 'topright', 'bottomleft', 'bottomright'
+      },
+      onAdd: function (map) {
+        var container = L.DomUtil.create('div', 'leaflet-bar leaflet-control leaflet-control-custom');
+        container.style.backgroundColor = 'white';
+        //container.style.width = '30px';
+        container.style.height = '30px';
+
+        var link = document.createElement('a');
+        link.innerText = 'B';
+        link.style.cursor = 'pointer';
+        container.appendChild(link);
+
+        container.onclick = function () {
+          console.log('TODO: Query geoJSON for all borders in view and add them to the layerGroup.');
+        }
+        return container;
+      },
+    });
+
+    map.addControl(new borderControl());
 
   </script>
 </body>
