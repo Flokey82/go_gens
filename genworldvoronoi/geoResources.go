@@ -13,21 +13,22 @@ const (
 
 // getRegionsWithResource returns the regions that have the specified resource.
 func (m *Geo) getRegionsWithResource(resource byte, resourceType int) []int {
-	regions := make([]int, 0)
-	for r := 0; r < m.mesh.numRegions; r++ {
-		switch resourceType {
-		case ResourceTypeMetal:
-			if m.Metals[r]&resource != 0 {
-				regions = append(regions, r)
-			}
-		case ResourceTypeGem:
-			if m.Gems[r]&resource != 0 {
-				regions = append(regions, r)
-			}
-		case ResourceTypeStone:
-			if m.Stones[r]&resource != 0 {
-				regions = append(regions, r)
-			}
+	// Pick the correct resource slice.
+	var search []byte
+	switch resourceType {
+	case ResourceTypeMetal:
+		search = m.Metals
+	case ResourceTypeGem:
+		search = m.Gems
+	case ResourceTypeStone:
+		search = m.Stones
+	}
+
+	// Find the regions that have the specified resource.
+	var regions []int
+	for r, val := range search {
+		if val&resource != 0 {
+			regions = append(regions, r)
 		}
 	}
 	return regions
@@ -141,7 +142,7 @@ func (m *Geo) placeMetals() {
 		chanceTin      = chanceLead + 0.1
 		chanceIron     = chanceTin + 0.4
 	)
-	fn := m.fbm_noise2(2, 1, 2, 2, 2, 0, 0, 0)
+	fn := m.fbmNoiseCustom(2, 1, 2, 2, 2, 0, 0, 0)
 	fm := m.getFitnessSteepMountains()
 
 	// NOTE: By encoding the resources as bit flags, we can easily

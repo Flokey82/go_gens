@@ -68,7 +68,7 @@ func newBaseObject(seed int64, sphere *SphereMesh) *BaseObject {
 		RegionCompression: make(map[int]float64),
 		Seed:              seed,
 		rand:              rand.New(rand.NewSource(seed)),
-		noise:             NewNoise(5, 2.0/3.0, seed),
+		noise:             NewNoise(6, 2.0/3.0, seed),
 		mesh:              sphere.mesh,
 	}
 }
@@ -760,12 +760,21 @@ type interpolated struct {
 // interpolate adds for each neighboring region pair one intermediate,
 // interpolated region, increasing the "resolution" for the given regions.
 func (m *BaseObject) interpolate(rr []int) (*interpolated, error) {
-	// Get all points within bounds.
 	var ipl interpolated
+	ipl.Seed = m.Seed
+	ipl.rand = rand.New(rand.NewSource(m.Seed))
+
+	// Increase the resolution by one octave.
+	ipl.noise = m.noise.PlusOneOctave()
+
+	// Get all points within bounds.
 	seen := make(map[[2]int]bool)
+
+	// Carry over mountains, volcanoes and compression.
 	regionIsMountain := make(map[int]bool)
 	regionIsVolcano := make(map[int]bool)
 	regionCompression := make(map[int]float64)
+
 	for _, r := range rr {
 		if m.RegionIsMountain[r] {
 			regionIsMountain[ipl.num_r] = true
@@ -776,6 +785,7 @@ func (m *BaseObject) interpolate(rr []int) (*interpolated, error) {
 		if m.RegionCompression[r] != 0 {
 			regionCompression[ipl.num_r] = m.RegionCompression[r]
 		}
+
 		ipl.num_r++
 		rxyz := m.XYZ[r*3 : (r*3)+3]
 		ipl.XYZ = append(ipl.XYZ, rxyz...)
@@ -812,7 +822,7 @@ func (m *BaseObject) interpolate(rr []int) (*interpolated, error) {
 			ipl.num_r++
 
 			// Calculate diff and use noise to add variation.
-			nvl := (m.noise.Eval3(mid.X, mid.Y, mid.Z) + 1) / 2
+			nvl := (ipl.noise.Eval3(mid.X, mid.Y, mid.Z) + 1) / 2
 			diffElevation := m.Elevation[rn] - m.Elevation[r]
 			diffMoisture := m.Moisture[rn] - m.Moisture[r]
 			diffRainfall := m.Rainfall[rn] - m.Rainfall[r]
@@ -863,8 +873,5 @@ func (m *BaseObject) interpolate(rr []int) (*interpolated, error) {
 	ipl.generateTriangleCenters()
 	ipl.assignDownflow()
 	ipl.assignFlow()
-	ipl.Seed = m.Seed
-	ipl.rand = rand.New(rand.NewSource(m.Seed))
-	ipl.noise = m.noise.PlusOneOctave() // TODO: Increase noise octaves for finer detail?
 	return &ipl, nil
 }

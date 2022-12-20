@@ -6,7 +6,9 @@ import (
 	"log"
 	"math"
 
+	"github.com/davvo/mercator"
 	"github.com/llgcode/draw2d/draw2dimg"
+
 	geojson "github.com/paulmach/go.geojson"
 )
 
@@ -20,8 +22,8 @@ func (m *Map) GetTile(x, y, zoom int) image.Image {
 
 	// log.Println("tile", x, y, "zoom", zoom)
 
-	tbb := tileBoundingBox(x, y, zoom)
-	la1, lo1, la2, lo2 := tbb.ToLatLon()
+	tbb := newTileBoundingBox(x, y, zoom)
+	la1, lo1, la2, lo2 := tbb.toLatLon()
 	latLonMargin := 20.0 / float64(zoom)
 
 	// Since our mercator conversion gives us absolute pixel coordinates, we need to
@@ -291,6 +293,7 @@ func (m *Map) GetGeoJSONCities(la1, lo1, la2, lo2 float64, zoom int) []byte {
 	log.Println(la1, lo1, la2, lo2)
 
 	// Loop through all the cities and check if they are within the tile.
+	// TODO: Just show the largest cities for lower zoom levels.
 	for _, c := range m.Cities {
 		cLat := m.LatLon[c.ID][0]
 		cLon := m.LatLon[c.ID][1]
@@ -306,6 +309,7 @@ func (m *Map) GetGeoJSONCities(la1, lo1, la2, lo2 float64, zoom int) []byte {
 		f.SetProperty("name", c.Name)
 		f.SetProperty("type", c.Type)
 		f.SetProperty("culture", c.Culture.Name)
+		f.SetProperty("population", c.Population)
 		geoJSON.AddFeature(f)
 	}
 
@@ -345,4 +349,70 @@ func (m *Map) GetGeoJSONBorders(la1, lo1, la2, lo2 float64, zoom int) []byte {
 		panic(err)
 	}
 	return geoJSONBytes
+}
+
+const tileSize = 256
+
+// sizeFromZoom returns the expected size of the world for the mercato projection used below.
+func sizeFromZoom(zoom int) int {
+	return int(math.Pow(2.0, float64(zoom)) * float64(tileSize))
+}
+
+func latLonToPixels(lat, lon float64, zoom int) (float64, float64) {
+	return mercator.LatLonToPixels(-1*lat, lon, zoom)
+}
+
+// tileBoundingBox represents a bounding box in pixels for a tile.
+type tileBoundingBox struct {
+	x1, y1 float64
+	x2, y2 float64
+	zoom   int
+}
+
+// toLatLon returns the lat lon coordinates of the north-west and
+// south-east corners of the bounding box.
+func (t *tileBoundingBox) toLatLon() (lat1, lon1, lat2, lon2 float64) {
+	lat1, lon1 = mercator.PixelsToLatLon(t.x1, t.y1, t.zoom)
+	lat2, lon2 = mercator.PixelsToLatLon(t.x2, t.y2, t.zoom)
+	return
+}
+
+// newTileBoundingBox returns a new tile bounding box for the given tile coordinates
+// and zoom level.
+func newTileBoundingBox(tx, ty, zoom int) tileBoundingBox {
+	return tileBoundingBox{
+		x1:   float64(tx * tileSize),
+		y1:   float64(ty * tileSize),
+		x2:   float64((tx + 1) * tileSize),
+		y2:   float64((ty + 1) * tileSize),
+		zoom: zoom,
+	}
+}
+
+// boundingBoxResult contains the results of a bounding box query.
+type boundingBoxResult struct {
+	Regions   []int // Regions withi the bounding box.
+	Triangles []int // Triangles within the bounding box.
+}
+
+// getBoundingBoxRegions returns all regions and triangles within the given lat/lon bounding box.
+//
+// TODO: Add margin in order to also return regions/triangles that are partially
+// within the bounding box.
+func (m *BaseObject) getBoundingBoxRegions(lat1, lon1, lat2, lon2 float64) *boundingBoxResult {
+	r := &boundingBoxResult{}
+	// TODO: Add convenience function to check against bounding box.
+	for i, ll := range m.LatLon {
+		if l0, l1 := ll[0], ll[1]; l0 < lat1 || l0 >= lat2 || l1 < lon1 || l1 >= lon2 {
+			continue
+		}
+		r.Regions = append(r.Regions, i)
+	}
+	for i, ll := range m.t_latLon {
+		if l0, l1 := ll[0], ll[1]; l0 < lat1 || l0 >= lat2 || l1 < lon1 || l1 >= lon2 {
+			continue
+		}
+		r.Triangles = append(r.Triangles, i)
+	}
+	return r
 }

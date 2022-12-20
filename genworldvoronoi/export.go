@@ -11,70 +11,11 @@ import (
 	"os"
 
 	"github.com/Flokey82/go_gens/genbiome"
-	svgo "github.com/ajstarks/svgo"
-	"github.com/davvo/mercator"
 	"github.com/mazznoer/colorgrad"
 	"github.com/sizeofint/webpanimation"
+
+	svgo "github.com/ajstarks/svgo"
 )
-
-const tileSize = 256
-
-// sizeFromZoom returns the expected size of the world for the mercato projection used below.
-func sizeFromZoom(zoom int) int {
-	return int(math.Pow(2.0, float64(zoom)) * float64(tileSize))
-}
-
-func latLonToPixels(lat, lon float64, zoom int) (float64, float64) {
-	return mercator.LatLonToPixels(-1*lat, lon, zoom)
-}
-
-type tileBB struct {
-	x1   float64
-	y1   float64
-	x2   float64
-	y2   float64
-	zoom int
-}
-
-func (t *tileBB) ToLatLon() (lat1, lon1, lat2, lon2 float64) {
-	lat1, lon1 = mercator.PixelsToLatLon(t.x1, t.y1, t.zoom)
-	lat2, lon2 = mercator.PixelsToLatLon(t.x2, t.y2, t.zoom)
-	return
-}
-
-func tileBoundingBox(tx, ty, zoom int) tileBB {
-	return tileBB{
-		x1:   float64(tx * tileSize),
-		y1:   float64(ty * tileSize),
-		x2:   float64((tx + 1) * tileSize),
-		y2:   float64((ty + 1) * tileSize),
-		zoom: zoom,
-	}
-}
-
-type QueryResult struct {
-	r []int
-	t []int
-}
-
-func (m *BaseObject) getBB(lat1, lon1, lat2, lon2 float64) *QueryResult {
-	r := &QueryResult{}
-	// TODO: Add convenience function to check against bounding box.
-	for i, ll := range m.LatLon {
-		if l0, l1 := ll[0], ll[1]; l0 < lat1 || l0 >= lat2 || l1 < lon1 || l1 >= lon2 {
-			continue
-		}
-		r.r = append(r.r, i)
-	}
-	for i, ll := range m.t_latLon {
-		if l0, l1 := ll[0], ll[1]; l0 < lat1 || l0 >= lat2 || l1 < lon1 || l1 >= lon2 {
-			continue
-		}
-		r.t = append(r.t, i)
-	}
-	log.Println(lat1, lon1, lat2, lon2)
-	return r
-}
 
 func genBlue(intensity float64) color.NRGBA {
 	return color.NRGBA{

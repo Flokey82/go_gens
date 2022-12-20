@@ -6,7 +6,8 @@ import (
 	"github.com/ojrac/opensimplex-go"
 )
 
-func (m *Geo) fbm_noise2(octaves int, persistence, mx, my, mz, dx, dy, dz float64) func(int) float64 {
+// fbmNoiseCustom returns a function that returns the 'fractal bownian motion'-ish noise value for a given region.
+func (m *Geo) fbmNoiseCustom(octaves int, persistence, mx, my, mz, dx, dy, dz float64) func(int) float64 {
 	// https://thebookofshaders.com/13/
 	return func(r int) float64 {
 		nx, ny, nz := m.XYZ[3*r]*mx+dx, m.XYZ[3*r+1]*my+dy, m.XYZ[3*r+2]*mz+dz
@@ -24,8 +25,9 @@ func (m *Geo) fbm_noise2(octaves int, persistence, mx, my, mz, dx, dy, dz float6
 	}
 }
 
-func (m *Map) genNoise() []float64 {
-	fn := m.fbm_noise2(2, 1, 2, 2, 2, 0, 0, 0)
+// genFbmNoise returns the 'fractal bownian motion'-ish noise value for each region.
+func (m *Map) genFbmNoise() []float64 {
+	fn := m.fbmNoiseCustom(2, 1, 2, 2, 2, 0, 0, 0) // This should be a parameter.
 	n := make([]float64, m.mesh.numRegions)
 	for r := 0; r < m.mesh.numRegions; r++ {
 		n[r] = fn(r)
@@ -33,10 +35,13 @@ func (m *Map) genNoise() []float64 {
 	return n
 }
 
-func getIntersection(noisevalue, bandvalue, bandwidth float64) bool {
+// getNoiseBandIntersection returns true if a noise value is within a band.
+func getNoiseBandIntersection(noisevalue, bandvalue, bandwidth float64) bool {
 	return bandvalue-bandwidth/2 <= noisevalue && noisevalue <= bandvalue+bandwidth/2
 }
 
+// Noise is a wrapper for opensimplex.Noise, initialized with
+// a given seed, persistence, and number of octaves.
 type Noise struct {
 	Octaves     int
 	Persistence float64
@@ -45,6 +50,7 @@ type Noise struct {
 	OS          opensimplex.Noise
 }
 
+// NewNoise returns a new Noise.
 func NewNoise(octaves int, persistence float64, seed int64) *Noise {
 	n := &Noise{
 		Octaves:     octaves,
@@ -53,12 +59,16 @@ func NewNoise(octaves int, persistence float64, seed int64) *Noise {
 		Seed:        seed,
 		OS:          opensimplex.NewNormalized(seed),
 	}
+
+	// Initialize the amplitudes.
 	for i := range n.Amplitudes {
 		n.Amplitudes[i] = math.Pow(persistence, float64(i))
 	}
+
 	return n
 }
 
+// Eval3 returns the noise value at the given point.
 func (n *Noise) Eval3(x, y, z float64) float64 {
 	var sum float64
 	var sumOfAmplitudes float64
