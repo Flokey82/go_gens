@@ -8,8 +8,123 @@ import (
 	"github.com/Flokey82/go_gens/genbiome"
 )
 
+func (m *Civ) calculateEconomicPotential() {
+	// NOTE: This is unfinished right now and a WIP.
+
+	// Calculate the analog of distance between regions by taking the surface
+	// of a sphere with radius 1 and dividing it by the number of regions.
+	// The square root will work as a somewhat sensible approximation of
+	// distance.
+	// distRegion := math.Sqrt(4*math.Pi/float64(m.mesh.numRegions))
+
+	// Get the stop regions, which are the cities
+	// and calculate the radius in which we can find resources.
+	var resourceRadius []float64
+	stopRegions := make(map[int]bool)
+	for _, c := range m.Cities {
+		stopRegions[c.ID] = true
+		// The base radius is dependent on the population.
+		// The minimum radius is 1.0 and increases with the square
+		// root of the population.
+		radius := 1.0 + math.Sqrt(float64(c.Population))/5
+		resourceRadius = append(resourceRadius, radius)
+	}
+
+	// Per resource, we calculate the distance field originating from the
+	// cities.
+	economicPotential := make([]float64, len(m.Cities))
+
+	calcResourceValues := func(resourceType, resourceMax int) {
+		for res := 0; res < resourceMax; res++ {
+			// The resource ID also doubles as resource value.
+			resourceID := 1 << res
+
+			// Get all regions that contain the resource.
+			regions := m.getRegionsWithResource(byte(resourceID), resourceType)
+			dist := m.assignDistanceField(regions, stopRegions)
+
+			// Now loop through all cities and check if the distance field
+			// indicates that we can find the resource in the radius.
+			for i, c := range m.Cities {
+				radius := resourceRadius[i]
+				// TODO: Make sure we take distance into account.
+				if dist[c.ID] <= radius {
+					economicPotential[i] += float64(resourceID)
+				}
+			}
+		}
+	}
+
+	calcResourceValues(ResourceTypeMetal, ResMaxMetals)
+	calcResourceValues(ResourceTypeGem, ResMaxGems)
+	calcResourceValues(ResourceTypeStone, ResMaxStones)
+
+	// Now get the agricultural potential of all regions.
+	fAr := m.getFitnessArableLand()
+	agriculturePerRegion := make([]float64, m.mesh.numRegions)
+	for i := range agriculturePerRegion {
+		agriculturePerRegion[i] = fAr(i)
+	}
+
+	// Get the max value of the agricultural potential.
+	_, maxAgr := minMax(agriculturePerRegion)
+	for i, c := range m.Cities {
+		// Check if we have a positive agricultural potential
+		// and add the normalized value to the economic potential.
+		if agrPotential := agriculturePerRegion[c.ID]; agrPotential > 0 {
+			economicPotential[i] += agrPotential / maxAgr
+		}
+	}
+
+	// Now we go through all the cities, and see if they might be able to
+	// trade with each other. This way they can profit from each other's
+	// resources.
+	// In the future we make this dependent on geographic features, where
+	// mountains or the sea might be a barrier.
+	tradePotential := make([]float64, len(m.Cities))
+	for i, c := range m.Cities {
+		// Calculate the distance field of all cities to the current city.
+		dist := m.assignDistanceField([]int{c.ID}, stopRegions)
+
+		// Loop through all cities and check if we can trade with them.
+		for j, c2 := range m.Cities {
+			// We don't trade with ourselves.
+			if i == j {
+				continue
+			}
+			// The trade radius is the sum of the square of the two cities' radius.
+			radius := resourceRadius[i]*(1+economicPotential[i]) + resourceRadius[j]*(1+economicPotential[j])
+
+			// If the distance is within the radius, we can trade.
+			// the closer we are, the more economic potential we have.
+			if dist[c2.ID] <= radius {
+				tradePotential[i] = economicPotential[j] * (1 - dist[c2.ID]/radius)
+			}
+		}
+	}
+
+	// Now we add the trade potential to the economic potential.
+	for i := range m.Cities {
+		economicPotential[i] += tradePotential[i]
+	}
+
+	// Log the economic potential of the cities.
+	for i, c := range m.Cities {
+		log.Printf("City %s has economic potential %f", c.Name, economicPotential[i])
+	}
+}
+
 func (m *Civ) TickCity(c *City) {
 	m.resetRand()
+
+	// TODO: Recalculate the economic power of the city.
+	// This depends on the population, the local resources in the region,
+	// distance to other cities, etc.
+	// The population determines the radius in which we can find resources.
+	// If the resources are contested, the economic value of the resources
+	// will be lower.
+	// I think it would make sense to calculate the economic power per region
+	// for the entire map first.
 
 	// TODO: Move this to a separate function since we need to tick
 	// population growth, production, consumption, etc. independently.

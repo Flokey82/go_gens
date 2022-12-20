@@ -44,6 +44,9 @@ func NewCiv(geo *Geo) *Civ {
 
 func (m *Civ) generateCivilization() {
 	// TODO: The generation should happen somewhat like this...
+	// 0. Calculate time of settlement per region through flood fill.
+	// This will allow us to determine the founding date of the cities and
+	// settlements.
 	// 1. Generate (races and) cultures.
 	// 2. Spread cultures.
 	// 3. Generate settlements.
@@ -87,6 +90,7 @@ func (m *Civ) generateCivilization() {
 	// log.Println("Done trade cities in ", time.Since(start).String())
 
 	//m.GetEmpires()
+	m.calculateEconomicPotential()
 }
 
 func (m *Civ) Tick() {

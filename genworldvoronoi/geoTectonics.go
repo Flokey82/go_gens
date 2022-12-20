@@ -227,12 +227,20 @@ func (m *Geo) assignRegionElevation() {
 		return compression_r[mountain_r[i]] > compression_r[mountain_r[j]]
 	})
 
-	// Select a number of mountains with the highest compression as volcanoes.
-	//numVolcanoes := m.mesh.numSides
-	//if numVolcanoes > len(mountain_r) {
-	//	numVolcanoes = len(mountain_r)
-	//}
-	//volcano_r := mountain_r[:numVolcanoes]
+	// Take note of all mountains.
+	// Since they are sorted by compression, we can use the first m.NumVolcanoes
+	// as volcanoes.
+	var gotVolcanoes int
+	for _, r := range mountain_r {
+		m.RegionIsMountain[r] = true
+		if gotVolcanoes < m.NumVolcanoes {
+			m.RegionIsVolcano[r] = true
+			gotVolcanoes++
+		}
+	}
+
+	// Take note of the compression of each region.
+	m.RegionCompression = compression_r
 
 	// Distance field generation.
 	// I do not quite know how that works, but it is based on:
@@ -297,6 +305,6 @@ func (m *Geo) assignRegionElevation() {
 			f := (1/a - 1/b) / (1/a + 1/b + 1/c)
 			m.Elevation[r] += f
 		}
-		m.Elevation[r] += m.fbm_noise(r_xyz[3*r], r_xyz[3*r+1], r_xyz[3*r+2])*2 - 1 // Noise from -1.0 to 1.0
+		m.Elevation[r] += m.noise.Eval3(r_xyz[3*r], r_xyz[3*r+1], r_xyz[3*r+2])*2 - 1 // Noise from -1.0 to 1.0
 	}
 }

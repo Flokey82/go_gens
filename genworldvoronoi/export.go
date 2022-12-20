@@ -122,6 +122,8 @@ func (m *Map) ExportSVG(path string) error {
 	drawRegionTerrain := true
 	drawTradeRoutes := false
 	drawResources := true
+	drawMountains := false
+	drawVolcanoes := false
 
 	zoom := 3
 	filterPathDist := 20.0
@@ -599,6 +601,22 @@ func (m *Map) ExportSVG(path string) error {
 		for r, score := range scores {
 			col := genBlue((score - minScore) / (maxScore - minScore))
 			drawCircle(m.LatLon[r][0], m.LatLon[r][1], 1, fmt.Sprintf("fill: rgb(%d, %d, %d)", col.R, col.G, col.G))
+		}
+	}
+
+	if drawMountains {
+		for r := 0; r < m.mesh.numRegions; r++ {
+			if m.RegionIsMountain[r] {
+				drawCircle(m.LatLon[r][0], m.LatLon[r][1], 1, "fill: rgb(0, 0, 0)")
+			}
+		}
+	}
+
+	if drawVolcanoes {
+		for r := 0; r < m.mesh.numRegions; r++ {
+			if m.RegionIsVolcano[r] {
+				drawCircle(m.LatLon[r][0], m.LatLon[r][1], 2, "fill: rgb(235, 52, 155)")
+			}
 		}
 	}
 

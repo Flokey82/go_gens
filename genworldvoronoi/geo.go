@@ -38,7 +38,7 @@ func newGeo(seed int64, numPlates, numPoints int, jitter float64) (*Geo, error) 
 		RegionToWindVec:      make([]Vertex, mesh.numRegions),
 		RegionToWindVecLocal: make([]Vertex, mesh.numRegions),
 		NumPlates:            numPlates,
-		NumVolcanoes:         numPlates, // TODO: Allow independent configuration.
+		NumVolcanoes:         10, // TODO: Allow independent configuration.
 		NumPoints:            numPoints,
 		QuadGeom:             NewQuadGeometry(),
 	}

@@ -5,6 +5,34 @@ import (
 	"math"
 )
 
+const (
+	ResourceTypeMetal = iota
+	ResourceTypeGem
+	ResourceTypeStone
+)
+
+// getRegionsWithResource returns the regions that have the specified resource.
+func (m *Geo) getRegionsWithResource(resource byte, resourceType int) []int {
+	regions := make([]int, 0)
+	for r := 0; r < m.mesh.numRegions; r++ {
+		switch resourceType {
+		case ResourceTypeMetal:
+			if m.Metals[r]&resource != 0 {
+				regions = append(regions, r)
+			}
+		case ResourceTypeGem:
+			if m.Gems[r]&resource != 0 {
+				regions = append(regions, r)
+			}
+		case ResourceTypeStone:
+			if m.Stones[r]&resource != 0 {
+				regions = append(regions, r)
+			}
+		}
+	}
+	return regions
+}
+
 // Resources maps regions to natural resources.
 type Resources struct {
 	Metals []byte // Metal ores

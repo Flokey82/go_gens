@@ -7,65 +7,69 @@ import (
 	"math/rand"
 	"sort"
 
-	opensimplex "github.com/ojrac/opensimplex-go"
-
 	"github.com/fogleman/delaunay"
 )
 
 type BaseObject struct {
-	XYZ           []float64         // Point / region xyz coordinates
-	LatLon        [][2]float64      // Point / region latitude and longitude
-	Elevation     []float64         // Point / region elevation
-	Moisture      []float64         // Point / region moisture
-	Rainfall      []float64         // Point / region rainfall
-	Flux          []float64         // Point / region hydrology: throughflow of rainfall
-	Waterpool     []float64         // Point / region hydrology: water pool depth
-	Downhill      []int             // Point / region mapping to its lowest neighbor
-	Drainage      []int             // Point / region mapping of pool to its drainage region
-	Waterbodies   []int             // Point / region mapping of pool to waterbody ID
-	WaterbodySize map[int]int       // Waterbody ID to size mapping
-	LakeSize      map[int]int       // Lake ID to size mapping
-	t_moisture    []float64         // Triangle moisture
-	t_elevation   []float64         // Triangle elevation
-	t_xyz         []float64         // Triangle xyz coordinates
-	t_pool        []float64         // Triangle water pool depth
-	t_latLon      [][2]float64      // Triangle latitude and longitude
-	t_flow        []float64         // Triangle flow intensity (rainfall)
-	t_downflow_s  []int             // Triangle mapping to side through which water flows downhill.
-	order_t       []int             // Triangles in uphill order of elevation.
-	s_flow        []float64         // Flow intensity through sides
-	Seed          int64             // Seed for random number generators
-	rand          *rand.Rand        // Rand initialized with above seed
-	noise         opensimplex.Noise // Opensimplex noise initialized with above seed
-	mesh          *TriangleMesh     // Triangle mesh containing the sphere information
+	XYZ               []float64       // Point / region xyz coordinates
+	LatLon            [][2]float64    // Point / region latitude and longitude
+	Elevation         []float64       // Point / region elevation
+	Moisture          []float64       // Point / region moisture
+	Rainfall          []float64       // Point / region rainfall
+	Flux              []float64       // Point / region hydrology: throughflow of rainfall
+	Waterpool         []float64       // Point / region hydrology: water pool depth
+	Downhill          []int           // Point / region mapping to its lowest neighbor
+	Drainage          []int           // Point / region mapping of pool to its drainage region
+	Waterbodies       []int           // Point / region mapping of pool to waterbody ID
+	WaterbodySize     map[int]int     // Waterbody ID to size mapping
+	LakeSize          map[int]int     // Lake ID to size mapping
+	RegionIsMountain  map[int]bool    // Point / region is a mountain
+	RegionIsVolcano   map[int]bool    // Point / region is a volcano
+	RegionCompression map[int]float64 // Point / region compression factor
+	t_moisture        []float64       // Triangle moisture
+	t_elevation       []float64       // Triangle elevation
+	t_xyz             []float64       // Triangle xyz coordinates
+	t_pool            []float64       // Triangle water pool depth
+	t_latLon          [][2]float64    // Triangle latitude and longitude
+	t_flow            []float64       // Triangle flow intensity (rainfall)
+	t_downflow_s      []int           // Triangle mapping to side through which water flows downhill.
+	order_t           []int           // Triangles in uphill order of elevation.
+	s_flow            []float64       // Flow intensity through sides
+	Seed              int64           // Seed for random number generators
+	rand              *rand.Rand      // Rand initialized with above seed
+	noise             *Noise          // Opensimplex noise initialized with above seed
+	mesh              *TriangleMesh   // Triangle mesh containing the sphere information
 }
 
 func newBaseObject(seed int64, sphere *SphereMesh) *BaseObject {
 	mesh := sphere.mesh
 	return &BaseObject{
-		XYZ:           sphere.r_xyz,
-		LatLon:        sphere.r_latLon,
-		Elevation:     make([]float64, mesh.numRegions),
-		Moisture:      make([]float64, mesh.numRegions),
-		Flux:          make([]float64, mesh.numRegions),
-		Waterpool:     make([]float64, mesh.numRegions),
-		Rainfall:      make([]float64, mesh.numRegions),
-		Downhill:      make([]int, mesh.numRegions),
-		Drainage:      make([]int, mesh.numRegions),
-		t_pool:        make([]float64, mesh.numTriangles),
-		t_elevation:   make([]float64, mesh.numTriangles),
-		t_moisture:    make([]float64, mesh.numTriangles),
-		t_downflow_s:  make([]int, mesh.numTriangles),
-		order_t:       make([]int, mesh.numTriangles),
-		t_flow:        make([]float64, mesh.numTriangles),
-		s_flow:        make([]float64, mesh.numSides),
-		Waterbodies:   make([]int, mesh.numRegions),
-		WaterbodySize: make(map[int]int),
-		LakeSize:      make(map[int]int),
-		Seed:          seed,
-		rand:          rand.New(rand.NewSource(seed)),
-		noise:         opensimplex.NewNormalized(seed),
-		mesh:          sphere.mesh,
+		XYZ:               sphere.r_xyz,
+		LatLon:            sphere.r_latLon,
+		Elevation:         make([]float64, mesh.numRegions),
+		Moisture:          make([]float64, mesh.numRegions),
+		Flux:              make([]float64, mesh.numRegions),
+		Waterpool:         make([]float64, mesh.numRegions),
+		Rainfall:          make([]float64, mesh.numRegions),
+		Downhill:          make([]int, mesh.numRegions),
+		Drainage:          make([]int, mesh.numRegions),
+		t_pool:            make([]float64, mesh.numTriangles),
+		t_elevation:       make([]float64, mesh.numTriangles),
+		t_moisture:        make([]float64, mesh.numTriangles),
+		t_downflow_s:      make([]int, mesh.numTriangles),
+		order_t:           make([]int, mesh.numTriangles),
+		t_flow:            make([]float64, mesh.numTriangles),
+		s_flow:            make([]float64, mesh.numSides),
+		Waterbodies:       make([]int, mesh.numRegions),
+		WaterbodySize:     make(map[int]int),
+		LakeSize:          make(map[int]int),
+		RegionIsMountain:  make(map[int]bool),
+		RegionIsVolcano:   make(map[int]bool),
+		RegionCompression: make(map[int]float64),
+		Seed:              seed,
+		rand:              rand.New(rand.NewSource(seed)),
+		noise:             NewNoise(5, 2.0/3.0, seed),
+		mesh:              sphere.mesh,
 	}
 }
 
@@ -759,7 +763,19 @@ func (m *BaseObject) interpolate(rr []int) (*interpolated, error) {
 	// Get all points within bounds.
 	var ipl interpolated
 	seen := make(map[[2]int]bool)
+	regionIsMountain := make(map[int]bool)
+	regionIsVolcano := make(map[int]bool)
+	regionCompression := make(map[int]float64)
 	for _, r := range rr {
+		if m.RegionIsMountain[r] {
+			regionIsMountain[ipl.num_r] = true
+		}
+		if m.RegionIsVolcano[r] {
+			regionIsVolcano[ipl.num_r] = true
+		}
+		if m.RegionCompression[r] != 0 {
+			regionCompression[ipl.num_r] = m.RegionCompression[r]
+		}
 		ipl.num_r++
 		rxyz := m.XYZ[r*3 : (r*3)+3]
 		ipl.XYZ = append(ipl.XYZ, rxyz...)
@@ -805,6 +821,7 @@ func (m *BaseObject) interpolate(rr []int) (*interpolated, error) {
 
 			// TODO: Add some better variation with the water pool and stuff.
 			// TODO: Add flood fill, downhill and flux?
+			// TODO: Average compression values?
 
 			ipl.Elevation = append(ipl.Elevation, m.Elevation[r]+(diffElevation*nvl))
 			ipl.Moisture = append(ipl.Moisture, m.Moisture[r]+(diffMoisture*nvl))
@@ -831,6 +848,9 @@ func (m *BaseObject) interpolate(rr []int) (*interpolated, error) {
 	}
 	mesh := NewTriangleMesh(0, len(tri.Triangles), make([]Vertex, ipl.num_r), tri.Triangles, tri.Halfedges)
 	ipl.mesh = mesh
+	ipl.RegionIsMountain = regionIsMountain
+	ipl.RegionIsVolcano = regionIsVolcano
+	ipl.RegionCompression = regionCompression
 	ipl.t_pool = make([]float64, mesh.numTriangles)
 	ipl.t_elevation = make([]float64, mesh.numTriangles)
 	ipl.t_moisture = make([]float64, mesh.numTriangles)
@@ -845,6 +865,6 @@ func (m *BaseObject) interpolate(rr []int) (*interpolated, error) {
 	ipl.assignFlow()
 	ipl.Seed = m.Seed
 	ipl.rand = rand.New(rand.NewSource(m.Seed))
-	ipl.noise = m.noise
+	ipl.noise = m.noise.PlusOneOctave() // TODO: Increase noise octaves for finer detail?
 	return &ipl, nil
 }

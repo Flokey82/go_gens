@@ -2,30 +2,9 @@ package genworldvoronoi
 
 import (
 	"math"
+
+	"github.com/ojrac/opensimplex-go"
 )
-
-// Initialize the noise amplitudes for use in our heightmap.
-var amplitudes []float64
-
-func init() {
-	const persistence = 2.0 / 3.0
-	amplitudes = make([]float64, 5)
-	for i := range amplitudes {
-		amplitudes[i] = math.Pow(persistence, float64(i))
-	}
-}
-
-// fbm_noise returns a noise value for the given xyz coordinate.
-func (m *Geo) fbm_noise(nx, ny, nz float64) float64 {
-	sum := 0.0
-	sumOfAmplitudes := 0.0
-	for octave := 0; octave < len(amplitudes); octave++ {
-		frequency := 1 << octave
-		sum += amplitudes[octave] * m.noise.Eval3(nx*float64(frequency), ny*float64(frequency), nz*float64(frequency))
-		sumOfAmplitudes += amplitudes[octave]
-	}
-	return sum / sumOfAmplitudes
-}
 
 func (m *Geo) fbm_noise2(octaves int, persistence, mx, my, mz, dx, dy, dz float64) func(int) float64 {
 	// https://thebookofshaders.com/13/
@@ -37,7 +16,7 @@ func (m *Geo) fbm_noise2(octaves int, persistence, mx, my, mz, dx, dy, dz float6
 		for octave := 0; octave < octaves; octave++ {
 			frequency := 1 << octave
 			fFreq := float64(frequency)
-			sum += amplitude * m.noise.Eval3(nx*fFreq, ny*fFreq, nz*fFreq) * float64(octave)
+			sum += amplitude * m.noise.OS.Eval3(nx*fFreq, ny*fFreq, nz*fFreq) * float64(octave)
 			sumOfAmplitudes += amplitude * float64(octave)
 			amplitude *= persistence
 		}
@@ -56,4 +35,43 @@ func (m *Map) genNoise() []float64 {
 
 func getIntersection(noisevalue, bandvalue, bandwidth float64) bool {
 	return bandvalue-bandwidth/2 <= noisevalue && noisevalue <= bandvalue+bandwidth/2
+}
+
+type Noise struct {
+	Octaves     int
+	Persistence float64
+	Amplitudes  []float64
+	Seed        int64
+	OS          opensimplex.Noise
+}
+
+func NewNoise(octaves int, persistence float64, seed int64) *Noise {
+	n := &Noise{
+		Octaves:     octaves,
+		Persistence: persistence,
+		Amplitudes:  make([]float64, octaves),
+		Seed:        seed,
+		OS:          opensimplex.NewNormalized(seed),
+	}
+	for i := range n.Amplitudes {
+		n.Amplitudes[i] = math.Pow(persistence, float64(i))
+	}
+	return n
+}
+
+func (n *Noise) Eval3(x, y, z float64) float64 {
+	var sum float64
+	var sumOfAmplitudes float64
+	for octave := 0; octave < n.Octaves; octave++ {
+		frequency := 1 << octave
+		fFreq := float64(frequency)
+		sum += n.Amplitudes[octave] * n.OS.Eval3(x*fFreq, y*fFreq, z*fFreq)
+		sumOfAmplitudes += n.Amplitudes[octave]
+	}
+	return sum / sumOfAmplitudes
+}
+
+// PlusOneOctave returns a new Noise with one more octave.
+func (n *Noise) PlusOneOctave() *Noise {
+	return NewNoise(n.Octaves+1, n.Persistence, n.Seed)
 }
