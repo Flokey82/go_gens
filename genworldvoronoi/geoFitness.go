@@ -46,14 +46,15 @@ func (m *Geo) getFitnessArableLand() func(int) float64 {
 	// lower altitudes.
 	steepness := m.GetSteepness()
 	_, maxElev := minMax(m.Elevation)
+	_, maxRain := minMax(m.Rainfall)
 	return func(r int) float64 {
 		temp := m.getRTemperature(r, maxElev)
 		if m.Elevation[r] <= 0 || m.Rainfall[r] < 0.1 || temp <= 0 {
 			return -1.0
 		}
 		chance := 1 - steepness[r]
-		chance *= m.Rainfall[r]
-		chance *= 1 - m.Elevation[r]*m.Elevation[r]
+		chance *= m.Rainfall[r] / maxRain
+		chance *= 1 - (m.Elevation[r]/maxElev)*(m.Elevation[r]/maxElev)
 		return chance
 	}
 }

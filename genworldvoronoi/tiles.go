@@ -259,7 +259,7 @@ func limitLongitude(lo float64) float64 {
 }
 
 // GetGeoJSONCities returns all cities as GeoJSON within the given bounds and zoom level.
-func (m *Map) GetGeoJSONCities(la1, lo1, la2, lo2 float64, zoom int) []byte {
+func (m *Map) GetGeoJSONCities(la1, lo1, la2, lo2 float64, zoom int) ([]byte, error) {
 	geoJSON := geojson.NewFeatureCollection()
 
 	// Fix the bounds if la1, lo1, la2, lo2 are not in the correct order.
@@ -290,7 +290,9 @@ func (m *Map) GetGeoJSONCities(la1, lo1, la2, lo2 float64, zoom int) []byte {
 		lo2 = limitLongitude(lo2)
 	}
 	lbb := latLonBounds{la1, lo1, la2, lo2}
-	log.Println(la1, lo1, la2, lo2)
+
+	// Get the last settled year.
+	_, maxSettled := minMax64(m.Settled)
 
 	// Loop through all the cities and check if they are within the tile.
 	// TODO: Just show the largest cities for lower zoom levels.
@@ -310,6 +312,8 @@ func (m *Map) GetGeoJSONCities(la1, lo1, la2, lo2 float64, zoom int) []byte {
 		f.SetProperty("type", c.Type)
 		f.SetProperty("culture", c.Culture.Name)
 		f.SetProperty("population", c.Population)
+		f.SetProperty("maxpop", c.MaxPopulation)
+		f.SetProperty("settled", maxSettled-m.Settled[c.ID])
 		geoJSON.AddFeature(f)
 	}
 
@@ -318,13 +322,13 @@ func (m *Map) GetGeoJSONCities(la1, lo1, la2, lo2 float64, zoom int) []byte {
 	// Now encode the GeoJSON.
 	geoJSONBytes, err := geoJSON.MarshalJSON()
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
-	return geoJSONBytes
+	return geoJSONBytes, nil
 }
 
 // GetGeoJSONBorders returns all borders as GeoJSON within the given bounds and zoom level.
-func (m *Map) GetGeoJSONBorders(la1, lo1, la2, lo2 float64, zoom int) []byte {
+func (m *Map) GetGeoJSONBorders(la1, lo1, la2, lo2 float64, zoom int) ([]byte, error) {
 	geoJSON := geojson.NewFeatureCollection()
 
 	// Get all borders and add them to the GeoJSON.
@@ -346,9 +350,9 @@ func (m *Map) GetGeoJSONBorders(la1, lo1, la2, lo2 float64, zoom int) []byte {
 	// Now encode the GeoJSON.
 	geoJSONBytes, err := geoJSON.MarshalJSON()
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
-	return geoJSONBytes
+	return geoJSONBytes, nil
 }
 
 const tileSize = 256

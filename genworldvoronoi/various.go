@@ -72,6 +72,22 @@ func minMax(hm []float64) (float64, float64) {
 	return min, max
 }
 
+func minMax64(hm []int64) (int64, int64) {
+	if len(hm) == 0 {
+		return 0, 0
+	}
+	min, max := hm[0], hm[0]
+	for _, h := range hm {
+		if h > max {
+			max = h
+		}
+		if h < min {
+			min = h
+		}
+	}
+	return min, max
+}
+
 func convToMap(in []int) map[int]bool {
 	res := make(map[int]bool)
 	for _, v := range in {
@@ -195,8 +211,18 @@ func isInIntList(l []int, i int) bool {
 	return false
 }
 
+// initRegionSlice returns a slice of ints of the given size, initialized to -1.
 func initRegionSlice(size int) []int {
 	res := make([]int, size)
+	for i := range res {
+		res[i] = -1
+	}
+	return res
+}
+
+// initTimeSlice returns a slice of int64s of the given size, initialized to -1.
+func initTimeSlice(size int) []int64 {
+	res := make([]int64, size)
 	for i := range res {
 		res[i] = -1
 	}

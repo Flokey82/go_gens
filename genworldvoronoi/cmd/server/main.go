@@ -80,7 +80,10 @@ func geoJSONCitiesHandler(res http.ResponseWriter, req *http.Request) {
 	if err != nil {
 		panic(err)
 	}
-	data := worldmap.GetGeoJSONCities(tileLa1, tileLo1, tileLa2, tileLo2, tileZ)
+	data, err := worldmap.GetGeoJSONCities(tileLa1, tileLo1, tileLa2, tileLo2, tileZ)
+	if err != nil {
+		panic(err)
+	}
 	res.Header().Set("Content-Type", "application/json")
 	res.Header().Set("Content-Length", strconv.Itoa(len(data)))
 	res.Write(data)
@@ -92,7 +95,10 @@ func geoJSONBorderHandler(res http.ResponseWriter, req *http.Request) {
 	if err != nil {
 		panic(err)
 	}
-	data := worldmap.GetGeoJSONBorders(tileLa1, tileLo1, tileLa2, tileLo2, tileZ)
+	data, err := worldmap.GetGeoJSONBorders(tileLa1, tileLo1, tileLa2, tileLo2, tileZ)
+	if err != nil {
+		panic(err)
+	}
 	res.Header().Set("Content-Type", "application/json")
 	res.Header().Set("Content-Length", strconv.Itoa(len(data)))
 	res.Write(data)

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"math"
+	"math/rand"
 
 	"github.com/Flokey82/go_gens/genbiome"
 )
@@ -114,6 +115,58 @@ func (m *Civ) calculateEconomicPotential() {
 	}
 }
 
+func (m *Civ) tickCityDays(c *City, days int) {
+	// Check if the city is abandoned.
+	if c.Population == 0 {
+		return
+	}
+
+	// There is a chance of some form of disaster.
+	// For example, a mining town should have a chance of a cave in,
+	// or a farming town should have a chance of a drought.
+	// Towns close to volcanoes should have a chance of a volcanic
+	// eruption while fault lines should have a chance of an earthquake.
+	// If towns are heavily affected, they might be destroyed or abandoned.
+	// Also the life expectancy might be low in early history.
+	// Wars might also have a negative effect on the population.
+
+	// With increasing population, the city is
+	// be more prone to famine or disease.
+	if rand.Intn(c.Population*days/356) > 1000*days/356 {
+		// Famine or disease, up to 1/4 of the population dies.
+		c.Population -= rand.Intn(c.Population / 4)
+	} else if rand.Intn(10*days/356) == 0 {
+		// Random disaster strikes.
+		c.Population -= rand.Intn(c.Population / 2)
+	}
+
+	// Check if there is still anyone alive.
+	if c.Population == 0 {
+		return
+	}
+
+	// TODO: If there is sickness, war, famine, drought, etc, the population
+	// might migrate to other cities that are more prosperous or a new settlement
+	// might be founded nearby.
+
+	// TODO: If a city reaches a certain size it might transition from an
+	// agricultural town to a city with a more diverse economy. A mining town
+	// might, if there is enough resources, transition to an industrial city.
+
+	// TODO: The population growth should be dependent on the economic power
+	// and if there is famine, war, drought, sickness, etc.
+	factor := float64(c.Population) * 0.19 * float64(days) / 365
+	if factor >= 1 {
+		c.Population += int(math.Ceil(factor * m.rand.Float64()))
+	} else if m.rand.Float64() < factor {
+		c.Population++
+	}
+
+	if c.Population > c.MaxPopulation {
+		c.MaxPopulation = c.Population
+	}
+}
+
 func (m *Civ) TickCity(c *City) {
 	m.resetRand()
 
@@ -134,12 +187,7 @@ func (m *Civ) TickCity(c *City) {
 	// So the probability of growth is 0.19% * 1 day / 365 days.
 	// TODO: The growth rate should also be based on the relative wealth
 	// of the city and the current population. Fix this!
-	factor := float64(c.Population) * 0.19 / 365
-	if factor >= 1 {
-		c.Population += int(math.Ceil(factor * m.rand.Float64()))
-	} else if m.rand.Float64() < factor {
-		c.Population++
-	}
+	m.tickCityDays(c, 1)
 
 	// TODO: If the "sustainability" of the city is lower than needed to
 	// sustain the population, the population will decrease.
@@ -150,13 +198,14 @@ func (m *Civ) TickCity(c *City) {
 
 // City represents a city in the world.
 type City struct {
-	ID         int       // Region where the city is located
-	Name       string    // Name of the city
-	Type       TownType  // Type of city
-	Score      float64   // Score of the fitness function
-	Population int       // Population of the city
-	Culture    *Culture  // Culture of the city region
-	Language   *Language // Language of the city
+	ID            int       // Region where the city is located
+	Name          string    // Name of the city
+	Type          TownType  // Type of city
+	Score         float64   // Score of the fitness function
+	Population    int       // Population of the city
+	MaxPopulation int       // Maximum population of the city
+	Culture       *Culture  // Culture of the city region
+	Language      *Language // Language of the city
 }
 
 // String returns a string representation of the city.
@@ -199,11 +248,12 @@ func (m *Civ) PlaceCity(cType TownType, scoreFunc func(int) float64, distSeedFun
 	basePop := cType.FoundingPopulation()
 	basePop += 2 * m.rand.Intn(basePop) / (len(m.Cities) + 1)
 	c := &City{
-		ID:         newcity,
-		Score:      lastMax,
-		Population: basePop,
-		Type:       cType,
-		Culture:    m.GetCulture(newcity),
+		ID:            newcity,
+		Score:         lastMax,
+		Population:    basePop,
+		MaxPopulation: basePop,
+		Type:          cType,
+		Culture:       m.GetCulture(newcity),
 	}
 
 	// If there is no known culture, generate a new one.
