@@ -132,12 +132,12 @@ func (n *TradeNode) SetUsed() {
 }
 
 func (n *TradeNode) NumNeighbours() int {
-	return len(n.r.GetRegionNeighbors(n.index))
+	return len(n.r.GetRegNeighbors(n.index))
 }
 
 func (n *TradeNode) Neighbour(i int) astar.Node {
 	// TODO: Fix this... this is highly inefficient.
-	return n.getNode(n.r.GetRegionNeighbors(n.index)[i])
+	return n.getNode(n.r.GetRegNeighbors(n.index)[i])
 }
 
 func (n *TradeNode) Cost(i int) float32 {
@@ -146,7 +146,7 @@ func (n *TradeNode) Cost(i int) float32 {
 		return 999.00
 	}
 	// TODO: Fix this... this is highly inefficient.
-	nIdx := n.r.GetRegionNeighbors(n.index)[i]
+	nIdx := n.r.GetRegNeighbors(n.index)[i]
 	if n.r.Elevation[nIdx] <= 0 {
 		return 999.00
 	}
@@ -177,7 +177,7 @@ func (n *TradeNode) Cost(i int) float32 {
 	}
 
 	// Bonus if along coast.
-	for _, nbnb := range n.r.GetRegionNeighbors(nIdx) {
+	for _, nbnb := range n.r.GetRegNeighbors(nIdx) {
 		if n.r.Elevation[nbnb] <= 0 {
 			cost *= 0.65
 			break
@@ -185,12 +185,12 @@ func (n *TradeNode) Cost(i int) float32 {
 	}
 
 	// Cost of crossing rivers.
-	if n.r.isRiver(n.index) != n.r.isRiver(nIdx) {
+	if n.r.isRegRiver(n.index) != n.r.isRegRiver(nIdx) {
 		cost *= 1.4
 	}
 
 	// Bonus if along rivers.
-	if n.r.isRiver(n.index) && n.r.isRiver(nIdx) {
+	if n.r.isRegRiver(n.index) && n.r.isRegRiver(nIdx) {
 		cost *= 0.8
 	}
 

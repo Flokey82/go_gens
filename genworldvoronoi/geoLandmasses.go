@@ -31,7 +31,7 @@ func (m *Geo) IdentifyLandmasses() []int {
 			}
 			landMasses[r] = landID // Assign current landID to the region.
 			currentLandSize++      // Increase size of known landmass.
-			for _, nb := range m.GetRegionNeighbors(r) {
+			for _, nb := range m.GetRegNeighbors(r) {
 				// Skip if the neighbor region has already been allocated
 				// or is below sealevel.
 				if landMasses[nb] != -1 || m.Elevation[nb] < 0 {

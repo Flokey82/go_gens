@@ -28,7 +28,7 @@ func (m *Civ) getTerritoryCultureWeightFunc() func(o, u, v int) float64 {
 // getTerritoryBiomeWeightFunc returns a weight function which returns a penalty
 // for expanding from a region into a region with a different biome.
 func (m *Civ) getTerritoryBiomeWeightFunc() func(o, u, v int) float64 {
-	biomeFunc := m.getRWhittakerModBiomeFunc()
+	biomeFunc := m.getRegWhittakerModBiomeFunc()
 	climatFunc := m.getFitnessClimate()
 	return func(o, u, v int) float64 {
 		var penalty float64
@@ -93,7 +93,7 @@ func (m *Civ) getTerritoryWeightFunc() func(o, u, v int) float64 {
 // o: The origin/seed region
 // u: The region we expand from
 // v: The region we expand to
-func (m *Civ) rPlaceNTerritoriesCustom(seedPoints []int, weight func(o, u, v int) float64) []int {
+func (m *Civ) regPlaceNTerritoriesCustom(seedPoints []int, weight func(o, u, v int) float64) []int {
 	var queue ascPriorityQueue
 	heap.Init(&queue)
 
@@ -102,7 +102,7 @@ func (m *Civ) rPlaceNTerritoriesCustom(seedPoints []int, weight func(o, u, v int
 	terr := initRegionSlice(m.mesh.numRegions)
 	for i := 0; i < len(seedPoints); i++ {
 		terr[seedPoints[i]] = seedPoints[i]
-		for _, v := range m.GetRegionNeighbors(seedPoints[i]) {
+		for _, v := range m.GetRegNeighbors(seedPoints[i]) {
 			newdist := weight(seedPoints[i], seedPoints[i], v)
 			if newdist < 0 {
 				continue
@@ -122,7 +122,7 @@ func (m *Civ) rPlaceNTerritoriesCustom(seedPoints []int, weight func(o, u, v int
 			continue
 		}
 		terr[u.destination] = u.origin
-		for _, v := range m.GetRegionNeighbors(u.destination) {
+		for _, v := range m.GetRegNeighbors(u.destination) {
 			if terr[v] >= 0 {
 				continue
 			}
@@ -150,7 +150,7 @@ func (m *Civ) rRelaxTerritories(terr []int, n int) {
 			}
 			var nbCountOtherTerr, nbCountSameTerr int
 			otherTerr := -1
-			for _, v := range m.GetRegionNeighbors(r) {
+			for _, v := range m.GetRegNeighbors(r) {
 				if v < 0 {
 					continue
 				}
@@ -178,7 +178,7 @@ func (m *Civ) getTerritoryNeighbors(r int, r_terr []int) []int {
 		if rg != r {
 			continue
 		}
-		for _, nb := range m.GetRegionNeighbors(i) {
+		for _, nb := range m.GetRegNeighbors(i) {
 			// Determine territory ID.
 			terrID := r_terr[nb]
 			if terrID < 0 || terrID == r || seenTerritories[terrID] {

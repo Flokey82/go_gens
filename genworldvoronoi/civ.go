@@ -83,7 +83,7 @@ func (m *Civ) generateCivilization() {
 	log.Println("Done city states in ", time.Since(start).String())
 
 	start = time.Now()
-	m.rPlaceNEmpires(m.NumEmpires)
+	m.regPlaceNEmpires(m.NumEmpires)
 	log.Println("Done empires in ", time.Since(start).String())
 
 	// Once we have established the territories, we can add trade towns
@@ -142,8 +142,9 @@ func (m *Civ) Tick() {
 	// We can also de-duplicate cultures and religions.
 }
 
-func (m *Civ) getRegionName(r int) string {
-	switch m.getRWhittakerModBiomeFunc()(r) {
+// getRegName attempts to generate a name for the given region.
+func (m *Civ) getRegName(r int) string {
+	switch m.getRegWhittakerModBiomeFunc()(r) {
 	case genbiome.WhittakerModBiomeBorealForestTaiga,
 		genbiome.WhittakerModBiomeTemperateRainForest,
 		genbiome.WhittakerModBiomeTemperateSeasonalForest,
@@ -187,7 +188,7 @@ func (m *Civ) generateTimeOfSettlement() {
 	bestRegion := -1
 	bestFitness := 0.0
 	fa := m.getFitnessClimate()
-	bf := m.getRWhittakerModBiomeFunc()
+	bf := m.getRegWhittakerModBiomeFunc()
 	for r := 0; r < m.mesh.numRegions; r++ {
 		if bf(r) == genbiome.WhittakerModBiomeTemperateGrassland {
 			fitness := fa(r)
@@ -241,7 +242,7 @@ func (m *Civ) generateTimeOfSettlement() {
 	}
 
 	// Now add the region neighbors to the queue.
-	for _, n := range m.GetRegionNeighbors(bestRegion) {
+	for _, n := range m.GetRegNeighbors(bestRegion) {
 		heap.Push(&queue, &queueEntry{
 			origin:      bestRegion,
 			score:       weight(bestRegion, bestRegion, n),
@@ -261,7 +262,7 @@ func (m *Civ) generateTimeOfSettlement() {
 		// The higher the score, the more difficult it is to settle there,
 		// and the longer it took to settle there.
 		settleTime[u.destination] = int64(u.score)
-		for _, v := range m.GetRegionNeighbors(u.destination) {
+		for _, v := range m.GetRegNeighbors(u.destination) {
 			// Check if the region has already been settled.
 			if settleTime[v] >= 0 {
 				continue

@@ -93,7 +93,7 @@ func (m *Geo) GetErosionRate() []float64 {
 		// Additionally visit all neighbors and erode them by a certain
 		// fraction of the given erosion value.
 		toErode *= nbErosionFactor
-		for _, nb := range m.GetRegionNeighbors(r) {
+		for _, nb := range m.GetRegNeighbors(r) {
 			erodeRegion(nb, rem, toErode)
 		}
 	}
@@ -117,7 +117,7 @@ func (m *Geo) GetErosionRate() []float64 {
 
 		// If we have avg. temp. below 0, we need to imitate glacial erosion, which
 		// is carving "wider" valleys than hydraulic erosion.
-		if m.getRTemperature(r, maxH) < 0 {
+		if m.getRegTemperature(r, maxH) < 0 {
 			erodeNbs = erodeNeighborsGlacier
 		}
 
@@ -225,7 +225,7 @@ func (m *Geo) GetErosionRate2() []float64 {
 			seen[reg] = true
 
 			// Visit all neighbors of reg and calculate the erosion rate for each.
-			for _, nb := range m.GetRegionNeighbors(reg) {
+			for _, nb := range m.GetRegNeighbors(reg) {
 				nbLatLon := m.LatLon[nb]
 
 				// Calculate distance to the arc/line segment of the river (r->rdh).

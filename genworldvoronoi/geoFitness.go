@@ -48,7 +48,7 @@ func (m *Geo) getFitnessArableLand() func(int) float64 {
 	_, maxElev := minMax(m.Elevation)
 	_, maxRain := minMax(m.Rainfall)
 	return func(r int) float64 {
-		temp := m.getRTemperature(r, maxElev)
+		temp := m.getRegTemperature(r, maxElev)
 		if m.Elevation[r] <= 0 || m.Rainfall[r] < 0.1 || temp <= 0 {
 			return -1.0
 		}
@@ -67,11 +67,11 @@ func (m *Geo) getFitnessClimate() func(int) float64 {
 	_, maxFlux := minMax(m.Flux)
 
 	return func(r int) float64 {
-		rTemp := m.getRTemperature(r, maxElev)
-		if rTemp < 0 {
+		temp := m.getRegTemperature(r, maxElev)
+		if temp < 0 {
 			return 0.1
 		}
-		scoreTemp := math.Sqrt(rTemp / maxTemp)
+		scoreTemp := math.Sqrt(temp / maxTemp)
 		scoreRain := m.Rainfall[r] / maxRain
 		scoreFlux := math.Sqrt(m.Flux[r] / maxFlux)
 		return 0.1 + 0.9*(scoreTemp*(scoreFlux+scoreRain)/2)
@@ -88,10 +88,10 @@ func (m *Geo) CalcFitnessScore(sf func(int) float64, distSeedFunc func() []int) 
 	score := make([]float64, m.mesh.numRegions)
 
 	// Get distance to other seed regions returned by the distSeedFunc.
-	r_distance_c := m.assignDistanceField(distSeedFunc(), make(map[int]bool))
+	regDistanceC := m.assignDistanceField(distSeedFunc(), make(map[int]bool))
 
 	// Get the max distance for normalizing the distance.
-	_, maxDistC := minMax(r_distance_c)
+	_, maxDistC := minMax(regDistanceC)
 
 	// Calculate the fitness score for each region
 	for i := 0; i < m.mesh.numRegions; i++ {
@@ -110,10 +110,10 @@ func (m *Geo) CalcFitnessScore(sf func(int) float64, distSeedFunc func() []int) 
 		// NOTE: Originally this was done with some constant values, which might be better
 		// since we are here dependent on the current score we have assigned and cannot
 		// recover an initially bad score caused by a low water flux.
-		if math.IsInf(r_distance_c[i], 0) {
+		if math.IsInf(regDistanceC[i], 0) {
 			continue
 		}
-		dist := (r_distance_c[i] / maxDistC)
+		dist := (regDistanceC[i] / maxDistC)
 		score[i] *= dist // originally: -= 0.02 / (float64(r_distance_c[i]) + 1e-9)
 	}
 	return score

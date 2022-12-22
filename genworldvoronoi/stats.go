@@ -40,9 +40,9 @@ func (m *Geo) getStats(rr []int) *Stats {
 		NumRegions: len(rr),
 		Biomes:     make(map[int]int),
 	}
-	biomeFunc := m.getRWhittakerModBiomeFunc()
+	biomeFunc := m.getRegWhittakerModBiomeFunc()
 	for _, r := range rr {
-		st.TotalArea += m.GetRegionArea(r)
+		st.TotalArea += m.GetRegArea(r)
 		for i := 0; i < ResMaxMetals; i++ {
 			if m.Metals[r]&(1<<i) != 0 {
 				st.ResMetal[i]++

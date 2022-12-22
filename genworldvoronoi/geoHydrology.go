@@ -23,8 +23,8 @@ Loop:
 	for _, r := range m.GetSinks(false, false) {
 		// Check if all neighbors are above sea level.
 		lowest := math.Inf(0)
-		for _, nb := range m.GetRegionNeighbors(r) {
-			if !m.isRBelowOrAtSeaLevelOrPool(r) {
+		for _, nb := range m.GetRegNeighbors(r) {
+			if !m.isRegBelowOrAtSeaLevelOrPool(r) {
 				continue Loop
 			}
 			if m.Elevation[nb] < lowest {
@@ -417,7 +417,7 @@ func (m *Geo) floodV1(r int, dVol float64) {
 
 		// Part of the Pool
 		set = append(set, i)
-		nbs := m.GetRegionNeighbors(i)
+		nbs := m.GetRegNeighbors(i)
 
 		// Pre-sort neighbors by height (elevation + water pool).
 		//
@@ -428,8 +428,8 @@ func (m *Geo) floodV1(r int, dVol float64) {
 		})
 
 		// Expand floodset by attempting to fill all neighbors.
-		for _, neighbor_r := range nbs {
-			fill(neighbor_r)
+		for _, neighborReg := range nbs {
+			fill(neighborReg)
 		}
 	}
 
@@ -556,12 +556,12 @@ func (m *Geo) floodV2(r int, dVol float64) bool {
 
 		// Part of the Pool
 		floodset = append(floodset, i)
-		nbs := m.GetRegionNeighbors(i)
+		nbs := m.GetRegNeighbors(i)
 		sort.Slice(nbs, func(si, sj int) bool {
 			return m.Elevation[nbs[si]]+m.Waterpool[nbs[si]] < m.Elevation[nbs[sj]]+m.Waterpool[nbs[sj]]
 		})
-		for _, neighbor_r := range nbs {
-			if !findset(neighbor_r, plane) {
+		for _, neighborReg := range nbs {
+			if !findset(neighborReg, plane) {
 				if drainfound { // && drainedFrom == -1
 					newDrain := -1
 					if useDrain {
@@ -633,14 +633,14 @@ func (m *Geo) floodV2(r int, dVol float64) bool {
 				plane = m.Elevation[i] + m.Waterpool[i]
 			}
 
-			nbs := m.GetRegionNeighbors(drain)
+			nbs := m.GetRegNeighbors(drain)
 			sort.Slice(nbs, func(si, sj int) bool {
 				return m.Elevation[nbs[si]]+m.Waterpool[nbs[si]] < m.Elevation[nbs[sj]]+m.Waterpool[nbs[sj]]
 			})
 
 			// Fill Neighbors
-			for _, neighbor_r := range nbs {
-				lowbound(neighbor_r)
+			for _, neighborReg := range nbs {
+				lowbound(neighborReg)
 				// Fill neighbors of neighbors
 				// for _, nbs2 := range m.rNeighbors(nbs) { // ??????
 				//	lowbound(nbs2)
@@ -691,47 +691,47 @@ func (m *Geo) floodV2(r int, dVol float64) bool {
 // He uses triangle centroids for his river generation, where I prefer to use the regions
 // directly.
 func (m *BaseObject) assignFlow() {
-	s_flow := m.s_flow
+	s_flow := m.sideFlow
 
 	// Clear all existing water flux values.
 	for i := range s_flow {
 		s_flow[i] = 0
 	}
 
-	t_flow := m.t_flow
-	t_elevation := m.t_elevation
-	t_moisture := m.t_moisture
+	triFlow := m.triFlow
+	triElevation := m.triElevation
+	triMoisture := m.triMoisture
 
 	// Set the flux value for each triangle above sealevel to
 	// half of its moisture squared as its initial state.
 	numTriangles := m.mesh.numTriangles
 	for t := 0; t < numTriangles; t++ {
-		if t_elevation[t] >= 0.0 {
-			t_flow[t] = 0.5 * t_moisture[t] * t_moisture[t]
+		if triElevation[t] >= 0.0 {
+			triFlow[t] = 0.5 * triMoisture[t] * triMoisture[t]
 		} else {
-			t_flow[t] = 0
+			triFlow[t] = 0
 		}
 	}
 
 	// Now traverse the flux graph in reverse order and sum up
 	// the moisture of all tributaries while descending.
-	order_t := m.order_t
-	t_downflow_s := m.t_downflow_s
+	order_t := m.orderTri
+	triDownflowSide := m.triDownflowSide
 	halfedges := m.mesh.Halfedges
 	for i := len(order_t) - 1; i >= 0; i-- {
 		// TODO: Describe what's going on here.
 		tributary_t := order_t[i]
-		flow_s := t_downflow_s[tributary_t]
+		flow_s := triDownflowSide[tributary_t]
 		if flow_s >= 0 {
 			trunk_t := (halfedges[flow_s] / 3)
-			t_flow[trunk_t] += t_flow[tributary_t]
-			s_flow[flow_s] += t_flow[tributary_t] // TODO: isn't s_flow[flow_s] === t_flow[?]
-			if t_elevation[trunk_t] > t_elevation[tributary_t] {
-				t_elevation[trunk_t] = t_elevation[tributary_t]
+			triFlow[trunk_t] += triFlow[tributary_t]
+			s_flow[flow_s] += triFlow[tributary_t] // TODO: isn't s_flow[flow_s] === t_flow[?]
+			if triElevation[trunk_t] > triElevation[tributary_t] {
+				triElevation[trunk_t] = triElevation[tributary_t]
 			}
 		}
 	}
-	m.t_flow = t_flow
-	m.s_flow = s_flow
-	m.t_elevation = t_elevation
+	m.triFlow = triFlow
+	m.sideFlow = s_flow
+	m.triElevation = triElevation
 }

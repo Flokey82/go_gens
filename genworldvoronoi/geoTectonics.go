@@ -13,18 +13,18 @@ import (
 func (m *Geo) generatePlates() {
 	m.resetRand()
 	mesh := m.mesh
-	r_plate := make([]int, mesh.numRegions)
-	for i := range r_plate {
-		r_plate[i] = -1
+	regPlate := make([]int, mesh.numRegions)
+	for i := range regPlate {
+		regPlate[i] = -1
 	}
 
 	// Pick random regions as seed points for plate generation.
-	plate_r := m.pickRandomRegions(utils.Min(m.NumPlates, m.NumPoints))
+	plateRegs := m.pickRandomRegions(utils.Min(m.NumPlates, m.NumPoints))
 
 	var queue []int
-	for _, r := range plate_r {
+	for _, r := range plateRegs {
 		queue = append(queue, r)
-		r_plate[r] = r
+		regPlate[r] = r
 	}
 	// In Breadth First Search (BFS) the queue will be all elements in
 	// queue[queue_out ... queue.length-1]. Pushing onto the queue
@@ -37,32 +37,32 @@ func (m *Geo) generatePlates() {
 	// queue[queue_out ... queue.length-1], but pick a random element
 	// to pop instead of the earliest one. Do this by swapping
 	// queue[pos] and queue[queue_out].
-	var out_r []int
-	for queue_out := 0; queue_out < len(queue); queue_out++ {
-		pos := queue_out + m.rand.Intn(len(queue)-queue_out)
-		current_r := queue[pos]
-		queue[pos] = queue[queue_out]
-		out_r = mesh.r_circulate_r(out_r, current_r)
-		for _, neighbor_r := range out_r {
-			if r_plate[neighbor_r] == -1 {
-				r_plate[neighbor_r] = r_plate[current_r]
+	outReg := make([]int, 0, 6)
+	for queueOut := 0; queueOut < len(queue); queueOut++ {
+		pos := queueOut + m.rand.Intn(len(queue)-queueOut)
+		currentReg := queue[pos]
+		queue[pos] = queue[queueOut]
+		outReg = mesh.r_circulate_r(outReg, currentReg)
+		for _, neighbor_r := range outReg {
+			if regPlate[neighbor_r] == -1 {
+				regPlate[neighbor_r] = regPlate[currentReg]
 				queue = append(queue, neighbor_r)
 			}
 		}
 	}
 
 	// Assign a random movement vector for each plate
-	r_xyz := m.XYZ
+	regXYZ := m.XYZ
 	plateVectors := make([]vectors.Vec3, mesh.numRegions)
-	for _, center_r := range plate_r {
-		neighbor_r := mesh.r_circulate_r(nil, center_r)[0]
-		p0 := convToVec3(r_xyz[3*center_r : 3*center_r+3])
-		p1 := convToVec3(r_xyz[3*neighbor_r : 3*neighbor_r+3])
-		plateVectors[center_r] = vectors.Sub3(p1, p0).Normalize()
+	for _, centerReg := range plateRegs {
+		neighborReg := mesh.r_circulate_r(outReg, centerReg)[0]
+		p0 := convToVec3(regXYZ[3*centerReg : 3*centerReg+3])
+		p1 := convToVec3(regXYZ[3*neighborReg : 3*neighborReg+3])
+		plateVectors[centerReg] = vectors.Sub3(p1, p0).Normalize()
 	}
 
-	m.PlateRegions = plate_r
-	m.RegionToPlate = r_plate
+	m.PlateRegs = plateRegs
+	m.RegionToPlate = regPlate
 	m.PlateToVector = plateVectors
 }
 
@@ -70,7 +70,7 @@ func (m *Geo) generatePlates() {
 func (m *Geo) assignOceanPlates() {
 	m.resetRand()
 	m.PlateIsOcean = make(map[int]bool)
-	for _, r := range m.PlateRegions {
+	for _, r := range m.PlateRegs {
 		if m.rand.Intn(10) < 5 {
 			m.PlateIsOcean[r] = true
 			// TODO: either make tiny plates non-ocean, or make sure tiny plates don't create seeds for rivers
@@ -93,10 +93,10 @@ const collisionThreshold = 0.75
 // This causes all kinds of issues.
 func (m *Geo) findCollisions() ([]int, []int, []int, map[int]float64) {
 	plateIsOcean := m.PlateIsOcean
-	r_plate := m.RegionToPlate
+	regPlate := m.RegionToPlate
 	plateVectors := m.PlateToVector
 	numRegions := m.mesh.numRegions
-	compression_r := make(map[int]float64)
+	compressionReg := make(map[int]float64)
 	nInf := math.Inf(-1)
 
 	const deltaTime = 1e-7 // simulate movement
@@ -105,27 +105,28 @@ func (m *Geo) findCollisions() ([]int, []int, []int, map[int]float64) {
 	// into an adjacent region. The "compression" is the change in
 	// distance as the two regions move. I'm looking for the adjacent
 	// region from a different plate that pushes most into this one
-	var mountain_r, coastline_r, ocean_r, r_out []int
-	var best_r int
+	var mountainRegs, coastlineRegs, oceanRegs []int
+	rOut := make([]int, 0, 6)
+	var bestReg int
 	var bestCompression float64
-	for current_r := 0; current_r < numRegions; current_r++ {
+	for currentReg := 0; currentReg < numRegions; currentReg++ {
 		bestCompression = nInf // NOTE: Was Infinity
-		best_r = -1
-		r_out = m.mesh.r_circulate_r(r_out, current_r)
-		for _, neighbor_r := range r_out {
-			if r_plate[current_r] != r_plate[neighbor_r] {
+		bestReg = -1
+		rOut = m.mesh.r_circulate_r(rOut, currentReg)
+		for _, neighborReg := range rOut {
+			if regPlate[currentReg] != regPlate[neighborReg] {
 				// sometimes I regret storing xyz in a compact array...
-				current_pos := convToVec3(m.XYZ[3*current_r : 3*current_r+3])
-				neighbor_pos := convToVec3(m.XYZ[3*neighbor_r : 3*neighbor_r+3])
+				currentPos := convToVec3(m.XYZ[3*currentReg : 3*currentReg+3])
+				neighborPos := convToVec3(m.XYZ[3*neighborReg : 3*neighborReg+3])
 
 				// simulate movement for deltaTime seconds
-				distanceBefore := vectors.Dist3(current_pos, neighbor_pos)
+				distanceBefore := vectors.Dist3(currentPos, neighborPos)
 
-				plateVec := plateVectors[r_plate[current_r]].Mul(deltaTime)
-				a := vectors.Add3(current_pos, plateVec)
+				plateVec := plateVectors[regPlate[currentReg]].Mul(deltaTime)
+				a := vectors.Add3(currentPos, plateVec)
 
-				plateVecNeighbor := plateVectors[r_plate[neighbor_r]].Mul(deltaTime)
-				b := vectors.Add3(neighbor_pos, plateVecNeighbor)
+				plateVecNeighbor := plateVectors[regPlate[neighborReg]].Mul(deltaTime)
+				b := vectors.Add3(neighborPos, plateVecNeighbor)
 
 				distanceAfter := vectors.Dist3(a, b)
 
@@ -134,16 +135,16 @@ func (m *Geo) findCollisions() ([]int, []int, []int, map[int]float64) {
 
 				// keep track of the adjacent region that gets closest.
 				if compression > bestCompression { // NOTE: changed from compression < bestCompression
-					best_r = neighbor_r
+					bestReg = neighborReg
 					bestCompression = compression
 				}
 			}
 		}
 		// Check if we have a collision candidate.
-		if best_r == -1 {
+		if bestReg == -1 {
 			continue
 		}
-		compression_r[best_r] += bestCompression
+		compressionReg[bestReg] += bestCompression
 
 		// at this point, bestCompression tells us how much closer
 		// we are getting to the region that's pushing into us the most.
@@ -151,15 +152,15 @@ func (m *Geo) findCollisions() ([]int, []int, []int, map[int]float64) {
 
 		enablePlateCheck := true
 		if enablePlateCheck {
-			current_plate := m.RegionToPlate[current_r]
-			best_plate := m.RegionToPlate[best_r]
+			current_plate := m.RegionToPlate[currentReg]
+			best_plate := m.RegionToPlate[bestReg]
 			if plateIsOcean[current_plate] && plateIsOcean[best_plate] {
 				// If both plates are ocean plates and they collide, a coastline is produced,
 				// while if they "drift apart" (which is not quite correct in our code, since
 				// drifting apart can already be a collision below the threshold), we mark it
 				// as "ocean" representing a rift.
 				if collided {
-					coastline_r = append(coastline_r, current_r)
+					coastlineRegs = append(coastlineRegs, currentReg)
 				} else {
 					// In theory, this is not 100% correct, as plates that drift apart result
 					// at times in volcanic islands that are formed from escaping magma.
@@ -169,7 +170,7 @@ func (m *Geo) findCollisions() ([]int, []int, []int, map[int]float64) {
 			} else if !plateIsOcean[current_plate] && !plateIsOcean[best_plate] {
 				// If both plates are non-ocean plates and they collide, mountains are formed.
 				if collided {
-					mountain_r = append(mountain_r, current_r)
+					mountainRegs = append(mountainRegs, currentReg)
 				} else {
 					// coastline_r = append(coastline_r, current_r)
 				}
@@ -179,28 +180,29 @@ func (m *Geo) findCollisions() ([]int, []int, []int, map[int]float64) {
 				if collided {
 					// If one plate is ocean, mountains only fold up on the non-ocean plate.
 					if !plateIsOcean[current_plate] {
-						mountain_r = append(mountain_r, current_r)
+						mountainRegs = append(mountainRegs, currentReg)
 					}
 				} else {
-					coastline_r = append(coastline_r, current_r)
+					coastlineRegs = append(coastlineRegs, currentReg)
 				}
 			}
 		} else {
 			// If both plates collide, mountains are formed.
 			if collided {
-				mountain_r = append(mountain_r, current_r)
+				mountainRegs = append(mountainRegs, currentReg)
 			}
 		}
 	}
-	return mountain_r, coastline_r, ocean_r, compression_r
+	return mountainRegs, coastlineRegs, oceanRegs, compressionReg
 }
 
+/*
 const (
-	RTypeNone = iota
-	RTypeMountain
-	RTypeCoastline
-	RTypeOcean
-)
+	RegTypeNone = iota
+	RegTypeMountain
+	RegTypeCoastline
+	RegTypeOcean
+)*/
 
 // assignRegionElevation finds collisions between plate regions and assigns
 // elevation for each point on the sphere accordingly, which will result in
@@ -210,28 +212,23 @@ func (m *Geo) assignRegionElevation() {
 	useDistanceFieldWithCompression := true
 
 	// TODO: Use collision values to determine intensity of generated landscape features.
-	mountain_r, coastline_r, ocean_r, compression_r := m.findCollisions()
+	mountainRegs, coastlineRegs, oceanRegs, compressionReg := m.findCollisions()
 	for r := 0; r < m.mesh.numRegions; r++ {
 		if m.RegionToPlate[r] == r && m.PlateIsOcean[r] {
-			ocean_r = append(ocean_r, r)
+			oceanRegs = append(oceanRegs, r)
 		}
 	}
 
-	sorted_r := make([]int, m.mesh.numRegions)
-	for i := range sorted_r {
-		sorted_r[i] = i
-	}
-
-	// Sort by compression.
-	sort.Slice(mountain_r, func(i, j int) bool {
-		return compression_r[mountain_r[i]] > compression_r[mountain_r[j]]
+	// Sort mountains by compression.
+	sort.Slice(mountainRegs, func(i, j int) bool {
+		return compressionReg[mountainRegs[i]] > compressionReg[mountainRegs[j]]
 	})
 
 	// Take note of all mountains.
 	// Since they are sorted by compression, we can use the first m.NumVolcanoes
 	// as volcanoes.
 	var gotVolcanoes int
-	for _, r := range mountain_r {
+	for _, r := range mountainRegs {
 		m.RegionIsMountain[r] = true
 		if gotVolcanoes < m.NumVolcanoes {
 			m.RegionIsVolcano[r] = true
@@ -240,39 +237,39 @@ func (m *Geo) assignRegionElevation() {
 	}
 
 	// Take note of the compression of each region.
-	m.RegionCompression = compression_r
+	m.RegionCompression = compressionReg
 
 	// Distance field generation.
 	// I do not quite know how that works, but it is based on:
 	// See: https://www.redblobgames.com/x/1728-elevation-control/
-	stop_r := make(map[int]bool)
-	for _, r := range mountain_r {
-		stop_r[r] = true
+	stopReg := make(map[int]bool)
+	for _, r := range mountainRegs {
+		stopReg[r] = true
 	}
-	for _, r := range coastline_r {
-		stop_r[r] = true
+	for _, r := range coastlineRegs {
+		stopReg[r] = true
 	}
-	for _, r := range ocean_r {
-		stop_r[r] = true
+	for _, r := range oceanRegs {
+		stopReg[r] = true
 	}
 
-	var r_distance_a, r_distance_b, r_distance_c []float64
+	var rDistanceA, rDistanceB, rDistanceC []float64
 	if useDistanceFieldWithCompression {
 		// Calculate distance fields using the compression values of each region.
 		// Graph distance from mountains (stops at ocean regions).
-		r_distance_a = m.assignDistanceFieldWithIntensity(mountain_r, convToMap(ocean_r), compression_r)
+		rDistanceA = m.assignDistanceFieldWithIntensity(mountainRegs, convToMap(oceanRegs), compressionReg)
 		// Graph distance from ocean (stops at coastline regions).
-		r_distance_b = m.assignDistanceFieldWithIntensity(ocean_r, convToMap(coastline_r), compression_r)
+		rDistanceB = m.assignDistanceFieldWithIntensity(oceanRegs, convToMap(coastlineRegs), compressionReg)
 		// Graph distance from coastline (stops at all other regions).
-		r_distance_c = m.assignDistanceFieldWithIntensity(coastline_r, stop_r, compression_r)
+		rDistanceC = m.assignDistanceFieldWithIntensity(coastlineRegs, stopReg, compressionReg)
 	} else {
 		// Calculate distance fields.
 		// Graph distance from mountains (stops at ocean regions).
-		r_distance_a = m.assignDistanceField(mountain_r, convToMap(ocean_r))
+		rDistanceA = m.assignDistanceField(mountainRegs, convToMap(oceanRegs))
 		// Graph distance from ocean (stops at coastline regions).
-		r_distance_b = m.assignDistanceField(ocean_r, convToMap(coastline_r))
+		rDistanceB = m.assignDistanceField(oceanRegs, convToMap(coastlineRegs))
 		// Graph distance from coastline (stops at all other regions).
-		r_distance_c = m.assignDistanceField(coastline_r, stop_r)
+		rDistanceC = m.assignDistanceField(coastlineRegs, stopReg)
 	}
 
 	// This code below calculates the height of a given region based on a linear
@@ -287,14 +284,14 @@ func (m *Geo) assignRegionElevation() {
 	const epsilon = 1e-3
 	r_xyz := m.XYZ
 	for r := 0; r < m.mesh.numRegions; r++ {
-		a := r_distance_a[r] + epsilon // Distance from mountains
-		b := r_distance_b[r] + epsilon // Distance from oceans
-		c := r_distance_c[r] + epsilon // Distance from coastline
+		a := rDistanceA[r] + epsilon // Distance from mountains
+		b := rDistanceB[r] + epsilon // Distance from oceans
+		c := rDistanceC[r] + epsilon // Distance from coastline
 		if m.PlateIsOcean[m.RegionToPlate[r]] {
 			// Ocean plates are slightly lower than other plates.
 			m.Elevation[r] = -0.1
 		}
-		if math.IsInf(r_distance_a[r], 0) && math.IsInf(r_distance_b[r], 0) {
+		if math.IsInf(rDistanceA[r], 0) && math.IsInf(rDistanceB[r], 0) {
 			// If the distance from mountains and oceans is unset (infinity),
 			// we increase the elevation by 0.1 since we wouldn't be able to
 			// calculate the harmonic mean.

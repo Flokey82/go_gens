@@ -38,6 +38,7 @@ func (m *Map) GetTile(x, y, zoom int) image.Image {
 	// Calculate the min and max elevation and moisture values.
 	min, max := minMax(m.Elevation)
 	_, maxMois := minMax(m.Moisture)
+	out_t := make([]int, 0, 6)
 	for i := 0; i < m.mesh.numRegions; i++ {
 		rLat := m.LatLon[i][0]
 		rLon := m.LatLon[i][1]
@@ -54,9 +55,9 @@ func (m *Map) GetTile(x, y, zoom int) image.Image {
 
 		// Draw the path that outlines the region.
 		var path [][2]float64
-		for _, j := range m.mesh.r_circulate_t(nil, i) {
-			tLat := m.t_latLon[j][0]
-			tLon := m.t_latLon[j][1]
+		for _, j := range m.mesh.r_circulate_t(out_t, i) {
+			tLat := m.triLatLon[j][0]
+			tLon := m.triLatLon[j][1]
 
 			// Check if we have wrapped around the world.
 			if tLon-rLon > 120 {
@@ -338,8 +339,8 @@ func (m *Map) GetGeoJSONBorders(la1, lo1, la2, lo2 float64, zoom int) ([]byte, e
 		var borderLatLons [][]float64
 		for _, p := range border {
 			// Get the lat lon coordinates of the point.
-			la := m.t_latLon[p][0]
-			lo := m.t_latLon[p][1]
+			la := m.triLatLon[p][0]
+			lo := m.triLatLon[p][1]
 			borderLatLons = append(borderLatLons, []float64{lo, la})
 		}
 		// Add the border to the GeoJSON as a feature.
@@ -412,7 +413,7 @@ func (m *BaseObject) getBoundingBoxRegions(lat1, lon1, lat2, lon2 float64) *boun
 		}
 		r.Regions = append(r.Regions, i)
 	}
-	for i, ll := range m.t_latLon {
+	for i, ll := range m.triLatLon {
 		if l0, l1 := ll[0], ll[1]; l0 < lat1 || l0 >= lat2 || l1 < lon1 || l1 >= lon2 {
 			continue
 		}

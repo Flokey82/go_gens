@@ -11,8 +11,8 @@ const (
 	ResourceTypeStone
 )
 
-// getRegionsWithResource returns the regions that have the specified resource.
-func (m *Geo) getRegionsWithResource(resource byte, resourceType int) []int {
+// getRegsWithResource returns the regions that have the specified resource.
+func (m *Geo) getRegsWithResource(resource byte, resourceType int) []int {
 	// Pick the correct resource slice.
 	var search []byte
 	switch resourceType {

@@ -99,7 +99,7 @@ func (b *Bio) newSpecies(r int, t SpeciesKingdom) *Species {
 	}
 
 	// Preferred temperature range.
-	s.TempRange = minMaxRange(b.getRTemperature(r, maxElev), float64(minTemp), float64(maxTemp), 0.2)
+	s.TempRange = minMaxRange(b.getRegTemperature(r, maxElev), float64(minTemp), float64(maxTemp), 0.2)
 
 	// Preferred humidity range.
 	minHum, maxHum := minMax(b.Moisture)
@@ -131,7 +131,7 @@ func (b *Bio) newSpecies(r int, t SpeciesKingdom) *Species {
 
 	// If we are not in the ocean, we probably have a preferred biome.
 	if s.Ecosphere != EcosphereTypeOcean && rnd.Float64() < 0.7 {
-		s.PreferredBiomes = []int{b.getRWhittakerModBiomeFunc()(r)}
+		s.PreferredBiomes = []int{b.getRegWhittakerModBiomeFunc()(r)}
 	}
 
 	return s
@@ -140,7 +140,7 @@ func (b *Bio) newSpecies(r int, t SpeciesKingdom) *Species {
 func (b *Bio) getSpeciesScores(s *Species) []float64 {
 	scores := make([]float64, b.mesh.numRegions)
 	_, maxElev := minMax(b.Elevation)
-	bf := b.getRWhittakerModBiomeFunc()
+	bf := b.getRegWhittakerModBiomeFunc()
 	for i := range scores {
 		scores[i] = b.getSpeciesScore(s, i, maxElev, bf)
 	}
@@ -159,7 +159,7 @@ func (b *Bio) getSpeciesScore(s *Species, r int, maxElev float64, bf func(int) i
 	}
 
 	// Check how much we diverge from the preferred temperature range.
-	tempDiv := getDiversionFromRange(b.getRTemperature(r, maxElev), s.TempRange)
+	tempDiv := getDiversionFromRange(b.getRegTemperature(r, maxElev), s.TempRange)
 	tempScore := easeInOutCubic(1 - tempDiv/(s.TempRange[1]-s.TempRange[0]))
 
 	// Check how much we diverge from the preferred humidity range.
@@ -585,10 +585,10 @@ func (b *Bio) getEcosphere(r int) EcosphereType {
 	if b.Elevation[r] <= 0.0 {
 		return EcosphereTypeOcean
 	}
-	if b.isRiver(r) {
+	if b.isRegRiver(r) {
 		return EcosphereTypeRiver
 	}
-	if b.isLake(r) {
+	if b.isRegLake(r) {
 		return EcosphereTypeLake
 	}
 	return EcosphereTypeLand

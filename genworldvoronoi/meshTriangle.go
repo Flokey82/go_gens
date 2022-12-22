@@ -38,15 +38,15 @@ func NewTriangleMesh(numBoundaryRegions, numSolidSides int, vxs []Vertex, t []in
 }
 
 // Update internal data structures from Delaunator
-func (this *TriangleMesh) update(vxs []Vertex, d *delaunay.Triangulation) {
-	this.RVertex = vxs
-	this.Triangles = d.Triangles
-	this.Halfedges = d.Halfedges
-	this._update()
+func (tm *TriangleMesh) update(vxs []Vertex, d *delaunay.Triangulation) {
+	tm.RVertex = vxs
+	tm.Triangles = d.Triangles
+	tm.Halfedges = d.Halfedges
+	tm._update()
 }
 
-func (this *TriangleMesh) s_ghost(s int) bool {
-	return s >= this.numSolidSides
+func (tm *TriangleMesh) s_ghost(s int) bool {
+	return s >= tm.numSolidSides
 }
 
 func s_to_t(s int) int {
@@ -72,35 +72,35 @@ func s_next_s(s int) int {
  * and want the dual mesh to match the updated data. Note that
  * this DOES not update boundary regions or ghost elements.
  */
-func (this *TriangleMesh) _update() {
-	tri := this.Triangles
-	hedges := this.Halfedges
-	rvtx := this.RVertex
-	tvtx := this.TVertex
+func (tm *TriangleMesh) _update() {
+	tri := tm.Triangles
+	hedges := tm.Halfedges
+	rvtx := tm.RVertex
+	tvtx := tm.TVertex
 
-	this.numSides = len(tri)
-	this.numRegions = len(rvtx)
-	this.numSolidRegions = this.numRegions - 1 // TODO: only if there are ghosts
-	this.numTriangles = this.numSides / 3
-	this.numSolidTriangles = this.numSolidSides / 3
+	tm.numSides = len(tri)
+	tm.numRegions = len(rvtx)
+	tm.numSolidRegions = tm.numRegions - 1 // TODO: only if there are ghosts
+	tm.numTriangles = tm.numSides / 3
+	tm.numSolidTriangles = tm.numSolidSides / 3
 
-	if len(this.TVertex) < this.numTriangles {
+	if len(tm.TVertex) < tm.numTriangles {
 		// Extend this array to be big enough
 		numOldTriangles := len(tvtx)
-		numNewTriangles := this.numTriangles - numOldTriangles
+		numNewTriangles := tm.numTriangles - numOldTriangles
 		tvtx = append(tvtx, make([]Vertex, numNewTriangles)...)
-		for t := numOldTriangles; t < this.numTriangles; t++ {
+		for t := numOldTriangles; t < tm.numTriangles; t++ {
 			tvtx[t] = Vertex{0, 0}
 		}
-		this.TVertex = tvtx
+		tm.TVertex = tvtx
 	}
 
 	// Construct an index for finding sides connected to a region
-	this.RInS = make([]int, this.numRegions)
+	tm.RInS = make([]int, tm.numRegions)
 	for s := 0; s < len(tri); s++ {
 		endpoint := tri[s_next_s(s)]
-		if this.RInS[endpoint] == 0 || hedges[s] == -1 {
-			this.RInS[endpoint] = s
+		if tm.RInS[endpoint] == 0 || hedges[s] == -1 {
+			tm.RInS[endpoint] = s
 		}
 	}
 
@@ -110,7 +110,7 @@ func (this *TriangleMesh) _update() {
 		a := rvtx[tri[s]]
 		b := rvtx[tri[s+1]]
 		c := rvtx[tri[s+2]]
-		if this.s_ghost(s) {
+		if tm.s_ghost(s) {
 			// ghost triangle center is just outside the unpaired side
 			dx := b[0] - a[0]
 			dy := b[1] - a[1]
@@ -123,17 +123,17 @@ func (this *TriangleMesh) _update() {
 			tvtx[t][1] = (a[1] + b[1] + c[1]) / 3
 		}
 	}
-	this.TVertex = tvtx
+	tm.TVertex = tvtx
 }
 
-func (this *TriangleMesh) r_circulate_r(out_r []int, r int) []int {
-	s0 := this.RInS[r]
+func (tm *TriangleMesh) r_circulate_r(out_r []int, r int) []int {
+	s0 := tm.RInS[r]
 	incoming := s0
 	out_r = out_r[:0]
 	for {
-		out_r = append(out_r, this.s_begin_r(incoming))
+		out_r = append(out_r, tm.s_begin_r(incoming))
 		outgoing := s_next_s(incoming)
-		incoming = this.Halfedges[outgoing]
+		incoming = tm.Halfedges[outgoing]
 		if incoming == -1 || incoming == s0 {
 			break
 		}
@@ -141,14 +141,14 @@ func (this *TriangleMesh) r_circulate_r(out_r []int, r int) []int {
 	return out_r
 }
 
-func (this *TriangleMesh) r_circulate_t(out_t []int, r int) []int {
-	s0 := this.RInS[r]
+func (tm *TriangleMesh) r_circulate_t(out_t []int, r int) []int {
+	s0 := tm.RInS[r]
 	incoming := s0
 	out_t = out_t[:0]
 	for {
 		out_t = append(out_t, s_to_t(incoming))
 		outgoing := s_next_s(incoming)
-		incoming = this.Halfedges[outgoing]
+		incoming = tm.Halfedges[outgoing]
 		if incoming == -1 || incoming == s0 {
 			break
 		}
@@ -156,7 +156,7 @@ func (this *TriangleMesh) r_circulate_t(out_t []int, r int) []int {
 	return out_t
 }
 
-func (this *TriangleMesh) t_circulate_s(out_s []int, t int) []int {
+func (tm *TriangleMesh) t_circulate_s(out_s []int, t int) []int {
 	out_s = make([]int, 3)
 	for i := 0; i < 3; i++ {
 		out_s[i] = 3*t + i
@@ -164,40 +164,40 @@ func (this *TriangleMesh) t_circulate_s(out_s []int, t int) []int {
 	return out_s
 }
 
-func (this *TriangleMesh) t_circulate_r(out_r []int, t int) []int {
+func (tm *TriangleMesh) t_circulate_r(out_r []int, t int) []int {
 	out_r = make([]int, 3)
 	for i := 0; i < 3; i++ {
-		out_r[i] = this.Triangles[3*t+i]
+		out_r[i] = tm.Triangles[3*t+i]
 	}
 	return out_r
 }
 
-func (this *TriangleMesh) r_x(r int) float64 { return this.RVertex[r][0] }
-func (this *TriangleMesh) r_y(r int) float64 { return this.RVertex[r][1] }
-func (this *TriangleMesh) t_x(r int) float64 { return this.TVertex[r][0] }
-func (this *TriangleMesh) t_y(r int) float64 { return this.TVertex[r][1] }
-func (this *TriangleMesh) s_end_r(s int) int {
-	return this.Triangles[s_next_s(s)]
+func (tm *TriangleMesh) r_x(r int) float64 { return tm.RVertex[r][0] }
+func (tm *TriangleMesh) r_y(r int) float64 { return tm.RVertex[r][1] }
+func (tm *TriangleMesh) t_x(r int) float64 { return tm.TVertex[r][0] }
+func (tm *TriangleMesh) t_y(r int) float64 { return tm.TVertex[r][1] }
+func (tm *TriangleMesh) s_end_r(s int) int {
+	return tm.Triangles[s_next_s(s)]
 }
 
-func (this *TriangleMesh) s_begin_r(s int) int {
-	return this.Triangles[s]
+func (tm *TriangleMesh) s_begin_r(s int) int {
+	return tm.Triangles[s]
 }
 
-func (this *TriangleMesh) s_opposite_s(s int) int {
-	return this.Halfedges[s]
+func (tm *TriangleMesh) s_opposite_s(s int) int {
+	return tm.Halfedges[s]
 }
 
-func (this *TriangleMesh) s_inner_t(s int) int {
+func (tm *TriangleMesh) s_inner_t(s int) int {
 	return s_to_t(s)
 }
 
-func (this *TriangleMesh) s_outer_t(s int) int {
-	return s_to_t(this.Halfedges[s])
+func (tm *TriangleMesh) s_outer_t(s int) int {
+	return s_to_t(tm.Halfedges[s])
 }
 
-func (this *TriangleMesh) ghost_r() int          { return this.numRegions - 1 }
-func (this *TriangleMesh) r_ghost(r int) bool    { return r == this.numRegions-1 }
-func (this *TriangleMesh) t_ghost(t int) bool    { return this.s_ghost(3 * t) }
-func (this *TriangleMesh) s_boundary(s int) bool { return this.s_ghost(s) && (s%3 == 0) }
-func (this *TriangleMesh) r_boundary(r int) bool { return r < this.numBoundaryRegions }
+func (tm *TriangleMesh) ghost_r() int          { return tm.numRegions - 1 }
+func (tm *TriangleMesh) r_ghost(r int) bool    { return r == tm.numRegions-1 }
+func (tm *TriangleMesh) t_ghost(t int) bool    { return tm.s_ghost(3 * t) }
+func (tm *TriangleMesh) s_boundary(s int) bool { return tm.s_ghost(s) && (s%3 == 0) }
+func (tm *TriangleMesh) r_boundary(r int) bool { return r < tm.numBoundaryRegions }

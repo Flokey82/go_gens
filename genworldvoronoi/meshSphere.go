@@ -9,16 +9,17 @@ import (
 	"github.com/fogleman/delaunay"
 )
 
-// generateFibonacciSphere generates a number of points along a spiral on a sphere.
+// generateFibonacciSphere generates a number of points along a spiral on a sphere
+// as a flat array of lat, lon coordinates.
 func generateFibonacciSphere(seed int64, numPoints int, jitter float64) []float64 {
 	rnd := rand.New(rand.NewSource(seed))
-	var a_latlong []float64
+	var latLon []float64
 	randomLat := make(map[int]float64)
 	randomLon := make(map[int]float64)
 
 	// Second algorithm from http://web.archive.org/web/20120421191837/http://www.cgafaq.info/wiki/Evenly_distributed_points_on_sphere
 	s := 3.6 / math.Sqrt(float64(numPoints))
-	dlong := math.Pi * (3 - math.Sqrt(5)) /* ~2.39996323 */
+	dlong := math.Pi * (3 - math.Sqrt(5)) // ~2.39996323
 	dz := 2.0 / float64(numPoints)
 
 	for k, long, z := 0, 0.0, 1-(dz/2); k != numPoints; k++ {
@@ -34,11 +35,11 @@ func generateFibonacciSphere(seed int64, numPoints int, jitter float64) []float6
 
 		latDeg += jitter * randomLat[k] * (latDeg - math.Asin(math.Max(-1, z-dz*2*math.Pi*r/s))*180/math.Pi)
 		lonDeg += jitter * randomLon[k] * (s / r * 180 / math.Pi)
-		a_latlong = append(a_latlong, latDeg, math.Mod(lonDeg, 360.0))
+		latLon = append(latLon, latDeg, math.Mod(lonDeg, 360.0))
 		long += dlong
 		z -= dz
 	}
-	return a_latlong
+	return latLon
 }
 
 // pushCartesianFromSpherical calculates x,y,z from spherical coordinates lat,lon and then push
@@ -63,8 +64,8 @@ func latLonToCartesian(latDeg, lonDeg float64) []float64 {
 // See: https://rbrundritt.wordpress.com/2008/10/14/conversion-between-spherical-and-cartesian-coordinates-systems/
 func latLonFromVec3(position vectors.Vec3, sphereRadius float64) (float64, float64) {
 	// See https://stackoverflow.com/questions/46247499/vector3-to-latitude-longitude
-	lat := math.Asin(position.Z / sphereRadius) //theta
-	lon := math.Atan2(position.Y, position.X)   //phi
+	lat := math.Asin(position.Z / sphereRadius) // theta
+	lon := math.Atan2(position.Y, position.X)   // phi
 	return radToDeg(lat), radToDeg(lon)
 }
 
@@ -107,8 +108,9 @@ func addSouthPoleToMesh(southPoleId int, d *delaunay.Triangulation) *delaunay.Tr
 	}
 
 	newTriangles := make([]int, numSides+3*numUnpairedSides)
-	newHalfedges := make([]int, numSides+3*numUnpairedSides)
 	copy(newTriangles, triangles)
+
+	newHalfedges := make([]int, numSides+3*numUnpairedSides)
 	copy(newHalfedges, halfedges)
 
 	for i, s := 0, firstUnpairedSide; i < numUnpairedSides; i++ {
@@ -135,38 +137,38 @@ func addSouthPoleToMesh(southPoleId int, d *delaunay.Triangulation) *delaunay.Tr
 }
 
 // stereographicProjection converts 3d coordinates into two dimensions.
-func stereographicProjection(r_xyz []float64) []float64 {
+func stereographicProjection(xyz []float64) []float64 {
 	// See <https://en.wikipedia.org/wiki/Stereographic_projection>
-	numPoints := len(r_xyz) / 3
-	var r_XY []float64
+	numPoints := len(xyz) / 3
+	xy := make([]float64, 0, 2*numPoints)
 	for r := 0; r < numPoints; r++ {
-		x := r_xyz[3*r]
-		y := r_xyz[3*r+1]
-		z := r_xyz[3*r+2]
-		r_XY = append(r_XY, x/(1-z), y/(1-z)) // Append projected 2d coordinates.
+		x := xyz[3*r]
+		y := xyz[3*r+1]
+		z := xyz[3*r+2]
+		xy = append(xy, x/(1-z), y/(1-z)) // Append projected 2d coordinates.
 	}
-	return r_XY
+	return xy
 }
 
 type SphereMesh struct {
-	mesh     *TriangleMesh
-	r_xyz    []float64
-	r_latLon [][2]float64
+	mesh   *TriangleMesh
+	xyz    []float64    // Region coordinates
+	latLon [][2]float64 // Region latitude and longitude
 }
 
 func MakeSphere(seed int64, numPoints int, jitter float64) (*SphereMesh, error) {
 	latlong := generateFibonacciSphere(seed, numPoints, jitter)
-	var r_xyz []float64
-	var r_latLon [][2]float64
+	var xyz []float64
+	var latLon [][2]float64
 	for r := 0; r < len(latlong); r += 2 {
 		// HACKY! Fix this properly!
 		nla, nlo := latLonFromVec3(convToVec3(latLonToCartesian(latlong[r], latlong[r+1])).Normalize(), 1.0)
-		r_latLon = append(r_latLon, [2]float64{nla, nlo})
-		r_xyz = pushCartesianFromSpherical(r_xyz, latlong[r], latlong[r+1])
+		latLon = append(latLon, [2]float64{nla, nlo})
+		xyz = pushCartesianFromSpherical(xyz, latlong[r], latlong[r+1])
 	}
 
-	xy := stereographicProjection(r_xyz)
-	var pts []delaunay.Point
+	xy := stereographicProjection(xyz)
+	pts := make([]delaunay.Point, 0, len(xy)/2)
 	for i := 0; i < len(xy); i += 2 {
 		pts = append(pts, delaunay.Point{X: xy[i], Y: xy[i+1]})
 	}
@@ -177,15 +179,15 @@ func MakeSphere(seed int64, numPoints int, jitter float64) (*SphereMesh, error) 
 	}
 
 	// TODO: rotate an existing point into this spot instead of creating one.
-	r_xyz = append(r_xyz, 0, 0, 1)
-	r_latLon = append(r_latLon, [2]float64{-90.0, 45.0})
+	xyz = append(xyz, 0, 0, 1)
+	latLon = append(latLon, [2]float64{-90.0, 45.0})
 
-	tri = addSouthPoleToMesh((len(r_xyz)/3)-1, tri)
+	tri = addSouthPoleToMesh((len(xyz)/3)-1, tri)
 
 	mesh := NewTriangleMesh(0, len(tri.Triangles), make([]Vertex, numPoints+1), tri.Triangles, tri.Halfedges)
 	return &SphereMesh{
-		mesh:     mesh,
-		r_xyz:    r_xyz,
-		r_latLon: r_latLon,
+		mesh:   mesh,
+		xyz:    xyz,
+		latLon: latLon,
 	}, nil
 }

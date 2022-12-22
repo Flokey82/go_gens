@@ -33,7 +33,7 @@ func (m *BaseObject) getWaterBodies() []int {
 		// the execution stack might go.
 		var diveDeeper func(rd int)
 		diveDeeper = func(rd int) {
-			for _, nbs := range m.GetRegionNeighbors(rd) {
+			for _, nbs := range m.GetRegNeighbors(rd) {
 				// If we have reached land or already visited nbs, skip.
 				if m.Elevation[nbs] > 0 || done[nbs] != -1 {
 					continue
@@ -78,9 +78,9 @@ func (m *BaseObject) getLakeSizes() map[int]int {
 	return lakeSize
 }
 
-// getRLakeOrWaterBodySize returns the size of the lake or waterbody that the
+// getRegLakeOrWaterBodySize returns the size of the lake or waterbody that the
 // provided region is part of.
-func (m *BaseObject) getRLakeOrWaterBodySize(r int) int {
+func (m *BaseObject) getRegLakeOrWaterBodySize(r int) int {
 	if m.Waterbodies[r] >= 0 {
 		return m.WaterbodySize[m.Waterbodies[r]]
 	}

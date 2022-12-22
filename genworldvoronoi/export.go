@@ -132,13 +132,14 @@ func (m *Map) ExportSVG(path string) error {
 		//minSol, maxSol := minMax(solarRad)
 		min, max := minMax(m.Elevation)
 		_, maxMois := minMax(m.Moisture)
+		out_t := make([]int, 0, 6)
 		for i := 0; i < em.mesh.numRegions; i++ {
 			rLat := em.LatLon[i][0]
 			rLon := em.LatLon[i][1]
 			rX, rY := latLonToPixels(rLat, rLon, zoom)
 			var skip bool
-			for _, j := range em.mesh.r_circulate_t(nil, i) {
-				x, y := latLonToPixels(em.t_latLon[j][0], em.t_latLon[j][1], zoom)
+			for _, j := range em.mesh.r_circulate_t(out_t, i) {
+				x, y := latLonToPixels(em.triLatLon[j][0], em.triLatLon[j][1], zoom)
 				if dist2([2]float64{x, y}, [2]float64{rX, rY}) > filterPathDist {
 					skip = true
 					break
@@ -148,8 +149,8 @@ func (m *Map) ExportSVG(path string) error {
 				continue
 			}
 			var path [][2]float64
-			for _, j := range em.mesh.r_circulate_t(nil, i) {
-				x, y := latLonToPixels(em.t_latLon[j][0], em.t_latLon[j][1], zoom)
+			for _, j := range em.mesh.r_circulate_t(out_t, i) {
+				x, y := latLonToPixels(em.triLatLon[j][0], em.triLatLon[j][1], zoom)
 				path = append(path, [2]float64{x, y})
 			}
 			elev := em.Elevation[i]
@@ -168,12 +169,12 @@ func (m *Map) ExportSVG(path string) error {
 			svg.Path(svgGenD(path), fmt.Sprintf("fill: rgb(%d, %d, %d)", col.R, col.G, col.B), "class=\"terrain\"")
 		}
 	} else {
-		min, max := minMax(m.t_elevation)
-		_, maxMois := minMax(m.t_moisture)
+		min, max := minMax(m.triElevation)
+		_, maxMois := minMax(m.triMoisture)
 		for i := 0; i < len(em.mesh.Triangles); i += 3 {
 			// Hacky way to filter paths/triangles that wrap around the entire SVG.
-			triLat := em.t_latLon[i/3][0]
-			triLon := em.t_latLon[i/3][1]
+			triLat := em.triLatLon[i/3][0]
+			triLon := em.triLatLon[i/3][1]
 			triX, triY := latLonToPixels(triLat, triLon, zoom)
 			var skip bool
 			var poolCount int
@@ -196,7 +197,7 @@ func (m *Map) ExportSVG(path string) error {
 				x, y := latLonToPixels(em.LatLon[j][0], em.LatLon[j][1], zoom)
 				path = append(path, [2]float64{x, y})
 			}
-			elev := em.t_elevation[i/3]
+			elev := em.triElevation[i/3]
 			val := (elev - min) / (max - min)
 			var col color.NRGBA
 			if elev <= 0 || poolCount > 2 {
@@ -205,7 +206,7 @@ func (m *Map) ExportSVG(path string) error {
 				valElev := elev / max
 				// Hacky: Modify elevation based on latitude to compensate for colder weather at the poles and warmer weather at the equator.
 				// valElev := math.Max(math.Min((elev/max)+(math.Sqrt(math.Abs(triLat)/90.0)-0.5), max), 0)
-				valMois := em.t_moisture[i/3] / maxMois
+				valMois := em.triMoisture[i/3] / maxMois
 				col = getWhittakerModBiomeColor(triLat, valElev, valMois, val)
 			}
 			svg.Path(svgGenD(path), fmt.Sprintf("fill: rgb(%d, %d, %d)", col.R, col.G, col.B), "class=\"terrain\"")
@@ -228,7 +229,7 @@ func (m *Map) ExportSVG(path string) error {
 	drawPath := func(paths [][]int, useTriangles bool, style ...string) {
 		latLon := m.LatLon
 		if useTriangles {
-			latLon = m.t_latLon
+			latLon = m.triLatLon
 		}
 		for _, border := range paths {
 			var path [][2]float64
@@ -297,16 +298,16 @@ func (m *Map) ExportSVG(path string) error {
 	// Rivers (based on triangles)
 	if drawRiversB {
 		for i := 0; i < m.mesh.numSides; i++ {
-			if m.s_flow[i] < 10000 {
+			if m.sideFlow[i] < 10000 {
 				continue
 			}
 			inner_t := m.mesh.s_inner_t(i)
 			outer_t := m.mesh.s_outer_t(i)
-			if m.t_elevation[inner_t] < 0 && m.t_elevation[outer_t] < 0 {
+			if m.triElevation[inner_t] < 0 && m.triElevation[outer_t] < 0 {
 				continue
 			}
-			x1, y1 := latLonToPixels(m.t_latLon[inner_t][0], m.t_latLon[inner_t][1], zoom)
-			x2, y2 := latLonToPixels(m.t_latLon[outer_t][0], m.t_latLon[outer_t][1], zoom)
+			x1, y1 := latLonToPixels(m.triLatLon[inner_t][0], m.triLatLon[inner_t][1], zoom)
+			x2, y2 := latLonToPixels(m.triLatLon[outer_t][0], m.triLatLon[outer_t][1], zoom)
 			if math.Abs(x1-x2) > float64(size)/2 || math.Abs(y1-y2) > float64(size)/2 {
 				continue
 			}
@@ -443,7 +444,7 @@ func (m *Map) ExportSVG(path string) error {
 		_, maxHeight := minMax(er)
 		for r, rdh := range m.Elevation {
 			if rdh > 0 && r%2 == 0 {
-				t := m.getRTemperature(r, maxHeight)
+				t := m.getRegTemperature(r, maxHeight)
 				col := genBlue((t - minTemp) / (maxTemp - minTemp))
 				drawCircle(m.LatLon[r][0], m.LatLon[r][1], 1, fmt.Sprintf("fill: rgb(%d, %d, %d)", col.R, col.G, col.G))
 			}
@@ -743,8 +744,8 @@ func (m *Map) ExportOBJ(path string) error {
 
 	// Triangle vertices
 	if drawPlates || drawRivers {
-		for i := 0; i < len(m.t_xyz); i += 3 {
-			ve := convToVec3(m.t_xyz[i:]).Mul(1.03 + 0.01*m.t_elevation[i/3])
+		for i := 0; i < len(m.tXYZ); i += 3 {
+			ve := convToVec3(m.tXYZ[i:]).Mul(1.03 + 0.01*m.triElevation[i/3])
 			w.WriteString(fmt.Sprintf("v %f %f %f \n", ve.X, ve.Y, ve.Z))
 		}
 		w.Flush()
@@ -760,10 +761,10 @@ func (m *Map) ExportOBJ(path string) error {
 	// Rivers
 	if drawRivers {
 		for i := 0; i < m.mesh.numSides; i++ {
-			if m.s_flow[i] > 1 {
+			if m.sideFlow[i] > 1 {
 				inner_t := m.mesh.s_inner_t(i)
 				outer_t := m.mesh.s_outer_t(i)
-				if m.t_elevation[inner_t] < 0 && m.t_elevation[outer_t] < 0 {
+				if m.triElevation[inner_t] < 0 && m.triElevation[outer_t] < 0 {
 					continue
 				}
 				w.WriteString(fmt.Sprintf("l %d %d \n", (len(m.XYZ)/3)+inner_t+1, (len(m.XYZ)/3)+outer_t+1))

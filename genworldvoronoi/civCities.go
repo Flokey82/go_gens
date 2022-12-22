@@ -27,7 +27,7 @@ func (m *Civ) calculateEconomicPotential() {
 		// The base radius is dependent on the population.
 		// The minimum radius is 1.0 and increases with the square
 		// root of the population.
-		radius := 1.0 + math.Sqrt(float64(c.Population))/5
+		radius := 1.0 + math.Sqrt(float64(c.Population))
 		resourceRadius = append(resourceRadius, radius)
 	}
 
@@ -41,7 +41,7 @@ func (m *Civ) calculateEconomicPotential() {
 			resourceID := 1 << res
 
 			// Get all regions that contain the resource.
-			regions := m.getRegionsWithResource(byte(resourceID), resourceType)
+			regions := m.getRegsWithResource(byte(resourceID), resourceType)
 			dist := m.assignDistanceField(regions, stopRegions)
 
 			// Now loop through all cities and check if the distance field
@@ -132,10 +132,10 @@ func (m *Civ) tickCityDays(c *City, days int) {
 
 	// With increasing population, the city is
 	// be more prone to famine or disease.
-	if rand.Intn(c.Population*days/356) > 1000*days/356 {
+	if c.Population > 356 && rand.Intn(c.Population*days/356) > 1000*days/356 {
 		// Famine or disease, up to 1/4 of the population dies.
 		c.Population -= rand.Intn(c.Population / 4)
-	} else if rand.Intn(10*days/356) == 0 {
+	} else if rand.Intn(356*days/356) < 10 {
 		// Random disaster strikes.
 		c.Population -= rand.Intn(c.Population / 2)
 	}
@@ -308,7 +308,7 @@ func (m *Civ) getFitnessCityDefault() func(int) float64 {
 
 		// Visit all neighbors and modify the score based on their properties.
 		var hasWaterBodyBonus bool
-		nbs := m.GetRegionNeighbors(i)
+		nbs := m.GetRegNeighbors(i)
 
 		// Initialize fitness score with the normalized flux value.
 		// This will favor placing cities along (and at the end of)
@@ -316,7 +316,7 @@ func (m *Civ) getFitnessCityDefault() func(int) float64 {
 		score := math.Sqrt(m.Flux[i] / maxFlux)
 		for _, nb := range nbs {
 			// Add bonus if near ocean or lake.
-			if m.isRBelowOrAtSeaLevelOrPool(nb) {
+			if m.isRegBelowOrAtSeaLevelOrPool(nb) {
 				// We only apply this bonus once.
 				if hasWaterBodyBonus {
 					continue
@@ -329,7 +329,7 @@ func (m *Civ) getFitnessCityDefault() func(int) float64 {
 
 				// If nb is part of a waterbody (ocean) or lake, we reduce the score by a constant factor.
 				// The larger the waterbody/lake, the smaller the penalty, which will favor larger waterbodies.
-				if wbSize := m.getRLakeOrWaterBodySize(nb); wbSize > 0 {
+				if wbSize := m.getRegLakeOrWaterBodySize(nb); wbSize > 0 {
 					hasWaterBodyBonus = true
 					score += 0.55 * (1 - 1/(float64(wbSize)+1e-9))
 				}
@@ -428,7 +428,7 @@ func (t TownType) GetFitnessFunction(m *Civ) func(int) float64 {
 		// crossings... so we'll need to place them in the middle
 		// of deserts instead.
 		fa := m.getFitnessClimate()
-		bf := m.getRWhittakerModBiomeFunc()
+		bf := m.getRegWhittakerModBiomeFunc()
 		return func(r int) float64 {
 			biome := bf(r)
 			if biome == genbiome.WhittakerModBiomeColdDesert ||

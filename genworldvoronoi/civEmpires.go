@@ -6,7 +6,7 @@ import (
 	"sort"
 )
 
-func (m *Civ) rPlaceNEmpires(n int) {
+func (m *Civ) regPlaceNEmpires(n int) {
 	// NOTE: This is not very thought through.
 	// This will need quite a bit of tweaking.
 	//

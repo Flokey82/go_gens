@@ -13,7 +13,7 @@ type Geo struct {
 	*Resources                          // Natural resources.
 	PlateToVector        []vectors.Vec3 // Plate tectonics / movement vectors
 	PlateIsOcean         map[int]bool   // Plate was chosen to be an ocean plate
-	PlateRegions         []int          // Plate seed points / regions
+	PlateRegs            []int          // Plate seed points / regions
 	RegionToWindVec      []Vertex       // Point / region wind vector
 	RegionToWindVecLocal []Vertex       // Point / region wind vector (local)
 	RegionToPlate        []int          // Point / region to plate mapping
@@ -40,10 +40,9 @@ func newGeo(seed int64, numPlates, numPoints int, jitter float64) (*Geo, error) 
 		NumPlates:            numPlates,
 		NumVolcanoes:         10, // TODO: Allow independent configuration.
 		NumPoints:            numPoints,
-		QuadGeom:             NewQuadGeometry(),
+		QuadGeom:             NewQuadGeometry(mesh),
 	}
-	m.QuadGeom.setMesh(mesh)
-	m.generateTriangleCenters()
+	m.generateTriCenters()
 	return m, nil
 }
 
@@ -85,7 +84,7 @@ func (m *Geo) generateGeology() {
 	// Hydrology (based on triangles)
 	// Amit's hydrology code.
 	start = time.Now()
-	m.assignTriangleValues()
+	m.assignTriValues()
 	// m.assignDownflow()
 	// m.assignFlow()
 	log.Println("Done triangles in ", time.Since(start).String())
