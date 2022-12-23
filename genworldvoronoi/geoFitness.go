@@ -2,6 +2,30 @@ package genworldvoronoi
 
 import "math"
 
+// getFitnessProximityToWater returns a fitness function with high scores for
+// terrain close to water.
+func (m *Geo) getFitnessProximityToWater() func(int) float64 {
+	var seedWater []int
+	for r := range m.Elevation {
+		if m.isRegLakeOrWaterBody(r) || m.isRegBigRiver(r) {
+			seedWater = append(seedWater, r)
+		}
+	}
+
+	// Make sure we normalize the distance field so that the highest value is 1.
+	distWater := m.assignDistanceField(seedWater, m.RegionIsMountain)
+	_, maxDist := minMax(distWater)
+	return func(r int) float64 {
+		if m.isRegLakeOrWaterBody(r) || distWater[r] < 0 {
+			return -1.0
+		}
+		if math.IsInf(distWater[r], 0) {
+			return 0
+		}
+		return 1 - distWater[r]/maxDist
+	}
+}
+
 // getFitnessSteepMountains returns a fitness function with high scores for
 // steep terrain close to mountains.
 func (m *Geo) getFitnessSteepMountains() func(int) float64 {
@@ -49,8 +73,11 @@ func (m *Geo) getFitnessArableLand() func(int) float64 {
 	_, maxRain := minMax(m.Rainfall)
 	return func(r int) float64 {
 		temp := m.getRegTemperature(r, maxElev)
-		if m.Elevation[r] <= 0 || m.Rainfall[r] < 0.1 || temp <= 0 {
+		if m.Elevation[r] <= 0 {
 			return -1.0
+		}
+		if m.Rainfall[r] < 0.1 || temp <= 0 {
+			return 0
 		}
 		chance := 1 - steepness[r]
 		chance *= m.Rainfall[r] / maxRain

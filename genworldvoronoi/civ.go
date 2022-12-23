@@ -10,6 +10,7 @@ import (
 
 type Civ struct {
 	*Geo
+	*History
 	RegionToEmpire    []int       // (political) Point / region mapping to territory / empire
 	RegionToCityState []int       // (political) Point / region mapping to city / city state
 	Cities            []*City     // (political) City seed points / regions
@@ -31,6 +32,7 @@ type Civ struct {
 func NewCiv(geo *Geo) *Civ {
 	return &Civ{
 		Geo:               geo,
+		History:           NewHistory(geo.Calendar),
 		RegionToEmpire:    initRegionSlice(geo.mesh.numRegions),
 		RegionToCityState: initRegionSlice(geo.mesh.numRegions),
 		RegionToCulture:   initRegionSlice(geo.mesh.numRegions),
@@ -52,7 +54,8 @@ func (m *Civ) generateCivilization() {
 	// This will allow us to determine the founding date of the cities and
 	// settlements.
 	m.generateTimeOfSettlement()
-	// 1. Generate (races and) cultures.
+
+	// 1. Generate (species and) cultures.
 	// 2. Spread cultures.
 	// 3. Generate settlements.
 	// 4. Grow settlements.
@@ -95,21 +98,25 @@ func (m *Civ) generateCivilization() {
 	// m.rPlaceNCities(30, TownTypeTrading)
 	// log.Println("Done trade cities in ", time.Since(start).String())
 
+	//m.GetEmpires()
+	m.calculateEconomicPotential()
+	m.calculateAttractiveness()
+
 	// HACK: Age city populations.
 	// TODO: Instead we should spawn the cities from the capitals.
 	// Also, the theoretical population should be based on the
 	// economic potential of the region, the type of settlement,
 	// and the time of settlement.
 	_, maxSettled := minMax64(m.Settled)
-	for _, c := range m.Cities {
-		// Tick each city for the number of years since it was settled.
-		for j := 0; j < int(maxSettled-m.Settled[c.ID]); j++ {
-			m.tickCityDays(c, 365)
+	m.Geo.Calendar.SetYear(0)
+	for year := 0; year < int(maxSettled); year++ {
+		m.Geo.Calendar.TickYear()
+		for _, c := range m.Cities {
+			if m.Settled[c.ID] <= int64(year) {
+				m.tickCityDays(c, 365)
+			}
 		}
 	}
-
-	//m.GetEmpires()
-	m.calculateEconomicPotential()
 }
 
 func (m *Civ) Tick() {
@@ -222,23 +229,34 @@ func (m *Civ) generateTimeOfSettlement() {
 		// terrain.
 		terrWeight := terrainWeight(bestRegion, u, v)
 
-		// If the terrain weight is negative, the region is ocean.
-		// This means, we need boats to get there, which will require
-		// more time.
-		if terrWeight < 0 {
-			// Once we are at sea, we travel at a speed of 20 years per
-			// region.
-			if (m.Elevation[v] <= 0) && (m.Elevation[u] <= 0) {
-				return float64(settleTime[u]) + 20
-			} else if m.Elevation[v] > 0 {
-				// If we arrive at land, we only need a year.
-				return float64(settleTime[u]) + 1
-			}
-			// It takes us 100 years to build a boat.
-			return float64(settleTime[u]) + 100
+		// If the terrain weight is positive (or zero), the destination region is land.
+		var timeReqired float64
+		if terrWeight >= 0 {
+			// Settlement on land takes a fraction of 2000 years per (unit) region.
+			// 'terrWeight' already takes the actual distance between the regions
+			// into account.
+			return float64(settleTime[u]) + 2000*terrWeight // * (1-terrainArable(v))
 		}
-		// The settle time is a fraction of 1000 years.
-		return float64(settleTime[u]) + 1000*terrWeight //*(1-terrainArable(v))
+
+		// If the terrain weight is negative, the source- and/or destination region is ocean.
+		// This means, we need boats to get there, which will require more time.
+		if m.Elevation[v] > 0 {
+			// If we were at sea and arrive at land, we only need a year to disembark.
+			timeReqired = 1
+		} else if (m.Elevation[v] <= 0) && (m.Elevation[u] <= 0) {
+			// Once we are traveling at sea, we travel at a speed of 20 years
+			// per (unit) region.
+			timeReqired = 20
+		} else {
+			// We were on land, but the destination is at sea,
+			// it takes us 200 years to build a boat.
+			timeReqired = 200
+		}
+
+		// Calculate the actual distance between the two regions,
+		// so we are independent of the mesh resolution.
+		actualDist := m.GetDistance(u, v)
+		return float64(settleTime[u]) + timeReqired*actualDist
 	}
 
 	// Now add the region neighbors to the queue.

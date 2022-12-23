@@ -5,29 +5,36 @@ import (
 	"log"
 	"math"
 	"math/rand"
+	"sort"
 
 	"github.com/Flokey82/go_gens/genbiome"
 )
 
 func (m *Civ) calculateEconomicPotential() {
+	// TODO: Cities should have several values:
+	// - Prosperity
+	//   trade, industry, agriculture, etc.
+	// - Attractiveness
+	//   climate, culture, etc.
+
 	// NOTE: This is unfinished right now and a WIP.
 
 	// Calculate the analog of distance between regions by taking the surface
 	// of a sphere with radius 1 and dividing it by the number of regions.
 	// The square root will work as a somewhat sensible approximation of
 	// distance.
-	// distRegion := math.Sqrt(4*math.Pi/float64(m.mesh.numRegions))
+	distRegion := math.Sqrt(4 * math.Pi / float64(m.mesh.numRegions))
 
 	// Get the stop regions, which are the cities
 	// and calculate the radius in which we can find resources.
 	var resourceRadius []float64
-	stopRegions := make(map[int]bool)
+	stopRegs := make(map[int]bool)
 	for _, c := range m.Cities {
-		stopRegions[c.ID] = true
+		stopRegs[c.ID] = true
 		// The base radius is dependent on the population.
 		// The minimum radius is 1.0 and increases with the square
 		// root of the population.
-		radius := 1.0 + math.Sqrt(float64(c.Population))
+		radius := 1.0 + math.Sqrt(float64(c.Population))*distRegion
 		resourceRadius = append(resourceRadius, radius)
 	}
 
@@ -40,9 +47,9 @@ func (m *Civ) calculateEconomicPotential() {
 			// The resource ID also doubles as resource value.
 			resourceID := 1 << res
 
-			// Get all regions that contain the resource.
-			regions := m.getRegsWithResource(byte(resourceID), resourceType)
-			dist := m.assignDistanceField(regions, stopRegions)
+			// Get all regs that contain the resource.
+			regs := m.getRegsWithResource(byte(resourceID), resourceType)
+			dist := m.assignDistanceField(regs, stopRegs)
 
 			// Now loop through all cities and check if the distance field
 			// indicates that we can find the resource in the radius.
@@ -60,14 +67,20 @@ func (m *Civ) calculateEconomicPotential() {
 	calcResourceValues(ResourceTypeGem, ResMaxGems)
 	calcResourceValues(ResourceTypeStone, ResMaxStones)
 
-	// Now get the agricultural potential of all regions.
-	fAr := m.getFitnessArableLand()
-	agriculturePerRegion := make([]float64, m.mesh.numRegions)
-	for i := range agriculturePerRegion {
-		agriculturePerRegion[i] = fAr(i)
+	// Normalize the economic potential, so we have a value between 0 and 1.
+	_, maxEcon := minMax(economicPotential)
+	for i := range economicPotential {
+		economicPotential[i] /= maxEcon
 	}
 
-	// Get the max value of the agricultural potential.
+	// Now get the agricultural potential of all regions.
+	fitnessArableFunc := m.getFitnessArableLand()
+	agriculturePerRegion := make([]float64, m.mesh.numRegions)
+	for i := range agriculturePerRegion {
+		agriculturePerRegion[i] = fitnessArableFunc(i)
+	}
+
+	// Add the normalized agricultural potential to the economic potential.
 	_, maxAgr := minMax(agriculturePerRegion)
 	for i, c := range m.Cities {
 		// Check if we have a positive agricultural potential
@@ -76,48 +89,104 @@ func (m *Civ) calculateEconomicPotential() {
 			economicPotential[i] += agrPotential / maxAgr
 		}
 	}
+	// Now we have a economic potential ranging from 0 to 2.
 
 	// Now we go through all the cities, and see if they might be able to
 	// trade with each other. This way they can profit from each other's
 	// resources.
+	//
 	// In the future we make this dependent on geographic features, where
 	// mountains or the sea might be a barrier.
 	tradePotential := make([]float64, len(m.Cities))
 	for i, c := range m.Cities {
 		// Calculate the distance field of all cities to the current city.
-		dist := m.assignDistanceField([]int{c.ID}, stopRegions)
 
+		//var count int
 		// Loop through all cities and check if we can trade with them.
 		for j, c2 := range m.Cities {
 			// We don't trade with ourselves.
 			if i == j {
 				continue
 			}
-			// The trade radius is the sum of the square of the two cities' radius.
-			radius := resourceRadius[i]*(1+economicPotential[i]) + resourceRadius[j]*(1+economicPotential[j])
+			// The trade radius is the sum of the two cities' radius times their economic potential.
+			radius := resourceRadius[i]*economicPotential[i] + resourceRadius[j]*economicPotential[j]
 
 			// If the distance is within the radius, we can trade.
-			// the closer we are, the more economic potential we have.
-			if dist[c2.ID] <= radius {
-				tradePotential[i] = economicPotential[j] * (1 - dist[c2.ID]/radius)
+			// However, if the other city has a higher economic potential,
+			// we profit less from the trade.
+			// TODO: Switch this to population size?
+			// the closer we are, the more economic potential we have (up to 20%).
+			dist := m.GetDistance(c.ID, c2.ID)
+			if dist <= radius {
+				if economicPotential[j] > economicPotential[i] {
+					// We don't profit as much from the trade (up to 10%).
+					tradePotential[i] += economicPotential[i] * (1 - dist/radius) * 0.1
+				} else {
+					// We profit more from the trade (up to 20%).
+					tradePotential[i] += economicPotential[j] * (1 - dist/radius) * 0.2
+				}
 			}
 		}
+		//log.Printf("City %s (%s) can trade with %d cities.", c.Name, c.Type, count)
 	}
 
-	// Now we add the trade potential to the economic potential.
+	// Now we add the normalized trade potential to the economic potential.
+	_, maxTrade := minMax(tradePotential)
 	for i := range m.Cities {
-		economicPotential[i] += tradePotential[i]
+		economicPotential[i] += tradePotential[i] / maxTrade
 	}
+	// Now we have a economic potential ranging from 0 to 3.
 
-	// Log the economic potential of the cities.
+	// Assign the economic potential (range 0 to 3).
 	for i, c := range m.Cities {
-		log.Printf("City %s has economic potential %f", c.Name, economicPotential[i])
+		c.EconomicPotential = economicPotential[i]
+
+		// Log the economic potential (remove later)
+		// log.Printf("City %s (%s) has economic potential %f", c.Name, c.Type, c.EconomicPotential)
+	}
+}
+
+func (m *Civ) calculateAttractiveness() {
+	// The attractiveness of a region is dependent on the following factors:
+	// - Climate and elevation
+	// - Distance to water (ocean, river, lake)
+	// - Arable land (self-sufficiency)
+	climateFitnessFunc := m.getFitnessClimate()
+	arableLandFitnessFunc := m.getFitnessArableLand()
+	proximityToWaterFitnessFunc := m.getFitnessProximityToWater()
+
+	// TODO: Use getAttractivenessFunc
+	// Calculate the attractiveness of all cities.
+	for _, c := range m.Cities {
+		// Log how close the city is to water.
+		// log.Printf("City %s (%s) has proximity %f to water", c.Name, c.Type, proximityToWaterFitnessFunc(c.ID))
+		// Log the arable land.
+		// log.Printf("City %s (%s) has %f arable land", c.Name, c.Type, arableLandFitnessFunc(c.ID))
+		// Log the climate.
+		// log.Printf("City %s (%s) has climate %f", c.Name, c.Type, climateFitnessFunc(c.ID))
+		// The attractiveness is the average of the fitness functions.
+		c.Attractiveness = (climateFitnessFunc(c.ID) + arableLandFitnessFunc(c.ID) + proximityToWaterFitnessFunc(c.ID)) / 3
+	}
+}
+
+func (m *Civ) getAttractivenessFunc() func(int) float64 {
+	// The attractiveness of a region is dependent on the following factors:
+	// - Climate and elevation
+	// - Distance to water (ocean, river, lake)
+	// - Arable land (self-sufficiency)
+	climateFitnessFunc := m.getFitnessClimate()
+	arableLandFitnessFunc := m.getFitnessArableLand()
+	proximityToWaterFitnessFunc := m.getFitnessProximityToWater()
+
+	return func(regionID int) float64 {
+		// The attractiveness is the average of the fitness functions.
+		return (climateFitnessFunc(regionID) + arableLandFitnessFunc(regionID) + proximityToWaterFitnessFunc(regionID)) / 3
 	}
 }
 
 func (m *Civ) tickCityDays(c *City, days int) {
 	// Check if the city is abandoned.
-	if c.Population == 0 {
+	if c.Population <= 0 {
 		return
 	}
 
@@ -130,14 +199,47 @@ func (m *Civ) tickCityDays(c *City, days int) {
 	// Also the life expectancy might be low in early history.
 	// Wars might also have a negative effect on the population.
 
-	// With increasing population, the city is
-	// be more prone to famine or disease.
-	if c.Population > 356 && rand.Intn(c.Population*days/356) > 1000*days/356 {
-		// Famine or disease, up to 1/4 of the population dies.
-		c.Population -= rand.Intn(c.Population / 4)
-	} else if rand.Intn(356*days/356) < 10 {
-		// Random disaster strikes.
-		c.Population -= rand.Intn(c.Population / 2)
+	// TODO: With increasing population, the city is be more prone to famine
+	// or disease.
+
+	// Check if a random disaster strikes.
+	if c.Population > 4000 && rand.Intn(100*356) < days {
+		dead := rand.Intn(c.Population / 2)
+
+		// Randomly choose a disaster from the list of strings.
+		disasters := []string{
+			"Plague",
+			"Famine",
+			"Drought",
+			"Earthquake",
+			"Volcanic eruption",
+			"War",
+			"Fire",
+			"Riots",
+			"Revolution",
+			"Rebellion",
+			"Storm",
+			"Blizzard",
+			"Wildfire",
+			"Sinkhole",
+		}
+		disaster := disasters[rand.Intn(len(disasters))]
+		year := m.Geo.Calendar.GetYear()
+		m.AddEvent(&Event{
+			Year: year,
+			Type: disaster,
+			Msg:  fmt.Sprintf("%d people died in %s", dead, c.Name),
+			ID: ObjectReference{
+				Type: ObjectTypeCity,
+				ID:   c.ID,
+			},
+		})
+		// Log the disaster, what type, how many people died and where.
+		log.Printf("Year %d, Disaster: %s, %d people died in %s", year, disaster, dead, c.Name)
+		c.Population -= dead
+		if c.Population < 0 {
+			c.Population = 0
+		}
 	}
 
 	// Check if there is still anyone alive.
@@ -153,17 +255,130 @@ func (m *Civ) tickCityDays(c *City, days int) {
 	// agricultural town to a city with a more diverse economy. A mining town
 	// might, if there is enough resources, transition to an industrial city.
 
+	// In the middle ages, the average population growth was 0.16%-ish per year.
+	// See: https://en.wikipedia.org/wiki/Medieval_demography
+	//
 	// TODO: The population growth should be dependent on the economic power
 	// and if there is famine, war, drought, sickness, etc.
-	factor := float64(c.Population) * 0.19 * float64(days) / 365
+	// TODO: Also take in account what size of population the city can sustain.
+	factor := float64(c.Population) * c.PopulationGrowthRate() * float64(days) / 365
 	if factor >= 1 {
-		c.Population += int(math.Ceil(factor * m.rand.Float64()))
+		c.Population += int(math.Ceil(factor))
 	} else if m.rand.Float64() < factor {
 		c.Population++
 	}
 
+	// Calculate the limit of the population based on attractiveness and
+	// economic potential.
+	maxPop := c.MaxPopulationLimit()
+	if c.Population > maxPop {
+		log.Println("City population limit reached:", c.Name, c.Population, maxPop)
+		excessPopulation := c.Population - maxPop
+		// TODO: The excess population should migrate to other cities or
+		// a new settlement might be founded nearby.
+		// Since we don't want to constantly migrate people, we just
+		// move a larger portion of entire population, so that we drop
+		// way below the limit, giving us a chance to grow again for
+		// a while.
+
+		// Move 10% of the population.
+		excessPopulation = maxInt(excessPopulation*12/10, c.Population/20)
+		excessPopulation = minInt(excessPopulation, c.Population-1)
+		m.relocateFromCity(c, excessPopulation)
+		/*
+			// Find the best suitable neighbor region.
+			bestReg := -1
+			bestScore := 0.0
+
+			climateFitnessFunc := m.getFitnessClimate()
+			arableLandFitnessFunc := m.getFitnessArableLand()
+			proximityToWaterFitnessFunc := m.getFitnessProximityToWater()
+			for _, nb := range m.GetRegNeighbors(c.ID) {
+				attr := (climateFitnessFunc(c.ID) + arableLandFitnessFunc(c.ID) + proximityToWaterFitnessFunc(c.ID)) / 3
+				if attr > bestScore {
+					bestScore = attr
+					bestReg = nb
+				}
+			}
+			if bestReg != -1 {
+				m.placeCityAt(bestReg, TownTypeFarming, excessPopulation, bestScore)
+			}*/
+		c.Population -= excessPopulation
+		m.calculateEconomicPotential()
+	}
+
+	// Update the peak population.
+	// TODO: Maybe store the year when the peak population was reached?
 	if c.Population > c.MaxPopulation {
 		c.MaxPopulation = c.Population
+	}
+}
+
+// relocateFromCity moves a portion of the population from the city to
+// another city or a new settlement.
+func (m *Civ) relocateFromCity(c *City, population int) {
+	// Copy the slice of cities, so that we can modify it.
+	cities := make([]*City, 0, len(m.Cities)-1)
+	occupied := make(map[int]bool)
+	for _, city := range m.Cities {
+		occupied[city.ID] = true
+
+		// Remove the origin city from the list of cities.
+		if city.ID != c.ID {
+			cities = append(cities, city)
+		}
+	}
+
+	// Sort the cities by distance from the city.
+	sort.Slice(cities, func(i, j int) bool {
+		return m.GetDistance(c.ID, cities[i].ID) < m.GetDistance(c.ID, cities[j].ID)
+	})
+
+	// Check if any of the three closest cities have enough space.
+	maxClosestCities := 5
+	for i, city := range cities {
+		if i >= maxClosestCities {
+			break
+		}
+		maxPop := city.MaxPopulationLimit()
+		if city.Population+population*12/10 <= maxPop {
+			// Move the population to the closest city.
+			city.Population += population
+			return
+		}
+	}
+
+	// Since the closest city doesn't have enough space, we need to
+	// create a new settlement.
+	attFunc := m.getAttractivenessFunc()
+
+	// Find the best suitable neighbor region.
+	bestReg := -1
+	bestScore := 0.0
+	maxDepth := 10
+	seenRegions := make(map[int]bool)
+	var traverseNeighbors func(id int, depth int)
+	traverseNeighbors = func(id int, depth int) {
+		for _, nb := range m.GetRegNeighbors(id) {
+			if seenRegions[nb] {
+				continue
+			}
+			seenRegions[nb] = true
+			attr := attFunc(nb)
+			if attr > bestScore && !occupied[nb] && nb != c.ID {
+				bestScore = attr
+				bestReg = nb
+			}
+			if depth < maxDepth {
+				traverseNeighbors(nb, depth+1)
+			}
+		}
+	}
+	traverseNeighbors(c.ID, 0)
+	if bestReg != -1 {
+		c := m.placeCityAt(bestReg, TownTypeFarming, population, bestScore)
+		c.Founded = m.History.GetYear()
+		c.Attractiveness = bestScore
 	}
 }
 
@@ -198,19 +413,32 @@ func (m *Civ) TickCity(c *City) {
 
 // City represents a city in the world.
 type City struct {
-	ID            int       // Region where the city is located
-	Name          string    // Name of the city
-	Type          TownType  // Type of city
-	Score         float64   // Score of the fitness function
-	Population    int       // Population of the city
-	MaxPopulation int       // Maximum population of the city
-	Culture       *Culture  // Culture of the city region
-	Language      *Language // Language of the city
+	ID                int       // Region where the city is located
+	Name              string    // Name of the city
+	Type              TownType  // Type of city
+	Score             float64   // Score of the fitness function
+	Population        int       // Population of the city
+	MaxPopulation     int       // Maximum population of the city
+	Culture           *Culture  // Culture of the city region
+	Language          *Language // Language of the city
+	EconomicPotential float64   // Economic potential of the city
+	Attractiveness    float64   // Attractiveness of the city
+	Founded           int64     // Year when the city was founded
 }
 
 // String returns a string representation of the city.
 func (c *City) String() string {
 	return fmt.Sprintf("%s (%d)", c.Name, c.Population)
+}
+
+// MaxPopulationLimit returns the maximum population sustainable by the city.
+func (c *City) MaxPopulationLimit() int {
+	return int(2000 * math.Pow((c.EconomicPotential+c.Attractiveness), 2))
+}
+
+// PopulationGrowthRate returns the population growth rate per year.
+func (c *City) PopulationGrowthRate() float64 {
+	return 0.3 * (c.EconomicPotential + c.Attractiveness) / (2 * 100)
 }
 
 // PlaceNCities places n cities with the highest fitness scores.
@@ -234,31 +462,43 @@ func (m *Civ) PlaceNCities(n int, cType TownType) {
 // PlaceCity places another city at the region with the highest fitness score.
 func (m *Civ) PlaceCity(cType TownType, scoreFunc func(int) float64, distSeedFunc func() []int) *City {
 	// Pick the region with the highest fitness score.
+	occupied := make(map[int]bool)
+	for _, c := range m.Cities {
+		occupied[c.ID] = true
+	}
+
 	var newcity int
 	lastMax := math.Inf(-1)
 	for i, val := range m.CalcCityScore(scoreFunc, distSeedFunc) {
-		if val > lastMax {
+		if val > lastMax && !occupied[i] {
 			newcity = i
 			lastMax = val
 		}
 	}
-
+	if newcity == -1 {
+		panic("no suitable location found")
+	}
 	// Get base population from city type.
 	// TODO: Calculate population based on suitability for habitation.
 	basePop := cType.FoundingPopulation()
 	basePop += 2 * m.rand.Intn(basePop) / (len(m.Cities) + 1)
+	return m.placeCityAt(newcity, cType, basePop, lastMax)
+}
+
+func (m *Civ) placeCityAt(r int, cType TownType, pop int, score float64) *City {
 	c := &City{
-		ID:            newcity,
-		Score:         lastMax,
-		Population:    basePop,
-		MaxPopulation: basePop,
+		ID:            r,
+		Score:         score,
+		Population:    pop,
+		MaxPopulation: pop,
 		Type:          cType,
-		Culture:       m.GetCulture(newcity),
+		Culture:       m.GetCulture(r),
+		Founded:       m.Settled[r],
 	}
 
 	// If there is no known culture, generate a new one.
 	if c.Culture == nil {
-		c.Culture = m.PlaceCultureAt(newcity) // TODO: Grow this culture.
+		c.Culture = m.PlaceCultureAt(r) // TODO: Grow this culture.
 	}
 
 	// Use the local language to generate a new city name.
@@ -299,21 +539,21 @@ func (m *Civ) getFitnessCityDefault() func(int) float64 {
 	_, maxFlux := minMax(m.Flux)
 	steepness := m.GetSteepness()
 
-	return func(i int) float64 {
+	return func(r int) float64 {
 		// If we are below (or at) sea level, or we are in a pool of water,
 		// assign lowest score and continue.
-		if m.Elevation[i] <= 0 || m.Waterpool[i] > 0 {
+		if m.Elevation[r] <= 0 || m.Waterpool[r] > 0 {
 			return -1.0
 		}
 
 		// Visit all neighbors and modify the score based on their properties.
 		var hasWaterBodyBonus bool
-		nbs := m.GetRegNeighbors(i)
+		nbs := m.GetRegNeighbors(r)
 
 		// Initialize fitness score with the normalized flux value.
 		// This will favor placing cities along (and at the end of)
 		// large rivers.
-		score := math.Sqrt(m.Flux[i] / maxFlux)
+		score := math.Sqrt(m.Flux[r] / maxFlux)
 		for _, nb := range nbs {
 			// Add bonus if near ocean or lake.
 			if m.isRegBelowOrAtSeaLevelOrPool(nb) {
@@ -347,7 +587,7 @@ func (m *Civ) getFitnessCityDefault() func(int) float64 {
 
 		// The steeper the terrain, the less likely it is to be settled.
 		// TODO: Bonus for trade routes.
-		stp := steepness[i]
+		stp := steepness[r]
 		score *= 1.0 - (stp * stp)
 		return score
 	}

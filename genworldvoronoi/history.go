@@ -31,8 +31,9 @@ type ObjectReference struct {
 }
 
 type Event struct {
-	Time int64           // TODO: Allow different types of time.
+	Year int64           // TODO: Allow different types of time.
 	Type string          // Maybe use an enum?
+	Msg  string          // Message that describes the event.
 	ID   ObjectReference // Reference to the object that the event is about.
 }
 

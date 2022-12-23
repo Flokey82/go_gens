@@ -9,6 +9,20 @@ import (
 	"github.com/Flokey82/go_gens/vectors"
 )
 
+func maxInt(a, b int) int {
+	if a > b {
+		return a
+	}
+	return b
+}
+
+func minInt(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
+}
+
 // getCentroidOfTriangle returns the centroid of a triangle defined by
 // the xyz coordinates a, b, c as a vectors.Vec3.
 func getCentroidOfTriangle(a, b, c []float64) vectors.Vec3 {
@@ -234,15 +248,16 @@ func initTimeSlice(size int) []int64 {
 func mergeIndexSegments(segs [][2]int) [][]int {
 	log.Println("start adj")
 	adj := make(map[int][]int)
+	var maxSegIdx int
 	for i := 0; i < len(segs); i++ {
 		seg := segs[i]
 		adj[seg[0]] = append(adj[seg[0]], seg[1])
 		adj[seg[1]] = append(adj[seg[1]], seg[0])
-	}
-	var maxSegIdx int
-	for s := range adj {
-		if s > maxSegIdx {
-			maxSegIdx = s
+		if seg[0] > maxSegIdx {
+			maxSegIdx = seg[0]
+		}
+		if seg[1] > maxSegIdx {
+			maxSegIdx = seg[1]
 		}
 	}
 	done := make([]bool, maxSegIdx)

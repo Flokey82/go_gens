@@ -171,14 +171,14 @@ func (m *BaseObject) GetDownhill(usePool bool) []int {
 		if usePool {
 			lowestElevation += m.Waterpool[r]
 		}
-		for _, neighborR := range m.GetRegNeighbors(r) {
-			elev := m.Elevation[neighborR]
+		for _, nbReg := range m.GetRegNeighbors(r) {
+			elev := m.Elevation[nbReg]
 			if usePool {
-				elev += m.Waterpool[neighborR]
+				elev += m.Waterpool[nbReg]
 			}
 			if elev < lowestElevation {
 				lowestElevation = elev
-				lowestRegion = neighborR
+				lowestRegion = nbReg
 			}
 		}
 		rDownhill[r] = lowestRegion
@@ -265,11 +265,11 @@ func (m *BaseObject) getLowestRegNeighbor(r int) int {
 	lowestReg := -1
 	lowestElev := 999.0
 	rElev := m.Elevation[r]
-	for _, neighborReg := range m.GetRegNeighbors(r) {
-		elev := m.Elevation[neighborReg]
+	for _, nbReg := range m.GetRegNeighbors(r) {
+		elev := m.Elevation[nbReg]
 		if elev < lowestElev && elev < rElev {
 			lowestElev = elev
-			lowestReg = neighborReg
+			lowestReg = nbReg
 		}
 	}
 	return lowestReg
@@ -655,16 +655,23 @@ func (m *BaseObject) assignDistanceField(seedRegs []int, stopReg map[int]bool) [
 		pos := queueOut + m.rand.Intn(len(queue)-queueOut)
 		currentReg := queue[pos]
 		queue[pos] = queue[queueOut]
-		for _, neighborReg := range mesh.r_circulate_r(outRegs, currentReg) {
-			if !math.IsInf(regDistance[neighborReg], 0) || stopReg[neighborReg] {
+		for _, nbReg := range mesh.r_circulate_r(outRegs, currentReg) {
+			if !math.IsInf(regDistance[nbReg], 0) || stopReg[nbReg] {
 				continue
 			}
 
 			// If the current distance value for neighbor_r is unset (-1)
 			// and if neighbor_r is not a "stop region", we set the distance
 			// value to the distance value of current_r, incremented by 1.
-			regDistance[neighborReg] = regDistance[currentReg] + 1
-			queue = append(queue, neighborReg)
+			regDistance[nbReg] = regDistance[currentReg] + 1
+			queue = append(queue, nbReg)
+		}
+
+		// If we have consumed over 1000000 elements in the queue,
+		// we reset the queue to the remaining elements.
+		if queueOut > 1000000 {
+			queue = queue[queueOut:]
+			queueOut = 0
 		}
 	}
 
@@ -723,15 +730,15 @@ func (m *BaseObject) assignDistanceFieldWithIntensity(seedsR []int, stopR map[in
 		currentComp := compression[currentReg]
 		currentDist := regDistance[currentReg]
 		queue[pos] = queue[queueOut]
-		for _, neighborReg := range mesh.r_circulate_r(outRegs, currentReg) {
-			if !math.IsInf(regDistance[neighborReg], 0) || stopR[neighborReg] {
+		for _, nbReg := range mesh.r_circulate_r(outRegs, currentReg) {
+			if !math.IsInf(regDistance[nbReg], 0) || stopR[nbReg] {
 				continue
 			}
 
 			// If the current distance value for neighbor_r is unset (-1)
 			// and if neighbor_r is not a "stop region", we set the distance
 			// value to the distance value of current_r, incremented by 1.
-			regDistance[neighborReg] = currentDist + 1
+			regDistance[nbReg] = currentDist + 1
 
 			// Apply the compression of the current region to the distance
 			// value of neighbor_r.
@@ -739,15 +746,22 @@ func (m *BaseObject) assignDistanceFieldWithIntensity(seedsR []int, stopR map[in
 				// If positive compression is enabled and the compression is... well
 				// positive, we subtract the normalized compression value from the
 				// distance value for neighbor_r.
-				regDistance[neighborReg] -= currentComp / maxComp
+				regDistance[nbReg] -= currentComp / maxComp
 			} else if currentComp < 0 && enableNegativeCompression {
 				// If negative compression is enabled and the compression is... well
 				// negative, we add the normalized compression value to the distance
 				// value for neighbor_r.
-				regDistance[neighborReg] += currentComp / minComp
+				regDistance[nbReg] += currentComp / minComp
 			}
 			// Add neighbor_r to the queue.
-			queue = append(queue, neighborReg)
+			queue = append(queue, nbReg)
+		}
+
+		// If we have consumed over 1000000 elements in the queue,
+		// we reset the queue to the remaining elements.
+		if queueOut > 1000000 {
+			queue = queue[queueOut:]
+			queueOut = 0
 		}
 	}
 
@@ -779,7 +793,7 @@ func (m *BaseObject) interpolate(regions []int) (*interpolated, error) {
 	regionIsMountain := make(map[int]bool)
 	regionIsVolcano := make(map[int]bool)
 	regionCompression := make(map[int]float64)
-	outR := make([]int, 0, 6)
+	outRegs := make([]int, 0, 6)
 
 	for _, r := range regions {
 		if m.RegionIsMountain[r] {
@@ -802,14 +816,14 @@ func (m *BaseObject) interpolate(regions []int) (*interpolated, error) {
 		ipl.Elevation = append(ipl.Elevation, m.Elevation[r])
 
 		// Circulate_r all points and add midpoints.
-		for _, rn := range m.mesh.r_circulate_r(outR, r) {
+		for _, nbReg := range m.mesh.r_circulate_r(outRegs, r) {
 			// Check if we already added a midpoint for this edge.
 			var check [2]int
-			if r < rn {
+			if r < nbReg {
 				check[0] = r
-				check[1] = rn
+				check[1] = nbReg
 			} else {
-				check[0] = rn
+				check[0] = nbReg
 				check[1] = r
 			}
 			if seen[check] {
@@ -818,7 +832,7 @@ func (m *BaseObject) interpolate(regions []int) (*interpolated, error) {
 			seen[check] = true
 
 			// Generate midpoint and average values.
-			rnxyz := m.XYZ[rn*3 : (rn*3)+3]
+			rnxyz := m.XYZ[nbReg*3 : (nbReg*3)+3]
 			mid := convToVec3([]float64{
 				(rxyz[0] + rnxyz[0]) / 2,
 				(rxyz[1] + rnxyz[1]) / 2,
@@ -829,11 +843,11 @@ func (m *BaseObject) interpolate(regions []int) (*interpolated, error) {
 
 			// Calculate diff and use noise to add variation.
 			nvl := (ipl.noise.Eval3(mid.X, mid.Y, mid.Z) + 1) / 2
-			diffElevation := m.Elevation[rn] - m.Elevation[r]
-			diffMoisture := m.Moisture[rn] - m.Moisture[r]
-			diffRainfall := m.Rainfall[rn] - m.Rainfall[r]
-			diffFlux := m.Flux[rn] - m.Flux[r]
-			diffPool := m.Waterpool[rn] - m.Waterpool[r]
+			diffElevation := m.Elevation[nbReg] - m.Elevation[r]
+			diffMoisture := m.Moisture[nbReg] - m.Moisture[r]
+			diffRainfall := m.Rainfall[nbReg] - m.Rainfall[r]
+			diffFlux := m.Flux[nbReg] - m.Flux[r]
+			diffPool := m.Waterpool[nbReg] - m.Waterpool[r]
 
 			// TODO: Add some better variation with the water pool and stuff.
 			// TODO: Add flood fill, downhill and flux?

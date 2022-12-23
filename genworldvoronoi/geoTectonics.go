@@ -43,10 +43,10 @@ func (m *Geo) generatePlates() {
 		currentReg := queue[pos]
 		queue[pos] = queue[queueOut]
 		outReg = mesh.r_circulate_r(outReg, currentReg)
-		for _, neighbor_r := range outReg {
-			if regPlate[neighbor_r] == -1 {
-				regPlate[neighbor_r] = regPlate[currentReg]
-				queue = append(queue, neighbor_r)
+		for _, nbReg := range outReg {
+			if regPlate[nbReg] == -1 {
+				regPlate[nbReg] = regPlate[currentReg]
+				queue = append(queue, nbReg)
 			}
 		}
 	}
@@ -55,9 +55,9 @@ func (m *Geo) generatePlates() {
 	regXYZ := m.XYZ
 	plateVectors := make([]vectors.Vec3, mesh.numRegions)
 	for _, centerReg := range plateRegs {
-		neighborReg := mesh.r_circulate_r(outReg, centerReg)[0]
+		nbReg := mesh.r_circulate_r(outReg, centerReg)[0]
 		p0 := convToVec3(regXYZ[3*centerReg : 3*centerReg+3])
-		p1 := convToVec3(regXYZ[3*neighborReg : 3*neighborReg+3])
+		p1 := convToVec3(regXYZ[3*nbReg : 3*nbReg+3])
 		plateVectors[centerReg] = vectors.Sub3(p1, p0).Normalize()
 	}
 
@@ -113,11 +113,11 @@ func (m *Geo) findCollisions() ([]int, []int, []int, map[int]float64) {
 		bestCompression = nInf // NOTE: Was Infinity
 		bestReg = -1
 		rOut = m.mesh.r_circulate_r(rOut, currentReg)
-		for _, neighborReg := range rOut {
-			if regPlate[currentReg] != regPlate[neighborReg] {
+		for _, nbReg := range rOut {
+			if regPlate[currentReg] != regPlate[nbReg] {
 				// sometimes I regret storing xyz in a compact array...
 				currentPos := convToVec3(m.XYZ[3*currentReg : 3*currentReg+3])
-				neighborPos := convToVec3(m.XYZ[3*neighborReg : 3*neighborReg+3])
+				neighborPos := convToVec3(m.XYZ[3*nbReg : 3*nbReg+3])
 
 				// simulate movement for deltaTime seconds
 				distanceBefore := vectors.Dist3(currentPos, neighborPos)
@@ -125,7 +125,7 @@ func (m *Geo) findCollisions() ([]int, []int, []int, map[int]float64) {
 				plateVec := plateVectors[regPlate[currentReg]].Mul(deltaTime)
 				a := vectors.Add3(currentPos, plateVec)
 
-				plateVecNeighbor := plateVectors[regPlate[neighborReg]].Mul(deltaTime)
+				plateVecNeighbor := plateVectors[regPlate[nbReg]].Mul(deltaTime)
 				b := vectors.Add3(neighborPos, plateVecNeighbor)
 
 				distanceAfter := vectors.Dist3(a, b)
@@ -135,7 +135,7 @@ func (m *Geo) findCollisions() ([]int, []int, []int, map[int]float64) {
 
 				// keep track of the adjacent region that gets closest.
 				if compression > bestCompression { // NOTE: changed from compression < bestCompression
-					bestReg = neighborReg
+					bestReg = nbReg
 					bestCompression = compression
 				}
 			}
@@ -152,9 +152,9 @@ func (m *Geo) findCollisions() ([]int, []int, []int, map[int]float64) {
 
 		enablePlateCheck := true
 		if enablePlateCheck {
-			current_plate := m.RegionToPlate[currentReg]
-			best_plate := m.RegionToPlate[bestReg]
-			if plateIsOcean[current_plate] && plateIsOcean[best_plate] {
+			currentPlate := m.RegionToPlate[currentReg]
+			bestPlate := m.RegionToPlate[bestReg]
+			if plateIsOcean[currentPlate] && plateIsOcean[bestPlate] {
 				// If both plates are ocean plates and they collide, a coastline is produced,
 				// while if they "drift apart" (which is not quite correct in our code, since
 				// drifting apart can already be a collision below the threshold), we mark it
@@ -167,7 +167,7 @@ func (m *Geo) findCollisions() ([]int, []int, []int, map[int]float64) {
 					// See: https://www.icelandontheweb.com/articles-on-iceland/nature/geology/tectonic-plates
 					// ocean_r = append(ocean_r, current_r)
 				}
-			} else if !plateIsOcean[current_plate] && !plateIsOcean[best_plate] {
+			} else if !plateIsOcean[currentPlate] && !plateIsOcean[bestPlate] {
 				// If both plates are non-ocean plates and they collide, mountains are formed.
 				if collided {
 					mountainRegs = append(mountainRegs, currentReg)
@@ -179,7 +179,7 @@ func (m *Geo) findCollisions() ([]int, []int, []int, map[int]float64) {
 				// drifting apart results in a coastline being defined.
 				if collided {
 					// If one plate is ocean, mountains only fold up on the non-ocean plate.
-					if !plateIsOcean[current_plate] {
+					if !plateIsOcean[currentPlate] {
 						mountainRegs = append(mountainRegs, currentReg)
 					}
 				} else {

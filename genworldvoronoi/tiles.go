@@ -15,7 +15,7 @@ import (
 // GetTile returns the image of the tile at the given coordinates and zoom level.
 func (m *Map) GetTile(x, y, zoom int) image.Image {
 	// Skip drawing rivers for now.
-	drawRivers := false
+	drawRivers := true
 
 	// Wrap the tile coordinates.
 	x, y = wrapTileCoordinates(x, y, zoom)
@@ -117,10 +117,11 @@ func (m *Map) GetTile(x, y, zoom int) image.Image {
 	// fetch all the rivers and filter them by the tile.
 	// We should filter this stuff before we generate the rivers.
 	if drawRivers {
-		rivers := m.getRivers(0.0001)
+		rivers := m.getRiversInLatLonBB(0.001/float64(int(1)<<zoom), la1-latLonMargin, lo1-latLonMargin, la2+latLonMargin, lo2+latLonMargin)
 		_, maxFlux := minMax(m.Flux)
 
 		for _, river := range rivers {
+			// TODO: Fix wrapping around the world.
 			gc.SetStrokeColor(color.NRGBA{0, 0, 255, 255})
 			gc.SetLineWidth(1)
 			gc.BeginPath()
@@ -134,9 +135,16 @@ func (m *Map) GetTile(x, y, zoom int) image.Image {
 				// Set the line width based on the flux of the river.
 				rLat, rLon = m.LatLon[p][0], m.LatLon[p][1]
 				x, y := latLonToPixels(rLat, rLon, zoom)
-				gc.LineTo(x-dx, y-dy2)
+				x -= dx
+				y -= dy2
+				gc.LineTo(x, y)
+				// TODO: Use steepness to determine the amplitude of meandering.
+				// The less steep the river is, the more it meanders.
+				// lx, ly := gc.LastPoint()
+				// gc.CubicCurveTo((x+2*lx)/3, ly, lx, (ly+2*y)/3, x, y)
 			}
 			gc.Stroke()
+			gc.Close()
 		}
 	}
 	return dest
@@ -314,7 +322,7 @@ func (m *Map) GetGeoJSONCities(la1, lo1, la2, lo2 float64, zoom int) ([]byte, er
 		f.SetProperty("culture", c.Culture.Name)
 		f.SetProperty("population", c.Population)
 		f.SetProperty("maxpop", c.MaxPopulation)
-		f.SetProperty("settled", maxSettled-m.Settled[c.ID])
+		f.SetProperty("settled", maxSettled-c.Founded)
 		geoJSON.AddFeature(f)
 	}
 

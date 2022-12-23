@@ -20,6 +20,32 @@ func (m *BaseObject) getRivers(limit float64) [][]int {
 	return mergeIndexSegments(links)
 }
 
+func (m *BaseObject) getRiversInLatLonBB(limit float64, minLat, minLon, maxLat, maxLon float64) [][]int {
+	// Get segments that are valid river segments.
+	links := m.getRiverSegments(limit)
+
+	// Merge the segments that are connected to each other into logical region sequences.
+	log.Println("start merge")
+	start := time.Now()
+	defer func() {
+		log.Println("Done river segments in ", time.Since(start).String())
+	}()
+	// Filter out all segments that are not in the bounding box.
+	var filtered [][2]int
+	for _, link := range links {
+		lat1, lon1 := m.LatLon[link[0]][0], m.LatLon[link[0]][1]
+		lat2, lon2 := m.LatLon[link[1]][0], m.LatLon[link[1]][1]
+
+		// If both points are outside the bounding box, skip the segment.
+		if (lat1 < minLat || lat1 > maxLat || lon1 < minLon || lon1 > maxLon) &&
+			(lat2 < minLat || lat2 > maxLat || lon2 < minLon || lon2 > maxLon) {
+			continue
+		}
+		filtered = append(filtered, link)
+	}
+	return mergeIndexSegments(filtered)
+}
+
 // getRiverSegments returns all region / downhill neighbor pairs whose flux values
 // exceed the provided limit / threshold.
 func (m *BaseObject) getRiverSegments(limit float64) [][2]int {
