@@ -81,10 +81,21 @@
         onEachFeature: function (feature, layer) {
           layer.bindPopup('Name: ' + feature.properties.name + 
           '<br/>Population: ' + feature.properties.population +
+          '<br/>Pop Growth: ' + feature.properties.popgrowth +
           '<br/>Max Pop: ' + feature.properties.maxpop +
+          '<br/>Max Pop Limit: ' + feature.properties.maxpoplimit +
           '<br/>Type: ' + feature.properties.type + 
           '<br/>Culture: ' + feature.properties.culture +
-          '<br/>Settled: ' + feature.properties.settled + 'yrs ago');
+          '<br/>Settled: ' + feature.properties.settled + 'yrs ago'+
+          '<br/>Attractiveness: ' + feature.properties.attractiveness +
+          '<br/>Economic: ' + feature.properties.economic +
+          '<br/>Agriculture: ' + feature.properties.agriculture +
+          '<br/>Trade: ' + feature.properties.trade +
+          '<br/>Resources: ' + feature.properties.resources +
+          '<br/>Radius: ' + feature.properties.radius + 'km'+
+          '<br/>Tradepartners: ' + feature.properties.tradepartners +
+          '<br/>History:<br/>'+
+          '<span style="font-size:4px;">' + (feature.properties.history || []).join('<br/>') + '</span>');
         },
         pointToLayer: function (feature, latlng) {
             return L.marker(latlng, {

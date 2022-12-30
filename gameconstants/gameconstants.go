@@ -48,6 +48,7 @@ const (
 	// Earth properties.
 	EarthGravity                     = 9.81        // m/s^2
 	EarthRadius                      = 6371.0      // km
+	EarthCircumference               = 40075.0     // km
 	EarthSurface                     = 510100000.0 // km^2
 	EarthMaxElevation                = 8848.0      // m above sea level
 	EarthElevationTemperatureFalloff = 0.0065      // °C/m

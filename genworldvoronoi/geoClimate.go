@@ -156,10 +156,10 @@ func (m *Geo) assignWindVectors() {
 			regVec := regWindVec[r]
 			lat := m.LatLon[r][0]
 			lon := m.LatLon[r][1]
-			temp_r := getMeanAnnualTemp(lat) - getTempFalloffFromAltitude(8850*m.Elevation[r]/maxElev)
+			tempReg := getMeanAnnualTemp(lat) - getTempFalloffFromAltitude(8850*m.Elevation[r]/maxElev)
 			if m.Elevation[r] < 0 {
 				// TODO: Use actual distance from ocean to calculate temperature falloff.
-				temp_r -= 1 / (regDistanceSea[r] + 1)
+				tempReg -= 1 / (regDistanceSea[r] + 1)
 			}
 			// Get temperature for r.
 			v := vectors.Normalize(vectors.Vec2{
@@ -175,7 +175,7 @@ func (m *Geo) assignWindVectors() {
 					tempNb -= 1 / (regDistanceSea[nb] + 1)
 				}
 				ve := calcVecFromLatLong(lat, lon, nbLat, nbLon)
-				v = v.Add(vectors.Normalize(vectors.NewVec2(ve[0], ve[1])).Mul(tempNb - temp_r))
+				v = v.Add(vectors.Normalize(vectors.NewVec2(ve[0], ve[1])).Mul(tempNb - tempReg))
 			}
 			v = vectors.Normalize(v)
 			regWindVecLocal[r] = Vertex{v.X, v.Y}
@@ -196,13 +196,13 @@ func (m *Geo) assignWindVectors() {
 				X: regVec[0],
 				Y: regVec[1],
 			}) //v.Mul(h / maxElev)
-			for _, neighborReg := range m.GetRegNeighbors(r) {
+			for _, nbReg := range m.GetRegNeighbors(r) {
 				// if is_sea[neighbor_r] {
 				//	continue
 				// }
 				// Calculate dot product of wind vector to vector r -> neighbor_r.
 				// Get XYZ Position of r_neighbor.
-				rnXYZ := convToVec3(m.XYZ[neighborReg*3 : neighborReg*3+3])
+				rnXYZ := convToVec3(m.XYZ[nbReg*3 : nbReg*3+3])
 
 				// Calculate Vector between r and neighbor_r.
 				va := vectors.Sub3(rnXYZ, regXYZ).Normalize()
@@ -215,10 +215,10 @@ func (m *Geo) assignWindVectors() {
 				// current neighbor.
 				// See: https://www.scratchapixel.com/lessons/3d-basic-rendering/introduction-to-shading/shading-normals
 				dotV := vectors.Dot3(va, vb)
-				hnb := m.Elevation[neighborReg]
+				hnb := m.Elevation[nbReg]
 				if dotV > 0 && hnb != h && h >= 0 && hnb >= 0 {
-					nbLat := m.LatLon[neighborReg][0]
-					nbLon := m.LatLon[neighborReg][1]
+					nbLat := m.LatLon[nbReg][0]
+					nbLon := m.LatLon[nbReg][1]
 					ve := calcVecFromLatLong(regLat, regLon, nbLat, nbLon)
 					// The higher the dot product (the more direct the neighbor is in wind direction), the higher
 					// the influence of an elevation change. So a steep mountain ahead will slow the wind down.
@@ -249,9 +249,9 @@ func (m *Geo) interpolateWindVecs(in []Vertex, steps int) []Vertex {
 				in[r][1],
 			}
 			var count int
-			for _, neighbor_r := range m.GetRegNeighbors(r) {
-				resVec[0] += in[neighbor_r][0]
-				resVec[1] += in[neighbor_r][1]
+			for _, nbReg := range m.GetRegNeighbors(r) {
+				resVec[0] += in[nbReg][0]
+				resVec[1] += in[nbReg][1]
 				count++
 			}
 			resVec[0] /= float64(count + 1)
@@ -382,16 +382,16 @@ func (m *Geo) assignRainfall(numSteps, transferMode, sortOrder int) {
 
 				// Add wind vector to neighbor lat/lon to get the "wind vector lat long" or something like that..
 				regToWindVec3 := convToVec3(latLonToCartesian(regLat+regWindVec[r][1], regLon+regWindVec[r][0])).Normalize()
-				for _, neighborReg := range m.GetRegNeighbors(r) {
-					if isSea[neighborReg] {
+				for _, nbReg := range m.GetRegNeighbors(r) {
+					if isSea[nbReg] {
 						continue
 					}
 					// Calculate dot product of wind vector to vector r -> neighbor_r.
 					// Get XYZ Position of r_neighbor.
-					regToNeighborVec3 := convToVec3(m.XYZ[neighborReg*3 : neighborReg*3+3])
+					regToNbVec3 := convToVec3(m.XYZ[nbReg*3 : nbReg*3+3])
 
 					// Calculate Vector between r and neighbor_r.
-					va := vectors.Sub3(regToNeighborVec3, regXYZ).Normalize()
+					va := vectors.Sub3(regToNbVec3, regXYZ).Normalize()
 
 					// Calculate Vector between r and wind_r.
 					vb := vectors.Sub3(regToWindVec3, regXYZ).Normalize()
@@ -404,9 +404,9 @@ func (m *Geo) assignRainfall(numSteps, transferMode, sortOrder int) {
 					if dotV > 0 {
 						// Only positive dot products mean that we lie within 90°, so 'in wind direction'.
 						count++
-						humidity := m.Moisture[neighborReg] + m.Moisture[r]*dotV
-						rainfall := m.Rainfall[neighborReg] // + biomesParam.raininess*m.r_moisture[r]*dotV
-						orographicRainfall := calcRainfall(neighborReg, humidity)
+						humidity := m.Moisture[nbReg] + m.Moisture[r]*dotV
+						rainfall := m.Rainfall[nbReg] // + biomesParam.raininess*m.r_moisture[r]*dotV
+						orographicRainfall := calcRainfall(nbReg, humidity)
 						if orographicRainfall > 0.0 {
 							rainfall += biomesParam.raininess * orographicRainfall
 							humidity -= orographicRainfall
@@ -415,8 +415,8 @@ func (m *Geo) assignRainfall(numSteps, transferMode, sortOrder int) {
 						// WARNING: The humidity calculation is off.
 						// humidity = math.Min(humidity, 1.0)
 						// rainfall = math.Min(rainfall, 1.0)
-						m.Rainfall[neighborReg] = rainfall
-						m.Moisture[neighborReg] = humidity
+						m.Rainfall[nbReg] = rainfall
+						m.Moisture[nbReg] = humidity
 					}
 				}
 			}
@@ -429,23 +429,23 @@ func (m *Geo) assignRainfall(numSteps, transferMode, sortOrder int) {
 				sum := 0.0
 				// Get XYZ Position of r as vector3
 				regVec3 := convToVec3(m.XYZ[r*3 : r*3+3])
-				for _, neighborReg := range m.GetRegNeighbors(r) {
+				for _, nbReg := range m.GetRegNeighbors(r) {
 					// Calculate dot product of wind vector to vector r -> neighbor_r.
 					// Get XYZ Position of r_neighbor.
-					regToNeighborVec3 := convToVec3(m.XYZ[neighborReg*3 : neighborReg*3+3])
+					regToNbVec3 := convToVec3(m.XYZ[nbReg*3 : nbReg*3+3])
 
 					// Convert to polar coordinates.
-					rLat := m.LatLon[neighborReg][0]
-					rLon := m.LatLon[neighborReg][1]
+					rLat := m.LatLon[nbReg][0]
+					rLon := m.LatLon[nbReg][1]
 
 					// Add wind vector to neighbor lat/lon to get the "wind vector lat long" or something like that..
-					neighborToWindVec3 := convToVec3(latLonToCartesian(rLat+regWindVec[neighborReg][1], rLon+regWindVec[neighborReg][0])).Normalize()
+					nbToWindVec3 := convToVec3(latLonToCartesian(rLat+regWindVec[nbReg][1], rLon+regWindVec[nbReg][0])).Normalize()
 
 					// Calculate Vector between r and neighbor_r.
-					va := vectors.Sub3(regVec3, regToNeighborVec3).Normalize()
+					va := vectors.Sub3(regVec3, regToNbVec3).Normalize()
 
 					// Calculate Vector between neightbor_r and wind_neighbor_r.
-					vb := vectors.Sub3(neighborToWindVec3, regToNeighborVec3).Normalize()
+					vb := vectors.Sub3(nbToWindVec3, regToNbVec3).Normalize()
 
 					// Calculate dot product between va and vb.
 					// This will give us how much the current region lies within the wind direction of the
@@ -455,7 +455,7 @@ func (m *Geo) assignRainfall(numSteps, transferMode, sortOrder int) {
 					if dotV > 0 {
 						// Only positive dot products mean that we lie within 90°, so 'in wind direction'.
 						count++
-						sum += m.Moisture[neighborReg] * dotV
+						sum += m.Moisture[nbReg] * dotV
 					}
 				}
 
@@ -530,7 +530,7 @@ func (m *Geo) assignRainfallBasic() {
 	// Sort the indices in wind-order so we can ensure that we push the moisture
 	// in their logical sequence across the globe.
 	_, windOrderRegs := m.getWindSortOrder()
-	r_windvec := m.RegionToWindVecLocal
+	regWindVec := m.RegionToWindVecLocal
 
 	// calcRainfall returns the amount of rain shed given the region and humidity.
 	calcRainfall := func(r int, humidity float64) float64 {
@@ -587,18 +587,18 @@ func (m *Geo) assignRainfallBasic() {
 			var humidity float64
 
 			// Calculate humidity.
-			for _, neighborReg := range m.GetRegNeighbors(r) {
+			for _, nbReg := range m.GetRegNeighbors(r) {
 				rL := m.LatLon[r]
-				nL := m.LatLon[neighborReg]
+				nL := m.LatLon[nbReg]
 
 				// TODO: Check dot product of wind vector (r) and neighbour->r.
-				vVec := normal2(calcVecFromLatLong(nL[0], nL[1], nL[0]+r_windvec[neighborReg][1], nL[1]+r_windvec[neighborReg][0]))
+				vVec := normal2(calcVecFromLatLong(nL[0], nL[1], nL[0]+regWindVec[nbReg][1], nL[1]+regWindVec[nbReg][0]))
 				nVec := normal2(calcVecFromLatLong(nL[0], nL[1], rL[0], rL[1]))
 				dotV := dot2(vVec, nVec)
 
 				// Check if the neighbor region is up-wind (that the wind blows from neighbor_r to r) / dotV is positive.
 				if dotV > 0.0 {
-					humidity += m.Moisture[neighborReg] * dotV
+					humidity += m.Moisture[nbReg] * dotV
 				}
 			}
 
@@ -631,15 +631,15 @@ func (m *Geo) interpolateRainfallMoisture(interpolationSteps int) {
 			rMoist := m.Moisture[r]
 			rRain := m.Rainfall[r]
 			var count int
-			for _, neighborReg := range m.GetRegNeighbors(r) {
+			for _, nbReg := range m.GetRegNeighbors(r) {
 				// Gravity! Water moves downwards.
 				// This is not super-accurate since you'd have to take
 				// in account how steep the slope is etc.
-				if m.Elevation[r] >= m.Elevation[neighborReg] {
+				if m.Elevation[r] >= m.Elevation[nbReg] {
 					continue
 				}
-				rMoist += m.Moisture[neighborReg]
-				rRain += m.Rainfall[neighborReg]
+				rMoist += m.Moisture[nbReg]
+				rRain += m.Rainfall[nbReg]
 				count++
 			}
 			regMoistureInterpol[r] = rMoist / float64(count+1)

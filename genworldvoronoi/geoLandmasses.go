@@ -57,7 +57,7 @@ func (m *Geo) IdentifyLandmasses() []int {
 		landID++
 	}
 	log.Println("number of landmasses", landID)
-	log.Println(landSizes)
+	// log.Println(landSizes)
 	return landMasses
 }
 

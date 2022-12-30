@@ -204,10 +204,10 @@ func (m *Geo) getFlux(skipBelowSea bool) []float64 {
 	variant := FluxVolVariantBasic
 
 	// Initialize flux values with r_rainfall.
-	r_flux := make([]float64, m.mesh.numRegions)
+	regFlux := make([]float64, m.mesh.numRegions)
 	for i := 0; i < m.mesh.numRegions; i++ {
 		if m.Elevation[i] >= 0 || !skipBelowSea {
-			r_flux[i] = m.Rainfall[i]
+			regFlux[i] = m.Rainfall[i]
 		}
 	}
 
@@ -215,8 +215,8 @@ func (m *Geo) getFlux(skipBelowSea bool) []float64 {
 	case FluxVolVariantBasic:
 		// This is most basic flux calculation.
 		// Sort regions by elevation in descending order.
-		idxs := make([]int, len(r_flux))
-		for i := range r_flux {
+		idxs := make([]int, len(regFlux))
+		for i := range regFlux {
 			idxs[i] = i
 		}
 		sort.Slice(idxs, func(a, b int) bool {
@@ -232,7 +232,7 @@ func (m *Geo) getFlux(skipBelowSea bool) []float64 {
 			}
 
 			// Add the flux of the region to the downhill neighbor.
-			r_flux[m.Downhill[r]] += r_flux[r]
+			regFlux[m.Downhill[r]] += regFlux[r]
 		}
 	case FluxVolVariantBasicWithDrains:
 		// Basic variant copying the flux to the downhill neighbor or the drainage.
@@ -268,10 +268,10 @@ func (m *Geo) getFlux(skipBelowSea bool) []float64 {
 				// which indicates that this region is part of a lake.
 				// In this case we copy the flux directly to the region where
 				// this region drains into.
-				r_flux[m.Drainage[j]] += r_flux[j]
+				regFlux[m.Drainage[j]] += regFlux[j]
 			} else if m.Downhill[j] >= 0 {
 				// Add the flux of the region to the downhill neighbor.
-				r_flux[m.Downhill[j]] += r_flux[j]
+				regFlux[m.Downhill[j]] += regFlux[j]
 			}
 		}
 	case FluxVolVariantWalk1:
@@ -279,8 +279,8 @@ func (m *Geo) getFlux(skipBelowSea bool) []float64 {
 		// if a drainage point is set.
 		// I put in a quick fix as I type this, but I didn't test the
 		// result, so no guarantees.
-		r_flux_tmp := make([]float64, m.mesh.numRegions)
-		for j, fl := range r_flux {
+		regFluxTmp := make([]float64, m.mesh.numRegions)
+		for j, fl := range regFlux {
 			seen := make(map[int]bool)
 			drain := m.Drainage[j]
 			if drain == -1 {
@@ -290,7 +290,7 @@ func (m *Geo) getFlux(skipBelowSea bool) []float64 {
 				if m.Elevation[drain] < 0 && skipBelowSea {
 					break
 				}
-				r_flux_tmp[drain] += fl
+				regFluxTmp[drain] += fl
 				if m.Drainage[drain] >= 0 && !seen[drain] {
 					drain = m.Drainage[drain]
 				} else if m.Downhill[drain] >= 0 {
@@ -303,14 +303,14 @@ func (m *Geo) getFlux(skipBelowSea bool) []float64 {
 		}
 
 		// Copy the flux to the resulting flux map.
-		for r, fl := range r_flux_tmp {
-			r_flux[r] += fl
+		for r, fl := range regFluxTmp {
+			regFlux[r] += fl
 		}
 	case FluxVolVariantWalk2:
 		// This variant will walk downhill for each region until we
 		// can't find neither a downhill neighbor nor a drainage point.
-		r_flux_tmp := make([]float64, m.mesh.numRegions)
-		for j, fl := range r_flux {
+		regFluxTmp := make([]float64, m.mesh.numRegions)
+		for j, fl := range regFlux {
 			// Seen will keep track of the regions that we have
 			// already visited for this region. This will prevent
 			// any infinite recursions that might be caused by
@@ -347,18 +347,18 @@ func (m *Geo) getFlux(skipBelowSea bool) []float64 {
 					break
 				}
 				// chain = append(chain, r)
-				r_flux_tmp[r] += fl
+				regFluxTmp[r] += fl
 			}
 			// Not sure why this was here.
 			// r_flux[m.r_drainage[j]] += r_flux[j]
 		}
 
 		// Copy the flux to the resulting flux map.
-		for r, fl := range r_flux_tmp {
-			r_flux[r] += fl
+		for r, fl := range regFluxTmp {
+			regFlux[r] += fl
 		}
 	}
-	return r_flux
+	return regFlux
 }
 
 // floodV1 is the first variant of the flood fill algorithm, which finds
@@ -428,8 +428,8 @@ func (m *Geo) floodV1(r int, dVol float64) {
 		})
 
 		// Expand floodset by attempting to fill all neighbors.
-		for _, neighborReg := range nbs {
-			fill(neighborReg)
+		for _, nbReg := range nbs {
+			fill(nbReg)
 		}
 	}
 
@@ -560,8 +560,8 @@ func (m *Geo) floodV2(r int, dVol float64) bool {
 		sort.Slice(nbs, func(si, sj int) bool {
 			return m.Elevation[nbs[si]]+m.Waterpool[nbs[si]] < m.Elevation[nbs[sj]]+m.Waterpool[nbs[sj]]
 		})
-		for _, neighborReg := range nbs {
-			if !findset(neighborReg, plane) {
+		for _, nbReg := range nbs {
+			if !findset(nbReg, plane) {
 				if drainfound { // && drainedFrom == -1
 					newDrain := -1
 					if useDrain {
@@ -639,8 +639,8 @@ func (m *Geo) floodV2(r int, dVol float64) bool {
 			})
 
 			// Fill Neighbors
-			for _, neighborReg := range nbs {
-				lowbound(neighborReg)
+			for _, nbReg := range nbs {
+				lowbound(nbReg)
 				// Fill neighbors of neighbors
 				// for _, nbs2 := range m.rNeighbors(nbs) { // ??????
 				//	lowbound(nbs2)
@@ -691,11 +691,11 @@ func (m *Geo) floodV2(r int, dVol float64) bool {
 // He uses triangle centroids for his river generation, where I prefer to use the regions
 // directly.
 func (m *BaseObject) assignFlow() {
-	s_flow := m.sideFlow
+	sideFlow := m.sideFlow
 
 	// Clear all existing water flux values.
-	for i := range s_flow {
-		s_flow[i] = 0
+	for i := range sideFlow {
+		sideFlow[i] = 0
 	}
 
 	triFlow := m.triFlow
@@ -715,23 +715,23 @@ func (m *BaseObject) assignFlow() {
 
 	// Now traverse the flux graph in reverse order and sum up
 	// the moisture of all tributaries while descending.
-	order_t := m.orderTri
+	orderTris := m.orderTri
 	triDownflowSide := m.triDownflowSide
 	halfedges := m.mesh.Halfedges
-	for i := len(order_t) - 1; i >= 0; i-- {
+	for i := len(orderTris) - 1; i >= 0; i-- {
 		// TODO: Describe what's going on here.
-		tributary_t := order_t[i]
-		flow_s := triDownflowSide[tributary_t]
-		if flow_s >= 0 {
-			trunk_t := (halfedges[flow_s] / 3)
-			triFlow[trunk_t] += triFlow[tributary_t]
-			s_flow[flow_s] += triFlow[tributary_t] // TODO: isn't s_flow[flow_s] === t_flow[?]
-			if triElevation[trunk_t] > triElevation[tributary_t] {
-				triElevation[trunk_t] = triElevation[tributary_t]
+		tributaryTri := orderTris[i]
+		flowSide := triDownflowSide[tributaryTri]
+		if flowSide >= 0 {
+			trunkTri := (halfedges[flowSide] / 3)
+			triFlow[trunkTri] += triFlow[tributaryTri]
+			sideFlow[flowSide] += triFlow[tributaryTri] // TODO: isn't s_flow[flow_s] === t_flow[?]
+			if triElevation[trunkTri] > triElevation[tributaryTri] {
+				triElevation[trunkTri] = triElevation[tributaryTri]
 			}
 		}
 	}
 	m.triFlow = triFlow
-	m.sideFlow = s_flow
+	m.sideFlow = sideFlow
 	m.triElevation = triElevation
 }

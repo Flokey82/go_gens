@@ -38,7 +38,7 @@ func NewCiv(geo *Geo) *Civ {
 		RegionToCulture:   initRegionSlice(geo.mesh.numRegions),
 		Settled:           initTimeSlice(geo.mesh.numRegions),
 		NumEmpires:        10,
-		NumCities:         150,
+		NumCities:         250,
 		NumCityStates:     150,
 		NumMiningTowns:    60,
 		NumFarmingTowns:   60,
@@ -99,24 +99,52 @@ func (m *Civ) generateCivilization() {
 	// log.Println("Done trade cities in ", time.Since(start).String())
 
 	//m.GetEmpires()
+	_, maxSettled := minMax64(m.Settled)
+	m.Geo.Calendar.SetYear(maxSettled)
+
+	start = time.Now()
+	m.calculateAgriculturalPotential(m.Cities)
+	log.Println("Done calculating agricultural potential in ", time.Since(start).String())
+
+	start = time.Now()
+	m.calculateAttractiveness(m.Cities)
+	log.Println("Done calculating attractiveness in ", time.Since(start).String())
+
+	start = time.Now()
 	m.calculateEconomicPotential()
-	m.calculateAttractiveness()
+	log.Println("Done calculating economic potential in ", time.Since(start).String())
 
 	// HACK: Age city populations.
 	// TODO: Instead we should spawn the cities from the capitals.
 	// Also, the theoretical population should be based on the
 	// economic potential of the region, the type of settlement,
 	// and the time of settlement.
-	_, maxSettled := minMax64(m.Settled)
+	start = time.Now()
 	m.Geo.Calendar.SetYear(0)
+	knownCities := len(m.Cities)
 	for year := 0; year < int(maxSettled); year++ {
-		m.Geo.Calendar.TickYear()
-		for _, c := range m.Cities {
-			if m.Settled[c.ID] <= int64(year) {
-				m.tickCityDays(c, 365)
-			}
+		// Age cities.
+		for _, c := range m.getExistingCities() {
+			m.tickCityDays(c, 365)
 		}
+
+		// Update attractiveness.
+		if len(m.Cities) > knownCities {
+			// TODO: Only update new regions until we have climate change?
+			m.calculateAttractiveness(m.Cities[knownCities:])
+			m.calculateAgriculturalPotential(m.Cities[knownCities:])
+			knownCities = len(m.Cities)
+		}
+
+		// Recalculate economic potential.
+		m.calculateEconomicPotential()
+
+		log.Printf("Aged cities to %d\n", year)
+
+		// Advance year.
+		m.Geo.Calendar.TickYear()
 	}
+	log.Println("Done aging cities in ", time.Since(start).String())
 }
 
 func (m *Civ) Tick() {
@@ -126,9 +154,10 @@ func (m *Civ) Tick() {
 	// 3: Update trade.
 	// 4: Update population. (births, deaths, migration)
 	// 5: Found new settlements?
-	for _, c := range m.Cities {
-		m.TickCity(c)
-	}
+	// for _, c := range m.Cities {
+	//	m.TickCity(c)
+	// }
+
 	// TODO:
 	// Update city states.
 	// 1: Update wealth / taxation.

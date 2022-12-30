@@ -99,13 +99,13 @@ func (m *Geo) GetErosionRate() []float64 {
 	}
 
 	log.Println("start erosion")
-	for r, rslope := range slope {
+	for r, rSlope := range slope {
 		// NOTE: This was directly taken from mewo2's code.
 		//
 		// Honestly, I have no idea how this works, especially how the river
 		// creep is supposed to work or where these constants come from.
-		river := math.Sqrt(flux[r]/maxFlux) * rslope
-		creep := rslope * rslope
+		river := math.Sqrt(flux[r]/maxFlux) * rSlope
+		creep := rSlope * rSlope
 		total := 1000*river + creep
 		if total > 200 {
 			total = 200

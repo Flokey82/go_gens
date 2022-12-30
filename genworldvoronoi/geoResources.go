@@ -5,6 +5,22 @@ import (
 	"math"
 )
 
+// sumResources returns the sum of the resource flag IDs in the byte.
+// This is a convenience function for determining the approximate
+// value of local resources.
+// NOTE: In theory one could just cast the int to a byte and use the
+// value like that, but the value would be a power of 2, which might
+// be too stark a difference.
+func sumResources(r byte) int {
+	sum := 0
+	for i := 0; i < 8; i++ {
+		if r&(1<<i) != 0 {
+			sum += i + 1
+		}
+	}
+	return sum
+}
+
 const (
 	ResourceTypeMetal = iota
 	ResourceTypeGem

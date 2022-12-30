@@ -225,6 +225,15 @@ func isInIntList(l []int, i int) bool {
 	return false
 }
 
+// initFloatSlice returns a slice of floats of the given size, initialized to -1.
+func initFloatSlice(size int) []float64 {
+	res := make([]float64, size)
+	for i := range res {
+		res[i] = -1
+	}
+	return res
+}
+
 // initRegionSlice returns a slice of ints of the given size, initialized to -1.
 func initRegionSlice(size int) []int {
 	res := make([]int, size)

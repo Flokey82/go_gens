@@ -1,5 +1,7 @@
 package genworldvoronoi
 
+import "fmt"
+
 type History struct {
 	*Calendar
 	Events []*Event
@@ -37,8 +39,27 @@ type Event struct {
 	ID   ObjectReference // Reference to the object that the event is about.
 }
 
-func (h *History) AddEvent(e *Event) {
-	h.Events = append(h.Events, e)
+func (e *Event) String() string {
+	return fmt.Sprintf("%s: %s", e.Type, e.Msg)
+}
+
+func (h *History) GetEvents(id int, t byte) []*Event {
+	var events []*Event
+	for _, e := range h.Events {
+		if e.ID.ID == id && e.ID.Type == t {
+			events = append(events, e)
+		}
+	}
+	return events
+}
+
+func (h *History) AddEvent(t string, msg string, id ObjectReference) {
+	h.Events = append(h.Events, &Event{
+		Year: h.GetYear(),
+		Type: t,
+		Msg:  msg,
+		ID:   id,
+	})
 }
 
 /*

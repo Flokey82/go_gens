@@ -49,7 +49,6 @@ func (m *Civ) regPlaceNEmpires(n int) {
 		terr[cityIDToIndex[c.ID]] = c.ID
 		cityScore := m.getCityScoreForMartial(c)
 		for _, r := range m.getTerritoryNeighbors(c.ID, m.RegionToCityState) {
-			log.Println("Adding", r, "to queue for", c.ID)
 			newdist := m.getCityScoreForMartial(cityIDToCity[r])
 			if newdist > cityScore {
 				continue // We can't expand to a city with a higher score.
@@ -87,8 +86,6 @@ func (m *Civ) regPlaceNEmpires(n int) {
 			})
 		}
 	}
-
-	log.Println(terr)
 
 	// Now overwrite the territories with the new territories.
 	// For this we will have to copy the city states and

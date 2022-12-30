@@ -6,6 +6,7 @@ import (
 	"log"
 	"math"
 
+	"github.com/Flokey82/go_gens/gameconstants"
 	"github.com/davvo/mercator"
 	"github.com/llgcode/draw2d/draw2dimg"
 
@@ -302,6 +303,7 @@ func (m *Map) GetGeoJSONCities(la1, lo1, la2, lo2 float64, zoom int) ([]byte, er
 
 	// Get the last settled year.
 	_, maxSettled := minMax64(m.Settled)
+	distRegion := math.Sqrt(4 * math.Pi / float64(m.mesh.numRegions))
 
 	// Loop through all the cities and check if they are within the tile.
 	// TODO: Just show the largest cities for lower zoom levels.
@@ -321,12 +323,33 @@ func (m *Map) GetGeoJSONCities(la1, lo1, la2, lo2 float64, zoom int) ([]byte, er
 		f.SetProperty("type", c.Type)
 		f.SetProperty("culture", c.Culture.Name)
 		f.SetProperty("population", c.Population)
+		f.SetProperty("popgrowth", c.PopulationGrowthRate())
 		f.SetProperty("maxpop", c.MaxPopulation)
+		f.SetProperty("maxpoplimit", c.MaxPopulationLimit())
 		f.SetProperty("settled", maxSettled-c.Founded)
+		f.SetProperty("attractiveness", c.Attractiveness)
+		f.SetProperty("economic", c.EconomicPotential)
+		f.SetProperty("agriculture", c.Agriculture)
+		f.SetProperty("trade", c.Trade)
+		f.SetProperty("resources", c.Resources)
+		f.SetProperty("radius", (c.radius()+2*distRegion)*gameconstants.EarthCircumference/(2*math.Pi))
+		f.SetProperty("tradepartners", c.TradePartners)
+		var msgs []string
+		hist := m.History.GetEvents(c.ID, ObjectTypeCity)
+
+		// Only show the last 10 events.
+		numEvents := len(hist)
+		if numEvents > 10 {
+			numEvents = 10
+		}
+		for _, event := range hist[len(hist)-numEvents:] {
+			msgs = append(msgs, event.String())
+		}
+		f.SetProperty("history", msgs)
 		geoJSON.AddFeature(f)
 	}
 
-	log.Println("%d out of %d cities in tile", len(geoJSON.Features), len(m.Cities))
+	log.Printf("%d out of %d cities in tile", len(geoJSON.Features), len(m.Cities))
 
 	// Now encode the GeoJSON.
 	geoJSONBytes, err := geoJSON.MarshalJSON()
