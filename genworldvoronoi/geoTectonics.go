@@ -92,14 +92,23 @@ const collisionThreshold = 0.75
 // FIXME: The smaller the distance of the cells, the more likely a plate moves past the neighbor plate.
 // This causes all kinds of issues.
 func (m *Geo) findCollisions() ([]int, []int, []int, map[int]float64) {
+	// Use either the largest or smallest compression value.
+	useLargestCompression := true
+
 	plateIsOcean := m.PlateIsOcean
 	regPlate := m.RegionToPlate
 	plateVectors := m.PlateToVector
 	numRegions := m.mesh.numRegions
 	compressionReg := make(map[int]float64)
-	nInf := math.Inf(-1)
 
-	const deltaTime = 1e-7 // simulate movement
+	// Initialize the compression measure to either the largest or smallest
+	// possible float64 value.
+	inf := math.Inf(1)
+	if useLargestCompression {
+		inf = math.Inf(-1)
+	}
+
+	const deltaTime = 1e-11 // simulate movement
 
 	// For each region, I want to know how much it's being compressed
 	// into an adjacent region. The "compression" is the change in
@@ -110,7 +119,7 @@ func (m *Geo) findCollisions() ([]int, []int, []int, map[int]float64) {
 	var bestReg int
 	var bestCompression float64
 	for currentReg := 0; currentReg < numRegions; currentReg++ {
-		bestCompression = nInf // NOTE: Was Infinity
+		bestCompression = inf
 		bestReg = -1
 		rOut = m.mesh.r_circulate_r(rOut, currentReg)
 		for _, nbReg := range rOut {
@@ -133,18 +142,30 @@ func (m *Geo) findCollisions() ([]int, []int, []int, map[int]float64) {
 				// how much closer did these regions get to each other?
 				compression := distanceBefore - distanceAfter
 
+				// Sum up the compression for this region.
+				// NOTE: Note sure if this actually makes sense.
+				compressionReg[nbReg] += compression
+
 				// keep track of the adjacent region that gets closest.
-				if compression > bestCompression { // NOTE: changed from compression < bestCompression
+				// NOTE: changed from compression < bestCompression
+				if (compression > bestCompression) == useLargestCompression {
 					bestReg = nbReg
 					bestCompression = compression
 				}
 			}
 		}
+
+		// Check if we have a ocean region.
+		if m.RegionToPlate[currentReg] == currentReg && m.PlateIsOcean[currentReg] {
+			oceanRegs = append(oceanRegs, currentReg)
+		}
+
 		// Check if we have a collision candidate.
 		if bestReg == -1 {
 			continue
 		}
-		compressionReg[bestReg] += bestCompression
+
+		compressionReg[currentReg] = bestCompression
 
 		// at this point, bestCompression tells us how much closer
 		// we are getting to the region that's pushing into us the most.
@@ -155,24 +176,14 @@ func (m *Geo) findCollisions() ([]int, []int, []int, map[int]float64) {
 			currentPlate := m.RegionToPlate[currentReg]
 			bestPlate := m.RegionToPlate[bestReg]
 			if plateIsOcean[currentPlate] && plateIsOcean[bestPlate] {
-				// If both plates are ocean plates and they collide, a coastline is produced,
-				// while if they "drift apart" (which is not quite correct in our code, since
-				// drifting apart can already be a collision below the threshold), we mark it
-				// as "ocean" representing a rift.
+				// If both plates are ocean plates and they collide, a coastline is produced.
 				if collided {
 					coastlineRegs = append(coastlineRegs, currentReg)
-				} else {
-					// In theory, this is not 100% correct, as plates that drift apart result
-					// at times in volcanic islands that are formed from escaping magma.
-					// See: https://www.icelandontheweb.com/articles-on-iceland/nature/geology/tectonic-plates
-					// ocean_r = append(ocean_r, current_r)
 				}
 			} else if !plateIsOcean[currentPlate] && !plateIsOcean[bestPlate] {
 				// If both plates are non-ocean plates and they collide, mountains are formed.
 				if collided {
 					mountainRegs = append(mountainRegs, currentReg)
-				} else {
-					// coastline_r = append(coastline_r, current_r)
 				}
 			} else {
 				// If the plates are of different types, a collision results in a mountain and
@@ -183,6 +194,9 @@ func (m *Geo) findCollisions() ([]int, []int, []int, map[int]float64) {
 						mountainRegs = append(mountainRegs, currentReg)
 					}
 				} else {
+					// This is incorrect, since can't be certain that we are drifting apart
+					// without checking if we have actually a negative compression.
+					// I leave this in here, because it just looks cool.
 					coastlineRegs = append(coastlineRegs, currentReg)
 				}
 			}
@@ -213,11 +227,6 @@ func (m *Geo) assignRegionElevation() {
 
 	// TODO: Use collision values to determine intensity of generated landscape features.
 	mountainRegs, coastlineRegs, oceanRegs, compressionReg := m.findCollisions()
-	for r := 0; r < m.mesh.numRegions; r++ {
-		if m.RegionToPlate[r] == r && m.PlateIsOcean[r] {
-			oceanRegs = append(oceanRegs, r)
-		}
-	}
 
 	// Sort mountains by compression.
 	sort.Slice(mountainRegs, func(i, j int) bool {
@@ -281,12 +290,20 @@ func (m *Geo) assignRegionElevation() {
 	//
 	// Since we want a "wave" like appearance, we could use one dimensional noise based on the
 	// distance to the faultline with some variation for a more natural look.
-	const epsilon = 1e-3
+	const epsilon = 1e-7
 	r_xyz := m.XYZ
+
+	// Exponent for interpolation.
+	// n = 1 is a linear interpolation
+	// n = 2 is a square interpolation
+	// n = 0.5 is a square root interpolation
+	na := 1.0 / 1.0
+	nb := 1.0 / 1.0
+	nc := 1.0 / 1.0
 	for r := 0; r < m.mesh.numRegions; r++ {
-		a := rDistanceA[r] + epsilon // Distance from mountains
-		b := rDistanceB[r] + epsilon // Distance from oceans
-		c := rDistanceC[r] + epsilon // Distance from coastline
+		a := math.Pow(rDistanceA[r], na) + epsilon // Distance from mountains
+		b := math.Pow(rDistanceB[r], nb) + epsilon // Distance from oceans
+		c := math.Pow(rDistanceC[r], nc) + epsilon // Distance from coastline
 		if m.PlateIsOcean[m.RegionToPlate[r]] {
 			// Ocean plates are slightly lower than other plates.
 			m.Elevation[r] = -0.1

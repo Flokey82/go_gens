@@ -686,6 +686,7 @@ func (m *BaseObject) assignDistanceField(seedRegs []int, stopReg map[int]bool) [
 func (m *BaseObject) assignDistanceFieldWithIntensity(seedsR []int, stopR map[int]bool, compression map[int]float64) []float64 {
 	enableNegativeCompression := true
 	enablePositiveCompression := true
+	enableCompressionPropagation := true
 
 	// Reset the random number generator.
 	m.resetRand()
@@ -740,6 +741,15 @@ func (m *BaseObject) assignDistanceFieldWithIntensity(seedsR []int, stopR map[in
 			// value to the distance value of current_r, incremented by 1.
 			regDistance[nbReg] = currentDist + 1
 
+			if enableCompressionPropagation {
+				// The compression value diminishes using the inverse square law.
+				// This is a simple approximation of the real world, where the
+				// compression diminishes as the square of the distance.
+				distToNb := 1 + m.GetDistance(currentReg, nbReg)
+				if compression[nbReg] == 0 {
+					compression[nbReg] = currentComp / (distToNb * distToNb)
+				}
+			}
 			// Apply the compression of the current region to the distance
 			// value of neighbor_r.
 			if currentComp > 0 && enablePositiveCompression {
@@ -749,9 +759,9 @@ func (m *BaseObject) assignDistanceFieldWithIntensity(seedsR []int, stopR map[in
 				regDistance[nbReg] -= currentComp / maxComp
 			} else if currentComp < 0 && enableNegativeCompression {
 				// If negative compression is enabled and the compression is... well
-				// negative, we add the normalized compression value to the distance
-				// value for neighbor_r.
-				regDistance[nbReg] += currentComp / minComp
+				// negative, we subtract the normalized (negative) compression value
+				// to the distance value for neighbor_r.
+				regDistance[nbReg] -= currentComp / math.Abs(minComp)
 			}
 			// Add neighbor_r to the queue.
 			queue = append(queue, nbReg)

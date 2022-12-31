@@ -277,6 +277,44 @@ const (
 	WhittakerModBiomeWetlands = 0xD // Temperate but lots of precipitation (marshes, cold swamps, etc.).
 )
 
+// WhittakerModBiomeToString returns a string representation of the given biome.
+func WhittakerModBiomeToString(biome int) string {
+	switch biome {
+	case WhittakerModBiomeUnknown:
+		return "Unknown"
+	case WhittakerModBiomeTropicalRainForest:
+		return "Tropical Rain Forest"
+	case WhittakerModBiomeTropicalSeasonalForest:
+		return "Tropical Seasonal Forest"
+	case WhittakerModBiomeSubtropicalDesert:
+		return "Subtropical Desert"
+	case WhittakerModBiomeTemperateRainForest:
+		return "Temperate Rain Forest"
+	case WhittakerModBiomeTemperateSeasonalForest:
+		return "Temperate Seasonal Forest"
+	case WhittakerModBiomeWoodlandShrubland:
+		return "Woodland Shrubland"
+	case WhittakerModBiomeTemperateGrassland:
+		return "Temperate Grassland"
+	case WhittakerModBiomeBorealForestTaiga:
+		return "Boreal Forest Taiga"
+	case WhittakerModBiomeTundra:
+		return "Tundra"
+	case WhittakerModBiomeColdDesert:
+		return "Cold Desert"
+	case WhittakerModBiomeSavannah:
+		return "Savannah"
+	case WhittakerModBiomeSnow:
+		return "Snow"
+	case WhittakerModBiomeHotSwamp:
+		return "Hot Swamp"
+	case WhittakerModBiomeWetlands:
+		return "Wetlands"
+	default:
+		return "Unknown"
+	}
+}
+
 // GetWhittakerModBiome returns the (modified) Whittaker biome for the given temperature and precipitation.
 func GetWhittakerModBiome(temperature, precipitation int) int {
 	temperature = WhittakerClampTemperatureToIndex(temperature)

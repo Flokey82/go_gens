@@ -79,7 +79,9 @@ func (m *Geo) generateGeology() {
 	log.Println("Done hydrology in ", time.Since(start).String())
 
 	// Place resources
+	start = time.Now()
 	m.placeResources()
+	log.Println("Done placing resources in ", time.Since(start).String())
 
 	// Hydrology (based on triangles)
 	// Amit's hydrology code.

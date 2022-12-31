@@ -1,12 +1,14 @@
 package genworldvoronoi
 
 import (
+	"fmt"
 	"image"
 	"image/color"
 	"log"
 	"math"
 
 	"github.com/Flokey82/go_gens/gameconstants"
+	"github.com/Flokey82/go_gens/genbiome"
 	"github.com/davvo/mercator"
 	"github.com/llgcode/draw2d/draw2dimg"
 
@@ -305,6 +307,10 @@ func (m *Map) GetGeoJSONCities(la1, lo1, la2, lo2 float64, zoom int) ([]byte, er
 	_, maxSettled := minMax64(m.Settled)
 	distRegion := math.Sqrt(4 * math.Pi / float64(m.mesh.numRegions))
 
+	biomeFunc := m.getRegWhittakerModBiomeFunc()
+	_, maxElev := minMax(m.Elevation)
+	_, maxMois := minMax(m.Moisture)
+
 	// Loop through all the cities and check if they are within the tile.
 	// TODO: Just show the largest cities for lower zoom levels.
 	for _, c := range m.Cities {
@@ -327,6 +333,11 @@ func (m *Map) GetGeoJSONCities(la1, lo1, la2, lo2 float64, zoom int) ([]byte, er
 		f.SetProperty("maxpop", c.MaxPopulation)
 		f.SetProperty("maxpoplimit", c.MaxPopulationLimit())
 		f.SetProperty("settled", maxSettled-c.Founded)
+		temperature := m.getRegTemperature(c.ID, maxElev)
+		precip := maxPrecipitation * m.Moisture[c.ID] / maxMois
+		elev := maxAltitudeFactor * m.Elevation[c.ID] / maxElev
+		f.SetProperty("biome", genbiome.WhittakerModBiomeToString(biomeFunc(c.ID))+
+			fmt.Sprintf(" (%.1f°C, %.1fdm, %.1fm)", temperature, precip, elev))
 		f.SetProperty("attractiveness", c.Attractiveness)
 		f.SetProperty("economic", c.EconomicPotential)
 		f.SetProperty("agriculture", c.Agriculture)
@@ -346,6 +357,41 @@ func (m *Map) GetGeoJSONCities(la1, lo1, la2, lo2 float64, zoom int) ([]byte, er
 			msgs = append(msgs, event.String())
 		}
 		f.SetProperty("history", msgs)
+
+		// Generate the list of local resources.
+		var resources []string
+		// Metals.
+		for i := 0; i < ResMaxMetals; i++ {
+			if m.Metals[c.ID]&(1<<i) != 0 {
+				resources = append(resources, metalToString(i))
+			}
+		}
+		// Gems.
+		for i := 0; i < ResMaxGems; i++ {
+			if m.Gems[c.ID]&(1<<i) != 0 {
+				resources = append(resources, gemToString(i))
+			}
+		}
+		// Stones.
+		for i := 0; i < ResMaxStones; i++ {
+			if m.Stones[c.ID]&(1<<i) != 0 {
+				resources = append(resources, stoneToString(i))
+			}
+		}
+		// Woods.
+		for i := 0; i < ResMaxWoods; i++ {
+			if m.Wood[c.ID]&(1<<i) != 0 {
+				resources = append(resources, woodToString(i))
+			}
+		}
+		// Various.
+		for i := 0; i < ResMaxVarious; i++ {
+			if m.Various[c.ID]&(1<<i) != 0 {
+				resources = append(resources, variousToString(i))
+			}
+		}
+		f.SetProperty("reslist", resources)
+
 		geoJSON.AddFeature(f)
 	}
 

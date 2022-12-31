@@ -3,6 +3,8 @@ package genworldvoronoi
 import (
 	"log"
 	"math"
+
+	"github.com/Flokey82/go_gens/genbiome"
 )
 
 // sumResources returns the sum of the resource flag IDs in the byte.
@@ -52,17 +54,25 @@ func (m *Geo) getRegsWithResource(resource byte, resourceType int) []int {
 
 // Resources maps regions to natural resources.
 type Resources struct {
-	Metals []byte // Metal ores
-	Gems   []byte // Gemstones
-	Stones []byte // Rocks or minerals
+	Metals  []byte // Metal ores
+	Gems    []byte // Gemstones
+	Stones  []byte // Rocks or minerals
+	Various []byte // Other resources
+	Wood    []byte // Wood
 }
 
 func newResources(size int) *Resources {
 	return &Resources{
-		Metals: make([]byte, size),
-		Gems:   make([]byte, size),
-		Stones: make([]byte, size),
+		Metals:  make([]byte, size),
+		Gems:    make([]byte, size),
+		Stones:  make([]byte, size),
+		Various: make([]byte, size),
+		Wood:    make([]byte, size),
 	}
+}
+
+func (res *Resources) sumRegion(r int) int {
+	return sumResources(res.Metals[r]) + sumResources(res.Gems[r]) + sumResources(res.Stones[r]) + sumResources(res.Various[r]) + sumResources(res.Wood[r])
 }
 
 func (m *Geo) resourceFitness() []float64 {
@@ -100,9 +110,10 @@ func (m *Geo) placeResources() {
 	// Potential quarry sites can be found mainly in mountains,
 	m.placeStones()
 
-	// Place energy sources.
+	// Place energy sources and other resources.
 	// Oil, coal, and natural gas, as well as geothermal energy
-	// and magical handwavium.
+	// and magical handwavium... and clay, and salt, and stuff.
+	m.placeVarious()
 
 	// Place arable land.
 	// Arable land can be found mainly in valleys, so steepness
@@ -307,6 +318,7 @@ const (
 	ResStoSandstone = 1 << iota
 	ResStoLimestone
 	ResStoChalk
+	ResStoSlate
 	ResStoMarble
 	ResStoGranite
 	ResStoBasalt
@@ -323,6 +335,8 @@ func stoneToString(stoneID int) string {
 		return "Limestone"
 	case ResStoChalk:
 		return "Chalk"
+	case ResStoSlate:
+		return "Slate"
 	case ResStoMarble:
 		return "Marble"
 	case ResStoGranite:
@@ -336,6 +350,145 @@ func stoneToString(stoneID int) string {
 	}
 }
 
+func (m *Geo) placeStones() {
+	log.Println("placing stones is not implemented")
+
+	// Chalk:
+	// Ancient Chalk beds formed on the floor of ancient seas.
+	//
+	// Limestone:
+	// The Chalk later solidifies into Limestone. Can be placed where hill
+	// meet grasslands in non wet areas.
+	//
+	// Flint:
+	// Flint (also called Chert) forms as lumps between layers and in cavities
+	// left in the sea floor in these Chalk beds.
+	//
+	// Marble:
+	// Marble is formed from Limestone that has been subjected to intense heat
+	// and pressure. Marble will be placed near mountain ranges.
+	//
+	// Obsidian:
+	// Obsidian is formed when water flows over volcanic lava to cool it rapidly.
+	// Placed near volcanic plate boundaries that no longer have large amounts of
+	// water. Water breaks down obsidian over time.
+	//
+	// Granite:
+	// Granite is formed when molten rock is slowly cooled. It forms the bottom
+	// layer of all land continents. Placed along two land type convergent boundaries
+	// on the uplifted side where it is raised to the surface, making quarrying easy.
+	//
+	// Sandstone:
+	// Sandstone is formed when sand is deposited in large quantities and under goes
+	// large amounts of pressure, heat, and drainage causing the sand and other
+	// minerals to "cement" together. Placed near ancient drainage basins that deposited
+	// sand from deserts or beaches, or alternatively where hills or mountains meet a
+	// dry desert.
+	//
+	// Basalt:
+	// Basalt is formed when lava cools quickly. Placed near volcanic plate boundaries
+	// that have large amounts of water. Water breaks down basalt over time.
+	//
+	// Slate:
+	// Slate is formed when shale is subjected to intense heat and pressure. Slate
+	// will be placed near mountain ranges.
+
+	// Initialize the stone map.
+	stones := make([]byte, m.mesh.numRegions)
+
+	biomeFunc := m.getRegWhittakerModBiomeFunc()
+	steepness := m.GetSteepness()
+
+	// Generate a distance field for volcanoes, mountains, and faultlines.
+	var volcanoes, mountains, faultlines []int
+	stopSea := make(map[int]bool)
+	isBeach := make(map[int]bool)
+	for r := 0; r < m.mesh.numRegions; r++ {
+		if m.RegionIsVolcano[r] {
+			volcanoes = append(volcanoes, r)
+		}
+		if m.RegionIsMountain[r] {
+			mountains = append(mountains, r)
+		}
+		if math.Abs(m.RegionCompression[r]) > 0.1 {
+			faultlines = append(faultlines, r)
+		}
+		if m.Elevation[r] <= 0.0 {
+			stopSea[r] = true
+		} else {
+			// Check if the region is a beach.
+			for _, n := range m.GetRegNeighbors(r) {
+				if m.Elevation[n] <= 0.0 {
+					isBeach[r] = true
+					break
+				}
+			}
+		}
+	}
+
+	distVolcanoes := m.assignDistanceField(volcanoes, stopSea)
+	distMountains := m.assignDistanceField(mountains, stopSea)
+	distFaultlines := m.assignDistanceField(faultlines, stopSea)
+
+	// Loop through all the regions and place stones based on the region's
+	// properties.
+	for r := 0; r < m.mesh.numRegions; r++ {
+		// Skip water regions.
+		if m.Elevation[r] <= 0.0 {
+			continue
+		}
+
+		// Get the region's biome.
+		biome := biomeFunc(r)
+
+		// Check if we have sandstone (beach, or desert).
+		if biome == genbiome.WhittakerModBiomeSubtropicalDesert || isBeach[r] {
+			stones[r] |= ResStoSandstone
+		}
+
+		// Chalk and limestone.
+		if biome == genbiome.WhittakerModBiomeTemperateGrassland && steepness[r] > 0.1 {
+			// If we are close to mountains, we have marble.
+			if distMountains[r] < 2 {
+				stones[r] |= ResStoMarble
+			} else if !m.isRegRiver(r) && !m.isRegLakeOrWaterBody(r) {
+				// Check if we have limestone (dryer, hilly grassland)
+				stones[r] |= ResStoLimestone
+			} else if m.Rainfall[r] > 0.5 {
+				// Check if we have chalk (wetter, hilly grassland)
+				stones[r] |= ResStoChalk
+			}
+		}
+
+		// Obsidian, and basalt.
+		// For these stones, we need to check if we are near a volcano or faultline.
+		if distVolcanoes[r] < 2 || distFaultlines[r] < 2 {
+			// Check if we have obsidian (near a volcano).
+			if distVolcanoes[r] < 2 {
+				stones[r] |= ResStoObsidian
+			}
+
+			// Check if we have basalt (near a faultline).
+			if distFaultlines[r] < 2 {
+				stones[r] |= ResStoBasalt
+			}
+		}
+
+		// Check if we have granite (near a mountain and faultline).
+		if distMountains[r] < 3 && distFaultlines[r] < 2 {
+			stones[r] |= ResStoGranite
+		} else if steepness[r] > 0.2 && distMountains[r] > 2 && distMountains[r] < 5 {
+			// Slate.
+			// For slate, we need to check if we are near a mountain range or if the region
+			// is steep.
+			stones[r] |= ResStoSlate
+		}
+	}
+
+	// Assign the stone map.
+	m.Stones = stones
+}
+
 const (
 	ResVarClay = 1 << iota
 	ResVarSulfur
@@ -345,13 +498,145 @@ const (
 	ResVarGas
 )
 
-func (m *Geo) placeStones() {
-	log.Println("placing stones is not implemented")
+const ResMaxVarious = 6
+
+func variousToString(v int) string {
+	switch 1 << v {
+	case ResVarClay:
+		return "clay"
+	case ResVarSulfur:
+		return "sulfur"
+	case ResVarSalt:
+		return "salt"
+	case ResVarCoal:
+		return "coal"
+	case ResVarOil:
+		return "oil"
+	case ResVarGas:
+		return "gas"
+	default:
+		return "unknown"
+	}
+}
+
+func (m *Geo) placeVarious() {
+	varRes := make([]byte, m.mesh.numRegions)
+	biomeFunc := m.getRegWhittakerModBiomeFunc()
+	steepness := m.GetSteepness()
+	for r := 0; r < m.mesh.numRegions; r++ {
+		if m.Elevation[r] <= 0.0 {
+			continue
+		}
+		biome := biomeFunc(r)
+
+		if m.RegionIsVolcano[r] {
+			varRes[r] |= ResVarSulfur
+		}
+
+		if m.RegionIsMountain[r] {
+			varRes[r] |= ResVarCoal
+		}
+
+		if m.isRegRiver(r) && steepness[r] > 0.1 && steepness[r] < 0.3 {
+			varRes[r] |= ResVarClay
+		}
+
+		if biome == genbiome.WhittakerModBiomeHotSwamp {
+			varRes[r] |= ResVarGas
+		}
+
+		// TODO: Salt, oil, coal.
+	}
+	m.Various = varRes
+}
+
+// The 8 most important types of wood.
+const (
+	ResWoodOak = 1 << iota
+	ResWoodBirch
+	ResWoodPine
+	ResWoodSpruce
+	ResWoodCedar
+	ResWoodShrub
+	ResWoodFir
+	ResWoodPalm
+)
+
+const ResMaxWoods = 8
+
+func woodToString(v int) string {
+	switch 1 << v {
+	case ResWoodOak:
+		return "oak"
+	case ResWoodBirch:
+		return "birch"
+	case ResWoodPine:
+		return "pine"
+	case ResWoodSpruce:
+		return "spruce"
+	case ResWoodCedar:
+		return "cedar"
+	case ResWoodShrub:
+		return "shrub"
+	case ResWoodFir:
+		return "fir"
+	case ResWoodPalm:
+		return "palm"
+	default:
+		return "unknown"
+	}
 }
 
 func (m *Geo) placeForests() {
-	log.Println("placing forests is not implemented")
 	// Get all biomes that are forested.
 	// Place trees in those biomes based on the biome's tree type(s).
-	// Profit!
+	// Of course it can't be too steep.
+	biomeFunc := m.getRegWhittakerModBiomeFunc()
+	//steepness := m.GetSteepness()
+
+	wood := make([]byte, m.mesh.numRegions)
+	for r := 0; r < m.mesh.numRegions; r++ {
+		if m.Elevation[r] <= 0.0 {
+			continue
+		}
+
+		// NOTE: This is absolute garbage. It's just a quick hack to get some forests
+		// in the world.
+		biome := biomeFunc(r)
+		if biome == genbiome.WhittakerModBiomeTemperateRainForest {
+			wood[r] |= ResWoodOak
+		} else if biome == genbiome.WhittakerModBiomeTemperateSeasonalForest {
+			wood[r] |= ResWoodOak
+			wood[r] |= ResWoodBirch
+		} else if biome == genbiome.WhittakerModBiomeTropicalRainForest {
+			wood[r] |= ResWoodOak
+			wood[r] |= ResWoodPalm
+		} else if biome == genbiome.WhittakerModBiomeTropicalSeasonalForest {
+			wood[r] |= ResWoodOak
+			wood[r] |= ResWoodPalm
+			wood[r] |= ResWoodBirch
+		} else if biome == genbiome.WhittakerModBiomeBorealForestTaiga {
+			wood[r] |= ResWoodPine
+			wood[r] |= ResWoodSpruce
+			wood[r] |= ResWoodCedar
+		} else if biome == genbiome.WhittakerModBiomeTundra {
+			wood[r] |= ResWoodSpruce
+			wood[r] |= ResWoodCedar
+			wood[r] |= ResWoodFir
+			wood[r] |= ResWoodShrub
+		} else if biome == genbiome.WhittakerModBiomeWetlands {
+			wood[r] |= ResWoodShrub
+			wood[r] |= ResWoodFir
+			wood[r] |= ResWoodCedar
+			wood[r] |= ResWoodOak
+			wood[r] |= ResWoodBirch
+		} else if biome == genbiome.WhittakerModBiomeWoodlandShrubland {
+			wood[r] |= ResWoodShrub
+			wood[r] |= ResWoodFir
+			wood[r] |= ResWoodCedar
+			wood[r] |= ResWoodOak
+			wood[r] |= ResWoodBirch
+		}
+	}
+	m.Wood = wood
 }

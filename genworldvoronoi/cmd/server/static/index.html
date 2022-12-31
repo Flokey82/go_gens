@@ -16,6 +16,7 @@
       width: 100%;
       height: 100%;
     }
+
     div.text-labels {
       font-size: 1em;
       font-weight: bold;
@@ -23,6 +24,7 @@
       text-shadow: 0 0 3px #000;
       width: auto;
     }
+
     div.text-labels span {
       white-space: nowrap;
     }
@@ -79,29 +81,35 @@
       // Load city markers.
       loadGeoJSON('geojson_cities/' + params, {
         onEachFeature: function (feature, layer) {
-          layer.bindPopup('Name: ' + feature.properties.name + 
-          '<br/>Population: ' + feature.properties.population +
-          '<br/>Pop Growth: ' + feature.properties.popgrowth +
-          '<br/>Max Pop: ' + feature.properties.maxpop +
-          '<br/>Max Pop Limit: ' + feature.properties.maxpoplimit +
-          '<br/>Type: ' + feature.properties.type + 
-          '<br/>Culture: ' + feature.properties.culture +
-          '<br/>Settled: ' + feature.properties.settled + 'yrs ago'+
-          '<br/>Attractiveness: ' + feature.properties.attractiveness +
-          '<br/>Economic: ' + feature.properties.economic +
-          '<br/>Agriculture: ' + feature.properties.agriculture +
-          '<br/>Trade: ' + feature.properties.trade +
-          '<br/>Resources: ' + feature.properties.resources +
-          '<br/>Radius: ' + feature.properties.radius + 'km'+
-          '<br/>Tradepartners: ' + feature.properties.tradepartners +
-          '<br/>History:<br/>'+
-          '<span style="font-size:4px;">' + (feature.properties.history || []).join('<br/>') + '</span>');
+          layer.bindPopup(
+            '<span style="font-size:8px;">' +
+            'Name: ' + feature.properties.name +
+            '<br/>Population: ' + feature.properties.population +
+            '<br/>Pop Growth: ' + feature.properties.popgrowth.toFixed(3) +
+            '<br/>Max Pop: ' + feature.properties.maxpop +
+            '<br/>Max Pop Limit: ' + feature.properties.maxpoplimit +
+            '<br/>Type: ' + feature.properties.type +
+            '<br/>Culture: ' + feature.properties.culture +
+            '<br/>Settled: ' + feature.properties.settled + 'yrs ago' +
+            '<br/>Biome: ' + feature.properties.biome +
+            '<br/>Attractiveness: ' + feature.properties.attractiveness.toFixed(3) +
+            '<br/>Economic: ' + feature.properties.economic.toFixed(3) +
+            '<br/>Agriculture: ' + feature.properties.agriculture.toFixed(3) +
+            '<br/>Trade: ' + feature.properties.trade.toFixed(3) +
+            '<br/>Resources: ' + feature.properties.resources.toFixed(3) +
+            '<br/>Radius: ' + feature.properties.radius.toFixed(3) + 'km' +
+            '<br/>Tradepartners: ' + feature.properties.tradepartners +
+            '</span>' +
+            '<br/>Resources:<br/>' +
+            '<span style="font-size:5px;">' + (feature.properties.reslist || []).join('<br/>') + '</span>' +
+            '<br/>History:<br/>' +
+            '<span style="font-size:5px;">' + (feature.properties.history || []).join('<br/>') + '</span>');
         },
         pointToLayer: function (feature, latlng) {
-            return L.marker(latlng, {
-              icon: L.divIcon({
-                className: 'text-labels',   // Set class for CSS styling
-                html: '<span>&#x2022;' + feature.properties.name + '</span>'
+          return L.marker(latlng, {
+            icon: L.divIcon({
+              className: 'text-labels',   // Set class for CSS styling
+              html: '<span>&#x2022;' + feature.properties.name + '</span>'
             }),
             zIndexOffset: 1000     // Make appear above other map features
           })

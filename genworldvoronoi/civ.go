@@ -19,32 +19,36 @@ type Civ struct {
 	Religions         []*Religion // (cultural) Religion seed points / regions
 	Settled           []int64     // (cultural) Time of settlement per region
 	// SettledBySpecies []int // (cultural) Which species settled the region first
-	NumCities       int // Number of generated cities (regions)
-	NumCityStates   int // Number of generated city states
-	NumMiningTowns  int // Number of generated mining towns
-	NumFarmingTowns int // Number of generated farming towns
-	NumDesertOasis  int // Number of generated desert oases
-	NumEmpires      int // Number of generated territories
-	NumCultures     int // (Min) Number of generated cultures
-	NameGen         *NameGenerators
+	NumCities          int // Number of generated cities (regions)
+	NumCityStates      int // Number of generated city states
+	NumMiningTowns     int // Number of generated mining towns
+	NumMiningGemsTowns int // Number of generated (gem) mining towns
+	NumQuarryTowns     int // Number of generated quarry towns
+	NumFarmingTowns    int // Number of generated farming towns
+	NumDesertOasis     int // Number of generated desert oases
+	NumEmpires         int // Number of generated territories
+	NumCultures        int // (Min) Number of generated cultures
+	NameGen            *NameGenerators
 }
 
 func NewCiv(geo *Geo) *Civ {
 	return &Civ{
-		Geo:               geo,
-		History:           NewHistory(geo.Calendar),
-		RegionToEmpire:    initRegionSlice(geo.mesh.numRegions),
-		RegionToCityState: initRegionSlice(geo.mesh.numRegions),
-		RegionToCulture:   initRegionSlice(geo.mesh.numRegions),
-		Settled:           initTimeSlice(geo.mesh.numRegions),
-		NumEmpires:        10,
-		NumCities:         250,
-		NumCityStates:     150,
-		NumMiningTowns:    60,
-		NumFarmingTowns:   60,
-		NumDesertOasis:    10,
-		NumCultures:       30,
-		NameGen:           NewNameGenerators(geo.Seed),
+		Geo:                geo,
+		History:            NewHistory(geo.Calendar),
+		RegionToEmpire:     initRegionSlice(geo.mesh.numRegions),
+		RegionToCityState:  initRegionSlice(geo.mesh.numRegions),
+		RegionToCulture:    initRegionSlice(geo.mesh.numRegions),
+		Settled:            initTimeSlice(geo.mesh.numRegions),
+		NumEmpires:         10,
+		NumCities:          150,
+		NumCityStates:      150,
+		NumMiningTowns:     60,
+		NumMiningGemsTowns: 60,
+		NumQuarryTowns:     60,
+		NumFarmingTowns:    60,
+		NumDesertOasis:     10,
+		NumCultures:        30,
+		NameGen:            NewNameGenerators(geo.Seed),
 	}
 }
 
@@ -76,9 +80,11 @@ func (m *Civ) generateCivilization() {
 	// TODO: Smaller towns should be found in the vicinity of larger cities.
 	start = time.Now()
 	m.PlaceNCities(m.NumCities, TownTypeDefault)
-	m.PlaceNCities(m.NumMiningTowns, TownTypeMining)
 	m.PlaceNCities(m.NumFarmingTowns, TownTypeFarming)
 	m.PlaceNCities(m.NumDesertOasis, TownTypeDesertOasis)
+	m.PlaceNCities(m.NumMiningTowns, TownTypeMining)
+	m.PlaceNCities(m.NumMiningGemsTowns, TownTypeMiningGems)
+	m.PlaceNCities(m.NumQuarryTowns, TownTypeQuarry)
 	log.Println("Done cities in ", time.Since(start).String())
 
 	start = time.Now()
@@ -111,6 +117,10 @@ func (m *Civ) generateCivilization() {
 	log.Println("Done calculating attractiveness in ", time.Since(start).String())
 
 	start = time.Now()
+	m.calculateResourcePotential(m.Cities)
+	log.Println("Done calculating resource potential in ", time.Since(start).String())
+
+	start = time.Now()
 	m.calculateEconomicPotential()
 	log.Println("Done calculating economic potential in ", time.Since(start).String())
 
@@ -119,32 +129,34 @@ func (m *Civ) generateCivilization() {
 	// Also, the theoretical population should be based on the
 	// economic potential of the region, the type of settlement,
 	// and the time of settlement.
-	start = time.Now()
-	m.Geo.Calendar.SetYear(0)
-	knownCities := len(m.Cities)
-	for year := 0; year < int(maxSettled); year++ {
-		// Age cities.
-		for _, c := range m.getExistingCities() {
-			m.tickCityDays(c, 365)
+	/*
+		start = time.Now()
+		m.Geo.Calendar.SetYear(0)
+		knownCities := len(m.Cities)
+		for year := 0; year < int(maxSettled); year++ {
+			// Age cities.
+			for _, c := range m.getExistingCities() {
+				m.tickCityDays(c, 365)
+			}
+
+			// Update attractiveness.
+			if len(m.Cities) > knownCities {
+				// TODO: Only update new regions until we have climate change?
+				m.calculateAttractiveness(m.Cities[knownCities:])
+				m.calculateAgriculturalPotential(m.Cities[knownCities:])
+				m.calculateResourcePotential(m.Cities[knownCities:])
+				knownCities = len(m.Cities)
+			}
+
+			// Recalculate economic potential.
+			m.calculateEconomicPotential()
+
+			log.Printf("Aged cities to %d\n", year)
+
+			// Advance year.
+			m.Geo.Calendar.TickYear()
 		}
-
-		// Update attractiveness.
-		if len(m.Cities) > knownCities {
-			// TODO: Only update new regions until we have climate change?
-			m.calculateAttractiveness(m.Cities[knownCities:])
-			m.calculateAgriculturalPotential(m.Cities[knownCities:])
-			knownCities = len(m.Cities)
-		}
-
-		// Recalculate economic potential.
-		m.calculateEconomicPotential()
-
-		log.Printf("Aged cities to %d\n", year)
-
-		// Advance year.
-		m.Geo.Calendar.TickYear()
-	}
-	log.Println("Done aging cities in ", time.Since(start).String())
+		log.Println("Done aging cities in ", time.Since(start).String())*/
 }
 
 func (m *Civ) Tick() {

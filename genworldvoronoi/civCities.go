@@ -59,67 +59,18 @@ func (m *Civ) calculateEconomicPotential() {
 	// distance.
 	distRegion := math.Sqrt(4 * math.Pi / float64(m.mesh.numRegions))
 
-	// Get the stop regions, which are the cities
-	// and calculate the radius in which we can find resources.
-	var resourceRadius []float64
+	// Calculate the base radius in which we can find trade partners.
+	var tradeRadius []float64
 	for _, c := range cities {
 		// The base radius is dependent on the population.
 		// ... allow for at least two regions distance.
 		radius := c.radius() + 2*distRegion
-		resourceRadius = append(resourceRadius, radius)
-	}
-
-	getRegsWithResources := func(res []byte) []int {
-		var regs []int
-		for i, r := range res {
-			if r > 0 {
-				regs = append(regs, i)
-			}
-		}
-		return regs
-	}
-
-	// Per resource, we calculate the distance from each city.
-	resourcePotential := make([]float64, len(cities))
-	calcResourceValues := func(res []byte) {
-		// Get all regs that contain a resource.
-		regs := getRegsWithResources(res)
-
-		// Now loop through all cities and check if the distance field
-		// indicates that we can find the resource in the radius.
-		for i, c := range cities {
-			// If the city has no population, we only consider the resources
-			// in the city itself.
-			if c.Population == 0 {
-				resourcePotential[i] += float64(sumResources(res[c.ID]))
-				continue
-			}
-			radius := resourceRadius[i]
-			for _, reg := range regs {
-				if m.GetDistance(reg, c.ID) <= radius {
-					// TODO: Make sure we take distance into account.
-					resourcePotential[i] += float64(sumResources(res[reg]))
-				}
-			}
-		}
-	}
-
-	// Calculate the resource potential for each resource.
-	calcResourceValues(m.Metals)
-	calcResourceValues(m.Gems)
-	calcResourceValues(m.Stones)
-
-	// Normalize the resource potential, so we have a value between 0 and 1.
-	_, maxResp := minMax(resourcePotential)
-	if maxResp > 0 {
-		for i := range resourcePotential {
-			resourcePotential[i] /= maxResp
-		}
+		tradeRadius = append(tradeRadius, radius)
 	}
 
 	economicPotential := make([]float64, len(cities))
 	for i, c := range cities {
-		economicPotential[i] = resourcePotential[i] + c.Agriculture
+		economicPotential[i] = c.Resources + c.Agriculture
 	}
 
 	// Now we go through all the cities, and see if they might be able to
@@ -148,7 +99,7 @@ func (m *Civ) calculateEconomicPotential() {
 				continue
 			}
 			// The trade radius is the sum of the two cities' radius times their economic potential.
-			radius := resourceRadius[i]*(1+economicPotential[i]) + resourceRadius[j]*(1+economicPotential[j])
+			radius := tradeRadius[i]*(1+economicPotential[i]) + tradeRadius[j]*(1+economicPotential[j])
 
 			// If the distance is within the radius, we can trade.
 			// However, if the other city has a higher economic potential,
@@ -180,7 +131,7 @@ func (m *Civ) calculateEconomicPotential() {
 				continue
 			}
 			dist := m.GetDistance(c.ID, c2.ID)
-			if dist <= resourceRadius[i] {
+			if dist <= tradeRadius[i] {
 				count++
 			}
 		}
@@ -201,7 +152,6 @@ func (m *Civ) calculateEconomicPotential() {
 	for i, c := range cities {
 		c.EconomicPotential = economicPotential[i] + tradePotential[i]
 		c.Trade = tradePotential[i]
-		c.Resources = resourcePotential[i]
 
 		// Log the economic potential (remove later)
 		// log.Printf("City %s (%s) has economic potential %f", c.Name, c.Type, c.EconomicPotential)
@@ -218,13 +168,37 @@ func (m *Civ) calculateAttractiveness(cities []*City) {
 }
 
 func (m *Civ) calculateAgriculturalPotential(cities []*City) {
-	// Now get the agricultural potential of all regions.
+	// Now get the agricultural potential of all cities.
 	fitnessArableFunc := m.getFitnessArableLand()
 	for _, c := range cities {
 		if agrPotential := fitnessArableFunc(c.ID); agrPotential > 0 {
 			c.Agriculture = agrPotential
 		}
 	}
+}
+
+func (m *Civ) calculateResourcePotential(cities []*City) {
+	// Now get the resource potential of all cities.
+	calcResourceValues := func(res []byte) {
+		// Now loop through all cities and check if the distance field
+		// indicates that we can find the resource in the radius.
+		for _, c := range cities {
+			// Sum up the normalized resource values.
+			c.Resources += float64(sumResources(res[c.ID])) / 36 // 36 is the maximum value.
+		}
+	}
+
+	// Reset the resource potential.
+	for _, c := range cities {
+		c.Resources = 0
+	}
+
+	// Calculate the resource potential for each resource.
+	calcResourceValues(m.Metals)
+	calcResourceValues(m.Gems)
+	calcResourceValues(m.Stones)
+	calcResourceValues(m.Wood)
+	calcResourceValues(m.Various)
 }
 
 func (m *Civ) getAttractivenessFunc() func(int) float64 {
@@ -296,7 +270,7 @@ func (m *Civ) tickCityDays(c *City, days int) {
 	// or disease.
 
 	// Check if a random disaster strikes.
-	if rand.Intn(100*356) < days {
+	if m.rand.Intn(100*356) < days {
 		// Pick a random disaster given their respective probabilities.
 		r := rand.Float64() * sumDisasterProbability
 		sumProb := 0.0
@@ -665,8 +639,10 @@ func (m *Civ) placeCityAt(r int, cType TownType, pop int, score float64) *City {
 		MaxPopulation: pop,
 		Type:          cType,
 		Culture:       m.GetCulture(r),
-		Founded:       m.Settled[r],
+		Founded:       m.Settled[r] + m.rand.Int63n(100),
 	}
+
+	// TODO: Set agricultural potential and resources based on the region.
 
 	// If there is no known culture, generate a new one.
 	if c.Culture == nil {
@@ -682,10 +658,16 @@ func (m *Civ) placeCityAt(r int, cType TownType, pop int, score float64) *City {
 
 // getRegCityType returns the optimal type of city for a given region.
 func (m *Civ) getRegCityType(r int) TownType {
-	// If we have a lot of metals, stone, etc. we have a mining town.
-	if m.Metals[r] > 0 || m.Stones[r] > 0 {
+	// If we have a lot of metals, gems, etc. we have a mining town.
+	if m.Metals[r] > 0 || m.Gems[r] > 0 {
 		return TownTypeMining
 	}
+
+	// If we have stone, we have a quarry.
+	if m.Stones[r] > 0 {
+		return TownTypeQuarry
+	}
+
 	// TODO: Cache this somehow.
 	if m.getFitnessArableLand()(r) > 0.5 {
 		return TownTypeFarming
@@ -786,6 +768,8 @@ const (
 	TownTypeDefault     TownType = "town"
 	TownTypeTrading     TownType = "trading"
 	TownTypeMining      TownType = "mining"
+	TownTypeMiningGems  TownType = "mining (gems)"
+	TownTypeQuarry      TownType = "quarry"
 	TownTypeFarming     TownType = "agricultural"
 	TownTypeDesertOasis TownType = "desert oasis"
 )
@@ -797,7 +781,7 @@ func (t TownType) FoundingPopulation() int {
 		return 100
 	case TownTypeTrading:
 		return 80
-	case TownTypeMining:
+	case TownTypeQuarry, TownTypeMining, TownTypeMiningGems:
 		return 20
 	case TownTypeFarming:
 		return 20
@@ -823,6 +807,30 @@ func (t TownType) GetDistanceSeedFunc(m *Civ) func() []int {
 	}
 }
 
+func (m *Civ) getFitnessProximityToCities(except ...TownType) func(int) float64 {
+	var cities []int
+	exceptMap := make(map[TownType]bool)
+	for _, t := range except {
+		exceptMap[t] = true
+	}
+	for _, c := range m.Cities {
+		if !exceptMap[c.Type] {
+			cities = append(cities, c.ID)
+		}
+	}
+	distCities := m.assignDistanceField(cities, make(map[int]bool))
+	_, maxDist := minMax(distCities)
+	if maxDist == 0 {
+		maxDist = 1
+	}
+	return func(r int) float64 {
+		if distCities[r] == 0 {
+			return 0
+		}
+		return 1 - float64(distCities[r])/maxDist
+	}
+}
+
 // GetFitnessFunction returns the fitness function for a city type.
 func (t TownType) GetFitnessFunction(m *Civ) func(int) float64 {
 	// TODO: Create different fitness functions for different types of settlement.
@@ -841,15 +849,38 @@ func (t TownType) GetFitnessFunction(m *Civ) func(int) float64 {
 		}
 	case TownTypeTrading:
 		return m.getFitnessTradingTowns()
+	case TownTypeQuarry:
+		fa := m.getFitnessSteepMountains()
+		fb := m.getFitnessClimate()
+		fc := m.getFitnessProximityToWater()
+		fd := m.getFitnessProximityToCities(TownTypeMining, TownTypeMiningGems, TownTypeQuarry)
+		return func(r int) float64 {
+			if m.Stones[r] == 0 {
+				return -1.0
+			}
+			return fd(r) * (fa(r)*fb(r) + fc(r)) / 2
+		}
 	case TownTypeMining:
 		fa := m.getFitnessSteepMountains()
 		fb := m.getFitnessClimate()
 		fc := m.getFitnessProximityToWater()
+		fd := m.getFitnessProximityToCities(TownTypeMining, TownTypeMiningGems, TownTypeQuarry)
 		return func(r int) float64 {
-			if m.Metals[r]+m.Stones[r]+m.Gems[r] == 0 {
+			if m.Metals[r] == 0 {
 				return -1.0
 			}
-			return (fa(r)*fb(r) + fc(r)) / 2
+			return fd(r) * (fa(r)*fb(r) + fc(r)) / 2
+		}
+	case TownTypeMiningGems:
+		fa := m.getFitnessSteepMountains()
+		fb := m.getFitnessClimate()
+		fc := m.getFitnessProximityToWater()
+		fd := m.getFitnessProximityToCities(TownTypeMining, TownTypeMiningGems, TownTypeQuarry)
+		return func(r int) float64 {
+			if m.Gems[r] == 0 {
+				return -1.0
+			}
+			return fd(r) * (fa(r)*fb(r) + fc(r)) / 2
 		}
 	case TownTypeFarming:
 		return m.getFitnessArableLand()
