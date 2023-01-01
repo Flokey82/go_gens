@@ -190,12 +190,24 @@ func (m *Geo) assignWindVectors() {
 			regLat := m.LatLon[r][0]
 			regLon := m.LatLon[r][1]
 			h := m.Elevation[r]
+			if h < 0 {
+				h = 0
+			}
 			// Add wind vector to neighbor lat/lon to get the "wind vector lat long" or something like that..
 			rwXYZ := convToVec3(latLonToCartesian(regLat+regWindVec[r][1], regLon+regWindVec[r][0])).Normalize()
 			v := vectors.Normalize(vectors.Vec2{
 				X: regVec[0],
 				Y: regVec[1],
-			}) //v.Mul(h / maxElev)
+			}) // v.Mul(h / maxElev)
+			vw := calcVecFromLatLong(regLat, regLon, regLat+regWindVec[r][1], regLon+regWindVec[r][0])
+			v0 := vectors.Normalize(vectors.Vec2{
+				X: vw[0],
+				Y: vw[1],
+			})
+
+			// Calculate Vector between r and wind_r.
+			vb := vectors.Sub3(rwXYZ, regXYZ).Normalize()
+
 			for _, nbReg := range m.GetRegNeighbors(r) {
 				// if is_sea[neighbor_r] {
 				//	continue
@@ -207,23 +219,27 @@ func (m *Geo) assignWindVectors() {
 				// Calculate Vector between r and neighbor_r.
 				va := vectors.Sub3(rnXYZ, regXYZ).Normalize()
 
-				// Calculate Vector between r and wind_r.
-				vb := vectors.Sub3(rwXYZ, regXYZ).Normalize()
-
 				// Calculate dot product between va and vb.
 				// This will give us how much the current region lies within the wind direction of the
 				// current neighbor.
 				// See: https://www.scratchapixel.com/lessons/3d-basic-rendering/introduction-to-shading/shading-normals
 				dotV := vectors.Dot3(va, vb)
 				hnb := m.Elevation[nbReg]
-				if dotV > 0 && hnb != h && h >= 0 && hnb >= 0 {
+				if hnb < 0 {
+					hnb = 0
+				}
+				if dotV > 0 {
 					nbLat := m.LatLon[nbReg][0]
 					nbLon := m.LatLon[nbReg][1]
 					ve := calcVecFromLatLong(regLat, regLon, nbLat, nbLon)
+					vx := vectors.Normalize(v0.Sub(vectors.Normalize(vectors.Vec2{
+						X: ve[0],
+						Y: ve[1],
+					})))
 					// The higher the dot product (the more direct the neighbor is in wind direction), the higher
 					// the influence of an elevation change. So a steep mountain ahead will slow the wind down.
-					// If a steep mountain is too the left, the wind vector will be pushed to the right.
-					v = v.Add(vectors.Normalize(vectors.NewVec2(ve[0], ve[1])).Mul((h - hnb) * dotV / maxElev))
+					// If a steep mountain is to the left, the wind vector will be pushed to the right.
+					v = v.Add(vx.Mul(dotV * (hnb - h) / maxElev))
 				}
 			}
 			v = vectors.Normalize(v)
@@ -489,24 +505,48 @@ func (m *Geo) assignRainfall(numSteps, transferMode, sortOrder int) {
 
 func (m *Geo) getWindSortOrder() ([]float64, []int) {
 	m.assignWindVectors()
+	useAlternativeWindSort := true
+
 	// TODO: Add bool parameter to switch between local winds and global winds.
 	// regWindVec := m.regWindVec
 	regWindVec := m.RegionToWindVecLocal
 	windOrderRegs := make([]int, m.mesh.numRegions)
 	regWindSort := make([]float64, m.mesh.numRegions)
-	for r := 0; r < m.mesh.numRegions; r++ {
-		windOrderRegs[r] = r
-		// TODO: modify the sort order by ensuring longitude wraps around...??
-		lat := (m.LatLon[r][0]) * regWindVec[r][1] / math.Abs(regWindVec[r][1]) // radToDeg(r_windvec[r][1])
-		lon := (m.LatLon[r][1]) * regWindVec[r][0] / math.Abs(regWindVec[r][0]) // radToDeg(r_windvec[r][0])
-		regWindSort[r] = (lat + lon)
-	}
+	// Sort all regions by latitude and longitude and their wind vector.
+	// This will give us a logical order in which we can push the moisture across the globe.
+	if useAlternativeWindSort {
+		for r := 0; r < m.mesh.numRegions; r++ {
+			// Get XYZ Position of r as vector3
+			regVec3 := convToVec3(m.XYZ[r*3 : r*3+3])
+			// Get XYZ Position of r_neighbor.
+			regToWindVec3 := convToVec3(latLonToCartesian(m.LatLon[r][0]+regWindVec[r][1], m.LatLon[r][1]+regWindVec[r][0])).Normalize()
+			// Calculate Vector between r and neighbor_r.
+			va := vectors.Sub3(regVec3, regToWindVec3).Normalize()
+			// Calculate dot product between va and vb.
+			// This will give us how much the current region lies within the wind direction of the
+			// current neighbor.
+			// See: https://www.scratchapixel.com/lessons/3d-basic-rendering/introduction-to-shading/shading-normals
+			dotV := vectors.Dot3(va, regToWindVec3)
+			regWindSort[r] = dotV
+			windOrderRegs[r] = r
+		}
+		sort.Sort(sort.Reverse(sort.Float64Slice(regWindSort)))
+		sort.Sort(sort.Reverse(sort.IntSlice(windOrderRegs)))
+	} else {
+		for r := 0; r < m.mesh.numRegions; r++ {
+			windOrderRegs[r] = r
+			// TODO: modify the sort order by ensuring longitude wraps around...??
+			lat := (m.LatLon[r][0]) * regWindVec[r][1] / math.Abs(regWindVec[r][1]) // radToDeg(r_windvec[r][1])
+			lon := (m.LatLon[r][1]) * regWindVec[r][0] / math.Abs(regWindVec[r][0]) // radToDeg(r_windvec[r][0])
+			regWindSort[r] = (lat + lon)
+		}
 
-	// Sort the indices in wind-order so we can ensure that we push the moisture
-	// in their logical sequence across the globe.
-	sort.Slice(windOrderRegs, func(a, b int) bool {
-		return regWindSort[windOrderRegs[a]] < regWindSort[windOrderRegs[b]]
-	})
+		// Sort the indices in wind-order so we can ensure that we push the moisture
+		// in their logical sequence across the globe.
+		sort.Slice(windOrderRegs, func(a, b int) bool {
+			return regWindSort[windOrderRegs[a]] < regWindSort[windOrderRegs[b]]
+		})
+	}
 	return regWindSort, windOrderRegs
 }
 
@@ -525,7 +565,10 @@ func (m *Geo) assignRainfallBasic() {
 
 	_, maxFlux := minMax(m.Flux)
 	_, maxPool := minMax(m.Waterpool)
-	_, maxElev := minMax(m.Elevation)
+	minElev, maxElev := minMax(m.Elevation)
+	if minElev == 0 {
+		minElev = 1
+	}
 
 	// Sort the indices in wind-order so we can ensure that we push the moisture
 	// in their logical sequence across the globe.
@@ -582,7 +625,7 @@ func (m *Geo) assignRainfallBasic() {
 	//
 	// NOTE: Since we start and stop at +- 180° long, we need to run the code several times
 	// to ensure that moisture is pushed across the longitude wrap-around.
-	for i := 0; i < 4; i++ {
+	for i := 0; i < 2; i++ {
 		for _, r := range windOrderRegs {
 			var humidity float64
 
@@ -598,17 +641,17 @@ func (m *Geo) assignRainfallBasic() {
 
 				// Check if the neighbor region is up-wind (that the wind blows from neighbor_r to r) / dotV is positive.
 				if dotV > 0.0 {
-					humidity += m.Moisture[nbReg] * dotV
+					humidity += m.Moisture[nbReg] * math.Pow(dotV, 2)
 				}
 			}
 
 			// Evaporation.
 			if m.Elevation[r] <= 0 {
-				evaporation := biomesParam.evaporation * (-m.Elevation[r])
+				evaporation := biomesParam.evaporation * humidityFromSea * m.Elevation[r] / minElev
 				humidity = math.Max(humidity, evaporation)
 			} else if evaporateRivers && m.isRegBigRiver(r) {
 				evaporation := biomesParam.evaporation * humidityFromRiver * m.Flux[r] / maxFlux
-				humidity = math.Max(humidity, math.Pow(evaporation, 4))
+				humidity = math.Max(humidity, math.Pow(evaporation, 2))
 			} else if evaporatePools && m.Waterpool[r] > 0 {
 				evaporation := biomesParam.evaporation * humidityFromPool * m.Waterpool[r] / maxPool
 				humidity = math.Max(humidity, evaporation)

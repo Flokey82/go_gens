@@ -47,6 +47,14 @@ func (v1 Vec2) Add(v2 Vec2) Vec2 {
 	}
 }
 
+// Sub subtracts v2 from the current vector and returns the result.
+func (v1 Vec2) Sub(v2 Vec2) Vec2 {
+	return Vec2{
+		X: v1.X - v2.X,
+		Y: v1.Y - v2.Y,
+	}
+}
+
 // AddToThis adds v2 to the current vector.
 func (v1 *Vec2) AddToThis(v2 Vec2) {
 	v1.X += v2.X

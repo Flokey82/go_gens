@@ -116,6 +116,63 @@ func (m *Map) GetTile(x, y, zoom int) image.Image {
 		gc.FillStroke()
 	}
 
+	// Draw all the wind vectors on top.
+	for i := 0; i < m.mesh.numRegions; i++ {
+		rLat := m.LatLon[i][0]
+		rLon := m.LatLon[i][1]
+
+		// Check if we are within the tile with a small margin,
+		// taking into account that we might have wrapped around the world.
+		if rLat < la1-latLonMargin || rLat > la2+latLonMargin || rLon < lo1-latLonMargin || rLon > lo2+latLonMargin {
+			// Check if the tile and the region we are looking at is adjecent to +/- 180 degrees and
+			// NOTE: This could be improved by checking if one of the corners of the region is within the tile.
+			if lo1 > -175 && lo2 < 175 || rLon < 175 && rLon > -175 {
+				continue
+			}
+		}
+		// Now draw the wind vector for the region.
+		//windVec := m.RegionToWindVec[i]
+		windVec := m.RegionToWindVecLocal[i]
+		// Calculate the coordinates of the center of the region.
+		x, y := latLonToPixels(rLat, rLon, zoom)
+		x -= dx
+		y -= dy2
+
+		// Calculate the length of the wind vector.
+		length := math.Sqrt(windVec[0]*windVec[0] + windVec[1]*windVec[1])
+
+		// Calculate the angle of the wind vector.
+		angle := math.Atan2(windVec[1], windVec[0])
+
+		// Calculate the coordinates of the end of the wind vector.
+		// Since we are on a computer screen, we need to flip the y-axis.
+		x2 := x + math.Cos(angle)*length*50
+		y2 := y - math.Sin(angle)*length*50
+
+		// Draw the wind vector.
+		gc.SetStrokeColor(color.NRGBA{0, 0, 0, 255})
+		gc.SetLineWidth(1)
+		gc.BeginPath()
+		gc.MoveTo(x, y)
+		gc.LineTo(x2, y2)
+		gc.Stroke()
+
+		// Draw the arrow head.
+		gc.SetStrokeColor(color.NRGBA{0, 0, 0, 255})
+		gc.SetLineWidth(1)
+		gc.BeginPath()
+		gc.MoveTo(x2, y2)
+		gc.LineTo(x2-math.Cos(angle+math.Pi/6)*5, y2+math.Sin(angle+math.Pi/6)*5)
+		gc.Stroke()
+
+		gc.SetStrokeColor(color.NRGBA{0, 0, 0, 255})
+		gc.SetLineWidth(1)
+		gc.BeginPath()
+		gc.MoveTo(x2, y2)
+		gc.LineTo(x2-math.Cos(angle-math.Pi/6)*5, y2+math.Sin(angle-math.Pi/6)*5)
+		gc.Stroke()
+	}
+
 	// Now we do something completely inefficient and
 	// fetch all the rivers and filter them by the tile.
 	// We should filter this stuff before we generate the rivers.
@@ -325,7 +382,7 @@ func (m *Map) GetGeoJSONCities(la1, lo1, la2, lo2 float64, zoom int) ([]byte, er
 		// Add the city to the GeoJSON as a feature.
 		f := geojson.NewPointFeature([]float64{cLon, cLat})
 		f.SetProperty("id", c.ID)
-		f.SetProperty("name", c.Name)
+		f.SetProperty("name", c.Name+fmt.Sprintf("lat: %f, lon: %f", cLat, cLon))
 		f.SetProperty("type", c.Type)
 		f.SetProperty("culture", c.Culture.Name)
 		f.SetProperty("population", c.Population)
