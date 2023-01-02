@@ -135,7 +135,7 @@ func (m *Map) GetTile(x, y, zoom int) image.Image {
 				}
 			}
 			// Now draw the wind vector for the region.
-			//windVec := m.RegionToWindVec[i]
+			// windVec := m.RegionToWindVec[i]
 			windVec := m.RegionToWindVecLocal[i]
 			// Calculate the coordinates of the center of the region.
 			x, y := latLonToPixels(rLat, rLon, zoom)
@@ -335,18 +335,6 @@ func limitLongitude(lo float64) float64 {
 // GetGeoJSONCities returns all cities as GeoJSON within the given bounds and zoom level.
 func (m *Map) GetGeoJSONCities(la1, lo1, la2, lo2 float64, zoom int) ([]byte, error) {
 	geoJSON := geojson.NewFeatureCollection()
-
-	// Fix the bounds if la1, lo1, la2, lo2 are not in the correct order.
-	//if la1 < la2 {
-	//	la1, la2 = la2, la1
-	//}
-	//if lo1 > lo2 {
-	//	lo1, lo2 = lo2, lo1
-	//}
-	// Limit the lat lon coordinates.
-	//la1, lo1 = limitLatLon(la1, lo1)
-	//la2, lo2 = limitLatLon(la2, lo2)
-
 	// Wrap the latitude only if we see less than 180 degrees, otherwise just limit it.
 	if math.Abs(la1-la2) < 180 {
 		la1 = wrapLatitude(la1)
@@ -387,7 +375,7 @@ func (m *Map) GetGeoJSONCities(la1, lo1, la2, lo2 float64, zoom int) ([]byte, er
 		// Add the city to the GeoJSON as a feature.
 		f := geojson.NewPointFeature([]float64{cLon, cLat})
 		f.SetProperty("id", c.ID)
-		f.SetProperty("name", c.Name+fmt.Sprintf("lat: %f, lon: %f", cLat, cLon))
+		f.SetProperty("name", c.Name+fmt.Sprintf("lat: %.2f, lon: %.2f", cLat, cLon))
 		f.SetProperty("type", c.Type)
 		f.SetProperty("culture", c.Culture.Name)
 		f.SetProperty("population", c.Population)

@@ -91,7 +91,6 @@ func (m *Civ) calculateEconomicPotential() {
 			continue
 		}
 
-		//var count int
 		// Loop through all cities and check if we can trade with them.
 		for j, c2 := range cities {
 			// We don't trade with ourselves.
@@ -117,18 +116,15 @@ func (m *Civ) calculateEconomicPotential() {
 				}
 			}
 		}
-		//log.Printf("City %s (%s) can trade with %d cities.", c.Name, c.Type, count)
 	}
-	//log.Println("done calculating trade potential")
 
 	// DEBUG: Count the number of cities in range.
 	for i, c := range cities {
-		var count int
 		// Loop through all cities and check if we can trade with them.
+		var count int
 		for j, c2 := range cities {
-			// We don't trade with ourselves.
 			if i == j {
-				continue
+				continue // We don't trade with ourselves.
 			}
 			dist := m.GetDistance(c.ID, c2.ID)
 			if dist <= tradeRadius[i] {
@@ -136,31 +132,25 @@ func (m *Civ) calculateEconomicPotential() {
 			}
 		}
 		c.TradePartners = count
-		//log.Printf("City %s (%s) can trade with %d cities.", c.Name, c.Type, count)
 	}
 
-	// Now we add the normalized trade potential to the economic potential.
+	// Now normalize trade potential.
 	_, maxTrade := minMax(tradePotential)
 	if maxTrade > 0 {
 		for i := range cities {
 			tradePotential[i] /= maxTrade
 		}
 	}
-	// Now we have a economic potential ranging from 0 to 3.
 
-	// Assign the economic potential (range 0 to 3).
+	// Assign the economic potential.
 	for i, c := range cities {
 		c.EconomicPotential = economicPotential[i] + tradePotential[i]
 		c.Trade = tradePotential[i]
-
-		// Log the economic potential (remove later)
-		// log.Printf("City %s (%s) has economic potential %f", c.Name, c.Type, c.EconomicPotential)
 	}
-	//log.Println("done assigning economic potential")
 }
 
 func (m *Civ) calculateAttractiveness(cities []*City) {
-	// Calculate the attractiveness of all cities.
+	// Calculate the attractiveness of the supplied cities.
 	attrFunc := m.getAttractivenessFunc()
 	for _, c := range cities {
 		c.Attractiveness = attrFunc(c.ID)
@@ -168,7 +158,7 @@ func (m *Civ) calculateAttractiveness(cities []*City) {
 }
 
 func (m *Civ) calculateAgriculturalPotential(cities []*City) {
-	// Now get the agricultural potential of all cities.
+	// Calculate the agricultural potential of the supplied cities.
 	fitnessArableFunc := m.getFitnessArableLand()
 	for _, c := range cities {
 		if agrPotential := fitnessArableFunc(c.ID); agrPotential > 0 {
@@ -180,8 +170,6 @@ func (m *Civ) calculateAgriculturalPotential(cities []*City) {
 func (m *Civ) calculateResourcePotential(cities []*City) {
 	// Now get the resource potential of all cities.
 	calcResourceValues := func(res []byte) {
-		// Now loop through all cities and check if the distance field
-		// indicates that we can find the resource in the radius.
 		for _, c := range cities {
 			// Sum up the normalized resource values.
 			c.Resources += float64(sumResources(res[c.ID])) / 36 // 36 is the maximum value.
@@ -221,19 +209,34 @@ type disaster struct {
 	PopulationLoss float64
 }
 
+var (
+	disStorm      = disaster{"Storm", 0.01}
+	disFire       = disaster{"Fire", 0.02}
+	disRockslide  = disaster{"Rockslide", 0.03}
+	disCaveIn     = disaster{"Cave In", 0.05}
+	disWildfire   = disaster{"Wildfire", 0.07}
+	disDrought    = disaster{"Drought", 0.1}
+	disFamine     = disaster{"Famine", 0.15}
+	disDisease    = disaster{"Disease", 0.25}
+	disEarthquake = disaster{"Earthquake", 0.3}
+	disFlood      = disaster{"Flood", 0.35}
+	disVolcano    = disaster{"Volcanic Eruption", 0.6}
+	disPlague     = disaster{"Plague", 0.8}
+)
+
 var disasters = []disaster{
-	{"Storm", 0.01},
-	{"Fire", 0.02},
-	{"Cave In", 0.05},
-	{"Wildfire", 0.07},
-	{"Drought", 0.1},
-	{"Famine", 0.15},
-	{"Fire", 0.2},
-	{"Disease", 0.25},
-	{"Earthquake", 0.3},
-	{"Flood", 0.35},
-	{"Volcanic Eruption", 0.6},
-	{"Plague", 0.8},
+	disStorm,
+	disFire,
+	disRockslide,
+	disCaveIn,
+	disWildfire,
+	disDrought,
+	disFamine,
+	disDisease,
+	disEarthquake,
+	disFlood,
+	disVolcano,
+	disPlague,
 }
 
 var sumDisasterProbability float64
@@ -307,20 +310,19 @@ func (m *Civ) tickCityDays(c *City, days int) {
 
 		// Since there was a disaster, depending on the number of people that
 		// died, some people might leave the city.
-		if enableDisasterMigration && popLoss > 0.3 {
+		//
+		// If there is sickness, war, famine, drought, etc, the population might
+		// migrate to other cities that are more prosperous or a new settlement
+		// might be founded nearby.
+		//
+		// The bigger the population loss, the more likely it is that people
+		// will leave the city.
+		if enableDisasterMigration && rand.Float64() < popLoss {
 			// Up to 'popLoss' of the population might leave the city.
 			leave := int(float64(c.Population) * (popLoss * rand.Float64()))
 			m.relocateFromCity(c, leave)
 		}
 	}
-
-	// TODO: If there is sickness, war, famine, drought, etc, the population
-	// might migrate to other cities that are more prosperous or a new settlement
-	// might be founded nearby.
-
-	// TODO: If a city reaches a certain size it might transition from an
-	// agricultural town to a city with a more diverse economy. A mining town
-	// might, if there is enough resources, transition to an industrial city.
 
 	// In the middle ages, the average population growth was 0.16%-ish per year.
 	// See: https://en.wikipedia.org/wiki/Medieval_demography
@@ -357,8 +359,15 @@ func (m *Civ) tickCityDays(c *City, days int) {
 		excessPopulation = minInt(excessPopulation, c.Population)
 
 		m.relocateFromCity(c, excessPopulation)
-		//m.calculateEconomicPotential()
 	}
+
+	// TODO: If a city reaches a certain size it might transition from an
+	// agricultural town to a city with a more diverse economy. A mining town
+	// might, if there is enough resources, transition to an industrial city.
+
+	// TODO: Update the economic potential of the city if the population
+	// has changed.
+	// m.calculateEconomicPotential()
 
 	// Update the peak population.
 	// TODO: Maybe store the year when the peak population was reached?
@@ -438,6 +447,9 @@ func (m *Civ) relocateFromCity(c *City, population int) {
 				}
 				// Move the population to the closest city.
 				city.Population += survived
+				if city.Population > city.MaxPopulation {
+					city.MaxPopulation = city.Population
+				}
 				// TODO: Update the economic potential of the city.
 				m.AddEvent("Migration", fmt.Sprintf("%d people arrived", population), city.Ref())
 			}

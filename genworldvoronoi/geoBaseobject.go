@@ -710,15 +710,19 @@ func (m *BaseObject) assignDistanceFieldWithIntensity(seedsR []int, stopR map[in
 	}
 
 	// Get the min and max compression value so that we can
-	// normalize the compression value.
+	// normalize the compression value, also we need to copy
+	// the compression values into a slice so that we can
+	// modify them.
 	var maxComp, minComp float64
-	for _, comp := range compression {
+	cmp := make([]float64, m.mesh.numRegions)
+	for r, comp := range compression {
 		if comp > maxComp {
 			maxComp = comp
 		}
 		if comp < minComp {
 			minComp = comp
 		}
+		cmp[r] = comp
 	}
 
 	// Random search adapted from breadth first search.
@@ -728,7 +732,7 @@ func (m *BaseObject) assignDistanceFieldWithIntensity(seedsR []int, stopR map[in
 	for queueOut := 0; queueOut < len(queue); queueOut++ {
 		pos := queueOut + m.rand.Intn(len(queue)-queueOut)
 		currentReg := queue[pos]
-		currentComp := compression[currentReg]
+		currentComp := cmp[currentReg]
 		currentDist := regDistance[currentReg]
 		queue[pos] = queue[queueOut]
 		for _, nbReg := range mesh.r_circulate_r(outRegs, currentReg) {
@@ -746,8 +750,8 @@ func (m *BaseObject) assignDistanceFieldWithIntensity(seedsR []int, stopR map[in
 				// This is a simple approximation of the real world, where the
 				// compression diminishes as the square of the distance.
 				distToNb := 1 + m.GetDistance(currentReg, nbReg)
-				if compression[nbReg] == 0 {
-					compression[nbReg] = currentComp / (distToNb * distToNb)
+				if cmp[nbReg] == 0 {
+					cmp[nbReg] = currentComp / (distToNb * distToNb)
 				}
 			}
 			// Apply the compression of the current region to the distance

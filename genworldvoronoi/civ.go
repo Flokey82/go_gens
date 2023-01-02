@@ -125,38 +125,37 @@ func (m *Civ) generateCivilization() {
 	log.Println("Done calculating economic potential in ", time.Since(start).String())
 
 	// HACK: Age city populations.
+	start = time.Now()
 	// TODO: Instead we should spawn the cities from the capitals.
 	// Also, the theoretical population should be based on the
 	// economic potential of the region, the type of settlement,
 	// and the time of settlement.
-	/*
-		start = time.Now()
-		m.Geo.Calendar.SetYear(0)
-		knownCities := len(m.Cities)
-		for year := 0; year < int(maxSettled); year++ {
-			// Age cities.
-			for _, c := range m.getExistingCities() {
-				m.tickCityDays(c, 365)
-			}
-
-			// Update attractiveness.
-			if len(m.Cities) > knownCities {
-				// TODO: Only update new regions until we have climate change?
-				m.calculateAttractiveness(m.Cities[knownCities:])
-				m.calculateAgriculturalPotential(m.Cities[knownCities:])
-				m.calculateResourcePotential(m.Cities[knownCities:])
-				knownCities = len(m.Cities)
-			}
-
-			// Recalculate economic potential.
-			m.calculateEconomicPotential()
-
-			log.Printf("Aged cities to %d\n", year)
-
-			// Advance year.
-			m.Geo.Calendar.TickYear()
+	m.Geo.Calendar.SetYear(0)
+	knownCities := len(m.Cities)
+	for year := 0; year < int(maxSettled); year++ {
+		// Age cities for a year.
+		for _, c := range m.getExistingCities() {
+			m.tickCityDays(c, 365)
 		}
-		log.Println("Done aging cities in ", time.Since(start).String())*/
+
+		// Update attractiveness, agricultural potential, and resource potential
+		// for new cities.
+		if len(m.Cities) > knownCities {
+			// TODO: Only update new regions until we have climate change?
+			m.calculateAttractiveness(m.Cities[knownCities:])
+			m.calculateAgriculturalPotential(m.Cities[knownCities:])
+			m.calculateResourcePotential(m.Cities[knownCities:])
+			knownCities = len(m.Cities)
+		}
+
+		// Recalculate economic potential.
+		m.calculateEconomicPotential()
+		log.Printf("Aged cities to %d\n", year)
+
+		// Advance year.
+		m.Geo.Calendar.TickYear()
+	}
+	log.Println("Done aging cities in ", time.Since(start).String())
 }
 
 func (m *Civ) Tick() {
