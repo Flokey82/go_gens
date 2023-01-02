@@ -602,7 +602,7 @@ func (m *Geo) assignRainfallBasic() {
 		for r, fluxval := range m.Flux {
 			if m.isRegBigRiver(r) {
 				evaporation := humidityFromRiver * fluxval / maxFlux
-				m.Moisture[r] = math.Max(m.Moisture[r], math.Pow(evaporation, 4))
+				m.Moisture[r] = math.Max(m.Moisture[r], evaporation)
 			}
 		}
 	}
@@ -641,7 +641,7 @@ func (m *Geo) assignRainfallBasic() {
 
 				// Check if the neighbor region is up-wind (that the wind blows from neighbor_r to r) / dotV is positive.
 				if dotV > 0.0 {
-					humidity += m.Moisture[nbReg] * math.Pow(dotV, 2)
+					humidity += m.Moisture[nbReg] * dotV
 				}
 			}
 
@@ -651,7 +651,7 @@ func (m *Geo) assignRainfallBasic() {
 				humidity = math.Max(humidity, evaporation)
 			} else if evaporateRivers && m.isRegBigRiver(r) {
 				evaporation := biomesParam.evaporation * humidityFromRiver * m.Flux[r] / maxFlux
-				humidity = math.Max(humidity, math.Pow(evaporation, 2))
+				humidity = math.Max(humidity, evaporation)
 			} else if evaporatePools && m.Waterpool[r] > 0 {
 				evaporation := biomesParam.evaporation * humidityFromPool * m.Waterpool[r] / maxPool
 				humidity = math.Max(humidity, evaporation)
