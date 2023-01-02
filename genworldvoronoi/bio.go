@@ -1,5 +1,7 @@
 package genworldvoronoi
 
+import "math/rand"
+
 // Bio handles the generation of life on the map (plants, animals, etc.).
 type Bio struct {
 	*Geo
@@ -7,6 +9,7 @@ type Bio struct {
 	GrowthDays       []int      // Number of days within the growth period for each region.
 	GrowthInsolation []float64  // Average insolation for each region during the growth period.
 	NumSpecies       int        // Number of species to generate.
+	rand             *rand.Rand // Random number generator.
 }
 
 func newBio(geo *Geo) *Bio {
@@ -15,6 +18,7 @@ func newBio(geo *Geo) *Bio {
 		GrowthDays:       make([]int, geo.mesh.numRegions),
 		GrowthInsolation: make([]float64, geo.mesh.numRegions),
 		NumSpecies:       100,
+		rand:             rand.New(rand.NewSource(geo.Seed)),
 	}
 }
 

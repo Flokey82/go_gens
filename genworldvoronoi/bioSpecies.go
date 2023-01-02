@@ -3,13 +3,10 @@ package genworldvoronoi
 import (
 	"fmt"
 	"math"
-	"math/rand"
 	"strings"
 )
 
 func (b *Bio) genNRandomSpecies(n int) {
-	b.resetRand()
-
 	// TODO: Expand species from their origin until they encounter a competing
 	// species or they can't exist in the climate/environment.
 
@@ -56,136 +53,78 @@ func (b *Bio) PlaceSpecies(sf func(int) float64, distSeedFunc func() []int) *Spe
 			lastMax = val
 		}
 	}
-	s := b.newSpecies(newspecies, SpeciesKingdoms[b.rand.Intn(len(SpeciesKingdoms))])
-	b.Species = append(b.Species, s)
-	return s
+	tf := b.getTolerancesForRegionFunc()
+	return b.placeSpeciesAt(newspecies, tf)
 }
 
 // PlaceSpeciesAt places a species at the given region.
 // TODO: Allow specifying the species type/subtype?
 func (b *Bio) PlaceSpeciesAt(r int) *Species {
+	tf := b.getTolerancesForRegionFunc()
+	return b.placeSpeciesAt(r, tf)
+}
+
+func (b *Bio) placeSpeciesAt(r int, tf func(int) *SpeciesTolerances) *Species {
 	// TODO: Pick species type based on biome through a weighted random array.
-	s := b.newSpecies(r, SpeciesKingdoms[b.rand.Intn(len(SpeciesKingdoms))])
+	b.rand.Seed(b.Seed + int64(r))
+	s := b.newSpecies(r, SpeciesKingdoms[b.rand.Intn(len(SpeciesKingdoms))], tf)
 	b.Species = append(b.Species, s)
 	return s
 }
 
-func (b *Bio) newSpecies(r int, t SpeciesKingdom) *Species {
-	rnd := rand.New(rand.NewSource(b.Seed + int64(r)))
-
+func (b *Bio) newSpecies(r int, t SpeciesKingdom, tf func(int) *SpeciesTolerances) *Species {
 	// TODO: Get culture and language from the region and use it to generate the name.
 	s := &Species{
-		Origin:    r,
-		Size:      SpeciesSizes[rnd.Intn(len(SpeciesSizes))],
-		Kingdom:   t,
-		Ecosphere: b.getEcosphere(r),
+		Origin:            r,
+		Kingdom:           t,
+		Size:              SpeciesSizes[b.rand.Intn(len(SpeciesSizes))],
+		SpeciesTolerances: tf(r),
 	}
-
-	// minMaxRange returns a min and max range for the given value with the given variance.
-	minMaxRange := func(val, minVal, maxVal, variation float64) [2]float64 {
-		nVar := rnd.Float64() * variation
-		varMin := nVar * rnd.Float64()
-		newMin := math.Max(minVal, val-varMin)
-		newMax := math.Min(maxVal, val+(nVar-varMin))
-		return [2]float64{newMin, newMax}
-	}
-
-	// Prefered elevation range.
-	minElev, maxElev := minMax(b.Elevation)
-	if s.Ecosphere == EcosphereTypeOcean {
-		s.ElevRange = minMaxRange(b.Elevation[r], minElev, 0, 0.2)
-	} else {
-		s.ElevRange = minMaxRange(b.Elevation[r], 0, maxElev, 0.2)
-	}
-
-	// Preferred temperature range.
-	s.TempRange = minMaxRange(b.getRegTemperature(r, maxElev), float64(minTemp), float64(maxTemp), 0.2)
-
-	// Preferred humidity range.
-	minHum, maxHum := minMax(b.Moisture)
-	s.HumRange = minMaxRange(b.Moisture[r], minHum, maxHum, 0.2)
 
 	// Pick subtype and mode of locomotion.
-	switch s.Ecosphere {
-	case EcosphereTypeOcean, EcosphereTypeLake, EcosphereTypeRiver:
+	if s.Ecosphere.IsWater() {
 		subTypes := speciesKingdomToFamiliesWater[s.Kingdom]
-		s.Family = subTypes[rnd.Intn(len(subTypes))]
+		s.Family = subTypes[b.rand.Intn(len(subTypes))]
 		s.Locomotion = s.Family.Locomotion()
 		// There is further a remote chance that we have another way of locomotion.
-		if rnd.Float64() < 0.01 {
-			s.Locomotion |= LocomotionTypesWater[rnd.Intn(len(LocomotionTypesWater))]
+		if b.rand.Float64() < 0.01 {
+			s.Locomotion |= LocomotionTypesWater[b.rand.Intn(len(LocomotionTypesWater))]
 		}
-	default:
+	} else {
 		subTypes := speciesKingdomToFamiliesLand[s.Kingdom]
-		s.Family = subTypes[rnd.Intn(len(subTypes))]
+		s.Family = subTypes[b.rand.Intn(len(subTypes))]
 		s.Locomotion = s.Family.Locomotion()
 		// There is further a remote chance that we have another way of locomotion.
-		if rnd.Float64() < 0.02 {
-			s.Locomotion |= LocomotionTypesLand[rnd.Intn(len(LocomotionTypesLand))]
+		if b.rand.Float64() < 0.02 {
+			s.Locomotion |= LocomotionTypesLand[b.rand.Intn(len(LocomotionTypesLand))]
 		}
 	}
 
 	// Pick a random type of prey.
 	digestiveSystems := s.Kingdom.DigestiveSystems()
-	s.Digestion = digestiveSystems[rnd.Intn(len(digestiveSystems))]
-
-	// If we are not in the ocean, we probably have a preferred biome.
-	if s.Ecosphere != EcosphereTypeOcean && rnd.Float64() < 0.7 {
-		s.PreferredBiomes = []int{b.getRegWhittakerModBiomeFunc()(r)}
-	}
+	s.Digestion = digestiveSystems[b.rand.Intn(len(digestiveSystems))]
 
 	return s
 }
 
 func (b *Bio) getSpeciesScores(s *Species) []float64 {
 	scores := make([]float64, b.mesh.numRegions)
-	_, maxElev := minMax(b.Elevation)
-	bf := b.getRegWhittakerModBiomeFunc()
+	tsf := b.getToleranceScoreFunc(s.SpeciesTolerances)
 	for i := range scores {
-		scores[i] = b.getSpeciesScore(s, i, maxElev, bf)
+		scores[i] = tsf(i)
 	}
 	return scores
 }
 
-func (b *Bio) getSpeciesScore(s *Species, r int, maxElev float64, bf func(int) int) float64 {
-	// Check what ecosphere we are in and if it matches the species.
-	if s.Ecosphere != b.getEcosphere(r) {
-		return -1.0
-	}
-
-	// Check if we require a specific biome.
-	if len(s.PreferredBiomes) > 0 && !isInIntList(s.PreferredBiomes, bf(r)) {
-		return -1
-	}
-
-	// Check how much we diverge from the preferred temperature range.
-	tempDiv := getDiversionFromRange(b.getRegTemperature(r, maxElev), s.TempRange)
-	tempScore := easeInOutCubic(1 - tempDiv/(s.TempRange[1]-s.TempRange[0]))
-
-	// Check how much we diverge from the preferred humidity range.
-	humDiv := getDiversionFromRange(b.Moisture[r], s.HumRange)
-	humScore := easeInOutCubic(1 - humDiv/(s.HumRange[1]-s.HumRange[0]))
-
-	// Check how much we diverge from the preferred elevation range.
-	elevDiv := getDiversionFromRange(b.Elevation[r], s.ElevRange)
-	elevScore := easeInOutCubic(1 - elevDiv/(s.ElevRange[1]-s.ElevRange[0]))
-
-	return tempScore * humScore * elevScore
-}
-
 type Species struct {
-	Name            string
-	Origin          int             // The region where the species originated, acts as a seed.
-	Kingdom         SpeciesKingdom  // General type of the species.
-	Family          SpeciesFamily   // Subtype of the species.
-	Digestion       DigestiveSystem // What kind of food the species can eat.
-	Size            SpeciesSize     // Size of the species.
-	Locomotion      Locomotion      // How the species moves. (TODO: Primary locomotion)
-	Ecosphere       EcosphereType   // Ocean, River, Land, Lake
-	TempRange       [2]float64      // Min, Max temperature
-	HumRange        [2]float64      // Min, Max humidity
-	ElevRange       [2]float64      // Min, Max elevation
-	PreferredBiomes []int           // Only applies to non-marine species.
+	Name       string
+	Origin     int             // The region where the species originated, acts as a seed.
+	Kingdom    SpeciesKingdom  // General type of the species.
+	Family     SpeciesFamily   // Subtype of the species.
+	Digestion  DigestiveSystem // What kind of food the species can eat.
+	Size       SpeciesSize     // Size of the species.
+	Locomotion Locomotion      // How the species moves. (TODO: Primary locomotion)
+	*SpeciesTolerances
 }
 
 func (s *Species) String() string {
@@ -193,14 +132,8 @@ func (s *Species) String() string {
 	if s.Locomotion != LocomotionNone {
 		str += fmt.Sprintf(", can: %s", s.Locomotion)
 	}
-	if len(s.PreferredBiomes) > 0 {
-		str += fmt.Sprintf(", preferred biomes: %v", s.PreferredBiomes)
-	}
-	str += fmt.Sprintf(", temperature: %.2f-%.2f, humidity: %.2f-%.2f, elevation: %.2f-%.2f",
-		s.TempRange[0], s.TempRange[1],
-		s.HumRange[0], s.HumRange[1],
-		s.ElevRange[0], s.ElevRange[1])
 	str += fmt.Sprintf(", digestion: %s", s.Digestion)
+	str += fmt.Sprintf("\n%s", s.SpeciesTolerances.String())
 	return str
 }
 
@@ -578,6 +511,10 @@ const (
 	EcosphereTypeLake
 	EcosphereTypeLand
 )
+
+func (e EcosphereType) IsWater() bool {
+	return e == EcosphereTypeOcean || e == EcosphereTypeRiver || e == EcosphereTypeLake
+}
 
 // getEcosphere returns the ecosphere of the given region.
 func (b *Bio) getEcosphere(r int) EcosphereType {
