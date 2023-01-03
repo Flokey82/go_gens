@@ -85,8 +85,7 @@ Loop:
 	m.LakeSize = m.getLakeSizes()
 	// TODO: Make note of oceans.
 	//   - Note ocean sizes (and small waterbodies below sea level)
-	m.Waterbodies = m.getWaterBodies()
-	m.WaterbodySize = m.getWaterBodySizes()
+	m.assignWaterbodies()
 }
 
 // assignHydrologyWithFlooding will calculate river systems and water pools.
@@ -176,11 +175,8 @@ func (m *Geo) assignHydrologyWithFlooding() {
 	//   - Sum up regions r_pool[r] > 0
 	//   - Note lake sizes (for city placement)
 	m.LakeSize = m.getLakeSizes()
-	// TODO: Make note of oceans.
-	//   - Note ocean sizes (and small waterbodies below sea level)
-	m.Waterbodies = m.getWaterBodies()
-	m.WaterbodySize = m.getWaterBodySizes()
 	// TODO: Make note of rivers.
+	m.assignWaterbodies()
 }
 
 const (

@@ -83,23 +83,23 @@
         onEachFeature: function (feature, layer) {
           layer.bindPopup(
             '<span style="font-size:8px;">' +
-            'Name: ' + feature.properties.name +
-            '<br/>Population: ' + feature.properties.population +
-            '<br/>Pop Growth: ' + feature.properties.popgrowth.toFixed(3) +
-            '<br/>Max Pop: ' + feature.properties.maxpop +
-            '<br/>Max Pop Limit: ' + feature.properties.maxpoplimit +
-            '<br/>Type: ' + feature.properties.type +
-            '<br/>Culture: ' + feature.properties.culture +
-            '<br/>Settled: ' + feature.properties.settled + 'yrs ago' +
-            '<br/>Biome: ' + feature.properties.biome +
-            '<br/>Attractiveness: ' + feature.properties.attractiveness.toFixed(3) +
-            '<br/>Economic: ' + feature.properties.economic.toFixed(3) +
-            '<br/>Agriculture: ' + feature.properties.agriculture.toFixed(3) +
-            '<br/>Trade: ' + feature.properties.trade.toFixed(3) +
-            '<br/>Resources: ' + feature.properties.resources.toFixed(3) +
-            '<br/>Radius: ' + feature.properties.radius.toFixed(3) + 'km' +
-            '<br/>Tradepartners: ' + feature.properties.tradepartners +
-            '<br/>' + feature.properties.flavortext +
+            'Name: ' + feature.properties.name + '<br/>' +
+            'Type: ' + feature.properties.type +'<br/>' +
+            'Population: ' + feature.properties.population + '/'+ feature.properties.maxpoplimit +'<br/>' +
+            'Max Pop: ' + feature.properties.maxpop +'<br/>' +
+            'Pop Growth: ' + feature.properties.popgrowth.toFixed(3) +'<br/>' +
+            'Culture: ' + feature.properties.culture +'<br/>' +
+            'Settled: ' + feature.properties.settled + 'yrs ago<br/>' +
+            'Biome: ' + feature.properties.biome +'<br/>' +
+            'Coords: ' + feature.properties.coordinates +'<br/>' +
+            'Attractiveness: ' + feature.properties.attractiveness.toFixed(3) +'<br/>' +
+            'Economic: ' + feature.properties.economic.toFixed(3) +'<br/>' +
+            'Agriculture: ' + feature.properties.agriculture.toFixed(3) +'<br/>' +
+            'Trade: ' + feature.properties.trade.toFixed(3) +'<br/>' +
+            'Resources: ' + feature.properties.resources.toFixed(3) +'<br/>' +
+            'Radius: ' + feature.properties.radius.toFixed(3) + 'km<br/>' +
+            'Tradepartners: ' + feature.properties.tradepartners +'<br/>' +
+            feature.properties.flavortext +
             '</span>' +
             '<br/>Resources:<br/>' +
             '<span style="font-size:5px;">' + (feature.properties.reslist || []).join('<br/>') + '</span>' +

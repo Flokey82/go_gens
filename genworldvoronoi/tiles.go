@@ -377,7 +377,7 @@ func (m *Map) GetGeoJSONCities(la1, lo1, la2, lo2 float64, zoom int) ([]byte, er
 		// Add the city to the GeoJSON as a feature.
 		f := geojson.NewPointFeature([]float64{cLon, cLat})
 		f.SetProperty("id", c.ID)
-		f.SetProperty("name", c.Name+fmt.Sprintf("lat: %.2f, lon: %.2f", cLat, cLon))
+		f.SetProperty("name", c.Name)
 		f.SetProperty("type", c.Type)
 		f.SetProperty("culture", c.Culture.Name)
 		f.SetProperty("population", c.Population)
@@ -390,6 +390,7 @@ func (m *Map) GetGeoJSONCities(la1, lo1, la2, lo2 float64, zoom int) ([]byte, er
 		elev := maxAltitudeFactor * m.Elevation[c.ID] / maxElev
 		f.SetProperty("biome", genbiome.WhittakerModBiomeToString(biomeFunc(c.ID))+
 			fmt.Sprintf(" (%.1f°C, %.1fdm, %.1fm)", temperature, precip, elev))
+		f.SetProperty("coordinates", fmt.Sprintf("lat %.2f, lon %.2f", cLat, cLon))
 		f.SetProperty("attractiveness", c.Attractiveness)
 		f.SetProperty("economic", c.EconomicPotential)
 		f.SetProperty("agriculture", c.Agriculture)

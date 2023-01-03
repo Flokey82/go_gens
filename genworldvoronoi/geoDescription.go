@@ -4,10 +4,82 @@ import (
 	"math"
 	"math/rand"
 	"strings"
-	"time"
 
 	"github.com/Flokey82/go_gens/genbiome"
 )
+
+func (m *Geo) GenerateRegPropertyDescription(p RegProperty) string {
+	str := "The region"
+	if p.OnIsland {
+		// TODO: Note if the region is located on an island or peninsula.
+		str += ", located on an island,"
+	}
+	str += " is covered by " + genbiome.WhittakerModBiomeToString(p.Biome) + ".\n"
+
+	// Add info on the potential dangers of the region.
+	if p.DistanceToVolcano < 3 {
+		if p.DangerVolcano > 0.2 {
+			if p.DistanceToVolcano < 1 {
+				str += " It's location on a volcano"
+			} else {
+				str += " The proximity to a volcano"
+			}
+			if p.DangerVolcano > 0.5 {
+				str += " results in a constant danger of destruction by a volcanic eruption"
+			} else {
+				str += " poses a looming threat of a possible volcanic eruption"
+			}
+			str += ". "
+		} else {
+			if p.DistanceToVolcano < 1 {
+				str += " It is located on a volcano"
+			} else {
+				str += " It is close to a volcano"
+			}
+			str += ". "
+		}
+	} else if p.DistanceToMountain < 3 {
+		if p.DangerRockslide > 0.2 {
+			if p.DistanceToMountain < 1 {
+				str += " The exposed location on a mountain"
+			} else {
+				str += " The proximity to a mountain"
+			}
+			if p.DangerRockslide > 0.5 {
+				str += " poses a constant danger of a deadly rockslide"
+			} else {
+				str += " results in occasional rockslides that threaten anyone nearby"
+			}
+			str += ". "
+		}
+	} else if p.DistanceToFaultline < 3 {
+		if p.DangerEarthquake > 0.2 {
+			if p.DistanceToFaultline < 1 {
+				str += " The exposed location on a faultline"
+			} else {
+				str += " The proximity to a faultline"
+			}
+			if p.DangerEarthquake > 0.5 {
+				str += " results in a constant danger of a deadly earthquake"
+			} else {
+				str += " poses a looming threat of a possible earthquake"
+			}
+			str += ". "
+		}
+	}
+	if p.DistanceToRiver < 1 {
+		str += " The nearby river provides access to fresh water"
+		if p.DangerFlood > 0.2 {
+			if p.DangerFlood > 0.5 {
+				str += " and is infamous for frequent floods"
+			} else {
+				str += " and might cause the occasional flooding"
+			}
+		}
+		str += ". \n"
+	}
+	return str
+}
 
 type BiomeDescription struct {
 	Adjectives []string
@@ -19,7 +91,6 @@ type BiomeDescription struct {
 }
 
 func GenerateFlavorText(desc BiomeDescription) string {
-	rand.Seed(time.Now().UnixNano())
 	text := "The " + desc.Adjectives[rand.Intn(len(desc.Adjectives))] + " " + desc.Nouns[rand.Intn(len(desc.Nouns))] + " stretches out as far as the eye can see.\n"
 	if len(desc.Part1) > 0 {
 		text += desc.Part1[rand.Intn(len(desc.Part1))] + " \n"
@@ -36,7 +107,8 @@ func GenerateFlavorText(desc BiomeDescription) string {
 	return text
 }
 
-func generateFlavorTextForBiome(biome int) string {
+func generateFlavorTextForBiome(seed int64, biome int) string {
+	rand.Seed(seed)
 	switch biome {
 	case genbiome.WhittakerModBiomeSubtropicalDesert:
 		return GenerateFlavorText(desertDescription)

@@ -480,17 +480,12 @@ const (
 // getRegionFeatureTypeFunc returns a function that returns the feature type of
 // a given region.
 func (m *Civ) getRegionFeatureTypeFunc() func(int) string {
-	rWaterbodies := m.getWaterBodies()
-	rWaterbodySize := m.getWaterBodySizes()
-	rLandmasses := m.IdentifyLandmasses()
-	rLandmassSize := m.GetLandmassSizes()
-
 	return func(i int) string {
 		if i < 0 {
 			return ""
 		}
-		if waterbodyID := rWaterbodies[i]; waterbodyID >= 0 {
-			switch wbSize := rWaterbodySize[waterbodyID]; {
+		if waterbodyID := m.Waterbodies[i]; waterbodyID >= 0 {
+			switch wbSize := m.WaterbodySize[waterbodyID]; {
 			case wbSize > m.mesh.numRegions/25:
 				return FeatureTypeOcean
 			case wbSize > m.mesh.numRegions/100:
@@ -501,8 +496,8 @@ func (m *Civ) getRegionFeatureTypeFunc() func(int) string {
 				return FeatureTypeLake
 			}
 		}
-		if landmassID := rLandmasses[i]; landmassID >= 0 {
-			if rLandmassSize[landmassID] < m.mesh.numRegions/100 {
+		if landmassID := m.Landmasses[i]; landmassID >= 0 {
+			if m.LandmassSize[landmassID] < m.mesh.numRegions/100 {
 				return FeatureTypeIsle
 			}
 			return FeatureTypeContinent
@@ -521,8 +516,6 @@ func (m *Civ) getRegionCultureTypeFunc() func(int) CultureType {
 	cellType := m.getRegCellTypes()
 	getType := m.getRegionFeatureTypeFunc()
 	biomeFunc := m.getRegWhittakerModBiomeFunc()
-
-	rWaterbodySize := m.getWaterBodySizes()
 	_, maxElev := minMax(m.Elevation)
 
 	// Return culture type based on culture center region.
@@ -555,7 +548,7 @@ func (m *Civ) getRegionCultureTypeFunc() func(int) CultureType {
 		log.Println(havenType, regionType)
 
 		// Ensure only larger lakes will result in the 'lake' culture type.
-		if havenType == FeatureTypeLake && rWaterbodySize[rHaven] > 5 {
+		if havenType == FeatureTypeLake && m.WaterbodySize[rHaven] > 5 {
 			return CultureTypeLake // low water cross penalty and high for growth not along coastline
 		}
 

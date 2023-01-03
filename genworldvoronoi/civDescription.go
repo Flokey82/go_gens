@@ -2,8 +2,6 @@ package genworldvoronoi
 
 import (
 	"log"
-
-	"github.com/Flokey82/go_gens/genbiome"
 )
 
 func (m *Civ) generateCitiesFlavorText() {
@@ -38,58 +36,24 @@ func (m *Civ) generateCityFlavorText(c *City, p RegProperty) string {
 	} else {
 		str += "large city"
 	}
-	if p.IsValley {
+	if p.IsValley && p.DistanceToCoast > 3 {
 		str += " in a valley"
 	} else if p.Steepness > 0.5 {
 		if p.Elevation > 0.5 {
 			str += " on a mountain"
+		} else if p.DistanceToCoast <= 1 {
+			str += " on a coastal cliff"
 		} else {
 			str += " on a hillside"
 		}
+	} else if p.DistanceToCoast <= 1 {
+		str += " on the coast"
 	}
-	str += " in the " + genbiome.WhittakerModBiomeToString(p.Biome) + ".\n"
+	str += ".\n"
 
-	// Generate some flavor text describing the environment based on temerature, humidity, and biome.
+	// Generate some flavor text describing the region.
+	str += m.GenerateRegPropertyDescription(p)
 
-	if p.DistanceToVolcano < 3 {
-		if p.DistanceToVolcano < 1 {
-			str += " It is located on a volcano"
-		} else {
-			str += " It is located near a volcano"
-		}
-		if p.DangerVolcano > 0.2 {
-			if p.DangerVolcano > 0.5 {
-				str += " and is in constant danger of being destroyed by a volcanic eruption"
-			} else {
-				str += " and faces the threat of a possible volcanic eruption"
-			}
-		}
-		str += ". "
-	} else if p.DistanceToMountain < 3 {
-		if p.DistanceToMountain < 1 {
-			str += " It is located on a mountain"
-		} else {
-			str += " It is located near a mountain"
-		}
-		if p.DangerRockslide > 0.2 {
-			if p.DangerRockslide > 0.5 {
-				str += " and is in constant danger of being destroyed by a rockslide"
-			} else {
-				str += " and suffers occasional rockslides"
-			}
-		}
-		str += ". "
-	}
-	if p.DistanceToRiver < 1 {
-		str += " It is located near a river"
-		if p.DangerFlood > 0.2 {
-			if p.DangerFlood > 0.5 {
-				str += " and is threatened by frequent floods."
-			} else {
-				str += " and experiences occasional floods."
-			}
-		}
-		str += ". \n"
-	}
-	return str + generateFlavorTextForBiome(p.Biome)
+	// ... and finally add some flavor text for the biome.
+	return str + generateFlavorTextForBiome(int64(c.ID), p.Biome)
 }

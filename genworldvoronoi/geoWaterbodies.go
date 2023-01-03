@@ -1,5 +1,21 @@
 package genworldvoronoi
 
+// assignWaterbodies finds all continous waterbodies and assigns them a unique ID
+// and takes note of their respective sizes.
+func (m *BaseObject) assignWaterbodies() {
+	// TODO: Make note of oceans.
+	//   - Note ocean sizes (and small waterbodies below sea level)
+	m.Waterbodies = m.getWaterBodies()
+
+	wbSize := make(map[int]int)
+	for _, wb := range m.Waterbodies {
+		if wb >= 0 {
+			wbSize[wb]++ // Only count regions that are set to a valid ID.
+		}
+	}
+	m.WaterbodySize = wbSize
+}
+
 // getWaterBodies returns a slice which all regions to enumerated waterbodies/oceans.
 //
 // NOTE: For regions that are not part of an ocean (elevation above sea level)
@@ -52,18 +68,6 @@ func (m *BaseObject) getWaterBodies() []int {
 		diveDeeper(r)
 	}
 	return done
-}
-
-// getWaterBodySizes return a mapping of waterbody IDs to the number of regions
-// associated with each waterbody ID.
-func (m *BaseObject) getWaterBodySizes() map[int]int {
-	wbSize := make(map[int]int)
-	for _, wb := range m.Waterbodies {
-		if wb >= 0 {
-			wbSize[wb]++ // Only count regions that are set to a valid ID.
-		}
-	}
-	return wbSize
 }
 
 // getLakeSizes returns a mapping of drainage region to the number of regions that

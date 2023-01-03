@@ -58,11 +58,6 @@ func (m *Geo) generateGeology() {
 	m.assignRegionElevation()
 	log.Println("Done elevation in ", time.Since(start).String())
 
-	// Identify continents / landmasses.
-	start = time.Now()
-	m.IdentifyLandmasses()
-	log.Println("Done identify landmasses in ", time.Since(start).String())
-
 	// Assign rainfall, moisture.
 	start = time.Now()
 	m.assignRainfallBasic()
@@ -77,6 +72,12 @@ func (m *Geo) generateGeology() {
 	// m.getRivers(9000.1)
 	// m.r_elevation = m.rErode(0.05)
 	log.Println("Done hydrology in ", time.Since(start).String())
+
+	// Now that water is assigned, we can make note of waterbodies.
+	// NOTE: Lake sizes are assigned in assignHydrology etc.
+	start = time.Now()
+	m.assignWaterbodies()
+	log.Println("Done waterbodies in ", time.Since(start).String())
 
 	// Place resources
 	start = time.Now()
@@ -98,7 +99,12 @@ func (m *Geo) generateGeology() {
 	m.QuadGeom.setMap(m.mesh, m)
 	log.Println("Done quadgeom in ", time.Since(start).String())
 
-	// Update the region biomes.
+	// Identify continents / landmasses.
+	start = time.Now()
+	m.assignLandmasses()
+	log.Println("Done identify landmasses in ", time.Since(start).String())
+
+	// Update the biome regions.
 	// This will be interesting to determine place names, impact on
 	// pathfinding (navigating around difficult terrain), etc.
 	start = time.Now()

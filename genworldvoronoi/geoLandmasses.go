@@ -5,6 +5,18 @@ import (
 	"log"
 )
 
+func (m *Geo) assignLandmasses() {
+	m.Landmasses = m.IdentifyLandmasses()
+
+	lmSize := make(map[int]int)
+	for _, lm := range m.Landmasses {
+		if lm >= 0 {
+			lmSize[lm]++ // Only count regions that are set to a valid ID.
+		}
+	}
+	m.LandmassSize = lmSize
+}
+
 // IdentifyLandmasses returns a mapping from region to landmass ID.
 // A landmass is a connected number of regions above sealevel.
 func (m *Geo) IdentifyLandmasses() []int {
@@ -63,15 +75,4 @@ func (m *Geo) IdentifyLandmasses() []int {
 	log.Println("number of landmasses", landID)
 	// log.Println(landSizes)
 	return landMasses
-}
-
-// GetLandmassSizes returns a mapping of landmass ID to size in regions.
-func (m *Geo) GetLandmassSizes() map[int]int {
-	lmSize := make(map[int]int)
-	for _, lm := range m.IdentifyLandmasses() {
-		if lm >= 0 {
-			lmSize[lm]++ // Only count regions that are set to a valid ID.
-		}
-	}
-	return lmSize
 }

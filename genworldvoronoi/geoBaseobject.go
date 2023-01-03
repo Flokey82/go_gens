@@ -24,6 +24,8 @@ type BaseObject struct {
 	WaterbodySize     map[int]int     // Waterbody ID to size mapping
 	BiomeRegions      []int           // Point / region mapping of regions with the same biome
 	BiomeRegionSize   map[int]int     // Biome region ID to size mapping
+	Landmasses        []int           // Point / region mapping of regions that are part of the same landmass
+	LandmassSize      map[int]int     // Landmass ID to size mapping
 	LakeSize          map[int]int     // Lake ID to size mapping
 	RegionIsMountain  map[int]bool    // Point / region is a mountain
 	RegionIsVolcano   map[int]bool    // Point / region is a volcano
@@ -66,6 +68,8 @@ func newBaseObject(seed int64, sphere *SphereMesh) *BaseObject {
 		WaterbodySize:     make(map[int]int),
 		BiomeRegions:      make([]int, mesh.numRegions),
 		BiomeRegionSize:   make(map[int]int),
+		Landmasses:        make([]int, mesh.numRegions),
+		LandmassSize:      make(map[int]int),
 		LakeSize:          make(map[int]int),
 		RegionIsMountain:  make(map[int]bool),
 		RegionIsVolcano:   make(map[int]bool),

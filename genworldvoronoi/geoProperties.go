@@ -4,7 +4,7 @@ type RegProperty struct {
 	ID                  int
 	Elevation           float64 // 0.0-1.0
 	Steepness           float64 // 0.0-1.0
-	Biome               int     // biome of the city
+	Biome               int     // biome of the region
 	DistanceToCoast     float64 // graph distance to the nearest coast
 	DistanceToMountain  float64 // graph distance to the nearest mountain
 	DistanceToRiver     float64 // graph distance to the nearest river
@@ -16,12 +16,14 @@ type RegProperty struct {
 	DangerEarthquake    float64 // 0.0-1.0
 	DangerVolcano       float64 // 0.0-1.0
 	DangerFlood         float64 // 0.0-1.0
-	IsValley            bool    // true if the city is in a valley
+	IsValley            bool    // true if the region is a valley
+	OnIsland            bool    // true if the region is on an island
 }
 
 // getRegPropertyFunc returns a function that returns the properties of a region.
 // NOTE: This is probably a very greedy function.
 func (m *Geo) getRegPropertyFunc() func(int) RegProperty {
+	// TODO: Add chance of tropical storms, wildfires, etc.
 	earthquakeChance := m.getEarthquakeChance()
 	floodChance := m.getFloodChance()
 	volcanoEruptionChance := m.getVolcanoEruptionChance()
@@ -54,6 +56,23 @@ func (m *Geo) getRegPropertyFunc() func(int) RegProperty {
 	distVolcano := m.assignDistanceField(volcanoRegs, stopOcean)
 	distRiver := m.assignDistanceField(riverRegs, stopOcean)
 	return func(id int) RegProperty {
+		// Make sure that we do not have more than 2 neighbours that has a lower elevation.
+		// ... because a valley should be surrounded by mountains.
+		isValley := inlandValleyFunc(id) > 0.8
+		if isValley {
+			var count int
+			for _, n := range m.GetRegNeighbors(id) {
+				if m.Elevation[n] > m.Elevation[id] {
+					continue
+				}
+				count++
+				if count > 2 {
+					isValley = false
+					break
+				}
+			}
+		}
+
 		return RegProperty{
 			ID:                  id,
 			Elevation:           m.Elevation[id],
@@ -70,7 +89,8 @@ func (m *Geo) getRegPropertyFunc() func(int) RegProperty {
 			DangerEarthquake:    earthquakeChance[id],
 			DangerVolcano:       volcanoEruptionChance[id],
 			DangerFlood:         floodChance[id],
-			IsValley:            inlandValleyFunc(id) > 0.8,
+			IsValley:            isValley,
+			OnIsland:            m.LandmassSize[m.Landmasses[id]] < 15, // TODO: This should use actual geographical area.
 		}
 	}
 }
