@@ -34,7 +34,7 @@ func (m *Geo) getRegPropertyFunc() func(int) RegProperty {
 	stopMountain := make(map[int]bool)
 	stopOcean := make(map[int]bool)
 	for r := 0; r < m.mesh.numRegions; r++ {
-		if m.Elevation[r] < 0 {
+		if m.Elevation[r] <= 0 {
 			oceanRegs = append(oceanRegs, r)
 			stopOcean[r] = true
 		}

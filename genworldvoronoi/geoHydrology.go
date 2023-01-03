@@ -227,6 +227,7 @@ func (m *Geo) getFlux(skipBelowSea bool) []float64 {
 		for _, r := range idxs {
 			// Skip calculation if we are below sea level or there is no downhill
 			// neighbor where the water could flow to.
+			// NOTE: In this case we allow water to flow to sea level.
 			if (m.Elevation[r] < 0 && skipBelowSea) || m.Downhill[r] < 0 {
 				continue
 			}
@@ -258,6 +259,7 @@ func (m *Geo) getFlux(skipBelowSea bool) []float64 {
 		// Copy flux to known drainage point or next lowest neighbor.
 		for _, j := range idxs {
 			// Do not copy flux if we are below sea level.
+			// NOTE: In this case we allow water to flow to sea level.
 			if m.Elevation[j] < 0 && skipBelowSea {
 				continue
 			}
@@ -287,6 +289,7 @@ func (m *Geo) getFlux(skipBelowSea bool) []float64 {
 				drain = m.Downhill[j]
 			}
 			for drain != -1 {
+				// NOTE: In this case we allow water to flow to sea level.
 				if m.Elevation[drain] < 0 && skipBelowSea {
 					break
 				}
@@ -338,6 +341,7 @@ func (m *Geo) getFlux(skipBelowSea bool) []float64 {
 
 				// If we couldn't find a region to drain into, or if
 				// we are below sea level, stop here.
+				// NOTE: In this case we allow water to flow to sea level.
 				if r < 0 || m.Elevation[r] < 0 && skipBelowSea {
 					break
 				}
