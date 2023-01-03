@@ -361,6 +361,8 @@ func (m *Map) GetGeoJSONCities(la1, lo1, la2, lo2 float64, zoom int) ([]byte, er
 	_, maxElev := minMax(m.Elevation)
 	_, maxMois := minMax(m.Moisture)
 
+	regPropertyFunc := m.getRegPropertyFunc()
+
 	// Loop through all the cities and check if they are within the tile.
 	// TODO: Just show the largest cities for lower zoom levels.
 	for _, c := range m.Cities {
@@ -395,6 +397,7 @@ func (m *Map) GetGeoJSONCities(la1, lo1, la2, lo2 float64, zoom int) ([]byte, er
 		f.SetProperty("resources", c.Resources)
 		f.SetProperty("radius", (c.radius()+2*distRegion)*gameconstants.EarthCircumference/(2*math.Pi))
 		f.SetProperty("tradepartners", c.TradePartners)
+		f.SetProperty("flavortext", m.generateCityFlavorText(c, regPropertyFunc(c.ID)))
 		var msgs []string
 		hist := m.History.GetEvents(c.ID, ObjectTypeCity)
 

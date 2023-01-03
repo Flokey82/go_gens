@@ -64,8 +64,8 @@ func (m *Geo) getStats(rr []int) *Stats {
 		switch b {
 		case genbiome.WhittakerModBiomeColdDesert, genbiome.WhittakerBiomeSubtropicalDesert:
 			st.Desert++
-		case genbiome.WhittakerModBiomeTropicalRainForest,
-			genbiome.WhittakerModBiomeTemperateRainForest:
+		case genbiome.WhittakerModBiomeTropicalRainforest,
+			genbiome.WhittakerModBiomeTemperateRainforest:
 			st.RainForest++
 		case genbiome.WhittakerModBiomeTropicalSeasonalForest,
 			genbiome.WhittakerModBiomeTemperateSeasonalForest:

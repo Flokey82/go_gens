@@ -259,10 +259,10 @@ var WhittakerLookupTableModified = [][]int{
 // The modified Whittaker biomes.
 const (
 	WhittakerModBiomeUnknown                 = 0x0
-	WhittakerModBiomeTropicalRainForest      = 0x1
+	WhittakerModBiomeTropicalRainforest      = 0x1
 	WhittakerModBiomeTropicalSeasonalForest  = 0x2
 	WhittakerModBiomeSubtropicalDesert       = 0x3
-	WhittakerModBiomeTemperateRainForest     = 0x4
+	WhittakerModBiomeTemperateRainforest     = 0x4
 	WhittakerModBiomeTemperateSeasonalForest = 0x5
 	WhittakerModBiomeWoodlandShrubland       = 0x6
 	WhittakerModBiomeTemperateGrassland      = 0x7
@@ -281,37 +281,37 @@ const (
 func WhittakerModBiomeToString(biome int) string {
 	switch biome {
 	case WhittakerModBiomeUnknown:
-		return "Unknown"
-	case WhittakerModBiomeTropicalRainForest:
-		return "Tropical Rain Forest"
+		return "unknown"
+	case WhittakerModBiomeTropicalRainforest:
+		return "tropical rainforest"
 	case WhittakerModBiomeTropicalSeasonalForest:
-		return "Tropical Seasonal Forest"
+		return "tropical seasonal forest"
 	case WhittakerModBiomeSubtropicalDesert:
-		return "Subtropical Desert"
-	case WhittakerModBiomeTemperateRainForest:
-		return "Temperate Rain Forest"
+		return "subtropical desert"
+	case WhittakerModBiomeTemperateRainforest:
+		return "temperate rainforest"
 	case WhittakerModBiomeTemperateSeasonalForest:
-		return "Temperate Seasonal Forest"
+		return "temperate seasonal forest"
 	case WhittakerModBiomeWoodlandShrubland:
-		return "Woodland Shrubland"
+		return "woodland shrubland"
 	case WhittakerModBiomeTemperateGrassland:
-		return "Temperate Grassland"
+		return "temperate grassland"
 	case WhittakerModBiomeBorealForestTaiga:
-		return "Boreal Forest Taiga"
+		return "boreal forest taiga"
 	case WhittakerModBiomeTundra:
-		return "Tundra"
+		return "tundra"
 	case WhittakerModBiomeColdDesert:
-		return "Cold Desert"
+		return "cold desert"
 	case WhittakerModBiomeSavannah:
-		return "Savannah"
+		return "savannah"
 	case WhittakerModBiomeSnow:
-		return "Snow"
+		return "snow"
 	case WhittakerModBiomeHotSwamp:
-		return "Hot Swamp"
+		return "hot swamp"
 	case WhittakerModBiomeWetlands:
-		return "Wetlands"
+		return "wetlands"
 	default:
-		return "Unknown"
+		return "unknown"
 	}
 }
 
@@ -323,7 +323,7 @@ func GetWhittakerModBiome(temperature, precipitation int) int {
 }
 
 var (
-	ColorRainForest     = color.NRGBA{R: 0x1d, G: 0xBA, B: 0x37, A: 0xFF}
+	ColorRainforest     = color.NRGBA{R: 0x1d, G: 0xBA, B: 0x37, A: 0xFF}
 	ColorSeasonalForest = color.NRGBA{R: 0x28, G: 0xAC, B: 0x2A, A: 0xFF}
 	ColorSnowIce        = color.NRGBA{R: 0xFF, G: 0xFF, B: 0xFF, A: 0xFF}
 )
@@ -331,10 +331,10 @@ var (
 // WhittakerModBiomeColor maps the (modified Whittaker) biome types to their color representation.
 var WhittakerModBiomeColor = map[int]color.NRGBA{
 	WhittakerModBiomeUnknown:                 {0, 0, 0, 0xFF}, // {0xA9, 0, 0, 0xFF}, // TODO: Find better solution. It's wet and with relative cool temperature.
-	WhittakerModBiomeTropicalRainForest:      ColorRainForest,
+	WhittakerModBiomeTropicalRainforest:      ColorRainforest,
 	WhittakerModBiomeTropicalSeasonalForest:  ColorSeasonalForest,
 	WhittakerModBiomeSubtropicalDesert:       {0xfd, 0xe3, 0x8d, 0xFF}, // was 0xE9DDC7
-	WhittakerModBiomeTemperateRainForest:     ColorRainForest,
+	WhittakerModBiomeTemperateRainforest:     ColorRainforest,
 	WhittakerModBiomeTemperateSeasonalForest: ColorSeasonalForest,
 	WhittakerModBiomeWoodlandShrubland:       {0x91, 0x90, 0x16, 0xFF},
 	WhittakerModBiomeTemperateGrassland:      {0x97, 0xE9, 0x87, 0xFF},

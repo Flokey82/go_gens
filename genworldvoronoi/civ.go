@@ -193,9 +193,9 @@ func (m *Civ) Tick() {
 func (m *Civ) getRegName(r int) string {
 	switch m.getRegWhittakerModBiomeFunc()(r) {
 	case genbiome.WhittakerModBiomeBorealForestTaiga,
-		genbiome.WhittakerModBiomeTemperateRainForest,
+		genbiome.WhittakerModBiomeTemperateRainforest,
 		genbiome.WhittakerModBiomeTemperateSeasonalForest,
-		genbiome.WhittakerModBiomeTropicalRainForest,
+		genbiome.WhittakerModBiomeTropicalRainforest,
 		genbiome.WhittakerModBiomeTropicalSeasonalForest:
 		return m.NameGen.Forest.Generate(int64(r), r%2 == 0)
 	case genbiome.WhittakerModBiomeHotSwamp,

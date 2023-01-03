@@ -1,6 +1,7 @@
 package genworldvoronoi
 
 import (
+	"container/list"
 	"image/color"
 	"log"
 	"math"
@@ -691,4 +692,70 @@ func (m *Geo) interpolateRainfallMoisture(interpolationSteps int) {
 		m.Moisture = regMoistureInterpol
 		m.Rainfall = regRainfallInterpol
 	}
+}
+
+func (m *Geo) assignBiomeRegions() {
+	// Identify connected regions with the same biome.
+	m.BiomeRegions = m.identifyBiomeRegions()
+
+	regSize := make(map[int]int)
+	for _, lm := range m.BiomeRegions {
+		if lm >= 0 {
+			regSize[lm]++ // Only count regions that are set to a valid ID.
+		}
+	}
+	m.BiomeRegionSize = regSize
+}
+
+// identifyBiomeRegions identifies connected regions with the same biome.
+func (m *Geo) identifyBiomeRegions() []int {
+	// We use a flood fill algorithm to identify regions with the same biome
+	biomeToRegs := initRegionSlice(m.mesh.numRegions)
+	// Set all ocean regions to -2.
+	for r := range biomeToRegs {
+		if m.Elevation[r] <= 0.0 {
+			biomeToRegs[r] = -2
+		}
+	}
+	biomeFunc := m.getRegWhittakerModBiomeFunc()
+
+	// Use a queue to implement the flood fill algorithm.
+	outRegs := make([]int, 0, 6)
+	floodFill := func(id int) {
+		queue := list.New()
+		// Get the biome that is represented by the region ID.
+		biome := biomeFunc(id)
+		queue.PushBack(id)
+
+		// The region ID will serve as a representative of the biome.
+		biomeToRegs[id] = id
+
+		// Now flood fill all regions with the same biome.
+		for queue.Len() > 0 {
+			e := queue.Front()
+			if e == nil {
+				break
+			}
+			queue.Remove(e)
+			nbID := e.Value.(int)
+
+			for _, n := range m.mesh.r_circulate_r(outRegs, nbID) {
+				if biomeToRegs[n] == -1 && biomeFunc(n) == biome {
+					queue.PushBack(n)
+
+					// The region ID will serve as a representative of the biome.
+					biomeToRegs[n] = id
+				}
+			}
+		}
+	}
+
+	// Loop through all regions and pick the first region that has not been
+	// assigned a biome yet. Then flood fill all regions with the same biome.
+	for id := 0; id < m.mesh.numRegions; id++ {
+		if biomeToRegs[id] == -1 {
+			floodFill(id)
+		}
+	}
+	return biomeToRegs
 }

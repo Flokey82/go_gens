@@ -97,6 +97,13 @@ func (m *Geo) generateGeology() {
 	start = time.Now()
 	m.QuadGeom.setMap(m.mesh, m)
 	log.Println("Done quadgeom in ", time.Since(start).String())
+
+	// Update the region biomes.
+	// This will be interesting to determine place names, impact on
+	// pathfinding (navigating around difficult terrain), etc.
+	start = time.Now()
+	m.assignBiomeRegions()
+	log.Println("Done biome regions in ", time.Since(start).String())
 }
 
 func (m *Geo) Tick() {

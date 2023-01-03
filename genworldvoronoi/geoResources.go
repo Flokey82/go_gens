@@ -603,12 +603,12 @@ func (m *Geo) placeForests() {
 		// NOTE: This is absolute garbage. It's just a quick hack to get some forests
 		// in the world.
 		biome := biomeFunc(r)
-		if biome == genbiome.WhittakerModBiomeTemperateRainForest {
+		if biome == genbiome.WhittakerModBiomeTemperateRainforest {
 			wood[r] |= ResWoodOak
 		} else if biome == genbiome.WhittakerModBiomeTemperateSeasonalForest {
 			wood[r] |= ResWoodOak
 			wood[r] |= ResWoodBirch
-		} else if biome == genbiome.WhittakerModBiomeTropicalRainForest {
+		} else if biome == genbiome.WhittakerModBiomeTropicalRainforest {
 			wood[r] |= ResWoodOak
 			wood[r] |= ResWoodPalm
 		} else if biome == genbiome.WhittakerModBiomeTropicalSeasonalForest {
