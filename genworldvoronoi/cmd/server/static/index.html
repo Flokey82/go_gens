@@ -2,6 +2,7 @@
 
 <head>
   <link rel="stylesheet" href="vendor/leaflet-1.9.3/leaflet.css" />
+  <link rel="stylesheet" href="vendor/leaflet-measure/leaflet-measure.css" />
   <style>
     html,
     body,
@@ -35,6 +36,7 @@
   <div id="map"></div>
   <script src="vendor/leaflet-1.9.3/leaflet.js"></script>
   <script src="vendor/leaflet-hash-0.2.1/leaflet-hash.js"></script>
+  <script src="vendor/leaflet-measure/leaflet-measure.js"></script>
   <script type="text/javascript">
 
     var displayMode = 0;
@@ -96,8 +98,8 @@
             '<span style="font-size:8px;">' +
             '<b>' + prop.name + '</b> (' + prop.type + ')<br/>' +
             '<p><b>' + prop.flavortext + '</b></p>' +
-            '<p>' + 
-            'Population: ' + prop.population + ' / ' + prop.maxpop + 
+            '<p>' +
+            'Population: ' + prop.population + ' / ' + prop.maxpop +
             ' (max ' + prop.maxpoplimit + ' growth ' + prop.popgrowth.toFixed(3) + ')<br/>' +
             'Settled: ' + prop.settled + 'yrs ago<br/>' +
             'Culture: ' + prop.culture + '<br/>' +
@@ -110,14 +112,14 @@
             'Resources: ' + prop.resources.toFixed(3) + '<br/>' +
             'Tradepartners: ' + prop.tradepartners + ' (Radius: ' + prop.radius.toFixed(3) + 'km)<br/>' +
             '</p>' +
-            '<p>' + 
+            '<p>' +
             '<b>Resources:</b><br/>' +
             '<span style="font-size:7px;">' + (prop.reslist || []).join('<br/>') + '</span>' +
-          '</p>'+
-            '<p>' + 
+            '</p>' +
+            '<p>' +
             '<b>History:</b> (last 10)<br/>' +
-            '<span style="font-size:7px;">' + (prop.history || []).join('<br/>') + '</span>'+
-          '</p></span>');
+            '<span style="font-size:7px;">' + (prop.history || []).join('<br/>') + '</span>' +
+            '</p></span>');
         },
         pointToLayer: function (feature, latlng) {
           return L.marker(latlng, {
@@ -159,7 +161,7 @@
           link.style.cursor = 'pointer';
           container.appendChild(link);
 
-          container.onclick = function() {
+          container.onclick = function () {
             onClick(link);
           };
           return container;
@@ -170,23 +172,49 @@
 
     // Add our custom control for toggling borders.
     var borderControl = newCustomControl('D:' + displayMode, function (link) {
-          // Loop though all display modes.
-          displayMode = (displayMode + 1) % displayModeMax;
-          link.innerText = 'D:' + displayMode;
-          tl.redraw();
-        });
+      // Loop though all display modes.
+      displayMode = (displayMode + 1) % displayModeMax;
+      link.innerText = 'D:' + displayMode;
+      tl.redraw();
+    });
 
     map.addControl(new borderControl());
 
     // Add our custom control for toggling wind vectors.
     var windControl = newCustomControl('W:' + windVector, function (link) {
-          // Toggle wind vector display.
-          windVector = !windVector;
-          link.innerText = 'W:' + windVector;
-          tl.redraw();
-        });
+      // Toggle wind vector display.
+      windVector = !windVector;
+      link.innerText = 'W:' + windVector;
+      tl.redraw();
+    });
     map.addControl(new windControl());
 
+    L.Control.Measure.include({
+      // set icon on the capture marker
+      _setCaptureMarkerIcon: function () {
+        // disable autopan
+        this._captureMarker.options.autoPanOnFocus = false;
+
+        // default function
+        this._captureMarker.setIcon(
+          L.divIcon({
+            iconSize: this._map.getSize().multiplyBy(2)
+          })
+        );
+      },
+    });
+
+    var options = {
+      position: 'topleft',
+      unit: 'metric',
+      activeColor: '#ABE67E',
+      completedColor: '#C8F2BE',
+      primaryLengthUnit: 'meters',
+      secondaryLengthUnit: 'kilometers',
+      primaryAreaUnit: 'sqmeters',
+    };
+    var measureControl = new L.Control.Measure(options);
+    measureControl.addTo(map);
   </script>
 </body>
 
