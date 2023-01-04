@@ -46,6 +46,9 @@ Here some old pictures what it does...
 ## SVG export with rivers, capital city placement and stuff.
 ![alt text](https://raw.githubusercontent.com/Flokey82/go_gens/master/genworldvoronoi/images/svg.png "Screenshot of SVG!")
 
+## Leaflet server (and sad flavor text).
+![alt text](https://raw.githubusercontent.com/Flokey82/go_gens/master/genworldvoronoi/images/leaflet.png "Flavortext Maps!")
+
 ## Does political maps.
 ![alt text](https://raw.githubusercontent.com/Flokey82/go_gens/master/genworldvoronoi/images/political.png "Political Maps!")
 

@@ -105,6 +105,22 @@ func geoJSONBorderHandler(res http.ResponseWriter, req *http.Request) {
 }
 
 func tileHandler(res http.ResponseWriter, req *http.Request) {
+	// Get the url parameter 'd'.
+	d := req.URL.Query().Get("d")
+	if d == "" {
+		d = "0"
+	}
+	displayMode, err := strconv.Atoi(d)
+	if err != nil {
+		panic(err)
+	}
+
+	// get the url parameter 'wind'.
+	wind := req.URL.Query().Get("wind")
+	if wind == "" {
+		wind = "false"
+	}
+
 	// Get the tile coordinates and zoom level.
 	vars := mux.Vars(req)
 	tileX, err := strconv.Atoi(vars["x"])
@@ -121,7 +137,7 @@ func tileHandler(res http.ResponseWriter, req *http.Request) {
 	}
 
 	// Get the tile image.
-	img := worldmap.GetTile(tileX, tileY, tileZ)
+	img := worldmap.GetTile(tileX, tileY, tileZ, displayMode, wind == "true")
 	writeImage(res, &img)
 }
 

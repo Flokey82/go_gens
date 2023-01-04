@@ -40,6 +40,11 @@ func (b *Bio) generateBiology() {
 	// carnivores would be able to survive there (presence of prey animals,
 	// total survivability).
 
+	// Generate the pre-defined species.
+	b.placeAllSpecies(KingdomFauna)
+	b.placeAllSpecies(KingdomFlora)
+	b.placeAllSpecies(KingdomFungi)
+
 	// Generate the species.
 	b.genNRandomSpecies(b.NumSpecies)
 }

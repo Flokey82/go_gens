@@ -23,7 +23,19 @@ func (m *Civ) rPlaceNCityStates(n int) {
 
 	m.RegionToCityState = m.regPlaceNTerritoriesCustom(seedCities, func(o, u, v int) float64 {
 		// TODO: Make sure we take in account expansionism, wealth, score, and culture.
-		return weight(o, u, v) + biomeWeight(o, u, v) + cultureWeight(o, u, v)
+		w := weight(o, u, v)
+		if w < 0 {
+			return -1
+		}
+		b := biomeWeight(o, u, v)
+		if b < 0 {
+			return -1
+		}
+		c := cultureWeight(o, u, v)
+		if c < 0 {
+			return -1
+		}
+		return (w + b + c) / 3
 	})
 
 	// Before relaxing the territories, we'd need to ensure that we only

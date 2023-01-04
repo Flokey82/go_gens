@@ -37,17 +37,27 @@
   <script src="vendor/leaflet-hash-0.2.1/leaflet-hash.js"></script>
   <script type="text/javascript">
 
+    var displayMode = 0;
+    var displayModeMax = 6;
+    var windVector = false;
+
     var map = L.map('map', {
       crs: L.CRS.EPSG3857,
     }).setView([0, 0], 1);
 
     new L.Hash(map);
 
-    L.tileLayer('tiles/{z}/{x}/{y}', {
+    var tl = L.tileLayer('tiles/{z}/{x}/{y}?d={d}&wind={wind}', {
       attribution: '&copy;',
       maxZoom: 20,
       minZoom: 1,
       tms: true,
+      d: function () {
+        return displayMode;
+      },
+      wind: function () {
+        return windVector;
+      }
     }).addTo(map);
 
 
@@ -81,30 +91,33 @@
       // Load city markers.
       loadGeoJSON('geojson_cities/' + params, {
         onEachFeature: function (feature, layer) {
+          var prop = feature.properties;
           layer.bindPopup(
             '<span style="font-size:8px;">' +
-            'Name: ' + feature.properties.name + '<br/>' +
-            'Type: ' + feature.properties.type +'<br/>' +
-            'Population: ' + feature.properties.population + '/'+ feature.properties.maxpoplimit +'<br/>' +
-            'Max Pop: ' + feature.properties.maxpop +'<br/>' +
-            'Pop Growth: ' + feature.properties.popgrowth.toFixed(3) +'<br/>' +
-            'Culture: ' + feature.properties.culture +'<br/>' +
-            'Settled: ' + feature.properties.settled + 'yrs ago<br/>' +
-            'Biome: ' + feature.properties.biome +'<br/>' +
-            'Coords: ' + feature.properties.coordinates +'<br/>' +
-            'Attractiveness: ' + feature.properties.attractiveness.toFixed(3) +'<br/>' +
-            'Economic: ' + feature.properties.economic.toFixed(3) +'<br/>' +
-            'Agriculture: ' + feature.properties.agriculture.toFixed(3) +'<br/>' +
-            'Trade: ' + feature.properties.trade.toFixed(3) +'<br/>' +
-            'Resources: ' + feature.properties.resources.toFixed(3) +'<br/>' +
-            'Radius: ' + feature.properties.radius.toFixed(3) + 'km<br/>' +
-            'Tradepartners: ' + feature.properties.tradepartners +'<br/>' +
-            feature.properties.flavortext +
-            '</span>' +
-            '<br/>Resources:<br/>' +
-            '<span style="font-size:5px;">' + (feature.properties.reslist || []).join('<br/>') + '</span>' +
-            '<br/>History:<br/>' +
-            '<span style="font-size:5px;">' + (feature.properties.history || []).join('<br/>') + '</span>');
+            '<b>' + prop.name + '</b> (' + prop.type + ')<br/>' +
+            '<p><b>' + prop.flavortext + '</b></p>' +
+            '<p>' + 
+            'Population: ' + prop.population + ' / ' + prop.maxpop + 
+            ' (max ' + prop.maxpoplimit + ' growth ' + prop.popgrowth.toFixed(3) + ')<br/>' +
+            'Settled: ' + prop.settled + 'yrs ago<br/>' +
+            'Culture: ' + prop.culture + '<br/>' +
+            'Biome: ' + prop.biome + '<br/>' +
+            'Coords: ' + prop.coordinates + '<br/>' +
+            'Attractiveness: ' + prop.attractiveness.toFixed(3) + '<br/>' +
+            'Economic: ' + prop.economic.toFixed(3) + ' / ' +
+            'Agriculture: ' + prop.agriculture.toFixed(3) + ' / ' +
+            'Trade: ' + prop.trade.toFixed(3) + ' / ' +
+            'Resources: ' + prop.resources.toFixed(3) + '<br/>' +
+            'Tradepartners: ' + prop.tradepartners + ' (Radius: ' + prop.radius.toFixed(3) + 'km)<br/>' +
+            '</p>' +
+            '<p>' + 
+            '<b>Resources:</b><br/>' +
+            '<span style="font-size:7px;">' + (prop.reslist || []).join('<br/>') + '</span>' +
+          '</p>'+
+            '<p>' + 
+            '<b>History:</b> (last 10)<br/>' +
+            '<span style="font-size:7px;">' + (prop.history || []).join('<br/>') + '</span>'+
+          '</p></span>');
         },
         pointToLayer: function (feature, latlng) {
           return L.marker(latlng, {
@@ -131,31 +144,48 @@
       });
     });
 
+    function newCustomControl(startLabel, onClick) {
+      var control = L.Control.extend({
+        options: {
+          position: 'topleft'
+        },
+        onAdd: function (map) {
+          var container = L.DomUtil.create('div', 'leaflet-bar leaflet-control leaflet-control-custom');
+          container.style.backgroundColor = 'white';
+          container.style.userSelect = 'none';
+
+          var link = document.createElement('a');
+          link.innerText = startLabel;
+          link.style.cursor = 'pointer';
+          container.appendChild(link);
+
+          container.onclick = function() {
+            onClick(link);
+          };
+          return container;
+        },
+      });
+      return control;
+    }
+
     // Add our custom control for toggling borders.
-    var borderControl = L.Control.extend({
-      options: {
-        position: 'topleft'
-        //control position - allowed: 'topleft', 'topright', 'bottomleft', 'bottomright'
-      },
-      onAdd: function (map) {
-        var container = L.DomUtil.create('div', 'leaflet-bar leaflet-control leaflet-control-custom');
-        container.style.backgroundColor = 'white';
-        //container.style.width = '30px';
-        container.style.height = '30px';
-
-        var link = document.createElement('a');
-        link.innerText = 'B';
-        link.style.cursor = 'pointer';
-        container.appendChild(link);
-
-        container.onclick = function () {
-          console.log('TODO: Query geoJSON for all borders in view and add them to the layerGroup.');
-        }
-        return container;
-      },
-    });
+    var borderControl = newCustomControl('D:' + displayMode, function (link) {
+          // Loop though all display modes.
+          displayMode = (displayMode + 1) % displayModeMax;
+          link.innerText = 'D:' + displayMode;
+          tl.redraw();
+        });
 
     map.addControl(new borderControl());
+
+    // Add our custom control for toggling wind vectors.
+    var windControl = newCustomControl('W:' + windVector, function (link) {
+          // Toggle wind vector display.
+          windVector = !windVector;
+          link.innerText = 'W:' + windVector;
+          tl.redraw();
+        });
+    map.addControl(new windControl());
 
   </script>
 </body>

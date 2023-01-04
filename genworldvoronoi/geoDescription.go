@@ -73,7 +73,7 @@ func (m *Geo) GenerateRegPropertyDescription(p RegProperty) string {
 			if p.DangerFlood > 0.5 {
 				str += " and is infamous for frequent floods"
 			} else {
-				str += " and might cause the occasional flooding"
+				str += " and might cause occasional flooding"
 			}
 		}
 		str += ". \n"

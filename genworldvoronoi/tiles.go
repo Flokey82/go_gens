@@ -11,17 +11,88 @@ import (
 	"github.com/Flokey82/go_gens/genbiome"
 	"github.com/davvo/mercator"
 	"github.com/llgcode/draw2d/draw2dimg"
+	"github.com/mazznoer/colorgrad"
 
 	geojson "github.com/paulmach/go.geojson"
 )
 
 // GetTile returns the image of the tile at the given coordinates and zoom level.
-func (m *Map) GetTile(x, y, zoom int) image.Image {
+func (m *Map) GetTile(x, y, zoom, displayMode int, drawWindVectors bool) image.Image {
 	// Skip drawing rivers for now.
 	drawRivers := true
 
-	// Skip drawing wind vectors for now.
-	drawWindVectors := false
+	var colorFunc func(int) color.Color
+
+	switch displayMode {
+	case 4, 5:
+		colorGrad := colorgrad.Rainbow()
+		terrToColor := make(map[int]int)
+		var territory []int
+		var terrLen int
+		if displayMode == 4 {
+			terr := m.Cities[:m.NumCityStates]
+			terrLen = len(terr)
+			for i, c := range terr {
+				terrToColor[c.ID] = i
+			}
+			territory = m.RegionToCityState
+		} else {
+			terr := m.Cultures
+			terrLen = len(terr)
+			for i, c := range terr {
+				terrToColor[c.ID] = i
+			}
+			territory = m.RegionToCulture
+		}
+
+		min, max := minMax(m.Elevation)
+		_, maxMois := minMax(m.Moisture)
+		cols := colorGrad.Colors(uint(terrLen))
+		colorFunc = func(i int) color.Color {
+			// Calculate the color of the region.
+			rLat := m.LatLon[i][0]
+			elev := m.Elevation[i]
+			val := (elev - min) / (max - min)
+			if elev <= 0 {
+				return genBlue(val)
+			} else if territory[i] == -1 {
+				valElev := elev / max
+				valMois := m.Moisture[i] / maxMois
+				return getWhittakerModBiomeColor(rLat, valElev, valMois, val)
+			}
+			terrID := terrToColor[territory[i]]
+			return genColor(cols[terrID], val)
+		}
+	default:
+		vals := m.Elevation
+		if displayMode == 1 {
+			vals = m.Moisture
+		} else if displayMode == 2 {
+			vals = m.Rainfall
+		} else if displayMode == 3 {
+			vals = m.Flux
+		}
+
+		// Calculate the min and max elevation.
+		_, max := minMax(m.Elevation)
+		_, maxMois := minMax(m.Moisture)
+		minVal, maxVal := minMax(vals)
+		colorFunc = func(i int) color.Color {
+			// Calculate the color of the region.
+			rLat := m.LatLon[i][0]
+			elev := m.Elevation[i]
+			val := (vals[i] - minVal) / (maxVal - minVal)
+			var col color.NRGBA
+			if elev <= 0 {
+				col = genBlue(val)
+			} else {
+				valElev := elev / max
+				valMois := m.Moisture[i] / maxMois
+				col = getWhittakerModBiomeColor(rLat, valElev, valMois, val)
+			}
+			return col
+		}
+	}
 
 	// Wrap the tile coordinates.
 	x, y = wrapTileCoordinates(x, y, zoom)
@@ -41,9 +112,6 @@ func (m *Map) GetTile(x, y, zoom int) image.Image {
 	dest := image.NewRGBA(image.Rect(0, 0, tileSize, tileSize))
 	gc := draw2dimg.NewGraphicContext(dest)
 
-	// Calculate the min and max elevation and moisture values.
-	min, max := minMax(m.Elevation)
-	_, maxMois := minMax(m.Moisture)
 	out_t := make([]int, 0, 6)
 	for i := 0; i < m.mesh.numRegions; i++ {
 		rLat := m.LatLon[i][0]
@@ -90,16 +158,7 @@ func (m *Map) GetTile(x, y, zoom int) image.Image {
 		}
 
 		// Calculate the color of the region.
-		elev := m.Elevation[i]
-		val := (elev - min) / (max - min)
-		var col color.NRGBA
-		if elev <= 0 {
-			col = genBlue(val)
-		} else {
-			valElev := elev / max
-			valMois := m.Moisture[i] / maxMois
-			col = getWhittakerModBiomeColor(rLat, valElev, valMois, val)
-		}
+		col := colorFunc(i)
 
 		// If the path is empty, we can skip it.
 		if len(path) == 0 {
@@ -379,7 +438,7 @@ func (m *Map) GetGeoJSONCities(la1, lo1, la2, lo2 float64, zoom int) ([]byte, er
 		f.SetProperty("id", c.ID)
 		f.SetProperty("name", c.Name)
 		f.SetProperty("type", c.Type)
-		f.SetProperty("culture", c.Culture.Name)
+		f.SetProperty("culture", fmt.Sprintf("%s (%s)", c.Culture.Name, c.Culture.Type))
 		f.SetProperty("population", c.Population)
 		f.SetProperty("popgrowth", c.PopulationGrowthRate())
 		f.SetProperty("maxpop", c.MaxPopulation)

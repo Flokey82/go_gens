@@ -2,97 +2,381 @@ package genworldvoronoi
 
 import (
 	"fmt"
-	"math"
-
-	"github.com/Flokey82/go_gens/genbiome"
+	"strings"
 )
 
-// SpeciesTolerances defines the environmental tolerances of a species.
-type SpeciesTolerances struct {
-	Ecosphere       EcosphereType // Ocean, River, Land, Lake
-	TempRange       [2]float64    // Min, Max temperature
-	HumRange        [2]float64    // Min, Max humidity
-	ElevRange       [2]float64    // Min, Max elevation
-	PreferredBiomes []int         // Only applies to non-marine species.
+// SpeciesProperties defines the properties of a species.
+type SpeciesProperties struct {
+	Kingdom    SpeciesKingdom  // General type of the species.
+	Family     SpeciesFamily   // Subtype of the species.
+	Digestion  DigestiveSystem // What kind of food the species can eat.
+	Size       SpeciesSize     // Size of the species.
+	Locomotion Locomotion      // How the species moves. (TODO: Primary locomotion)
 }
 
-func (s *SpeciesTolerances) String() string {
-	var str string
-	str += fmt.Sprintf("TEMP: %.2f°C - %.2f°C,\n", s.TempRange[0], s.TempRange[1])
-	str += fmt.Sprintf("HUMD: %.2fdm - %.2fdm,\n", s.HumRange[0]*maxPrecipitation, s.HumRange[1]*maxPrecipitation)
-	str += fmt.Sprintf("ELEV: %.2f-%.2f\n", s.ElevRange[0]*maxAltitudeFactor, s.ElevRange[1]*maxAltitudeFactor)
-	if len(s.PreferredBiomes) > 0 {
-		str += "biomes:\n"
-		for _, b := range s.PreferredBiomes {
-			str += fmt.Sprintf(" %s\n", genbiome.WhittakerModBiomeToString(b))
-		}
-	}
-	return str
+func (s *SpeciesProperties) String() string {
+	return fmt.Sprintf("%s %s %s %s %s", s.Kingdom, s.Family, s.Digestion, s.Size, s.Locomotion)
 }
 
-func (b *Bio) getTolerancesForRegionFunc() func(int) *SpeciesTolerances {
-	minElev, maxElev := minMax(b.Elevation)
-	minHum, maxHum := minMax(b.Moisture)
-	return func(r int) *SpeciesTolerances {
-		s := &SpeciesTolerances{
-			Ecosphere: b.getEcosphere(r),
-		}
+type SpeciesKingdom int
 
-		// minMaxRange returns a min and max range for the given value with the given variance.
-		minMaxRange := func(val, minVal, maxVal, variation float64) [2]float64 {
-			nVar := b.rand.Float64() * variation
-			varMin := nVar * b.rand.Float64()
-			newMin := math.Max(minVal, val-varMin)
-			newMax := math.Min(maxVal, val+(nVar-varMin))
-			return [2]float64{newMin, newMax}
-		}
+const (
+	SpeciesKingdomFlora SpeciesKingdom = iota
+	SpeciesKingdomFauna                // Maybe split this up into different types of fauna?
+	SpeciesKingdomFunga
+)
 
-		// Prefered elevation range.
-		if s.Ecosphere == EcosphereTypeOcean {
-			s.ElevRange = minMaxRange(b.Elevation[r], minElev, 0, 0.2)
-		} else {
-			s.ElevRange = minMaxRange(b.Elevation[r], 0, maxElev, 0.2)
-		}
-
-		// Preferred temperature range.
-		s.TempRange = minMaxRange(b.getRegTemperature(r, maxElev), float64(minTemp), float64(maxTemp), 0.2)
-
-		// Preferred humidity range.
-		s.HumRange = minMaxRange(b.Moisture[r], minHum, maxHum, 0.2)
-
-		// If we are not in the ocean, we probably have a preferred biome.
-		if s.Ecosphere != EcosphereTypeOcean && b.rand.Float64() < 0.7 {
-			s.PreferredBiomes = []int{b.getRegWhittakerModBiomeFunc()(r)}
-		}
-		return s
+func (s SpeciesKingdom) String() string {
+	switch s {
+	case SpeciesKingdomFlora:
+		return "flora"
+	case SpeciesKingdomFauna:
+		return "fauna"
+	case SpeciesKingdomFunga:
+		return "funga"
 	}
+	return "unknown"
 }
 
-func (b *Bio) getToleranceScoreFunc(s *SpeciesTolerances) func(int) float64 {
-	_, maxElev := minMax(b.Elevation)
-	bf := b.getRegWhittakerModBiomeFunc()
-	return func(r int) float64 { // Check what ecosphere we are in and if it matches the species.
-		if s.Ecosphere != b.getEcosphere(r) {
-			return -1.0
+func (s SpeciesKingdom) DigestiveSystems() []DigestiveSystem {
+	switch s {
+	case SpeciesKingdomFlora:
+		return []DigestiveSystem{
+			// TODO: Allow weighted selection. Some plants can eat other plants or animals.
+			DigestivePhotosynthetic,
 		}
-
-		// Check if we require a specific biome.
-		if len(s.PreferredBiomes) > 0 && !isInIntList(s.PreferredBiomes, bf(r)) {
-			return -1
+	case SpeciesKingdomFauna:
+		return []DigestiveSystem{
+			DigestiveSystemCarnivore,
+			DigestiveSystemHerbivore,
+			DigestiveSystemOmnivore,
 		}
-
-		// Check how much we diverge from the preferred temperature range.
-		tempDiv := getDiversionFromRange(b.getRegTemperature(r, maxElev), s.TempRange)
-		tempScore := easeInOutCubic(1 - tempDiv/(s.TempRange[1]-s.TempRange[0]))
-
-		// Check how much we diverge from the preferred humidity range.
-		humDiv := getDiversionFromRange(b.Moisture[r], s.HumRange)
-		humScore := easeInOutCubic(1 - humDiv/(s.HumRange[1]-s.HumRange[0]))
-
-		// Check how much we diverge from the preferred elevation range.
-		elevDiv := getDiversionFromRange(b.Elevation[r], s.ElevRange)
-		elevScore := easeInOutCubic(1 - elevDiv/(s.ElevRange[1]-s.ElevRange[0]))
-
-		return tempScore * humScore * elevScore
+	case SpeciesKingdomFunga:
+		return []DigestiveSystem{
+			DigestivePhotosynthetic,
+			DigestiveDecomposer,
+			DigestiveSystemCarnivore, // rare
+		}
 	}
+	return nil
+}
+
+var SpeciesKingdoms = []SpeciesKingdom{
+	SpeciesKingdomFauna,
+	SpeciesKingdomFlora,
+	SpeciesKingdomFunga,
+}
+
+type SpeciesFamily int
+
+const (
+	SpeciesFamilyNone SpeciesFamily = iota
+	SpeciesFamilyTree
+	SpeciesFamilyShrub
+	SpeciesFamilyGrass
+	SpeciesFamilyReed
+	SpeciesFamilyHerb
+	SpeciesFamilyFlower
+	SpeciesFamilyFern
+	SpeciesFamilyMoss
+	SpeciesFamilyVine
+	SpeciesFamilyCactus
+	SpeciesFamilySucculent
+	SpeciesFamilyInsect
+	SpeciesFamilyArachnid
+	SpeciesFamilyMammal
+	SpeciesFamilyBird
+	SpeciesFamilyFish
+	SpeciesFamilyCrustacean
+	SpeciesFamilyMollusk
+	SpeciesFamilyMolluskClam
+	SpeciesFamilyMolluskSnail
+	SpeciesFamilyAmphibian
+	SpeciesFamilyReptileSerpent
+	SpeciesFamilyReptileLizard
+	SpeciesFamilyRodent
+	SpeciesFamilyWorm
+	SpeciesFamilyMushroom
+	SpeciesFamilyMold
+)
+
+func (s SpeciesFamily) String() string {
+	switch s {
+	case SpeciesFamilyNone:
+		return "none"
+	case SpeciesFamilyTree:
+		return "tree"
+	case SpeciesFamilyShrub:
+		return "shrub"
+	case SpeciesFamilyGrass:
+		return "grass"
+	case SpeciesFamilyReed:
+		return "reed"
+	case SpeciesFamilyHerb:
+		return "herb"
+	case SpeciesFamilyFlower:
+		return "flower"
+	case SpeciesFamilyFern:
+		return "fern"
+	case SpeciesFamilyMoss:
+		return "moss"
+	case SpeciesFamilyVine:
+		return "vine"
+	case SpeciesFamilyCactus:
+		return "cactus"
+	case SpeciesFamilySucculent:
+		return "succulent"
+	case SpeciesFamilyInsect:
+		return "insect"
+	case SpeciesFamilyArachnid:
+		return "arachnid"
+	case SpeciesFamilyMammal:
+		return "mammal"
+	case SpeciesFamilyBird:
+		return "bird"
+	case SpeciesFamilyFish:
+		return "fish"
+	case SpeciesFamilyCrustacean:
+		return "crustacean"
+	case SpeciesFamilyMollusk:
+		return "mollusk"
+	case SpeciesFamilyMolluskClam:
+		return "clam"
+	case SpeciesFamilyMolluskSnail:
+		return "snail"
+	case SpeciesFamilyAmphibian:
+		return "amphibian"
+	case SpeciesFamilyReptileSerpent:
+		return "serpent"
+	case SpeciesFamilyReptileLizard:
+		return "lizard"
+	case SpeciesFamilyRodent:
+		return "rodent"
+	case SpeciesFamilyWorm:
+		return "worm"
+	case SpeciesFamilyMushroom:
+		return "mushroom"
+	case SpeciesFamilyMold:
+		return "mold"
+	}
+	return "unknown"
+}
+
+func (s SpeciesFamily) Locomotion() Locomotion {
+	switch s {
+	case SpeciesFamilyInsect:
+		return LocomotionWalk
+	case SpeciesFamilyArachnid:
+		return LocomotionWalk
+	case SpeciesFamilyMammal:
+		return LocomotionWalk
+	case SpeciesFamilyBird:
+		return LocomotionFly
+	case SpeciesFamilyFish:
+		return LocomotionSwim
+	case SpeciesFamilyCrustacean:
+		return LocomotionSwim
+	case SpeciesFamilyMollusk:
+		return LocomotionSwim | LocomotionWalk
+	case SpeciesFamilyMolluskSnail:
+		return LocomotionSlither | LocomotionClimb
+	case SpeciesFamilyAmphibian:
+		return LocomotionWalk | LocomotionSwim
+	case SpeciesFamilyReptileSerpent:
+		return LocomotionSlither
+	case SpeciesFamilyReptileLizard:
+		return LocomotionWalk | LocomotionClimb
+	case SpeciesFamilyRodent:
+		return LocomotionWalk | LocomotionClimb | LocomotionBurrow
+	case SpeciesFamilyWorm:
+		return LocomotionSlither | LocomotionBurrow
+	}
+	return LocomotionNone
+}
+
+var speciesKingdomToFamiliesLand = map[SpeciesKingdom][]SpeciesFamily{
+	SpeciesKingdomFlora: {
+		SpeciesFamilyTree,
+		SpeciesFamilyShrub,
+		SpeciesFamilyGrass,
+		SpeciesFamilyReed,
+		SpeciesFamilyHerb,
+		SpeciesFamilyFlower,
+		SpeciesFamilyFern,
+		SpeciesFamilyMoss,
+		SpeciesFamilyVine,
+		SpeciesFamilyCactus,
+		SpeciesFamilySucculent,
+	},
+	SpeciesKingdomFauna: {
+		SpeciesFamilyInsect,
+		SpeciesFamilyArachnid,
+		SpeciesFamilyMammal,
+		SpeciesFamilyBird,
+		SpeciesFamilyAmphibian,
+		SpeciesFamilyReptileSerpent,
+		SpeciesFamilyReptileLizard,
+		SpeciesFamilyMolluskSnail,
+		SpeciesFamilyRodent,
+		SpeciesFamilyMollusk,
+	},
+	SpeciesKingdomFunga: {
+		SpeciesFamilyMushroom,
+		SpeciesFamilyMold,
+	},
+}
+
+var speciesKingdomToFamiliesWater = map[SpeciesKingdom][]SpeciesFamily{
+	SpeciesKingdomFlora: {
+		SpeciesFamilyGrass,
+		SpeciesFamilyHerb,
+	},
+	SpeciesKingdomFauna: {
+		SpeciesFamilyFish,
+		SpeciesFamilyCrustacean,
+		SpeciesFamilyMollusk,
+		SpeciesFamilyMolluskClam,
+		SpeciesFamilyReptileSerpent,
+	},
+	SpeciesKingdomFunga: {
+		SpeciesFamilyMushroom,
+	},
+}
+
+type SpeciesSize int
+
+const (
+	SpeciesSizeDefault SpeciesSize = iota
+	SpeciesSizeTiny
+	SpeciesSizeSmall
+	SpeciesSizeMedium
+	SpeciesSizeLarge
+	SpeciesSizeHuge
+)
+
+func (s SpeciesSize) String() string {
+	switch s {
+	case SpeciesSizeDefault:
+		return "default"
+	case SpeciesSizeTiny:
+		return "tiny"
+	case SpeciesSizeSmall:
+		return "small"
+	case SpeciesSizeMedium:
+		return "medium"
+	case SpeciesSizeLarge:
+		return "large"
+	case SpeciesSizeHuge:
+		return "huge"
+	}
+	return "unknown"
+}
+
+var SpeciesSizes = []SpeciesSize{
+	SpeciesSizeTiny,
+	SpeciesSizeSmall,
+	SpeciesSizeMedium,
+	SpeciesSizeLarge,
+	SpeciesSizeHuge,
+}
+
+type DigestiveSystem int
+
+const (
+	DigestiveSystemCarnivore DigestiveSystem = iota
+	DigestiveSystemHerbivore
+	DigestiveSystemOmnivore
+	DigestivePhotosynthetic
+	DigestiveDecomposer
+	DigestiveParasitic
+)
+
+func (d DigestiveSystem) String() string {
+	switch d {
+	case DigestiveSystemCarnivore:
+		return "carnivore"
+	case DigestiveSystemHerbivore:
+		return "herbivore"
+	case DigestiveSystemOmnivore:
+		return "omnivore"
+	case DigestivePhotosynthetic:
+		return "photosynthetic"
+	case DigestiveDecomposer:
+		return "decomposer"
+	case DigestiveParasitic:
+		return "parasitic"
+	}
+	return "unknown"
+}
+
+var DigestiveSystems = []DigestiveSystem{
+	DigestiveSystemCarnivore,
+	DigestiveSystemHerbivore,
+	DigestiveSystemOmnivore,
+	DigestivePhotosynthetic,
+	DigestiveDecomposer,
+	DigestiveParasitic,
+}
+
+type Locomotion byte
+
+func (l Locomotion) isSet(b Locomotion) bool {
+	return l&b != 0
+}
+
+const (
+	LocomotionNone Locomotion = 0
+	LocomotionFly  Locomotion = 1 << iota
+	LocomotionBurrow
+	LocomotionWalk
+	LocomotionSwim
+	LocomotionClimb
+	LocomotionSlither
+)
+
+func (l Locomotion) String() string {
+	var strs []string
+	if l.isSet(LocomotionFly) {
+		strs = append(strs, "fly")
+	}
+	if l.isSet(LocomotionBurrow) {
+		strs = append(strs, "burrow")
+	}
+	if l.isSet(LocomotionWalk) {
+		strs = append(strs, "walk")
+	}
+	if l.isSet(LocomotionSwim) {
+		strs = append(strs, "swim")
+	}
+	if l.isSet(LocomotionClimb) {
+		strs = append(strs, "climb")
+	}
+	if l.isSet(LocomotionSlither) {
+		strs = append(strs, "slither")
+	}
+	return strings.Join(strs, ", ")
+}
+
+var LocomotionTypes = []Locomotion{
+	LocomotionFly,
+	LocomotionBurrow,
+	LocomotionWalk,
+	LocomotionSwim,
+	LocomotionClimb,
+	LocomotionSlither,
+}
+
+var LocomotionTypesLand = []Locomotion{
+	LocomotionFly,
+	LocomotionBurrow,
+	LocomotionWalk,
+	LocomotionClimb,
+	LocomotionSlither,
+}
+
+var LocomotionTypesWater = []Locomotion{
+	LocomotionBurrow,
+	LocomotionSwim,
+	LocomotionClimb,
+	LocomotionSlither,
 }
