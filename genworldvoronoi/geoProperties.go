@@ -32,7 +32,7 @@ func (m *Geo) getRegPropertyFunc() func(int) RegProperty {
 	inlandValleyFunc := m.getFitnessInlandValleys()
 	biomeFunc := m.getRegWhittakerModBiomeFunc()
 	_, maxElev := minMax(m.Elevation)
-	var oceanRegs, mountainRegs, volcanoRegs, riverRegs []int
+	var oceanRegs, mountainRegs, volcanoRegs, riverRegs, faultlineRegs []int
 	stopMountain := make(map[int]bool)
 	stopOcean := make(map[int]bool)
 	for r := 0; r < m.mesh.numRegions; r++ {
@@ -50,11 +50,15 @@ func (m *Geo) getRegPropertyFunc() func(int) RegProperty {
 		if m.isRegBigRiver(r) {
 			riverRegs = append(riverRegs, r)
 		}
+		if m.RegionCompression[r] != 0 {
+			faultlineRegs = append(faultlineRegs, r)
+		}
 	}
 	distOcean := m.assignDistanceField(oceanRegs, stopMountain)
 	distMountain := m.assignDistanceField(mountainRegs, stopOcean)
 	distVolcano := m.assignDistanceField(volcanoRegs, stopOcean)
 	distRiver := m.assignDistanceField(riverRegs, stopOcean)
+	distFaultline := m.assignDistanceField(faultlineRegs, stopOcean)
 	return func(id int) RegProperty {
 		// Make sure that we do not have more than 2 neighbours that has a lower elevation.
 		// ... because a valley should be surrounded by mountains.
@@ -82,7 +86,7 @@ func (m *Geo) getRegPropertyFunc() func(int) RegProperty {
 			DistanceToMountain:  distMountain[id],
 			DistanceToRiver:     distRiver[id],
 			DistanceToVolcano:   distVolcano[id],
-			DistanceToFaultline: m.RegionCompression[id],
+			DistanceToFaultline: distFaultline[id],
 			Temperature:         m.getRegTemperature(id, maxElev),
 			Rainfall:            m.Rainfall[id],
 			DangerRockslide:     rockSlideAvalancheChance[id],

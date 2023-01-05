@@ -1,6 +1,7 @@
 package genworldvoronoi
 
 import (
+	"container/list"
 	"math"
 	"sort"
 
@@ -210,21 +211,80 @@ func (m *Geo) findCollisions() ([]int, []int, []int, map[int]float64) {
 	return mountainRegs, coastlineRegs, oceanRegs, compressionReg
 }
 
-/*
-const (
-	RegTypeNone = iota
-	RegTypeMountain
-	RegTypeCoastline
-	RegTypeOcean
-)*/
+// propagateCompression propagates the compression values from the seed regions
+// to all other regions.
+func (m *BaseObject) propagateCompression(compression map[int]float64) []float64 {
+	// Get the min and max compression value so that we can
+	// normalize the compression value, also we need to copy
+	// the compression values into a slice so that we can
+	// modify them and queue them up.
+	cmp := make([]float64, m.mesh.numRegions)
+	var cmpSeeds []int
+	for r, comp := range compression {
+		cmp[r] = comp
+		cmpSeeds = append(cmpSeeds, r)
+	}
+	sort.Ints(cmpSeeds)
+
+	// Queue up the seed regions, shuffle them so that we don't
+	// always start with the same regions.
+	queue := list.New()
+	for _, r := range cmpSeeds {
+		queue.PushBack(r)
+	}
+
+	// Normalize the compression values.
+	minComp, maxComp := minMax(cmp)
+	for r := range cmp {
+		if cmp[r] > 0 {
+			cmp[r] /= maxComp
+		} else if cmp[r] < 0 {
+			cmp[r] /= math.Abs(minComp)
+		}
+	}
+
+	// Propagate the compression values.
+	outRegs := make([]int, 0, 6)
+	for queue.Len() > 0 {
+		currentReg := queue.Remove(queue.Front()).(int)
+		currentComp := cmp[currentReg]
+		for _, nbReg := range m.mesh.r_circulate_r(outRegs, currentReg) {
+			// The compression value diminishes over distance.
+			// This should be using the inverse square law, but
+			// we use a linear function instead.
+			distToNb := 1 + m.GetDistance(currentReg, nbReg)
+			nbComp := currentComp / distToNb
+			if cmp[nbReg] == 0 {
+				cmp[nbReg] = nbComp
+				queue.PushBack(nbReg)
+			} else {
+				// Average the compression values.
+				// NOTE: I know this is not great, but it works.
+				// ... otherwise we get real bad artifacts.
+				cmp[nbReg] = (cmp[nbReg] + nbComp) / 2
+			}
+		}
+	}
+
+	// Normalize the compression values.
+	minComp, maxComp = minMax(cmp)
+	for r := range cmp {
+		if cmp[r] > 0 {
+			cmp[r] /= maxComp
+		} else if cmp[r] < 0 {
+			cmp[r] /= math.Abs(minComp)
+		}
+		// Apply a square falloff to the compression values.
+		cmp[r] *= math.Abs(cmp[r])
+	}
+	return cmp
+}
 
 // assignRegionElevation finds collisions between plate regions and assigns
 // elevation for each point on the sphere accordingly, which will result in
 // mountains, coastlines, etc.
 // To ensure variation, opensimplex noise is used to break up any uniformity.
 func (m *Geo) assignRegionElevation() {
-	useDistanceFieldWithCompression := true
-
 	// TODO: Use collision values to determine intensity of generated landscape features.
 	mountainRegs, coastlineRegs, oceanRegs, compressionReg := m.findCollisions()
 
@@ -262,24 +322,16 @@ func (m *Geo) assignRegionElevation() {
 		stopReg[r] = true
 	}
 
-	var rDistanceA, rDistanceB, rDistanceC []float64
-	if useDistanceFieldWithCompression {
-		// Calculate distance fields using the compression values of each region.
-		// Graph distance from mountains (stops at ocean regions).
-		rDistanceA = m.assignDistanceFieldWithIntensity(mountainRegs, convToMap(oceanRegs), compressionReg)
-		// Graph distance from ocean (stops at coastline regions).
-		rDistanceB = m.assignDistanceFieldWithIntensity(oceanRegs, convToMap(coastlineRegs), compressionReg)
-		// Graph distance from coastline (stops at all other regions).
-		rDistanceC = m.assignDistanceFieldWithIntensity(coastlineRegs, stopReg, compressionReg)
-	} else {
-		// Calculate distance fields.
-		// Graph distance from mountains (stops at ocean regions).
-		rDistanceA = m.assignDistanceField(mountainRegs, convToMap(oceanRegs))
-		// Graph distance from ocean (stops at coastline regions).
-		rDistanceB = m.assignDistanceField(oceanRegs, convToMap(coastlineRegs))
-		// Graph distance from coastline (stops at all other regions).
-		rDistanceC = m.assignDistanceField(coastlineRegs, stopReg)
-	}
+	// Calculate distance fields.
+	// Graph distance from mountains (stops at ocean regions).
+	rDistanceA := m.assignDistanceField(mountainRegs, convToMap(oceanRegs))
+	// Graph distance from ocean (stops at coastline regions).
+	rDistanceB := m.assignDistanceField(oceanRegs, convToMap(coastlineRegs))
+	// Graph distance from coastline (stops at all other regions).
+	rDistanceC := m.assignDistanceField(coastlineRegs, stopReg)
+
+	// Propagate the compression values.
+	compPerReg := m.propagateCompression(compressionReg)
 
 	// This code below calculates the height of a given region based on a linear
 	// interpolation of the three distance values above.
@@ -317,6 +369,13 @@ func (m *Geo) assignRegionElevation() {
 			// The height is calculated as weighted harmonic mean of the
 			// three distance values.
 			f := (1/a - 1/b) / (1/a + 1/b + 1/c)
+
+			// Average with plate compression to get some
+			// variation in the landscape.
+			f = (f + compPerReg[r]) * 0.5
+
+			// Apply a square falloff to the elevaltion values.
+			// f *= math.Abs(f)
 			m.Elevation[r] += f
 		}
 		m.Elevation[r] += m.noise.Eval3(r_xyz[3*r], r_xyz[3*r+1], r_xyz[3*r+2])*2 - 1 // Noise from -1.0 to 1.0

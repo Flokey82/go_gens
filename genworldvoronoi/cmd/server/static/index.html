@@ -40,8 +40,9 @@
   <script type="text/javascript">
 
     var displayMode = 0;
-    var displayModeMax = 6;
-    var windVector = false;
+    var displayModeMax = 15;
+    var drawWindVectors = false;
+    var drawRivers = false;
 
     var map = L.map('map', {
       crs: L.CRS.EPSG3857,
@@ -49,7 +50,7 @@
 
     new L.Hash(map);
 
-    var tl = L.tileLayer('tiles/{z}/{x}/{y}?d={d}&wind={wind}', {
+    var tl = L.tileLayer('tiles/{z}/{x}/{y}?d={d}&wind={wind}&rivers={rivers}', {
       attribution: '&copy;',
       maxZoom: 20,
       minZoom: 1,
@@ -58,7 +59,10 @@
         return displayMode;
       },
       wind: function () {
-        return windVector;
+        return drawWindVectors;
+      },
+      rivers: function () {
+        return drawRivers;
       }
     }).addTo(map);
 
@@ -181,13 +185,22 @@
     map.addControl(new borderControl());
 
     // Add our custom control for toggling wind vectors.
-    var windControl = newCustomControl('W:' + windVector, function (link) {
+    var windControl = newCustomControl('W:' + drawWindVectors, function (link) {
       // Toggle wind vector display.
-      windVector = !windVector;
-      link.innerText = 'W:' + windVector;
+      drawWindVectors = !drawWindVectors;
+      link.innerText = 'W:' + drawWindVectors;
       tl.redraw();
     });
     map.addControl(new windControl());
+
+    // Add our custom control for toggling rivers.
+    var riverControl = newCustomControl('R:' + drawRivers, function (link) {
+      // Toggle river display.
+      drawRivers = !drawRivers;
+      link.innerText = 'R:' + drawRivers;
+      tl.redraw();
+    });
+    map.addControl(new riverControl());
 
     L.Control.Measure.include({
       // set icon on the capture marker
@@ -209,9 +222,17 @@
       unit: 'metric',
       activeColor: '#ABE67E',
       completedColor: '#C8F2BE',
-      primaryLengthUnit: 'meters',
-      secondaryLengthUnit: 'kilometers',
-      primaryAreaUnit: 'sqmeters',
+      primaryLengthUnit: 'kilometers',
+      secondaryLengthUnit: 'miles',
+      primaryAreaUnit: 'sqkilometers',
+      secondaryAreaUnit: 'sqmiles',
+      units: {
+        sqkilometers: {
+          factor: 1e-6, // Required. Factor to apply when converting to this unit. Length in meters or area in sq meters will be multiplied by this factor.
+          display: 'Sq. Kilometers', // Required. How to display in results, like.. "300 Meters (0.3 My New Unit)".
+          decimals: 2 // Number of decimals to round results when using this unit. `0` is the default value if not specified.
+        },
+      },
     };
     var measureControl = new L.Control.Measure(options);
     measureControl.addTo(map);

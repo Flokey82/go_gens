@@ -96,13 +96,14 @@ func (m *Civ) getTerritoryWeightFunc() func(o, u, v int) float64 {
 func (m *Civ) regPlaceNTerritoriesCustom(seedPoints []int, weight func(o, u, v int) float64) []int {
 	var queue ascPriorityQueue
 	heap.Init(&queue)
+	outReg := make([]int, 0, 8)
 
 	// 'terr' will hold a mapping of region to territory.
 	// The territory ID is the region number of the capital city.
 	terr := initRegionSlice(m.mesh.numRegions)
 	for i := 0; i < len(seedPoints); i++ {
 		terr[seedPoints[i]] = seedPoints[i]
-		for _, v := range m.GetRegNeighbors(seedPoints[i]) {
+		for _, v := range m.mesh.r_circulate_r(outReg, seedPoints[i]) {
 			newdist := weight(seedPoints[i], seedPoints[i], v)
 			if newdist < 0 {
 				continue
@@ -122,7 +123,7 @@ func (m *Civ) regPlaceNTerritoriesCustom(seedPoints []int, weight func(o, u, v i
 			continue
 		}
 		terr[u.destination] = u.origin
-		for _, v := range m.GetRegNeighbors(u.destination) {
+		for _, v := range m.mesh.r_circulate_r(outReg, u.destination) {
 			if terr[v] >= 0 {
 				continue
 			}
@@ -141,6 +142,7 @@ func (m *Civ) regPlaceNTerritoriesCustom(seedPoints []int, weight func(o, u, v i
 }
 
 func (m *Civ) rRelaxTerritories(terr []int, n int) {
+	outReg := make([]int, 0, 8)
 	for i := 0; i < n; i++ {
 		// TODO: Make sure that we can put some type of constraints on
 		// how much a territory can move.
@@ -150,7 +152,7 @@ func (m *Civ) rRelaxTerritories(terr []int, n int) {
 			}
 			var nbCountOtherTerr, nbCountSameTerr int
 			otherTerr := -1
-			for _, v := range m.GetRegNeighbors(r) {
+			for _, v := range m.mesh.r_circulate_r(outReg, r) {
 				if v < 0 {
 					continue
 				}
@@ -174,11 +176,12 @@ func (m *Civ) rRelaxTerritories(terr []int, n int) {
 func (m *Civ) getTerritoryNeighbors(r int, r_terr []int) []int {
 	var res []int
 	seenTerritories := make(map[int]bool)
+	outReg := make([]int, 0, 8)
 	for i, rg := range r_terr {
 		if rg != r {
 			continue
 		}
-		for _, nb := range m.GetRegNeighbors(i) {
+		for _, nb := range m.mesh.r_circulate_r(outReg, i) {
 			// Determine territory ID.
 			terrID := r_terr[nb]
 			if terrID < 0 || terrID == r || seenTerritories[terrID] {

@@ -121,6 +121,12 @@ func tileHandler(res http.ResponseWriter, req *http.Request) {
 		wind = "false"
 	}
 
+	// get the url parameter 'rivers'.
+	rivers := req.URL.Query().Get("rivers")
+	if rivers == "" {
+		rivers = "false"
+	}
+
 	// Get the tile coordinates and zoom level.
 	vars := mux.Vars(req)
 	tileX, err := strconv.Atoi(vars["x"])
@@ -137,7 +143,7 @@ func tileHandler(res http.ResponseWriter, req *http.Request) {
 	}
 
 	// Get the tile image.
-	img := worldmap.GetTile(tileX, tileY, tileZ, displayMode, wind == "true")
+	img := worldmap.GetTile(tileX, tileY, tileZ, displayMode, wind == "true", rivers == "true")
 	writeImage(res, &img)
 }
 

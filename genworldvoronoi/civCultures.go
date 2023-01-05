@@ -109,7 +109,6 @@ func (m *Civ) ExpandCultures() {
 			}
 		}
 		c.Stats = m.getStats(c.Regions)
-		c.Log()
 	}
 }
 

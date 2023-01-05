@@ -17,25 +17,29 @@ import (
 )
 
 // GetTile returns the image of the tile at the given coordinates and zoom level.
-func (m *Map) GetTile(x, y, zoom, displayMode int, drawWindVectors bool) image.Image {
-	// Skip drawing rivers for now.
-	drawRivers := true
-
+func (m *Map) GetTile(x, y, zoom, displayMode int, drawWindVectors, drawRivers bool) image.Image {
 	var colorFunc func(int) color.Color
 
 	switch displayMode {
-	case 4, 5:
+	case 12, 13, 14:
 		colorGrad := colorgrad.Rainbow()
 		terrToColor := make(map[int]int)
 		var territory []int
 		var terrLen int
-		if displayMode == 4 {
+		if displayMode == 12 {
 			terr := m.Cities[:m.NumCityStates]
 			terrLen = len(terr)
 			for i, c := range terr {
 				terrToColor[c.ID] = i
 			}
 			territory = m.RegionToCityState
+		} else if displayMode == 13 {
+			terr := m.Cities[:m.NumEmpires]
+			terrLen = len(terr)
+			for i, c := range terr {
+				terrToColor[c.ID] = i
+			}
+			territory = m.RegionToEmpire
 		} else {
 			terr := m.Cultures
 			terrLen = len(terr)
@@ -71,6 +75,22 @@ func (m *Map) GetTile(x, y, zoom, displayMode int, drawWindVectors bool) image.I
 			vals = m.Rainfall
 		} else if displayMode == 3 {
 			vals = m.Flux
+		} else if displayMode == 4 {
+			vals = m.propagateCompression(m.RegionCompression)
+		} else if displayMode == 5 {
+			vals = m.getEarthquakeChance()
+		} else if displayMode == 6 {
+			vals = m.getVolcanoEruptionChance()
+		} else if displayMode == 7 {
+			vals = m.getRockSlideAvalancheChance()
+		} else if displayMode == 8 {
+			vals = m.getFloodChance()
+		} else if displayMode == 9 {
+			vals = m.GetErosionRate()
+		} else if displayMode == 10 {
+			vals = m.GetErosionRate2()
+		} else if displayMode == 11 {
+			vals = m.GetSteepness()
 		}
 
 		// Calculate the min and max elevation.
@@ -253,7 +273,7 @@ func (m *Map) GetTile(x, y, zoom, displayMode int, drawWindVectors bool) image.I
 			rLat, rLon := m.LatLon[river[0]][0], m.LatLon[river[0]][1]
 			x, y := latLonToPixels(rLat, rLon, zoom)
 			gc.MoveTo(x-dx, y-dy2)
-			for _, p := range river[1:] {
+			for i, p := range river[1:] {
 				gc.SetLineWidth(1 + 2*(m.Flux[p]/maxFlux))
 
 				// Set the line width based on the flux of the river.
@@ -261,7 +281,27 @@ func (m *Map) GetTile(x, y, zoom, displayMode int, drawWindVectors bool) image.I
 				x, y := latLonToPixels(rLat, rLon, zoom)
 				x -= dx
 				y -= dy2
-				gc.LineTo(x, y)
+
+				// If we are below sea level, interpolate the point with the previous point.
+				if m.Elevation[p] < 0 {
+					// Draw from the last position to the midpoint.
+					// This will cause the river to end at the sea level.
+					lx, ly := gc.LastPoint()
+					gc.LineTo((x+lx)/2, (y+ly)/2)
+
+					// Move to the new point.
+					gc.MoveTo(x, y)
+				} else if m.Elevation[river[i]] < 0 {
+					// If the previous point was below sea level, interpolate the point with the next point.
+					// This will cause the river to start at the sea level.
+					lx, ly := gc.LastPoint()
+					gc.MoveTo((x+lx)/2, (y+ly)/2)
+
+					// Draw to the new point.
+					gc.LineTo(x, y)
+				} else {
+					gc.LineTo(x, y)
+				}
 				// TODO: Use steepness to determine the amplitude of meandering.
 				// The less steep the river is, the more it meanders.
 				// lx, ly := gc.LastPoint()

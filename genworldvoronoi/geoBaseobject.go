@@ -173,13 +173,14 @@ func (m *BaseObject) assignDownhill(usePool bool) {
 func (m *BaseObject) GetDownhill(usePool bool) []int {
 	// Here we will map each region to the lowest neighbor.
 	rDownhill := make([]int, m.mesh.numRegions)
+	outReg := make([]int, 0, 8)
 	for r := range rDownhill {
 		lowestRegion := -1
 		lowestElevation := m.Elevation[r]
 		if usePool {
 			lowestElevation += m.Waterpool[r]
 		}
-		for _, nbReg := range m.GetRegNeighbors(r) {
+		for _, nbReg := range m.mesh.r_circulate_r(outReg, r) {
 			elev := m.Elevation[nbReg]
 			if usePool {
 				elev += m.Waterpool[nbReg]
@@ -560,6 +561,7 @@ func (m *BaseObject) FillSinks() []float64 {
 
 	// Loop until no more changes are made.
 	var epsilon float64
+	outReg := make([]int, 0, 8)
 	for {
 		// Variation.
 		//
@@ -583,7 +585,7 @@ func (m *BaseObject) FillSinks() []float64 {
 			}
 
 			// Iterate over all neighbors in a random order.
-			nbs := m.GetRegNeighbors(r)
+			nbs := m.mesh.r_circulate_r(outReg, r)
 			for _, i := range m.rand.Perm(len(nbs)) {
 				nb := nbs[i]
 				// Since we have set all inland regions to infinity,
@@ -677,112 +679,9 @@ func (m *BaseObject) assignDistanceField(seedRegs []int, stopReg map[int]bool) [
 
 		// If we have consumed over 1000000 elements in the queue,
 		// we reset the queue to the remaining elements.
-		if queueOut > 1000000 {
-			queue = queue[queueOut:]
-			queueOut = 0
-		}
-	}
-
-	// TODO: possible enhancement: keep track of which seed is closest
-	// to this point, so that we can assign variable mountain/ocean
-	// elevation to each seed instead of them always being +1/-1
-	return regDistance
-}
-
-// assignDistanceFieldWithIntensity is almost identical to assignDistanceField.
-// The main difference is that the distance value of each region is reduced by the compression value.
-func (m *BaseObject) assignDistanceFieldWithIntensity(seedsR []int, stopR map[int]bool, compression map[int]float64) []float64 {
-	enableNegativeCompression := true
-	enablePositiveCompression := true
-	enableCompressionPropagation := true
-
-	// Reset the random number generator.
-	m.resetRand()
-
-	inf := math.Inf(0)
-	mesh := m.mesh
-	numRegions := mesh.numRegions
-
-	// Initialize the distance values for all regions to +Inf.
-	regDistance := make([]float64, numRegions)
-	for i := range regDistance {
-		regDistance[i] = inf
-	}
-
-	// Initialize the queue for the breadth first search with
-	// the seed regions.
-	queue := make([]int, len(seedsR))
-	for i, r := range seedsR {
-		queue[i] = r
-		regDistance[r] = 0
-	}
-
-	// Get the min and max compression value so that we can
-	// normalize the compression value, also we need to copy
-	// the compression values into a slice so that we can
-	// modify them.
-	var maxComp, minComp float64
-	cmp := make([]float64, m.mesh.numRegions)
-	for r, comp := range compression {
-		if comp > maxComp {
-			maxComp = comp
-		}
-		if comp < minComp {
-			minComp = comp
-		}
-		cmp[r] = comp
-	}
-
-	// Random search adapted from breadth first search.
-	outRegs := make([]int, 0, 6)
-
-	// TODO: Improve the queue. Currently this is growing unchecked.
-	for queueOut := 0; queueOut < len(queue); queueOut++ {
-		pos := queueOut + m.rand.Intn(len(queue)-queueOut)
-		currentReg := queue[pos]
-		currentComp := cmp[currentReg]
-		currentDist := regDistance[currentReg]
-		queue[pos] = queue[queueOut]
-		for _, nbReg := range mesh.r_circulate_r(outRegs, currentReg) {
-			if !math.IsInf(regDistance[nbReg], 0) || stopR[nbReg] {
-				continue
-			}
-
-			// If the current distance value for neighbor_r is unset (-1)
-			// and if neighbor_r is not a "stop region", we set the distance
-			// value to the distance value of current_r, incremented by 1.
-			regDistance[nbReg] = currentDist + 1
-
-			if enableCompressionPropagation {
-				// The compression value diminishes using the inverse square law.
-				// This is a simple approximation of the real world, where the
-				// compression diminishes as the square of the distance.
-				distToNb := 1 + m.GetDistance(currentReg, nbReg)
-				if cmp[nbReg] == 0 {
-					cmp[nbReg] = currentComp / (distToNb * distToNb)
-				}
-			}
-			// Apply the compression of the current region to the distance
-			// value of neighbor_r.
-			if currentComp > 0 && enablePositiveCompression {
-				// If positive compression is enabled and the compression is... well
-				// positive, we subtract the normalized compression value from the
-				// distance value for neighbor_r.
-				regDistance[nbReg] -= currentComp / maxComp
-			} else if currentComp < 0 && enableNegativeCompression {
-				// If negative compression is enabled and the compression is... well
-				// negative, we subtract the normalized (negative) compression value
-				// to the distance value for neighbor_r.
-				regDistance[nbReg] -= currentComp / math.Abs(minComp)
-			}
-			// Add neighbor_r to the queue.
-			queue = append(queue, nbReg)
-		}
-
-		// If we have consumed over 1000000 elements in the queue,
-		// we reset the queue to the remaining elements.
-		if queueOut > 1000000 {
-			queue = queue[queueOut:]
+		if queueOut > 10000 {
+			n := copy(queue, queue[queueOut:])
+			queue = queue[:n]
 			queueOut = 0
 		}
 	}

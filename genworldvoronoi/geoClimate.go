@@ -626,7 +626,7 @@ func (m *Geo) assignRainfallBasic() {
 	//
 	// NOTE: Since we start and stop at +- 180° long, we need to run the code several times
 	// to ensure that moisture is pushed across the longitude wrap-around.
-	for i := 0; i < 2; i++ {
+	for i := 0; i < 4; i++ {
 		for _, r := range windOrderRegs {
 			var humidity float64
 

@@ -50,16 +50,19 @@ func (m *Geo) GetErosionRate() []float64 {
 	// TODO: Change to distance so that it is independent of resolution.
 	const nbErosionFactor = 0.125
 
-	erodeNeighbors := true          // Traverse neighbors to erode them
-	erodeNeighborsRiver := 1        // How deep should we traverse the neighbor-graph? (rivers)
-	erodeNeighborsGlacier := 3      // How deep should we traverse the neighbor-graph? (glaciers)
-	erodeOnlyAboveSealevel := false // Should we skip erosion below sea level?
+	erodeNeighbors := true         // Traverse neighbors to erode them
+	erodeNeighborsRiver := 1       // How deep should we traverse the neighbor-graph? (rivers)
+	erodeNeighborsGlacier := 1     // How deep should we traverse the neighbor-graph? (glaciers)
+	erodeOnlyAboveSealevel := true // Should we skip erosion below sea level?
 
 	// Get the flux values for all regions.
 	flux := m.getFlux(erodeOnlyAboveSealevel)
 
 	// Get max flux so we can normalize the flux values to 0.0 ... 1.0.
 	_, maxFlux := minMax(flux)
+	if maxFlux == 0 {
+		maxFlux = 1
+	}
 
 	// Get the slope values for all regions.
 	slope := m.GetSlope()
@@ -75,6 +78,11 @@ func (m *Geo) GetErosionRate() []float64 {
 	var erodeRegion func(r, rem int, toErode float64)
 
 	erodeRegion = func(r, rem int, toErode float64) {
+		// If we have erosion below sea level, skip this region.
+		if erodeOnlyAboveSealevel && m.Elevation[r] < 0 {
+			return
+		}
+
 		// If the given erosion rate is higher than the currently
 		// assigned one, override the value.
 		//
@@ -147,7 +155,7 @@ func (m *Geo) GetErosionRate2() []float64 {
 	toE := make([]float64, m.mesh.numRegions)
 
 	// If true, we do not consider erosion below sea level.
-	erodeOnlyAboveSealevel := false
+	erodeOnlyAboveSealevel := true
 
 	// Get the water flux for each region.
 	flux := m.getFlux(erodeOnlyAboveSealevel)
@@ -179,7 +187,7 @@ func (m *Geo) GetErosionRate2() []float64 {
 		// NOTE: We assume that a higher flux will mean that theoretically the resulting river
 		// will become wider due to the additional required space for transporting the larger
 		// water volume.
-		fluxVal := fl / maxFlux
+		fluxVal := math.Sqrt(fl / maxFlux)
 
 		// Calculate maximum erosion distance based on the water flow intensity aka flux.
 		//

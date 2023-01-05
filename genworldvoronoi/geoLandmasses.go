@@ -31,6 +31,7 @@ func (m *Geo) IdentifyLandmasses() []int {
 
 	var landID int
 	var landSizes []int
+	outReg := make([]int, 0, 8)
 	for r, lmID := range landMasses {
 		// Skip if the current region has already been allocated
 		// or is below sealevel.
@@ -47,7 +48,7 @@ func (m *Geo) IdentifyLandmasses() []int {
 			}
 			landMasses[r] = landID // Assign current landID to the region.
 			currentLandSize++      // Increase size of known landmass.
-			for _, nb := range m.GetRegNeighbors(r) {
+			for _, nb := range m.mesh.r_circulate_r(outReg, r) {
 				// Skip if the neighbor region has already been allocated
 				// or is below sealevel.
 				if landMasses[nb] != -1 {

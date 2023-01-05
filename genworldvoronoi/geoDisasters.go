@@ -1,22 +1,15 @@
 package genworldvoronoi
 
-func (m *Geo) getEarthquakeChance() []float64 {
-	var faultlines []int
-	for r := 0; r < m.mesh.numRegions; r++ {
-		if m.RegionCompression[r] > 0 {
-			faultlines = append(faultlines, r)
-		}
-	}
+import "math"
 
-	// Get distance field from fault lines.
-	// NOTE: This should be independent the number of regions and use
-	// the actual, geographical distance to the fault line.
-	distFaultlines := m.assignDistanceFieldWithIntensity(faultlines, make(map[int]bool), m.RegionCompression)
+func (m *Geo) getEarthquakeChance() []float64 {
+	// Get distance field from fault lines using the plate compression.
+	compression := m.propagateCompression(m.RegionCompression)
 
 	// Now get the chance of earthquake for each region.
 	earthquakeChance := make([]float64, m.mesh.numRegions)
 	for r := 0; r < m.mesh.numRegions; r++ {
-		earthquakeChance[r] = 1 / (1 + float64(distFaultlines[r]))
+		earthquakeChance[r] = math.Abs(compression[r])
 	}
 	return earthquakeChance
 }
