@@ -77,3 +77,10 @@ func BioLevelSize(size SpeciesSize) BioLevelOption {
 		b.SpeciesProperties.Size = size
 	}
 }
+
+// BioLevelRainRange sets the minimum and maximum rain range for a species in dm.
+func BioLevelRainRange(min, max float64) BioLevelOption {
+	return func(b *BioLevel) {
+		b.SpeciesTolerances.RainRange = [2]float64{min, max}
+	}
+}

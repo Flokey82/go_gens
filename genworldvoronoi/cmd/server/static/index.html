@@ -39,8 +39,8 @@
   <script src="vendor/leaflet-measure/leaflet-measure.js"></script>
   <script type="text/javascript">
 
-    var displayMode = 0;
-    var displayModeMax = 15;
+    var displayMode = 15;
+    var displayModeMax = 16;
     var displayModeNames = [
       'Terrain',
       'Moisture',
@@ -57,6 +57,7 @@
       'CityStates',
       'Empires',
       'Cultures',
+      'Species',
     ];
     var drawWindVectors = false;
     var drawRivers = false;
@@ -132,6 +133,7 @@
             'Trade: ' + prop.trade.toFixed(3) + ' / ' +
             'Resources: ' + prop.resources.toFixed(3) + '<br/>' +
             'Tradepartners: ' + prop.tradepartners + ' (Radius: ' + prop.radius.toFixed(3) + 'km)<br/>' +
+            'Species: '+ prop.species + '<br/>' +
             '</p>' +
             '<p>' +
             '<b>Resources:</b><br/>' +

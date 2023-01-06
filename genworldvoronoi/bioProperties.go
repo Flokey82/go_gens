@@ -14,6 +14,13 @@ type SpeciesProperties struct {
 	Locomotion Locomotion      // How the species moves. (TODO: Primary locomotion)
 }
 
+// CompetitorHash returns a hash that can be used to compare two species and
+// determine if they are competitors.
+// This will be helpful when spreading the species and avoiding competing species.
+func (s *SpeciesProperties) CompetitorHash() int64 {
+	return int64(s.Size) | (int64(s.Locomotion) << 8) | (int64(s.Digestion) << 16)
+}
+
 func (s *SpeciesProperties) String() string {
 	return fmt.Sprintf("%s %s %s %s %s", s.Kingdom, s.Family, s.Digestion, s.Size, s.Locomotion)
 }
@@ -243,7 +250,7 @@ var speciesKingdomToFamiliesWater = map[SpeciesKingdom][]SpeciesFamily{
 	},
 }
 
-type SpeciesSize int
+type SpeciesSize byte
 
 const (
 	SpeciesSizeDefault SpeciesSize = iota
@@ -280,7 +287,7 @@ var SpeciesSizes = []SpeciesSize{
 	SpeciesSizeHuge,
 }
 
-type DigestiveSystem int
+type DigestiveSystem byte
 
 const (
 	DigestiveSystemCarnivore DigestiveSystem = iota

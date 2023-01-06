@@ -12,6 +12,7 @@ type SpeciesTolerances struct {
 	Ecosphere       EcosphereType // Ocean, River, Land, Lake
 	TempRange       [2]float64    // Min, Max temperature
 	HumRange        [2]float64    // Min, Max humidity
+	RainRange       [2]float64    // Min, Max rain
 	ElevRange       [2]float64    // Min, Max elevation (this should be maybe in meters?)
 	SteepRange      [2]float64    // Min, Max steepness
 	PreferredBiomes []int         // Only applies to non-marine species.
@@ -21,6 +22,7 @@ func (s *SpeciesTolerances) String() string {
 	var str string
 	str += fmt.Sprintf("TEMP: %.2f°C - %.2f°C,\n", s.TempRange[0], s.TempRange[1])
 	str += fmt.Sprintf("HUMD: %.2fdm - %.2fdm,\n", s.HumRange[0]*maxPrecipitation, s.HumRange[1]*maxPrecipitation)
+	str += fmt.Sprintf("RAIN: %.2fdm - %.2fdm,\n", s.RainRange[0]*maxPrecipitation, s.RainRange[1]*maxPrecipitation)
 	str += fmt.Sprintf("ELEV: %.2f-%.2f\n", s.ElevRange[0]*maxAltitudeFactor, s.ElevRange[1]*maxAltitudeFactor)
 	str += fmt.Sprintf("STEE: %.2f-%.2f\n", s.SteepRange[0], s.SteepRange[1])
 	if len(s.PreferredBiomes) > 0 {
@@ -34,7 +36,8 @@ func (s *SpeciesTolerances) String() string {
 
 func (b *Bio) getTolerancesForRegionFunc() func(int) SpeciesTolerances {
 	minElev, maxElev := minMax(b.Elevation)
-	minHum, maxHum := minMax(b.Moisture)
+	_, maxHum := minMax(b.Moisture)
+	_, maxRain := minMax(b.Rainfall)
 	steep := b.GetSteepness()
 	return func(r int) SpeciesTolerances {
 		s := SpeciesTolerances{
@@ -61,7 +64,10 @@ func (b *Bio) getTolerancesForRegionFunc() func(int) SpeciesTolerances {
 		s.TempRange = minMaxRange(b.getRegTemperature(r, maxElev), float64(minTemp), float64(maxTemp), 0.2)
 
 		// Preferred humidity range.
-		s.HumRange = minMaxRange(b.Moisture[r], minHum, maxHum, 0.2)
+		s.HumRange = minMaxRange(b.Moisture[r]/maxHum, 0, 1, 0.2)
+
+		// Preferred rain range.
+		s.RainRange = minMaxRange(maxPrecipitation*b.Rainfall[r]/maxRain, 0, maxPrecipitation, 0.2)
 
 		// Preferred steepness range.
 		s.SteepRange = minMaxRange(steep[r], 0, 1, 0.2)
@@ -76,6 +82,8 @@ func (b *Bio) getTolerancesForRegionFunc() func(int) SpeciesTolerances {
 
 func (b *Bio) getToleranceScoreFunc(s SpeciesTolerances) func(int) float64 {
 	_, maxElev := minMax(b.Elevation)
+	_, maxHum := minMax(b.Moisture)
+	_, maxRain := minMax(b.Rainfall)
 	bf := b.getRegWhittakerModBiomeFunc()
 	steepness := b.GetSteepness()
 	return func(r int) float64 { // Check what ecosphere we are in and if it matches the species.
@@ -88,40 +96,62 @@ func (b *Bio) getToleranceScoreFunc(s SpeciesTolerances) func(int) float64 {
 			return -1
 		}
 
-		var tempScore, humScore, elevScore, steepScore float64
+		var tempScore, humScore, elevScore, steepScore, rainScore float64
 
 		// Check how much we diverge from the preferred temperature range.
 		if isRangeSet(s.TempRange) {
-			tempDiv := getDiversionFromRange(b.getRegTemperature(r, maxElev), s.TempRange)
-			tempScore = easeInOutCubic(1 - tempDiv/(s.TempRange[1]-s.TempRange[0]))
+			tempScore = getRangeFit(b.getRegTemperature(r, maxElev), s.TempRange)
+			if tempScore == -1 {
+				return -1
+			}
 		} else {
-			tempScore = 1
+			tempScore = 0.5
 		}
 
 		// Check how much we diverge from the preferred humidity range.
-		if isRangeSet(s.TempRange) {
-			humDiv := getDiversionFromRange(b.Moisture[r], s.HumRange)
-			humScore = easeInOutCubic(1 - humDiv/(s.HumRange[1]-s.HumRange[0]))
+		if isRangeSet(s.HumRange) {
+			humScore = getRangeFit(b.Moisture[r]/maxHum, s.HumRange)
+			if humScore == -1 {
+				return -1
+			}
 		} else {
-			humScore = 1
+			humScore = 0.5
+		}
+
+		// Check how much we diverge from the preferred rain range.
+		if isRangeSet(s.RainRange) {
+			rainScore = getRangeFit(maxPrecipitation*b.Rainfall[r]/maxRain, s.RainRange)
+			if rainScore == -1 {
+				return -1
+			}
+		} else {
+			rainScore = 0.5
 		}
 
 		// Check how much we diverge from the preferred elevation range.
-		if isRangeSet(s.TempRange) {
-			elevDiv := getDiversionFromRange(b.Elevation[r], s.ElevRange)
-			elevScore = easeInOutCubic(1 - elevDiv/(s.ElevRange[1]-s.ElevRange[0]))
+		if isRangeSet(s.ElevRange) {
+			elevScore = getRangeFit(b.Elevation[r], s.ElevRange)
+			if elevScore == -1 {
+				return -1
+			}
 		} else {
-			elevScore = 1
+			elevScore = 0.5
 		}
 
 		// Check how much we diverge from the preferred steepness range.
-		if isRangeSet(s.TempRange) {
-			steepDiv := getDiversionFromRange(steepness[r], s.SteepRange)
-			steepScore = easeInOutCubic(1 - steepDiv/(s.SteepRange[1]-s.SteepRange[0]))
+		if isRangeSet(s.SteepRange) {
+			steepScore = getRangeFit(steepness[r], s.SteepRange)
+			if steepScore == -1 {
+				return -1
+			}
 		} else {
-			steepScore = 1
+			steepScore = 0.5
 		}
-		return tempScore * humScore * elevScore * steepScore
+		total := (tempScore + humScore + elevScore + steepScore + rainScore) / 5
+		if total < 0.3 {
+			return -1
+		}
+		return total
 	}
 }
 

@@ -6,6 +6,7 @@ import "math/rand"
 type Bio struct {
 	*Geo
 	Species          []*Species // All species on the map.
+	SpeciesRegions   []int      // Regions where each species is found.
 	GrowthDays       []int      // Number of days within the growth period for each region.
 	GrowthInsolation []float64  // Average insolation for each region during the growth period.
 	NumSpecies       int        // Number of species to generate.
@@ -17,6 +18,7 @@ func newBio(geo *Geo) *Bio {
 		Geo:              geo,
 		GrowthDays:       make([]int, geo.mesh.numRegions),
 		GrowthInsolation: make([]float64, geo.mesh.numRegions),
+		SpeciesRegions:   make([]int, geo.mesh.numRegions),
 		NumSpecies:       100,
 		rand:             rand.New(rand.NewSource(geo.Seed)),
 	}
@@ -41,12 +43,14 @@ func (b *Bio) generateBiology() {
 	// total survivability).
 
 	// Generate the pre-defined species.
-	b.placeAllSpecies(KingdomFauna)
-	b.placeAllSpecies(KingdomFlora)
-	b.placeAllSpecies(KingdomFungi)
+	// b.placeAllSpecies(KingdomFauna)
+	// b.placeAllSpecies(KingdomFlora)
+	// b.placeAllSpecies(KingdomFungi)
+	b.placeAllSpecies(GenusCereal)
 
 	// Generate the species.
-	b.genNRandomSpecies(b.NumSpecies)
+	// b.genNRandomSpecies(b.NumSpecies)
+	b.SpeciesRegions = b.expandSpecies()
 }
 
 // calcGrowthPeriod calculates the duration of the potential growth

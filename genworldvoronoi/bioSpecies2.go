@@ -23,6 +23,17 @@ func (b *Bio) placeAllSpecies(kingdom *BioLevel) {
 func (b *Bio) placeSpeciesFromLevel(level *BioLevel) {
 	// Get the fitness function for the biolevel tolerances.
 	sf := b.getToleranceScoreFunc(level.SpeciesTolerances)
+
+	scoreNbs := func(r int) float64 {
+		score := sf(r)
+		var count int
+		for _, n := range b.GetRegNeighbors(r) {
+			score += sf(n)
+			count++
+		}
+		return score / float64(count+1)
+	}
+
 	// TODO: Use directly competing species as seeds to maximize
 	// distance between species that compete for the same resources.
 	distSeedFunc := func() []int {
@@ -34,14 +45,19 @@ func (b *Bio) placeSpeciesFromLevel(level *BioLevel) {
 	}
 
 	// Score all regions, pick highest score.
-	var newspecies int
+	newspecies := -1
 	lastMax := math.Inf(-1)
-	for i, val := range b.CalcFitnessScore(sf, distSeedFunc) {
-		if val > lastMax {
+	for i, val := range b.CalcFitnessScore(scoreNbs, distSeedFunc) {
+		if val > lastMax && val != -1 {
 			newspecies = i
 			lastMax = val
 		}
 	}
+	if newspecies == -1 {
+		log.Println("no newspecies found for " + level.Name)
+		return
+	}
+	log.Println("Placing species", level.Name, "at", newspecies, "with score", lastMax)
 	s := level.ToSpecies()
 	s.Origin = newspecies
 	b.Species = append(b.Species, s)
@@ -192,29 +208,40 @@ var (
 	// Grasses.
 	FamilyGrass = KingdomFlora.NewChild("Grass",
 		BioLevelTempRange(0, 35),
-		BioLevelEcosphere(EcosphereTypeLand))
+		BioLevelEcosphere(EcosphereTypeLand|EcosphereTypeRiver)) // Grasses can grow alongside rivers.
 	GenusCereal = FamilyGrass.NewChild("Cereal",
 		BioLevelTempRange(14, 28),
-		BioLevelHumidityRange(0.4, 0.8),
+		BioLevelHumidityRange(0.1, 0.8),
 		BioLevelAppendHereditary(BioPropertyEdibleSeed), // Cereals are grasses that produce seeds.
 	)
 	SpeciesWheat = GenusCereal.NewChild("Wheat",
-		BioLevelSteepRange(0, 0.5))
+		BioLevelTempRange(20, 25),
+		BioLevelSteepRange(0, 0.7))
 	SpeciesRice = GenusCereal.NewChild("Rice",
-		BioLevelHumidityRange(0.6, 1))
-	SpeciesBarley    = GenusCereal.NewChild("Barley")
-	SpeciesOats      = GenusCereal.NewChild("Oats")
-	SpeciesCorn      = GenusCereal.NewChild("Corn")
-	SpeciesRye       = GenusCereal.NewChild("Rye")
-	SpeciesBuckwheat = GenusCereal.NewChild("Buckwheat")
-	SpeciesMillet    = GenusCereal.NewChild("Millet")
-	SpeciesSorghum   = GenusCereal.NewChild("Sorghum")
+		BioLevelTempRange(21, 37),
+		BioLevelHumidityRange(0.6, 1),
+		BioLevelSteepRange(0, 0.4))
+	SpeciesBarley = GenusCereal.NewChild("Barley",
+		BioLevelTempRange(12, 25))
+	SpeciesOats = GenusCereal.NewChild("Oats",
+		BioLevelTempRange(15, 23))
+	SpeciesCorn = GenusCereal.NewChild("Corn",
+		BioLevelTempRange(20, 30))
+	SpeciesRye = GenusCereal.NewChild("Rye",
+		BioLevelTempRange(25, 35))
+	SpeciesBuckwheat = GenusCereal.NewChild("Buckwheat",
+		BioLevelTempRange(17, 27))
+	SpeciesMillet = GenusCereal.NewChild("Millet",
+		BioLevelTempRange(26, 29))
+	SpeciesSorghum = GenusCereal.NewChild("Sorghum",
+		BioLevelTempRange(26, 34))
 
 	GenusReed        = FamilyGrass.NewChild("Reed")
 	SpeciesSugarCane = GenusReed.NewChild("Sugar Cane",
 		BioLevelHumidityRange(0.6, 1),
 		BioLevelTempRange(20, 35))
-	SpeciesBamboo = GenusReed.NewChild("Bamboo")
+	SpeciesBamboo = GenusReed.NewChild("Bamboo",
+		BioLevelTempRange(15, 26))
 
 	// Generic grasses.
 	GenusGrass       = FamilyGrass.NewChild("Grass")
@@ -223,11 +250,11 @@ var (
 
 	// Herbs.
 	FamilyHerb = KingdomFlora.NewChild("Herb",
-		BioLevelEcosphere(EcosphereTypeLand))
+		BioLevelEcosphere(EcosphereTypeLand|EcosphereTypeRiver))
 
 	// Flowers.
 	FamilyFlower = KingdomFlora.NewChild("Flower",
-		BioLevelEcosphere(EcosphereTypeLand))
+		BioLevelEcosphere(EcosphereTypeLand|EcosphereTypeRiver))
 
 	// Leafy greens.
 	GenusLeafyGreen = FamilyFlower.NewChild("Leafy Green",
@@ -244,11 +271,11 @@ var (
 
 	// Ferns.
 	FamilyFern = KingdomFlora.NewChild("Fern",
-		BioLevelEcosphere(EcosphereTypeLand))
+		BioLevelEcosphere(EcosphereTypeLand|EcosphereTypeRiver))
 
 	// Mosses.
 	FamilyMoss = KingdomFlora.NewChild("Moss",
-		BioLevelEcosphere(EcosphereTypeLand))
+		BioLevelEcosphere(EcosphereTypeLand|EcosphereTypeRiver))
 
 	// Vines.
 	FamilyVine = KingdomFlora.NewChild("Vine",
@@ -273,11 +300,12 @@ var (
 		BioLevelEcosphere(EcosphereTypeLand))
 	FamilySucculent = KingdomFlora.NewChild("Succulent",
 		BioLevelHumidityRange(0, 0.2),
-		BioLevelTempRange(10, 35))
+		BioLevelTempRange(10, 35),
+		BioLevelEcosphere(EcosphereTypeLand))
 
 	// Insects.
 	FamilyInsect = KingdomFauna.NewChild("Insect",
-		BioLevelEcosphere(EcosphereTypeLand),
+		BioLevelEcosphere(EcosphereTypeLand|EcosphereTypeRiver),
 		BioLevelDigestion(DigestiveSystemHerbivore),
 		BioLevelLocomotion(LocomotionWalk|LocomotionClimb))
 	GenusAnt         = FamilyInsect.NewChild("Ant")
@@ -304,6 +332,7 @@ var (
 	// Mammals.
 	FamilyMammal = KingdomFauna.NewChild("Mammal")
 	GenusWhale   = FamilyMammal.NewChild("Whale",
+		BioLevelEcosphere(EcosphereTypeOcean),
 		BioLevelDigestion(DigestiveSystemCarnivore),
 		BioLevelSize(SpeciesSizeLarge),
 		BioLevelLocomotion(LocomotionSwim))
@@ -311,38 +340,48 @@ var (
 	SpeciesHumpbackWhale = GenusWhale.NewChild("Humpback Whale")
 
 	GenusCanine = FamilyMammal.NewChild("Canine",
-		BioLevelEcosphere(EcosphereTypeLand),
+		BioLevelEcosphere(EcosphereTypeLand|EcosphereTypeRiver),
 		BioLevelDigestion(DigestiveSystemCarnivore),
 		BioLevelLocomotion(LocomotionWalk))
 	SpeciesDog = GenusCanine.NewChild("Dog",
-		BioLevelSize(SpeciesSizeSmall))
+		BioLevelSize(SpeciesSizeSmall),
+		BioLevelTempRange(21, 26))
 	SpeciesWolf = GenusCanine.NewChild("Wolf",
-		BioLevelSize(SpeciesSizeMedium))
+		BioLevelSize(SpeciesSizeMedium),
+		BioLevelTempRange(-50, 48.8))
 	SpeciesFox = GenusCanine.NewChild("Fox",
 		BioLevelSize(SpeciesSizeSmall),
 		BioLevelTempRange(-15, 15))
 
 	// Felines.
 	GenusFeline = FamilyMammal.NewChild("Feline",
-		BioLevelEcosphere(EcosphereTypeLand),
+		BioLevelEcosphere(EcosphereTypeLand|EcosphereTypeRiver),
 		BioLevelDigestion(DigestiveSystemCarnivore),
 		BioLevelLocomotion(LocomotionWalk))
 	SpeciesCat = GenusFeline.NewChild("Cat",
-		BioLevelSize(SpeciesSizeSmall))
+		BioLevelSize(SpeciesSizeSmall),
+		BioLevelTempRange(25, 30),
+	)
 	SpeciesLion = GenusFeline.NewChild("Lion",
-		BioLevelSize(SpeciesSizeMedium))
+		BioLevelSize(SpeciesSizeMedium),
+		BioLevelTempRange(20, 30),
+	)
 	SpeciesTiger = GenusFeline.NewChild("Tiger",
 		BioLevelSize(SpeciesSizeMedium))
 	SpeciesLeopard = GenusFeline.NewChild("Leopard",
-		BioLevelSize(SpeciesSizeMedium))
+		BioLevelSize(SpeciesSizeMedium),
+		BioLevelTempRange(25, 32),
+	)
 	SpeciesSandCat = GenusFeline.NewChild("Sand Cat",
 		BioLevelSize(SpeciesSizeTiny),
-		BioLevelPreferredBiomes(genbiome.WhittakerModBiomeSubtropicalDesert))
+		BioLevelPreferredBiomes(genbiome.WhittakerModBiomeSubtropicalDesert),
+		BioLevelTempRange(25, 35),
+	)
 	// ... etc.
 
 	// Rodents.
 	GenusRodent = FamilyMammal.NewChild("Rodent",
-		BioLevelEcosphere(EcosphereTypeLand),
+		BioLevelEcosphere(EcosphereTypeLand|EcosphereTypeRiver),
 		BioLevelDigestion(DigestiveSystemHerbivore),
 		BioLevelSize(SpeciesSizeTiny),
 		BioLevelLocomotion(LocomotionBurrow|LocomotionClimb|LocomotionSwim|LocomotionWalk))
@@ -390,22 +429,28 @@ var (
 	GenusCrab        = FamilyCrustacean.NewChild("Crab")
 	SpeciesRiverCrab = GenusCrab.NewChild("River Crab",
 		BioLevelEcosphere(EcosphereTypeRiver),
+		BioLevelElevRange(-0.01, 0.01),
 	)
 	SpeciesRockCrab = GenusCrab.NewChild("Rock Crab",
 		BioLevelEcosphere(EcosphereTypeOcean|EcosphereTypeLand),
-		BioLevelElevRange(-0.01, 0.01),
+		BioLevelElevRange(-0.3, -0.1),
 	)
 
 	// Shrimp.
-	GenusShrimp = FamilyCrustacean.NewChild("Shrimp")
+	GenusShrimp = FamilyCrustacean.NewChild("Shrimp",
+		BioLevelEcosphere(EcosphereTypeOcean),
+		BioLevelTempRange(14, 29),
+	)
 
 	// Lobsters.
 	GenusLobster    = FamilyCrustacean.NewChild("Lobster")
 	SpeciesCrayfish = GenusLobster.NewChild("Crayfish",
 		BioLevelEcosphere(EcosphereTypeRiver|EcosphereTypeLake),
+		BioLevelTempRange(18, 25),
 	)
 	SpeciesLobster = GenusLobster.NewChild("Lobster",
 		BioLevelEcosphere(EcosphereTypeOcean),
+		BioLevelTempRange(16, 18),
 	)
 
 	// Mollusks.
@@ -447,11 +492,11 @@ var (
 	GenusFrog = FamilyAmphibian.NewChild("Frog",
 		BioLevelHumidityRange(0.2, 1))
 	SpeciesBullfrog = GenusFrog.NewChild("Bullfrog",
-		BioLevelEcosphere(EcosphereTypeLand),
+		BioLevelEcosphere(EcosphereTypeLand|EcosphereTypeRiver),
 		BioLevelElevRange(0, 0.1),
 	)
 	SpeciesTreeFrog = GenusFrog.NewChild("Tree Frog",
-		BioLevelEcosphere(EcosphereTypeLand),
+		BioLevelEcosphere(EcosphereTypeLand|EcosphereTypeRiver),
 		BioLevelElevRange(0.1, 0.4),
 		BioLevelPreferredBiomes(
 			genbiome.WhittakerModBiomeTemperateSeasonalForest,
@@ -464,7 +509,7 @@ var (
 	// Toads.
 	GenusToad   = FamilyAmphibian.NewChild("Toad")
 	SpeciesBufo = GenusToad.NewChild("Bufo",
-		BioLevelEcosphere(EcosphereTypeLand),
+		BioLevelEcosphere(EcosphereTypeLand|EcosphereTypeRiver),
 		BioLevelElevRange(0, 0.1),
 	)
 	GenusSalamander = FamilyAmphibian.NewChild("Salamander")
@@ -475,7 +520,7 @@ var (
 
 	// Snakes.
 	GenusSerpent = FamilyReptile.NewChild("Serpent",
-		BioLevelEcosphere(EcosphereTypeLand),
+		BioLevelEcosphere(EcosphereTypeLand|EcosphereTypeRiver),
 		BioLevelTempRange(15, 30),
 		BioLevelElevRange(0, 0.4),
 		BioLevelLocomotion(LocomotionSlither),
@@ -522,7 +567,7 @@ var (
 
 	// Lizards.
 	GenusLizard = FamilyReptile.NewChild("Lizard",
-		BioLevelEcosphere(EcosphereTypeLand),
+		BioLevelEcosphere(EcosphereTypeLand|EcosphereTypeRiver),
 		BioLevelElevRange(0, 0.2),
 		BioLevelHumidityRange(0.2, 1),
 		BioLevelTempRange(15, 30),

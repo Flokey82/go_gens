@@ -21,7 +21,7 @@ func (m *Map) GetTile(x, y, zoom, displayMode int, drawWindVectors, drawRivers b
 	var colorFunc func(int) color.Color
 
 	switch displayMode {
-	case 12, 13, 14:
+	case 12, 13, 14, 15:
 		colorGrad := colorgrad.Rainbow()
 		terrToColor := make(map[int]int)
 		var territory []int
@@ -40,13 +40,20 @@ func (m *Map) GetTile(x, y, zoom, displayMode int, drawWindVectors, drawRivers b
 				terrToColor[c.ID] = i
 			}
 			territory = m.RegionToEmpire
-		} else {
+		} else if displayMode == 14 {
 			terr := m.Cultures
 			terrLen = len(terr)
 			for i, c := range terr {
 				terrToColor[c.ID] = i
 			}
 			territory = m.RegionToCulture
+		} else {
+			terr := m.Species
+			terrLen = len(terr)
+			for i, c := range terr {
+				terrToColor[c.Origin] = i
+			}
+			territory = m.SpeciesRegions
 		}
 
 		min, max := minMax(m.Elevation)
@@ -57,12 +64,14 @@ func (m *Map) GetTile(x, y, zoom, displayMode int, drawWindVectors, drawRivers b
 			rLat := m.LatLon[i][0]
 			elev := m.Elevation[i]
 			val := (elev - min) / (max - min)
-			if elev <= 0 {
-				return genBlue(val)
-			} else if territory[i] == -1 {
-				valElev := elev / max
-				valMois := m.Moisture[i] / maxMois
-				return getWhittakerModBiomeColor(rLat, valElev, valMois, val)
+			if territory[i] == -1 {
+				if elev <= 0 {
+					return genBlue(val)
+				} else {
+					valElev := elev / max
+					valMois := m.Moisture[i] / maxMois
+					return getWhittakerModBiomeColor(rLat, valElev, valMois, val)
+				}
 			}
 			terrID := terrToColor[territory[i]]
 			return genColor(cols[terrID], val)
@@ -498,6 +507,23 @@ func (m *Map) GetGeoJSONCities(la1, lo1, la2, lo2 float64, zoom int) ([]byte, er
 		f.SetProperty("radius", (c.radius()+2*distRegion)*gameconstants.EarthCircumference/(2*math.Pi))
 		f.SetProperty("tradepartners", c.TradePartners)
 		f.SetProperty("flavortext", m.generateCityFlavorText(c, regPropertyFunc(c.ID)))
+		var sName string
+		if m.SpeciesRegions[c.ID] >= 0 {
+			var s *Species
+			for _, sp := range m.Species {
+				if sp.Origin == m.SpeciesRegions[c.ID] {
+					s = sp
+					break
+				}
+			}
+			if s != nil {
+				sName = s.Name
+				if sName == "" {
+					sName = s.String()
+				}
+			}
+		}
+		f.SetProperty("species", sName)
 		var msgs []string
 		hist := m.History.GetEvents(c.ID, ObjectTypeCity)
 
