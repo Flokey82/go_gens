@@ -3,10 +3,10 @@ package genworldvoronoi
 // assignWaterbodies finds all continous waterbodies and assigns them a unique ID
 // and takes note of their respective sizes.
 func (m *BaseObject) assignWaterbodies() {
-	// TODO: Make note of oceans.
-	//   - Note ocean sizes (and small waterbodies below sea level)
+	// Make note of oceans.
 	m.Waterbodies = m.getWaterBodies()
 
+	// Note ocean sizes (and small waterbodies below sea level)
 	wbSize := make(map[int]int)
 	for _, wb := range m.Waterbodies {
 		if wb >= 0 {

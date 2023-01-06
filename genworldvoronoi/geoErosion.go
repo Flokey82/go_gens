@@ -1,7 +1,6 @@
 package genworldvoronoi
 
 import (
-	"log"
 	"math"
 )
 
@@ -13,6 +12,9 @@ import (
 //
 // See: https://github.com/mewo2/terrain
 func (m *Geo) Erode(amount float64) []float64 {
+	// Select the erosion method.
+	useAlternative := true
+
 	// Get downhill height diffs so we can ensure that we do not erode
 	// any more than that, which would produce sinks (which we try to avoid).
 	dhDiff := make([]float64, m.mesh.numRegions)
@@ -30,7 +32,12 @@ func (m *Geo) Erode(amount float64) []float64 {
 	newh := make([]float64, m.mesh.numRegions)
 
 	// Get the erosion rate for all regions.
-	er := m.GetErosionRate()
+	var er []float64
+	if useAlternative {
+		er = m.GetErosionRate2()
+	} else {
+		er = m.GetErosionRate()
+	}
 
 	// Get the maximum erosion rate, so we can normalize the erosion values.
 	_, maxr := minMax(er)
@@ -106,7 +113,7 @@ func (m *Geo) GetErosionRate() []float64 {
 		}
 	}
 
-	log.Println("start erosion")
+	// Traverse all regions and calculate the erosion rate.
 	for r, rSlope := range slope {
 		// NOTE: This was directly taken from mewo2's code.
 		//
@@ -133,7 +140,6 @@ func (m *Geo) GetErosionRate() []float64 {
 		// the remaining erosion affecting them given their distance to r.
 		erodeRegion(r, erodeNbs, total)
 	}
-	log.Println("stop erosion")
 	return newh
 }
 
@@ -142,11 +148,15 @@ func (m *Geo) GetErosionRate() []float64 {
 // riverbeds and valleys.
 func (m *Geo) GetErosionRate2() []float64 {
 	const (
-		// HACK: That's about 3 neighbors away at 400.000 points. This should not be hardcoded.
-		maxErosionDistance = 3 * 0.006
-		minExp             = 1.0 // Minimum exponent (see below)
-		varExp             = 3.0 // Variable exponent (see further below)
+		distRegions = 3.0 // Number of regions to traverse at max flux.
+		minExp      = 1.0 // Minimum exponent (see below)
+		varExp      = 3.0 // Variable exponent (see further below)
 	)
+
+	// For now we set the maximum erosion distance to 'distRegions' times the distance
+	// between two regions. This is a bit arbitrary, but it seems to work well.
+	distRegion := math.Sqrt(4 * math.Pi / float64(m.mesh.numRegions))
+	maxErosionDistance := distRegions * distRegion
 
 	// Get the steepness of each region to its downhill neighbor.
 	steeps := m.GetSteepness()
@@ -196,12 +206,14 @@ func (m *Geo) GetErosionRate2() []float64 {
 		// WARNING: The maxDist value currently represents both the max width of the riverbed as well as the
 		// maximum erosion value at the river center (r). This is not really ideal, but it works.
 		maxDist := fluxVal * maxErosionDistance
+		if maxDist == 0 {
+			continue
+		}
 
 		// Assign the erosion intensity for (r) if it is larger
 		// than the current value set for it.
-		if toE[r] < maxDist {
-			toE[r] = maxDist // TODO: sharp drops should carve with higher intensity.
-		}
+		// TODO: sharp drops should carve with higher intensity.
+		toE[r] = math.Max(maxDist, toE[r])
 
 		// Get lat/lon of the current region to calculate the great arc
 		// distance of each neighbor visited by doErode().
@@ -240,7 +252,7 @@ func (m *Geo) GetErosionRate2() []float64 {
 				dist := crossArc(rLatLon[0], rLatLon[1], dLatLon[0], dLatLon[1], nbLatLon[0], nbLatLon[1])
 
 				// Skip everything that is too far away.
-				if dist > maxDist {
+				if math.IsNaN(dist) || dist > maxDist {
 					continue
 				}
 
@@ -252,6 +264,11 @@ func (m *Geo) GetErosionRate2() []float64 {
 				// have described above.
 				erode := math.Pow(distRes, exponent)
 
+				// Check if we've exceeded the maximum erosion value distance.
+				if erode > maxDist {
+					return
+				}
+
 				// NOTE: Since the formula gives us a higher value with increasing
 				// distance, we use the value to REDUCE the maximum erosion value
 				// (maxDist). The further we are away from (r), the weaker the
@@ -260,9 +277,7 @@ func (m *Geo) GetErosionRate2() []float64 {
 
 				// If we have already an erosion value for (nb), we make sure
 				// to use the higher erosion value.
-				if toE[nb] < toErode {
-					toE[nb] = toErode
-				}
+				toE[nb] = math.Max(toErode, toE[nb])
 
 				// Visit all neighbors of nb and calculate their erosion values.
 				doErode(nb)

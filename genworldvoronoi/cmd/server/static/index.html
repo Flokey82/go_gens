@@ -41,6 +41,23 @@
 
     var displayMode = 0;
     var displayModeMax = 15;
+    var displayModeNames = [
+      'Terrain',
+      'Moisture',
+      'Rainfall',
+      'Flux',
+      'PlateCompression',
+      'Earthquakes',
+      'Volcanism',
+      'Rockslide',
+      'Flood',
+      'ErosionA',
+      'ErosionB',
+      'Steepness',
+      'CityStates',
+      'Empires',
+      'Cultures',
+    ];
     var drawWindVectors = false;
     var drawRivers = false;
 
@@ -175,10 +192,10 @@
     }
 
     // Add our custom control for toggling borders.
-    var borderControl = newCustomControl('D:' + displayMode, function (link) {
+    var borderControl = newCustomControl('D:' + displayModeNames[displayMode], function (link) {
       // Loop though all display modes.
       displayMode = (displayMode + 1) % displayModeMax;
-      link.innerText = 'D:' + displayMode;
+      link.innerText = 'D:' + displayModeNames[displayMode];
       tl.redraw();
     });
 
