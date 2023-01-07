@@ -93,7 +93,11 @@ func (m *Civ) regPlaceNEmpires(n int) {
 
 	copy(m.RegionToEmpire, m.RegionToCityState)
 	for i, t := range m.RegionToEmpire {
-		if tn := terr[cityIDToIndex[t]]; tn >= 0 {
+		cIdx, ok := cityIDToIndex[t]
+		if !ok {
+			continue
+		}
+		if tn := terr[cIdx]; tn >= 0 {
 			m.RegionToEmpire[i] = tn
 		}
 	}

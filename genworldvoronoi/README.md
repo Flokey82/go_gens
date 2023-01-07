@@ -40,6 +40,8 @@ I draw further inspiration from various other projects such as https://github.co
     * Fitness functions
     * Amount / quality / discoverability?
   * Add more resource types
+* Species
+  * Allow for overlapping populations
 
 Here some old pictures what it does...
 
