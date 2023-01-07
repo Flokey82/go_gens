@@ -7,6 +7,7 @@ import (
 	"math/rand"
 	"sort"
 
+	"github.com/Flokey82/go_gens/vectors"
 	"github.com/fogleman/delaunay"
 )
 
@@ -433,17 +434,34 @@ func (m *BaseObject) regPolySlope(i int) [2]float64 {
 	//  Returning Normalize(Normal)
 	// End Function
 
-	var normal [3]float64
+	// Get the origin vector of the center region.
+	// We will rotate the points with this vector until the polygon is facing upwards.
+	center := convToVec3(m.XYZ[i*3:]).Normalize()
+
+	// Get the axis of rotation.
+	axis := center.Cross(vectors.Up)
+
+	// Calculate the angle of rotation.
+	angle := math.Acos(vectors.Up.Dot(center) / (vectors.Up.Len() * center.Len()))
+
+	var normal vectors.Vec3
 	nbs := m.GetRegNeighbors(i)
 	for j, r := range nbs {
 		jNext := nbs[(j+1)%len(nbs)]
-		current := convToVec3(m.XYZ[r*3:])
-		next := convToVec3(m.XYZ[jNext*3:])
-		normal[0] += (current.Z - next.Z) * (current.Y + next.Y)
-		normal[1] += (current.Y - next.Y) * (current.X + next.X)
-		normal[2] += (current.X - next.X) * (current.Z + next.Z)
+		// Get the current and next vertex and scale the vector by the height factor
+		// and elevation, then rotate the vector around the axis.
+		current := convToVec3(m.XYZ[r*3:]).
+			Rotate(axis, angle).
+			Mul(1 + 0.1*m.Elevation[r])
+		next := convToVec3(m.XYZ[jNext*3:]).
+			Rotate(axis, angle).
+			Mul(1 + 0.1*m.Elevation[jNext])
+		normal.X += (current.Z - next.Z) * (current.Y + next.Y)
+		normal.Y += (current.Y - next.Y) * (current.X + next.X)
+		normal.Z += (current.X - next.X) * (current.Z + next.Z)
 	}
-	return [2]float64{normal[0] / -normal[2], normal[1] / -normal[2]} // TODO: Normalize
+	normal = normal.Normalize()
+	return [2]float64{normal.X / -normal.Z, normal.Y / -normal.Z} // TODO: Normalize
 }
 
 // regSlope returns the x/y vector for a given region by averaging the
@@ -460,7 +478,7 @@ func (m *BaseObject) regSlope(i int) [2]float64 {
 	// to calculate the normal of a polygon.
 	// See solution rSlope2.
 	for _, t := range m.mesh.r_circulate_t(outTri, i) {
-		slope := m.regTriSlope(m.mesh.t_circulate_r(outReg, t))
+		slope := m.regTriSlope(t, m.mesh.t_circulate_r(outReg, t))
 		res[0] += slope[0]
 		res[1] += slope[1]
 		count++
@@ -477,7 +495,7 @@ func (m *BaseObject) regSlope(i int) [2]float64 {
 //
 // WARNING: This only takes in account 3 neighbors!!
 // Our implementation however has at times more than 3!
-func (m *BaseObject) regTriSlope(nbs []int) [2]float64 {
+func (m *BaseObject) regTriSlope(t int, nbs []int) [2]float64 {
 	// Skip if we don't have enough regions.
 	if len(nbs) != 3 {
 		return [2]float64{0, 0}
@@ -500,22 +518,49 @@ func (m *BaseObject) regTriSlope(nbs []int) [2]float64 {
 	//
 	// End Function
 
+	// Calculate the normal of the triangle.
+	normal := m.regTriNormal(t, nbs)
+
+	// Calculate the baricentric coordinates of the triangle center.
+
+	det := normal.Z // negative Z?
+	return [2]float64{
+		normal.X / det,
+		normal.Y / det,
+	}
+}
+
+func (m *BaseObject) regTriNormal(t int, nbs []int) vectors.Vec3 {
+
+	// Rotate the points so that the triangle is facing upwards.
+	// So we calculate the difference between the center vector and the
+	// global up vector.
+	// Then we rotate the points by the resulting difference vector.
+	// This is done by calculating the cross product of the two vectors.
+	// The cross product is the axis of rotation and the length of the
+	// cross product is the angle of rotation.
+
+	// Get the origin vector of the triangle center.
+	// We will rotate the points with this vector until the triangle is facing upwards.
+	center := convToVec3(m.tXYZ[t*3:]).Normalize()
+
+	// Get the axis to rotate the 'center' vector to the global up vector.
+	axis := center.Cross(vectors.Up)
+
+	// Calculate the angle of rotation.
+	angle := math.Acos(vectors.Up.Dot(center) / (vectors.Up.Len() * center.Len()))
+
+	// Get the three points of the triangle.
 	p0 := convToVec3(m.XYZ[nbs[0]*3:])
 	p1 := convToVec3(m.XYZ[nbs[1]*3:])
 	p2 := convToVec3(m.XYZ[nbs[2]*3:])
 
-	x1 := p1.X - p0.X
-	x2 := p2.X - p0.X
-	y1 := p1.Y - p0.Y
-	y2 := p2.Y - p0.Y
-	z1 := m.Elevation[nbs[1]] - m.Elevation[nbs[0]]
-	z2 := m.Elevation[nbs[2]] - m.Elevation[nbs[0]]
+	p0 = p0.Rotate(axis, angle).Mul(1 + 0.1*m.Elevation[nbs[0]])
+	p1 = p1.Rotate(axis, angle).Mul(1 + 0.1*m.Elevation[nbs[1]])
+	p2 = p2.Rotate(axis, angle).Mul(1 + 0.1*m.Elevation[nbs[2]])
 
-	det := x1*y2 - y1*x2 // negative Z?
-	return [2]float64{
-		(z1*y2 - y1*z2) / det,
-		(x1*z2 - z1*x2) / det,
-	}
+	// Calculate the normal.
+	return p1.Sub(p0).Cross(p2.Sub(p0)).Normalize()
 }
 
 // GetSinks returns all regions that do not have a downhill neighbor.

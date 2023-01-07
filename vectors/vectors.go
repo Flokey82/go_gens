@@ -163,6 +163,42 @@ func (v1 *Vec3) AddToThis(v2 Vec3) {
 	v1.Z += v2.Z
 }
 
+// Rotate rotates the vector around the supplied axis by the supplied angle.
+func (v1 Vec3) Rotate(axis Vec3, angle float64) Vec3 {
+	// Normalize the axis vector.
+	axis = axis.Normalize()
+
+	x, y, z := v1.X, v1.Y, v1.Z
+	x2, y2, z2 := axis.X, axis.Y, axis.Z
+
+	cosTheta := math.Cos(angle)
+	sinTheta := math.Sin(angle)
+	dotProd := Dot3(v1, axis)
+
+	xPrime := x2*dotProd*(1-cosTheta) + x*cosTheta + (-z2*y+y2*z)*sinTheta
+	yPrime := y2*dotProd*(1-cosTheta) + y*cosTheta + (z2*x-x2*z)*sinTheta
+	zPrime := z2*dotProd*(1-cosTheta) + z*cosTheta + (-y2*x+x2*y)*sinTheta
+
+	return Vec3{
+		X: xPrime,
+		Y: yPrime,
+		Z: zPrime,
+	}
+}
+
+// Dot returns the dotproduct of the current and the supplied vector.
+func (v1 Vec3) Dot(v2 Vec3) float64 {
+	return Dot3(v1, v2)
+}
+
+// Sub subtracts v2 from the current vector and returns the result.
+func (v1 Vec3) Sub(v2 Vec3) Vec3 {
+	return Sub3(v1, v2)
+}
+
+// Up is a vector pointing up (0, 1, 0).
+var Up = Vec3{0, 1, 0}
+
 // Add3 adds two Vec3 vectors and returns the result.
 func Add3(v1, v2 Vec3) Vec3 {
 	return Vec3{
@@ -209,5 +245,19 @@ func Cross3XYZ(v1x, v1y, v1z, v2x, v2y, v2z float64) Vec3 {
 		X: v1y*v2z - v1z*v2y,
 		Y: v1z*v2x - v1x*v2z,
 		Z: v1x*v2y - v1y*v2x,
+	}
+}
+
+// Column-major order
+// 0 3 6
+// 1 4 7
+// 2 5 8
+type Mat3 [3][3]float64
+
+func (m Mat3) MulVec3(v Vec3) Vec3 {
+	return Vec3{
+		X: m[0][0]*v.X + m[0][1]*v.Y + m[0][2]*v.Z,
+		Y: m[1][0]*v.X + m[1][1]*v.Y + m[1][2]*v.Z,
+		Z: m[2][0]*v.X + m[2][1]*v.Y + m[2][2]*v.Z,
 	}
 }

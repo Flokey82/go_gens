@@ -49,6 +49,9 @@ Here some old pictures what it does...
 ## Leaflet server (and sad flavor text).
 ![alt text](https://raw.githubusercontent.com/Flokey82/go_gens/master/genworldvoronoi/images/leaflet.png "Flavortext Maps!")
 
+## Poor man's relief map.
+![alt text](https://raw.githubusercontent.com/Flokey82/go_gens/master/genworldvoronoi/images/relief.png "Relief Maps!")
+
 ## Does political maps.
 ![alt text](https://raw.githubusercontent.com/Flokey82/go_gens/master/genworldvoronoi/images/political.png "Political Maps!")
 

@@ -35,6 +35,16 @@ func genGreen(intensity float64) color.NRGBA {
 	}
 }
 
+// genBlackShadow returns a black color that is more transparent the higher the intensity.
+func genBlackShadow(intensity float64) color.NRGBA {
+	return color.NRGBA{
+		R: 0,
+		G: 0,
+		B: 0,
+		A: uint8((1 - intensity) * 255),
+	}
+}
+
 func genColor(col color.Color, intensity float64) color.Color {
 	var col2 color.NRGBA
 	cr, cg, cb, _ := col.RGBA()

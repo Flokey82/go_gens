@@ -39,8 +39,8 @@
   <script src="vendor/leaflet-measure/leaflet-measure.js"></script>
   <script type="text/javascript">
 
-    var displayMode = 15;
-    var displayModeMax = 16;
+    var displayMode = 0;
+    var displayModeMax = 17;
     var displayModeNames = [
       'Terrain',
       'Moisture',
@@ -54,6 +54,7 @@
       'ErosionA',
       'ErosionB',
       'Steepness',
+      'Slope',
       'CityStates',
       'Empires',
       'Cultures',
@@ -61,6 +62,7 @@
     ];
     var drawWindVectors = false;
     var drawRivers = false;
+    var drawShadows = false;
 
     var map = L.map('map', {
       crs: L.CRS.EPSG3857,
@@ -68,7 +70,7 @@
 
     new L.Hash(map);
 
-    var tl = L.tileLayer('tiles/{z}/{x}/{y}?d={d}&wind={wind}&rivers={rivers}', {
+    var tl = L.tileLayer('tiles/{z}/{x}/{y}?d={d}&wind={wind}&rivers={rivers}&shadows={shadows}', {
       attribution: '&copy;',
       maxZoom: 20,
       minZoom: 1,
@@ -81,7 +83,10 @@
       },
       rivers: function () {
         return drawRivers;
-      }
+      },
+      shadows: function () {
+        return drawShadows;
+      },
     }).addTo(map);
 
 
@@ -220,6 +225,15 @@
       tl.redraw();
     });
     map.addControl(new riverControl());
+
+    // Add our custom control for toggling shadows.
+    var shadowControl = newCustomControl('S:' + drawShadows, function (link) {
+      // Toggle shadow display.
+      drawShadows = !drawShadows;
+      link.innerText = 'S:' + drawShadows;
+      tl.redraw();
+    });
+    map.addControl(new shadowControl());
 
     L.Control.Measure.include({
       // set icon on the capture marker

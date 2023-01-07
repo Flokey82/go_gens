@@ -9,6 +9,7 @@ import (
 
 	"github.com/Flokey82/go_gens/gameconstants"
 	"github.com/Flokey82/go_gens/genbiome"
+	"github.com/Flokey82/go_gens/vectors"
 	"github.com/davvo/mercator"
 	"github.com/llgcode/draw2d/draw2dimg"
 	"github.com/mazznoer/colorgrad"
@@ -17,30 +18,30 @@ import (
 )
 
 // GetTile returns the image of the tile at the given coordinates and zoom level.
-func (m *Map) GetTile(x, y, zoom, displayMode int, drawWindVectors, drawRivers bool) image.Image {
+func (m *Map) GetTile(x, y, zoom, displayMode int, drawWindVectors, drawRivers, drawShadows bool) image.Image {
 	var colorFunc func(int) color.Color
 
 	switch displayMode {
-	case 12, 13, 14, 15:
+	case 13, 14, 15, 16:
 		colorGrad := colorgrad.Rainbow()
 		terrToColor := make(map[int]int)
 		var territory []int
 		var terrLen int
-		if displayMode == 12 {
+		if displayMode == 13 {
 			terr := m.Cities[:m.NumCityStates]
 			terrLen = len(terr)
 			for i, c := range terr {
 				terrToColor[c.ID] = i
 			}
 			territory = m.RegionToCityState
-		} else if displayMode == 13 {
+		} else if displayMode == 14 {
 			terr := m.Cities[:m.NumEmpires]
 			terrLen = len(terr)
 			for i, c := range terr {
 				terrToColor[c.ID] = i
 			}
 			territory = m.RegionToEmpire
-		} else if displayMode == 14 {
+		} else if displayMode == 15 {
 			terr := m.Cultures
 			terrLen = len(terr)
 			for i, c := range terr {
@@ -100,6 +101,8 @@ func (m *Map) GetTile(x, y, zoom, displayMode int, drawWindVectors, drawRivers b
 			vals = m.GetErosionRate2()
 		} else if displayMode == 11 {
 			vals = m.GetSteepness()
+		} else if displayMode == 12 {
+			vals = m.GetSlope()
 		}
 
 		// Calculate the min and max elevation.
@@ -126,11 +129,14 @@ func (m *Map) GetTile(x, y, zoom, displayMode int, drawWindVectors, drawRivers b
 	// Wrap the tile coordinates.
 	x, y = wrapTileCoordinates(x, y, zoom)
 
-	// log.Println("tile", x, y, "zoom", zoom)
-
 	tbb := newTileBoundingBox(x, y, zoom)
 	la1, lo1, la2, lo2 := tbb.toLatLon()
-	latLonMargin := 20.0 / float64(zoom)
+	latLonMargin := 20 / float64(zoom)
+
+	la1Margin := math.Max(-90, math.Min(90, la1-latLonMargin))
+	la2Margin := math.Max(-90, math.Min(90, la2+latLonMargin))
+	lo1Margin := lo1 - latLonMargin
+	lo2Margin := lo2 + latLonMargin
 
 	// Since our mercator conversion gives us absolute pixel coordinates, we need to
 	// remove the offset of the tile we are rendering from the path coordinates.
@@ -148,7 +154,7 @@ func (m *Map) GetTile(x, y, zoom, displayMode int, drawWindVectors, drawRivers b
 
 		// Check if we are within the tile with a small margin,
 		// taking into account that we might have wrapped around the world.
-		if rLat < la1-latLonMargin || rLat > la2+latLonMargin || rLon < lo1-latLonMargin || rLon > lo2+latLonMargin {
+		if rLat < la1Margin || rLat > la2Margin || rLon < lo1Margin || rLon > lo2Margin {
 			// Check if the tile and the region we are looking at is adjecent to +/- 180 degrees and
 			// NOTE: This could be improved by checking if one of the corners of the region is within the tile.
 			if lo1 > -175 && lo2 < 175 || rLon < 175 && rLon > -175 {
@@ -196,7 +202,6 @@ func (m *Map) GetTile(x, y, zoom, displayMode int, drawWindVectors, drawRivers b
 
 		// Draw the path.
 		gc.SetFillColor(col)
-		gc.SetStrokeColor(col)
 		gc.SetLineWidth(0)
 		gc.BeginPath()
 		gc.MoveTo(path[0][0], path[0][1])
@@ -204,7 +209,7 @@ func (m *Map) GetTile(x, y, zoom, displayMode int, drawWindVectors, drawRivers b
 			gc.LineTo(p[0], p[1])
 		}
 		gc.Close()
-		gc.FillStroke()
+		gc.Fill()
 	}
 
 	// Draw all the wind vectors on top.
@@ -215,7 +220,7 @@ func (m *Map) GetTile(x, y, zoom, displayMode int, drawWindVectors, drawRivers b
 
 			// Check if we are within the tile with a small margin,
 			// taking into account that we might have wrapped around the world.
-			if rLat < la1-latLonMargin || rLat > la2+latLonMargin || rLon < lo1-latLonMargin || rLon > lo2+latLonMargin {
+			if rLat < la1Margin || rLat > la2Margin || rLon < lo1Margin || rLon > lo2Margin {
 				// Check if the tile and the region we are looking at is adjecent to +/- 180 degrees and
 				// NOTE: This could be improved by checking if one of the corners of the region is within the tile.
 				if lo1 > -175 && lo2 < 175 || rLon < 175 && rLon > -175 {
@@ -263,6 +268,119 @@ func (m *Map) GetTile(x, y, zoom, displayMode int, drawWindVectors, drawRivers b
 			gc.MoveTo(x2, y2)
 			gc.LineTo(x2-math.Cos(angle-math.Pi/6)*5, y2+math.Sin(angle-math.Pi/6)*5)
 			gc.Stroke()
+		}
+	}
+
+	if drawShadows {
+		min, max := minMax(m.triElevation)
+		if max == 0 {
+			max = 1
+		}
+		_, maxMois := minMax(m.triMoisture)
+		if maxMois == 0 {
+			maxMois = 1
+		}
+
+		// Set the global light direction almost straight up, with a slight offset to the right.
+		lightDir := vectors.Vec3{X: 1.0, Y: 1.0, Z: 1.0}.Normalize()
+	Loop:
+		for i := 0; i < len(m.mesh.Triangles); i += 3 {
+			// Hacky way to filter paths/triangles that wrap around the entire SVG.
+			triLat := m.triLatLon[i/3][0]
+			triLon := m.triLatLon[i/3][1]
+
+			// Check if we are within the tile with a small margin, taking into account that we might have wrapped around the world.
+			// Also keep in mind that the latitude and longitude can be negative, so we need to add the margin to the lower bound,
+			// and subtract the margin from the upper bound.
+			if triLat < la1Margin || triLat > la2Margin || triLon < lo1Margin || triLon > lo2Margin {
+				// Check if the tile and the region we are looking at is adjecent to +/- 180 degrees and
+				// NOTE: This could be improved by checking if one of the corners of the region is within the tile.
+				if lo1 > -175 && lo2 < 175 || triLon < 175 && triLon > -175 {
+					continue
+				}
+			}
+			var poolCount int
+			for _, j := range m.mesh.Triangles[i : i+3] {
+				if m.Waterpool[j] > 0 {
+					poolCount++
+				}
+			}
+
+			// Draw the path that outlines the region.
+			var path [][2]float64
+			for _, j := range m.mesh.t_circulate_r(out_t, i/3) {
+				rLat := m.LatLon[j][0]
+				rLon := m.LatLon[j][1]
+
+				// Check if we the region is across the +/- 180 degrees longitude line compared to the triangle.
+				// In this case, the longitude is almost 360 degrees off, which means we need to adjust the longitude.
+				if rLon-triLon > 110 {
+					rLon -= 360
+				} else if rLon-triLon < -110 {
+					rLon += 360
+				}
+
+				// Calculate the coordinates of the path point.
+				x, y := latLonToPixels(rLat, rLon, zoom)
+				p := [2]float64{(x - dx), (y - dy2)}
+				// Check if we are way outside the tile.
+				if p[0] < -1000 || p[0] > 1000 || p[1] < -1000 || p[1] > 1000 {
+					continue Loop
+				}
+				path = append(path, p)
+			}
+
+			// Now check if the region we are looking at has wrapped around the world /
+			// +- 180 degrees. If so, we need to adjust the points in the path.
+			if lo1 < -175 && triLon > 175 {
+				for i := range path {
+					path[i][0] -= float64(sizeFromZoom(zoom))
+				}
+			} else if lo2 > 175 && triLon < -175 {
+				for i := range path {
+					path[i][0] += float64(sizeFromZoom(zoom))
+				}
+			}
+
+			elev := m.triElevation[i/3]
+			val := (elev - min) / (max - min)
+			var col color.NRGBA
+			if elev <= 0 || poolCount > 2 {
+				col = genBlue(val)
+			} else {
+				// Get the slope of the triangle.
+				slope := m.regTriNormal(i/3, m.mesh.t_circulate_r(out_t, i/3))
+
+				// Now take the dot product of the slope and our global
+				// light direction to get the amount of light on the triangle.
+				light := math.Max(0, vectors.Dot3(slope, lightDir))
+
+				// For shaded reliefs the contrast should increase by elevation.
+				// http://www.reliefshading.com/design/
+
+				// Calculate the brightness of the triangle.
+				brightness := val * (1 - val*(1-light))
+
+				valElev := elev / max
+				valMois := m.triMoisture[i/3] / maxMois
+				col = getWhittakerModBiomeColor(triLat, valElev, valMois, brightness)
+			}
+
+			// If the path is empty, we can skip it.
+			if len(path) == 0 {
+				continue
+			}
+
+			// Draw the path.
+			gc.SetFillColor(col)
+			gc.SetLineWidth(1)
+			gc.BeginPath()
+			gc.MoveTo(path[0][0], path[0][1])
+			for _, p := range path[1:] {
+				gc.LineTo(p[0], p[1])
+			}
+			gc.Close()
+			gc.Fill()
 		}
 	}
 
