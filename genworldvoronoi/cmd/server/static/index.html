@@ -64,6 +64,17 @@
     var drawRivers = false;
     var drawShadows = false;
 
+    var displayModeBorders = 5;
+    var displayModeBordersMax = 6;
+    var displayModeBordersNames = [
+      'Empires',
+      'CityStates',
+      'Cultures',
+      'Plates',
+      'Biomes',
+      'None',
+    ];
+
     var map = L.map('map', {
       crs: L.CRS.EPSG3857,
     }).setView([0, 0], 1);
@@ -110,7 +121,7 @@
     };
 
     // Load the geojson layer when we load a tile
-    map.on('moveend', function () {
+    function reloadJSONfunction () {
       // First clear the geojson layer
       geojsonLayer.clearLayers();
       var bounds = map.getBounds();
@@ -138,7 +149,7 @@
             'Trade: ' + prop.trade.toFixed(3) + ' / ' +
             'Resources: ' + prop.resources.toFixed(3) + '<br/>' +
             'Tradepartners: ' + prop.tradepartners + ' (Radius: ' + prop.radius.toFixed(3) + 'km)<br/>' +
-            'Species: '+ prop.species + '<br/>' +
+            'Species: ' + prop.species + '<br/>' +
             '</p>' +
             '<p>' +
             '<b>Resources:</b><br/>' +
@@ -161,10 +172,10 @@
       });
 
       // Load all borders.
-      loadGeoJSON('geojson_borders/' + params, {
+      loadGeoJSON('geojson_borders/' + params + '?d='+displayModeBorders, {
         style: function (feature) {
           return {
-            color: 'darkred',
+            color: 'black',
             opacity: 0.5,
           };
         },
@@ -172,7 +183,8 @@
           layer.bindPopup('ID: ' + feature.id);
         }
       });
-    });
+    };
+    map.on('moveend', reloadJSONfunction);
 
     function newCustomControl(startLabel, onClick) {
       var control = L.Control.extend({
@@ -198,12 +210,23 @@
       return control;
     }
 
-    // Add our custom control for toggling borders.
-    var borderControl = newCustomControl('D:' + displayModeNames[displayMode], function (link) {
+    // Add our custom control for cycling display modes.
+    var displayControl = newCustomControl('D:' + displayModeNames[displayMode], function (link) {
       // Loop though all display modes.
       displayMode = (displayMode + 1) % displayModeMax;
       link.innerText = 'D:' + displayModeNames[displayMode];
       tl.redraw();
+    });
+
+    map.addControl(new displayControl());
+
+    // Add our custom control for cycling borders.
+    var borderControl = newCustomControl('B:' + displayModeBordersNames[displayModeBorders], function (link) {
+      // Loop though all display modes.
+      displayModeBorders = (displayModeBorders + 1) % displayModeBordersMax;
+      link.innerText = 'B:' + displayModeBordersNames[displayModeBorders];
+      tl.redraw();
+            reloadJSONfunction();
     });
 
     map.addControl(new borderControl());

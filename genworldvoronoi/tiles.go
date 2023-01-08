@@ -148,6 +148,7 @@ func (m *Map) GetTile(x, y, zoom, displayMode int, drawWindVectors, drawRivers, 
 	gc := draw2dimg.NewGraphicContext(dest)
 
 	out_t := make([]int, 0, 6)
+	gc.SetLineWidth(1)
 	for i := 0; i < m.mesh.numRegions; i++ {
 		rLat := m.LatLon[i][0]
 		rLon := m.LatLon[i][1]
@@ -201,19 +202,22 @@ func (m *Map) GetTile(x, y, zoom, displayMode int, drawWindVectors, drawRivers, 
 		}
 
 		// Draw the path.
+		gc.SetStrokeColor(col)
 		gc.SetFillColor(col)
-		gc.SetLineWidth(0)
 		gc.BeginPath()
 		gc.MoveTo(path[0][0], path[0][1])
 		for _, p := range path[1:] {
 			gc.LineTo(p[0], p[1])
 		}
 		gc.Close()
-		gc.Fill()
+		gc.FillStroke()
 	}
 
 	// Draw all the wind vectors on top.
 	if drawWindVectors {
+		// Set the color and line width of the wind vectors.
+		gc.SetStrokeColor(color.NRGBA{0, 0, 0, 255})
+		gc.SetLineWidth(1)
 		for i := 0; i < m.mesh.numRegions; i++ {
 			rLat := m.LatLon[i][0]
 			rLon := m.LatLon[i][1]
@@ -247,23 +251,17 @@ func (m *Map) GetTile(x, y, zoom, displayMode int, drawWindVectors, drawRivers, 
 			y2 := y - math.Sin(angle)*length*50
 
 			// Draw the wind vector.
-			gc.SetStrokeColor(color.NRGBA{0, 0, 0, 255})
-			gc.SetLineWidth(1)
 			gc.BeginPath()
 			gc.MoveTo(x, y)
 			gc.LineTo(x2, y2)
 			gc.Stroke()
 
 			// Draw the arrow head.
-			gc.SetStrokeColor(color.NRGBA{0, 0, 0, 255})
-			gc.SetLineWidth(1)
 			gc.BeginPath()
 			gc.MoveTo(x2, y2)
 			gc.LineTo(x2-math.Cos(angle+math.Pi/6)*5, y2+math.Sin(angle+math.Pi/6)*5)
 			gc.Stroke()
 
-			gc.SetStrokeColor(color.NRGBA{0, 0, 0, 255})
-			gc.SetLineWidth(1)
 			gc.BeginPath()
 			gc.MoveTo(x2, y2)
 			gc.LineTo(x2-math.Cos(angle-math.Pi/6)*5, y2+math.Sin(angle-math.Pi/6)*5)
@@ -280,6 +278,9 @@ func (m *Map) GetTile(x, y, zoom, displayMode int, drawWindVectors, drawRivers, 
 		if maxMois == 0 {
 			maxMois = 1
 		}
+
+		// Set our initial line width.
+		gc.SetLineWidth(1)
 
 		// Set the global light direction almost straight up, with a slight offset to the right.
 		lightDir := vectors.Vec3{X: 1.0, Y: 1.0, Z: 1.0}.Normalize()
@@ -355,15 +356,11 @@ func (m *Map) GetTile(x, y, zoom, displayMode int, drawWindVectors, drawRivers, 
 				// light direction to get the amount of light on the triangle.
 				light := math.Max(0, vectors.Dot3(slope, lightDir))
 
+				// Calculate the brightness of the triangle.
 				// For shaded reliefs the contrast should increase by elevation.
 				// http://www.reliefshading.com/design/
-
-				// Calculate the brightness of the triangle.
 				brightness := val * (1 - val*(1-light))
-
-				valElev := elev / max
-				valMois := m.triMoisture[i/3] / maxMois
-				col = getWhittakerModBiomeColor(triLat, valElev, valMois, brightness)
+				col = getWhittakerModBiomeColor(triLat, elev/max, m.triMoisture[i/3]/maxMois, brightness)
 			}
 
 			// If the path is empty, we can skip it.
@@ -372,15 +369,15 @@ func (m *Map) GetTile(x, y, zoom, displayMode int, drawWindVectors, drawRivers, 
 			}
 
 			// Draw the path.
+			gc.SetStrokeColor(col)
 			gc.SetFillColor(col)
-			gc.SetLineWidth(1)
 			gc.BeginPath()
 			gc.MoveTo(path[0][0], path[0][1])
 			for _, p := range path[1:] {
 				gc.LineTo(p[0], p[1])
 			}
 			gc.Close()
-			gc.Fill()
+			gc.FillStroke()
 		}
 	}
 
@@ -391,20 +388,44 @@ func (m *Map) GetTile(x, y, zoom, displayMode int, drawWindVectors, drawRivers, 
 		rivers := m.getRiversInLatLonBB(0.001/float64(int(1)<<zoom), la1-latLonMargin, lo1-latLonMargin, la2+latLonMargin, lo2+latLonMargin)
 		_, maxFlux := minMax(m.Flux)
 
+		// Set our stroke color to a nice river blue.
+		gc.SetStrokeColor(color.NRGBA{0, 0, 255, 255})
+
 		for _, river := range rivers {
-			// TODO: Fix wrapping around the world.
-			gc.SetStrokeColor(color.NRGBA{0, 0, 255, 255})
+			// Set the initial line width.
 			gc.SetLineWidth(1)
 			gc.BeginPath()
+
 			// Move to the first point.
 			rLat, rLon := m.LatLon[river[0]][0], m.LatLon[river[0]][1]
 			x, y := latLonToPixels(rLat, rLon, zoom)
 			gc.MoveTo(x-dx, y-dy2)
 			for i, p := range river[1:] {
-				gc.SetLineWidth(1 + 2*(m.Flux[p]/maxFlux))
+				// Set the line width based on the flux of the river, averaged with the previous flux.
+				gc.SetLineWidth(4 * math.Sqrt((m.Flux[p]+m.Flux[river[i]])/(2*maxFlux)))
 
 				// Set the line width based on the flux of the river.
 				rLat, rLon = m.LatLon[p][0], m.LatLon[p][1]
+
+				// Now compare the longitude to the previous longitude.
+				// If we have crossed the +- 180 degree boundary, we need to
+				// draw to a fake point at the same latitude but on the same side of the world.
+				if diff := rLon - m.LatLon[river[i]][1]; math.Abs(diff) > 110 {
+					rLonFake := rLon - 360
+					if diff < 0 {
+						rLonFake = rLon + 360
+					}
+					// Draw to the fake point.
+					x, y := latLonToPixels(rLat, rLonFake, zoom)
+					gc.LineTo(x-dx, y-dy2)
+					gc.Stroke()
+
+					// Move to the real point and start a new path.
+					x, y = latLonToPixels(rLat, rLon, zoom)
+					gc.BeginPath()
+					gc.MoveTo(x-dx, y-dy2)
+				}
+
 				x, y := latLonToPixels(rLat, rLon, zoom)
 				x -= dx
 				y -= dy2
@@ -703,18 +724,45 @@ func (m *Map) GetGeoJSONCities(la1, lo1, la2, lo2 float64, zoom int) ([]byte, er
 }
 
 // GetGeoJSONBorders returns all borders as GeoJSON within the given bounds and zoom level.
-func (m *Map) GetGeoJSONBorders(la1, lo1, la2, lo2 float64, zoom int) ([]byte, error) {
+func (m *Map) GetGeoJSONBorders(la1, lo1, la2, lo2 float64, zoom, displayMode int) ([]byte, error) {
 	geoJSON := geojson.NewFeatureCollection()
+	var borders [][]int
+	switch displayMode {
+	case 1:
+		borders = m.getCustomBorders(m.RegionToCityState)
+	case 2:
+		borders = m.getCustomBorders(m.RegionToCulture)
+	case 3:
+		borders = m.getCustomBorders(m.RegionToPlate)
+	case 4:
+		borders = m.getCustomBorders(m.BiomeRegions)
+	case 5:
+		// Nothing.
+	default:
+		borders = m.getCustomBorders(m.RegionToEmpire)
+	}
 
 	// Get all borders and add them to the GeoJSON.
 	// Right now we ignore the bounds and zoom level.
-	for i, border := range m.getBorders() {
+	for i, border := range borders {
 		// Now get the coordinates for each point of the border.
 		var borderLatLons [][]float64
 		for _, p := range border {
 			// Get the lat lon coordinates of the point.
 			la := m.triLatLon[p][0]
 			lo := m.triLatLon[p][1]
+
+			// Check if we have crossed the 180 degree longitude line.
+			// If so, we stop here, add the border to the GeoJSON and start a new one.
+			if len(borderLatLons) > 0 && math.Abs(borderLatLons[len(borderLatLons)-1][0]-lo) > 180 {
+				// Add the border to the GeoJSON as a feature.
+				f := geojson.NewLineStringFeature(borderLatLons)
+				f.ID = i
+				geoJSON.AddFeature(f)
+
+				// Start a new border.
+				borderLatLons = nil
+			}
 			borderLatLons = append(borderLatLons, []float64{lo, la})
 		}
 		// Add the border to the GeoJSON as a feature.

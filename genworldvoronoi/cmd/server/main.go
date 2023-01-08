@@ -18,7 +18,7 @@ var worldmap *genworldvoronoi.Map
 var (
 	seed      int64   = 1234
 	numPlates int     = 25
-	numPoints int     = 400000
+	numPoints int     = 40000
 	jitter    float64 = 0.0
 )
 
@@ -90,12 +90,22 @@ func geoJSONCitiesHandler(res http.ResponseWriter, req *http.Request) {
 }
 
 func geoJSONBorderHandler(res http.ResponseWriter, req *http.Request) {
+	// Get the url parameter 'd'.
+	d := req.URL.Query().Get("d")
+	if d == "" {
+		d = "0"
+	}
+	displayMode, err := strconv.Atoi(d)
+	if err != nil {
+		panic(err)
+	}
+
 	// Get the tile coordinates and zoom level.
 	tileLa1, tileLo1, tileLa2, tileLo2, tileZ, err := parseBoundingBox(req)
 	if err != nil {
 		panic(err)
 	}
-	data, err := worldmap.GetGeoJSONBorders(tileLa1, tileLo1, tileLa2, tileLo2, tileZ)
+	data, err := worldmap.GetGeoJSONBorders(tileLa1, tileLo1, tileLa2, tileLo2, tileZ, displayMode)
 	if err != nil {
 		panic(err)
 	}
