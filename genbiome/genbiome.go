@@ -523,3 +523,349 @@ func isAzgaarWetland(moisture, temperature, height int) bool {
 	}
 	return false
 }
+
+// KoppenGeigerClimate is a climate classification based on the Koppen-Geiger system.
+//
+// See: https://en.wikipedia.org/wiki/K%C3%B6ppen_climate_classification
+// See: https://forhinhexes.blogspot.com/2019/12/koppen-geiger-climate-classification.html
+//
+// Köppen climate classification scheme symbols description table
+// 1st ---------------- 2nd ------------------- 3rd
+// A (Tropical) ------- f (Rainforest)
+// -------------------- m (Monsoon)
+// -------------------- w (Savanna, dry winter)
+// -------------------- s (Savanna, dry summer)
+// B (Dry) ------------ W (Arid Desert) ------- h (Hot)
+// -------------------- S (Semi-Arid or steppe)	k (Cold)
+// C (Temperate) ------ w (Dry winter) -------- a (Hot summer)
+// -------------------- f (No dry season) ----- b (Warm summer)
+// -------------------- s (Dry summer) -------- c (Cold summer)
+// D (Continental)		w (Dry winter) -------- a (Hot summer)
+// -------------------- f (No dry season) ----- b (Warm summer)
+// -------------------- s (Dry summer) -------- c (Cold summer)
+// -------------------------------------------- d (Very cold winter)
+// E (Polar) ---------------------------------- T (Tundra)
+// -------------------------------------------- F (Ice cap)
+// type KoppenGeigerClimate int
+/*
+const (
+	KoppenGeigerClimateAf      KoppenGeigerClimate = iota // Tropical rainforest
+	KoppenGeigerClimateAm                                 // Tropical monsoon
+	KoppenGeigerClimateAw                                 // Tropical savanna
+	KoppenGeigerClimateBWh                                // Hot desert
+	KoppenGeigerClimateBWk                                // Cold desert
+	KoppenGeigerClimateBSh                                // Hot steppe
+	KoppenGeigerClimateBSk                                // Cold steppe
+	KoppenGeigerClimateCsa                                // Dry summer, hot summer
+	KoppenGeigerClimateCsb                                // Dry summer, warm summer
+	KoppenGeigerClimateCsc                                // Dry summer, cold summer
+	KoppenGeigerClimateCwa                                // Dry winter, hot summer
+	KoppenGeigerClimateCwb                                // Dry winter, warm summer
+	KoppenGeigerClimateCwc                                // Dry winter, cold summer
+	KoppenGeigerClimateCfa                                // Humid subtropical
+	KoppenGeigerClimateCfb                                // Maritime temperate
+	KoppenGeigerClimateCfc                                // Maritime subarctic
+	KoppenGeigerClimateDsa                                // Dry summer, continental, hot summer
+	KoppenGeigerClimateDsb                                // Dry summer, continental, warm summer
+	KoppenGeigerClimateDsc                                // Dry summer, continental, cool summer
+	KoppenGeigerClimateDsd                                // Dry summer, continental, very cold winter
+	KoppenGeigerClimateDwa                                // Dry winter, continental, hot summer
+	KoppenGeigerClimateDwb                                // Dry winter, continental, warm summer
+	KoppenGeigerClimateDwc                                // Dry winter, continental, cool summer
+	KoppenGeigerClimateDwd                                // Dry winter, continental, very cold winter
+	KoppenGeigerClimateDfa                                // Humid continental, hot summer
+	KoppenGeigerClimateDfb                                // Humid continental, warm summer
+	KoppenGeigerClimateDfc                                // Humid continental, cool summer
+	KoppenGeigerClimateDfd                                // Humid continental, very cold winter
+	KoppenGeigerClimateET                                 // Polar tundra
+	KoppenGeigerClimateEF                                 // Polar ice cap
+	KoppenGeigerClimateUnknown                            // Unknown
+)
+
+// KoppenGeigerClimateColor maps Koppen-Geiger climate IDs to their color representation.
+var KoppenGeigerClimateColor = map[KoppenGeigerClimate]color.NRGBA{
+	KoppenGeigerClimateAf:      {R: 0x00, G: 0x00, B: 0xFF}, // Tropical rainforest
+	KoppenGeigerClimateAm:      {R: 0x00, G: 0x78, B: 0xFF}, // Tropical monsoon
+	KoppenGeigerClimateAw:      {R: 0x46, G: 0xAA, B: 0xFA}, // Tropical savanna
+	KoppenGeigerClimateBWh:     {R: 0xFF, G: 0x00, B: 0x00}, // Hot desert
+	KoppenGeigerClimateBWk:     {R: 0xFF, G: 0x96, B: 0x96}, // Cold desert
+	KoppenGeigerClimateBSh:     {R: 0xF5, G: 0xA5, B: 0x00}, // Hot steppe
+	KoppenGeigerClimateBSk:     {R: 0xFF, G: 0xDC, B: 0x64}, // Cold steppe
+	KoppenGeigerClimateCsa:     {R: 0xFF, G: 0xFF, B: 0x00}, // Dry summer, subtropical
+	KoppenGeigerClimateCsb:     {R: 0xC8, G: 0xC8, B: 0x00}, // Dry summer, cooler subtropical
+	KoppenGeigerClimateCsc:     {R: 0x96, G: 0x96, B: 0x00}, // Dry summer, maritime temperate
+	KoppenGeigerClimateCwa:     {R: 0x96, G: 0xFF, B: 0x96}, // Dry winter, humid subtropical
+	KoppenGeigerClimateCwb:     {R: 0x64, G: 0xC8, B: 0x64}, // Dry winter, maritime temperate
+	KoppenGeigerClimateCwc:     {R: 0x32, G: 0x96, B: 0x32}, // Dry winter, cooler maritime temperate
+	KoppenGeigerClimateCfa:     {R: 0xC8, G: 0xFF, B: 0x50}, // Humid subtropical
+	KoppenGeigerClimateCfb:     {R: 0x64, G: 0xFF, B: 0x50}, // Maritime temperate
+	KoppenGeigerClimateCfc:     {R: 0x32, G: 0xC8, B: 0x00}, // Maritime subarctic
+	KoppenGeigerClimateDsa:     {R: 0xFF, G: 0x00, B: 0xFF}, // Dry summer, continental, hot summer
+	KoppenGeigerClimateDsb:     {R: 0xC8, G: 0x00, B: 0xC8}, // Dry summer, continental, warm summer
+	KoppenGeigerClimateDsc:     {R: 0x96, G: 0x00, B: 0x96}, // Dry summer, continental, cool summer
+	KoppenGeigerClimateDsd:     {R: 0x64, G: 0x00, B: 0x64}, // Dry summer, continental, very cold winter
+	KoppenGeigerClimateDwa:     {R: 0xFF, G: 0x96, B: 0x00}, // Dry winter, continental, hot summer
+	KoppenGeigerClimateDwb:     {R: 0xC8, G: 0x64, B: 0x00}, // Dry winter, continental, warm summer
+	KoppenGeigerClimateDwc:     {R: 0x96, G: 0x32, B: 0x00}, // Dry winter, continental, cool summer
+	KoppenGeigerClimateDwd:     {R: 0x64, G: 0x00, B: 0x00}, // Dry winter, continental, very cold winter
+	KoppenGeigerClimateDfa:     {R: 0xFF, G: 0x64, B: 0x00}, // Humid continental, hot summer
+	KoppenGeigerClimateDfb:     {R: 0xC8, G: 0x32, B: 0x00}, // Humid continental, warm summer
+	KoppenGeigerClimateDfc:     {R: 0x96, G: 0x00, B: 0x00}, // Humid continental, cool summer
+	KoppenGeigerClimateDfd:     {R: 0x64, G: 0x00, B: 0x00}, // Humid continental, very cold winter
+	KoppenGeigerClimateET:      {R: 0xB2, G: 0xB2, B: 0xB2}, // Polar tundra
+	KoppenGeigerClimateEF:      {R: 0xFF, G: 0xFF, B: 0xFF}, // Polar ice cap
+	KoppenGeigerClimateUnknown: {R: 0x00, G: 0x00, B: 0x00}, // Unknown
+}
+
+// KoppenGeigerClimateName maps Koppen-Geiger climate IDs to their name.
+var KoppenGeigerClimateName = map[KoppenGeigerClimate]string{
+	KoppenGeigerClimateAf:  "Tropical rainforest",
+	KoppenGeigerClimateAm:  "Tropical monsoon",
+	KoppenGeigerClimateAw:  "Tropical savanna",
+	KoppenGeigerClimateBWh: "Hot desert",
+	KoppenGeigerClimateBWk: "Cold desert",
+	KoppenGeigerClimateBSh: "Hot steppe",
+	KoppenGeigerClimateBSk: "Cold steppe",
+	KoppenGeigerClimateCsa: "Dry summer, subtropical",
+	KoppenGeigerClimateCsb: "Dry summer, cooler subtropical",
+	KoppenGeigerClimateCsc: "Dry summer, maritime temperate",
+	KoppenGeigerClimateCwa: "Dry winter, humid subtropical",
+	KoppenGeigerClimateCwb: "Dry winter, maritime temperate",
+	KoppenGeigerClimateCwc: "Dry winter, cooler maritime temperate",
+	KoppenGeigerClimateCfa: "Humid subtropical",
+	KoppenGeigerClimateCfb: "Maritime temperate",
+	KoppenGeigerClimateCfc: "Maritime subarctic",
+	KoppenGeigerClimateDsa: "Dry summer, continental, hot summer",
+	KoppenGeigerClimateDsb: "Dry summer, continental, warm summer",
+	KoppenGeigerClimateDsc: "Dry summer, continental, cool summer",
+	KoppenGeigerClimateDsd: "Dry summer, continental, very cold winter",
+	KoppenGeigerClimateDwa: "Dry winter, continental, hot summer",
+	KoppenGeigerClimateDwb: "Dry winter, continental, warm summer",
+	KoppenGeigerClimateDwc: "Dry winter, continental, cool summer",
+	KoppenGeigerClimateDwd: "Dry winter, continental, very cold winter",
+	KoppenGeigerClimateDfa: "Humid continental, hot summer",
+	KoppenGeigerClimateDfb: "Humid continental, warm summer",
+	KoppenGeigerClimateDfc: "Humid continental, cool summer",
+	KoppenGeigerClimateDfd: "Humid continental, very cold winter",
+	KoppenGeigerClimateET:  "Polar tundra",
+	KoppenGeigerClimateEF:  "Polar ice cap",
+}
+
+type KoppenGeigerMonthStats struct {
+	AvgTemp float64
+	MinTemp float64
+	MaxTemp float64
+	AvgPrec float64
+	MinPrec float64
+	MaxPrec float64
+	Summer  bool
+	Winter  bool
+}
+*/
+// KoppenGeigerClimateID returns the Koppen-Geiger climate ID.
+//
+// 1. ==== Group A: Tropical climates
+//
+// This type of climate has every month of the year with an average temperature of 18 °C (64.4 °F) or higher, with significant precipitation.
+//
+// Af = Tropical rainforest climate;
+// - average precipitation of at least 60 mm (2.4 in) in every month
+//
+// Am = Tropical monsoon climate;
+// - driest month with precipitation less than 60 mm (2.4 in), but at least 100-(totalAnnualPrecipitation (mm) / 25) mm precipitation
+//
+// Aw or As = Tropical wet and dry or savanna climate;
+// - driest month having precipitation less than 60 mm (2.4 in) and less than 100-(totalAnnualPrecipitation (mm) / 25) mm precipitation
+//
+// 2. ==== Group B: Arid climates
+//
+// This type of climate is defined by little precipitation that does not fit the polar (EF or ET) criteria of no month with an average
+// temperature greater than 10 °C (50 °F).
+//
+// The threshold in millimeters is determined by multiplying the average annual temperature in Celsius by 20, then adding:
+// (a) 280 if 70% or more of the total precipitation is in the spring and summer months (April–September in the Northern Hemisphere,
+//
+//	or October–March in the Southern)
+//
+// (b) 140 if 30%–70% of the total precipitation is received during the spring and summer
+// (c) 0 if less than 30% of the total precipitation is received during the spring and summer
+//
+// If the annual precipitation is less than 50% of this threshold, the classification is BW (arid: desert climate);
+// if it is in the range of 50%–100% of the threshold, the classification is BS (semi-arid: steppe climate).
+//
+// A third letter can be included to indicate temperature.
+//
+// Originally:
+// h signified low-latitude climate (average annual temperature above 18 °C (64.4 °F))
+// k signified middle-latitude climate (average annual temperature below 18 °C)
+//
+// The more common practice today, especially in the United States:
+// h to mean the coldest month has an average temperature above 0 °C (32 °F) (or −3 °C (27 °F))
+// k denoting that at least one month's averages below 0 °C (or −3 °C (27 °F))
+//
+// In addition, n is used to denote a climate characterized by frequent fog and H for high altitudes.
+//
+// This defines the following climates:
+// BWh = Hot desert climate
+// BWk = Cold desert climate
+// BSh = Hot semi-arid climate
+// BSk = Cold semi-arid climate
+//
+// 3. ==== Group C: Temperate climates
+//
+// - coldest month averaging between 0 °C (32 °F) (or −3 °C (27 °F)) and 18 °C (64.4 °F)
+// - at least one month averaging above 10 °C (50 °F).
+//
+// For the distribution of precipitation in locations that both satisfy  a dry summer (Cs) and a dry winter (Cw),
+// a location is considered to have a wet summer (Cw) when more precipitation falls within the summer months than
+// the winter months while a location is considered to have a dry summer (Cs) when more precipitation falls within
+// the winter months. This additional criterion applies to locations that satisfies both Ds and Dw as well.
+//
+// Cfa = Humid subtropical climate;
+// - coldest month averaging above 0 °C (32 °F) (or −3 °C (27 °F))
+// - at least one month's average temperature above 22 °C (71.6 °F)
+// - at least four months averaging above 10 °C (50 °F).
+// - no significant precipitation difference between seasons (neither the abovementioned set of conditions fulfilled)
+// - no dry months in the summer.
+//
+// Cfb = Temperate oceanic climate or subtropical highland climate;
+// - coldest month averaging above 0 °C (32 °F) (or −3 °C (27 °F))
+// - all months with average temperatures below 22 °C (71.6 °F)
+// - at least four months averaging above 10 °C (50 °F)
+// - no significant precipitation difference between seasons (neither the abovementioned set of conditions fulfilled)
+//
+// Cfc = Subpolar oceanic climate;
+// - coldest month averaging above 0 °C (32 °F) (or −3 °C (27 °F))
+// - 1–3 months averaging above 10 °C (50 °F)
+// - no significant precipitation difference between seasons (neither the abovementioned set of conditions fulfilled)
+//
+// Cwa = Monsoon-influenced humid subtropical climate;
+// - coldest month averaging above 0 °C (32 °F) (or −3 °C (27 °F))
+// - at least one month's average temperature above 22 °C (71.6 °F)
+// - at least four months averaging above 10 °C (50 °F)
+// - at least ten times as much rain in the wettest month of summer as in the driest month of winter
+// (alternative definition is 70% or more of average annual precipitation is received in the warmest six months)
+//
+// Cwb = Subtropical highland climate or Monsoon-influenced temperate oceanic climate;
+// - coldest month averaging above 0 °C (32 °F) (or −3 °C (27 °F))
+// - all months with average temperatures below 22 °C (71.6 °F)
+// - at least four months averaging above 10 °C (50 °F)
+// - at least ten times as much rain in the wettest month of summer as in the driest month of winter
+// (an alternative definition is 70% or more of average annual precipitation received in the warmest six months)
+//
+// Cwc = Cold subtropical highland climate or Monsoon-influenced subpolar oceanic climate;
+// - coldest month averaging above 0 °C (32 °F) (or −3 °C (27 °F))
+// -  1–3 months averaging above 10 °C (50 °F)
+// - at least ten times as much rain in the wettest month of summer as in the driest month of winter
+// (alternative definition is 70% or more of average annual precipitation is received in the warmest six months)
+//
+// Csa = Hot-summer Mediterranean climate;
+// - coldest month averaging above 0 °C (32 °F) (or −3 °C (27 °F))
+// - at least one month's average temperature above 22 °C (71.6 °F)
+// - at least four months averaging above 10 °C (50 °F)
+// - at least three times as much precipitation in the wettest month of winter as in the driest month of summer
+// - the driest month of summer receives less than 40 mm (1.6 in) of precipitation
+//
+// Csb = Warm-summer Mediterranean climate;
+// - coldest month averaging above 0 °C (32 °F) (or −3 °C (27 °F))
+// - all months with average temperatures below 22 °C (71.6 °F)
+// - at least four months averaging above 10 °C (50 °F)
+// - at least three times as much precipitation in the wettest month of winter as in the driest month of summer
+// - the driest month of summer receives less than 40 mm (1.6 in)
+//
+// Csc = Cold-summer Mediterranean climate;
+// - coldest month averaging above 0 °C (32 °F) (or −3 °C (27 °F))
+// - 1–3 months averaging above 10 °C (50 °F)
+// - at least three times as much precipitation in the wettest month of winter as in the driest month of summer,
+// - the driest month of summer receives less than 40 mm (1.6 in)
+//
+// 4. ==== Group D: Continental climates
+//
+// This type of climate has at least one month averaging below 0 °C (32 °F) (or −3 °C (27 °F)) and at least one month averaging above 10 °C (50 °F).
+//
+// Dfa = Hot-summer humid continental climate;
+// - coldest month averaging below 0 °C (32 °F) (or −3 °C (27 °F))
+// - at least one month's average temperature above 22 °C (71.6 °F)
+// - at least four months averaging above 10 °C (50 °F)
+// - no significant precipitation difference between seasons (neither the abovementioned set of conditions fulfilled)
+//
+// Dfb = Warm-summer humid continental climate;
+// - coldest month averaging below 0 °C (32 °F) (or −3 °C (27 °F))
+// - all months with average temperatures below 22 °C (71.6 °F)
+// - at least four months averaging above 10 °C (50 °F)
+// - no significant precipitation difference between seasons (neither the abovementioned set of conditions fulfilled)
+//
+// Dfc = Subarctic climate;
+// - coldest month averaging below 0 °C (32 °F) (or −3 °C (27 °F))
+// - 1–3 months averaging above 10 °C (50 °F)
+// - no significant precipitation difference between seasons (neither the abovementioned set of conditions fulfilled)
+//
+// Dfd = Extremely cold subarctic climate;
+// - coldest month averaging below −38 °C (−36.4 °F)
+// - 1–3 months averaging above 10 °C (50 °F)
+// - no significant precipitation difference between seasons (neither the abovementioned set of conditions fulfilled)
+//
+// Dwa = Monsoon-influenced hot-summer humid continental climate;
+// - coldest month averaging below 0 °C (32 °F) (or −3 °C (27 °F))
+// - at least one month's average temperature above 22 °C (71.6 °F)
+// - at least four months averaging above 10 °C (50 °F)
+// - at least ten times as much rain in the wettest month of summer as in the driest month of winter
+// (alternative definition is 70% or more of average annual precipitation is received in the warmest six months)
+//
+// Dwb = Monsoon-influenced warm-summer humid continental climate;
+// - coldest month averaging below 0 °C (32 °F) (or −3 °C (27 °F))
+// - all months with average temperatures below 22 °C (71.6 °F)
+// - at least four months averaging above 10 °C (50 °F)
+// - at least ten times as much rain in the wettest month of summer as in the driest month of winter
+// (alternative definition is 70% or more of average annual precipitation is received in the warmest six months)
+//
+// Dwc = Monsoon-influenced subarctic climate;
+// - coldest month averaging below 0 °C (32 °F) (or −3 °C (27 °F))
+// - 1–3 months averaging above 10 °C (50 °F)
+// - at least ten times as much rain in the wettest month of summer as in the driest month of winter
+// (alternative definition is 70% or more of average annual precipitation is received in the warmest six months)
+//
+// Dwd = Monsoon-influenced extremely cold subarctic climate;
+// - coldest month averaging below −38 °C (−36.4 °F) and 1–3 months averaging above 10 °C (50 °F)
+// - at least ten times as much rain in the wettest month of summer as in the driest month of winter
+// (alternative definition is 70% or more of average annual precipitation is received in the warmest six months)
+//
+// Dsa = Mediterranean-influenced hot-summer humid continental climate;
+// - coldest month averaging below 0 °C (32 °F) (or −3 °C (27 °F))
+// - average temperature of the warmest month above 22 °C (71.6 °F)
+// - at least four months averaging above 10 °C (50 °F)
+// - at least three times as much precipitation in the wettest month of winter as in the driest month of summer
+// - driest month of summer receives less than 30 mm (1.2 in)
+//
+// Dsb = Mediterranean-influenced warm-summer humid continental climate;
+// - coldest month averaging below 0 °C (32 °F) (or −3 °C (27 °F))
+// - average temperature of the warmest month below 22 °C (71.6 °F)
+// - at least four months averaging above 10 °C (50 °F)
+// - at least three times as much precipitation in the wettest month of winter as in the driest month of summer
+// - driest month of summer receives less than 30 mm (1.2 in)
+//
+// Dsc = Mediterranean-influenced subarctic climate;
+// - coldest month averaging below 0 °C (32 °F) (or −3 °C (27 °F))
+// - 1–3 months averaging above 10 °C (50 °F)
+// - at least three times as much precipitation in the wettest month of winter as in the driest month of summer
+// - driest month of summer receives less than 30 mm (1.2 in)
+//
+// Dsd = Mediterranean-influenced extremely cold subarctic climate;
+// - coldest month averaging below −38 °C (−36.4 °F)
+// - 1–3 months averaging above 10 °C (50 °F)
+// - at least three times as much precipitation in the wettest month of winter as in the driest month of summer
+// - driest month of summer receives less than 30 mm (1.2 in)
+//
+// 5. ==== Group E: Polar and alpine climates
+//
+// This type of climate has every month of the year with an average temperature below 10 °C (50 °F)
+//
+// ET = Tundra climate;
+// - average temperature of warmest month between 0 °C (32 °F) and 10 °C (50 °F)
+//
+// EF = Ice cap climate;
+// - eternal winter
+// - all 12 months of the year with average temperatures below 0 °C (32 °F)
+// func KoppenGeigerClimateID(months [12]KoppenGeigerMonthStats, northernHemisphere bool) KoppenGeigerClimate {
+//	return KoppenGeigerClimateUnknown
+// }
