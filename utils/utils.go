@@ -108,6 +108,29 @@ func Abs(a int) int {
 	return a
 }
 
+// Number is the interface for some numeric types.
+type Number interface {
+	int | int64 | float64
+}
+
+// MinMax returns the minimum and maximum value of the given slice.
+func MinMax[V Number](values []V) (min, max V) {
+	if len(values) == 0 {
+		return 0, 0
+	}
+	min = values[0]
+	max = values[0]
+	for _, v := range values {
+		if v < min {
+			min = v
+		}
+		if v > max {
+			max = v
+		}
+	}
+	return
+}
+
 // Gauss returns a normally distributed random number with the given mean and standard deviation.
 // NOTE: mean: mu, stdDev: sigma
 // See: https://en.wikipedia.org/wiki/Normal_distribution
