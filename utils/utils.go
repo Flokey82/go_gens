@@ -22,66 +22,66 @@ func WeightedAvrg(oldVal, newVal, weightFactor float64) float64 {
 type IntRange [2]int
 
 // Random returns a random value between min and max.
-func (ir IntRange) Random() int {
-	return ir.random(rand.Intn)
+func (r IntRange) Random() int {
+	return r.random(rand.Intn)
 }
 
 // random returns a random value between min and max using the supplied rand function.
-func (ir IntRange) random(rnd RandIntn) int {
-	if ir[0] == ir[1] {
-		return ir[0]
+func (r IntRange) random(rnd RandIntn) int {
+	if r[0] == r[1] {
+		return r[0]
 	}
-	if ir[1]-ir[0] <= 0 {
-		log.Println("Warning: IntRange.Random() called with invalid range:", ir)
+	if r[1]-r[0] <= 0 {
+		log.Println("Warning: IntRange.Random() called with invalid range:", r)
 	}
-	return rnd(ir[1]-ir[0]) + ir[0]
+	return rnd(r[1]-r[0]) + r[0]
 }
 
 // InRange returns true if the given value is within the range.
-func (ir IntRange) InRange(value int) bool {
-	return value >= ir.Min() && value <= ir.Max()
+func (r IntRange) InRange(value int) bool {
+	return value >= r.Min() && value <= r.Max()
 }
 
 // Min returns the minimum value of the range.
-func (m IntRange) Min() int {
-	return m[0]
+func (r IntRange) Min() int {
+	return r[0]
 }
 
 // Max returns the maximum value of the range.
-func (m IntRange) Max() int {
-	return m[1]
+func (r IntRange) Max() int {
+	return r[1]
 }
 
 // FloatRange represents a minimum and maximum value.
 type FloatRange [2]float64
 
 // Random returns a random value between min and max.
-func (m FloatRange) Random() float64 {
-	return m.random(rand.Float64)
+func (r FloatRange) Random() float64 {
+	return r.random(rand.Float64)
 }
 
 // random returns a random value between min and max using the provided
 // rand function.
-func (m FloatRange) random(rnd RandFloat64) float64 {
-	if m[0] == m[1] {
-		return m[0]
+func (r FloatRange) random(rnd RandFloat64) float64 {
+	if r[0] == r[1] {
+		return r[0]
 	}
-	return m[0] + rnd()*(m[1]-m[0])
+	return r[0] + rnd()*(r[1]-r[0])
 }
 
 // InRange returns true if the given value is within the range.
-func (m FloatRange) InRange(value float64) bool {
-	return value >= m.Min() && value <= m.Max()
+func (r FloatRange) InRange(value float64) bool {
+	return value >= r.Min() && value <= r.Max()
 }
 
 // Min returns the minimum value of the range.
-func (m FloatRange) Min() float64 {
-	return m[0]
+func (r FloatRange) Min() float64 {
+	return r[0]
 }
 
 // Max FloatRange the maximum value of the range.
-func (m FloatRange) Max() float64 {
-	return m[1]
+func (r FloatRange) Max() float64 {
+	return r[1]
 }
 
 // Min is the int equivalent of math.Min(a, b).
