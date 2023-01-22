@@ -56,3 +56,4 @@ simciv/cmd/runner
 simmemory/cmd/runner
 genworldvoronoi/cmd/server/main
 genworldvoronoi/cmd/cpu.prof
+genstory/cmd/runner
