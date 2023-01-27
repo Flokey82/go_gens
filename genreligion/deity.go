@@ -1,6 +1,6 @@
-package genlanguage
+package genreligion
 
-import "math/rand"
+import "github.com/Flokey82/go_gens/genlanguage"
 
 var DeityMeaningApproaches []string
 
@@ -8,51 +8,76 @@ func init() {
 	DeityMeaningApproaches = weightedToArray(GenMeaningApproaches)
 }
 
-// GetDeityName returns a deity name for the given culture.
+// Deity represents a deity name.
+type Deity struct {
+	Name     string
+	Meaning  string
+	Approach string
+}
+
+// FullName returns the full name of the deity (including the meaning, if any).
+func (d *Deity) FullName() string {
+	if d == nil {
+		return ""
+	}
+	if d.Meaning == "" {
+		return d.Name
+	}
+	return d.Name + ", The " + d.Meaning
+}
+
+// GetDeity returns a deity name for the given culture.
 // This code is based on:
 // https://github.com/Azgaar/Fantasy-Map-Generator/blob/master/modules/religions-generator.js
-func GetDeityName(lang *Language, approach string) (string, string) {
+func (g *Generator) GetDeity(lang *genlanguage.Language, approach string) *Deity {
 	if lang == nil {
-		return "TODO_DEITY", "TODO_DEITY"
+		return nil
 	}
-	meaning := GenerateDeityMeaning(approach)
-	cultureName := lang.MakeName()
-	return cultureName, meaning
+	return &Deity{
+		Name:     lang.MakeName(),
+		Meaning:  g.GenerateDeityMeaning(approach),
+		Approach: approach,
+	}
+}
+
+// RandDeityMeaningGenMethod returns a random deity meaning generation method.
+func (g *Generator) RandDeityGenMethod() string {
+	return g.Ra(DeityMeaningApproaches)
 }
 
 // GenerateDeityMeaning generates a meaning for a deity name.
 // This code is based on:
 // https://github.com/Azgaar/Fantasy-Map-Generator/blob/master/modules/religions-generator.js
-func GenerateDeityMeaning(approach string) string {
+func (g *Generator) GenerateDeityMeaning(approach string) string {
 	switch approach { // select generation approach
 	case ApproachNumber:
-		return ra(GenBase[GenBaseNumber])
+		return g.Ra(GenBase[GenBaseNumber])
 	case ApproachBeing:
-		return ra(GenBase[GenBaseBeing])
+		return g.Ra(GenBase[GenBaseBeing])
 	case ApproachAdjective:
-		return ra(GenBase[GenBaseAdjective])
+		return g.Ra(GenBase[GenBaseAdjective])
 	case ApproachColorAnimal:
-		return ra(GenBase[GenBaseColor]) + " " + ra(GenBase[GenBaseAnimal])
+		return g.Ra(GenBase[GenBaseColor]) + " " + g.Ra(GenBase[GenBaseAnimal])
 	case ApproachAdjectiveAnimal:
-		return ra(GenBase[GenBaseAdjective]) + " " + ra(GenBase[GenBaseAnimal])
+		return g.Ra(GenBase[GenBaseAdjective]) + " " + g.Ra(GenBase[GenBaseAnimal])
 	case ApproachAdjectiveBeing:
-		return ra(GenBase[GenBaseAdjective]) + " " + ra(GenBase[GenBaseBeing])
+		return g.Ra(GenBase[GenBaseAdjective]) + " " + g.Ra(GenBase[GenBaseBeing])
 	case ApproachAdjectiveGenitive:
-		return ra(GenBase[GenBaseAdjective]) + " " + ra(GenBase[GenBaseGenitive])
+		return g.Ra(GenBase[GenBaseAdjective]) + " " + g.Ra(GenBase[GenBaseGenitive])
 	case ApproachColorBeing:
-		return ra(GenBase[GenBaseColor]) + " " + ra(GenBase[GenBaseBeing])
+		return g.Ra(GenBase[GenBaseColor]) + " " + g.Ra(GenBase[GenBaseBeing])
 	case ApproachColorGenitive:
-		return ra(GenBase[GenBaseColor]) + " " + ra(GenBase[GenBaseGenitive])
+		return g.Ra(GenBase[GenBaseColor]) + " " + g.Ra(GenBase[GenBaseGenitive])
 	case ApproachBeingOfGenitive:
-		return ra(GenBase[GenBaseBeing]) + " of " + ra(GenBase[GenBaseGenitive])
+		return g.Ra(GenBase[GenBaseBeing]) + " of " + g.Ra(GenBase[GenBaseGenitive])
 	case ApproachBeingOfTheGenitive:
-		return ra(GenBase[GenBaseBeing]) + " of the " + ra(GenBase[GenBaseTheGenitive])
+		return g.Ra(GenBase[GenBaseBeing]) + " of the " + g.Ra(GenBase[GenBaseTheGenitive])
 	case ApproachAnimalOfGenitive:
-		return ra(GenBase[GenBaseAnimal]) + " of " + ra(GenBase[GenBaseGenitive])
+		return g.Ra(GenBase[GenBaseAnimal]) + " of " + g.Ra(GenBase[GenBaseGenitive])
 	case ApproachAdjectiveBeingOfGenitive:
-		return ra(GenBase[GenBaseAdjective]) + " " + ra(GenBase[GenBaseBeing]) + " of " + ra(GenBase[GenBaseGenitive])
+		return g.Ra(GenBase[GenBaseAdjective]) + " " + g.Ra(GenBase[GenBaseBeing]) + " of " + g.Ra(GenBase[GenBaseGenitive])
 	case ApproachAdjectiveAnimalOfGenitive:
-		return ra(GenBase[GenBaseAdjective]) + " " + ra(GenBase[GenBaseAnimal]) + " of " + ra(GenBase[GenBaseGenitive])
+		return g.Ra(GenBase[GenBaseAdjective]) + " " + g.Ra(GenBase[GenBaseAnimal]) + " of " + g.Ra(GenBase[GenBaseGenitive])
 	default:
 		return "ERROR"
 	}
@@ -439,23 +464,4 @@ var GenBase = map[string][]string{
 		"White",
 		"Yellow",
 	},
-}
-
-func ra(array []string) string {
-	return array[rand.Intn(len(array))]
-}
-
-func rw(mp map[string]int) string {
-	return ra(weightedToArray(mp))
-}
-
-// weightedToArray converts a map of weighted values to an array.
-func weightedToArray(weighted map[string]int) []string {
-	var res []string
-	for key, weight := range weighted {
-		for j := 0; j < weight; j++ {
-			res = append(res, key)
-		}
-	}
-	return res
 }

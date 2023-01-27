@@ -5,11 +5,13 @@ import (
 	"strings"
 
 	"github.com/Flokey82/go_gens/genlanguage"
+	"github.com/Flokey82/go_gens/genreligion"
 )
 
 // NewWorld generates a new world creation mythos using the given seed.
 func NewWorld(seed int64) string {
 	rng := rand.New(rand.NewSource(seed))
+	rlgGen := genreligion.NewGenerator(seed)
 
 	// Generate a new language.
 	lang := genlanguage.GenLanguage(rng.Int63())
@@ -26,7 +28,7 @@ func NewWorld(seed int64) string {
 	switch strategies[rng.Intn(len(strategies))] {
 	case StratCreationGod:
 		// "was created by flubwubb"
-		creationGod := genGodName(lang)
+		creationGod := genGodName(rlgGen, lang)
 		creationProcess := creation[rng.Intn(len(creation))]
 		return intro + " " + worldName + " was " + creationProcess + " by " + creationGod + "."
 	case StratShapingAdjectiveMaterial:
@@ -39,16 +41,16 @@ func NewWorld(seed int64) string {
 		// "was shaped from clay by flubwubb"
 		shapingProcess := shaping[rng.Intn(len(shaping))]
 		material := materials[rng.Intn(len(materials))]
-		creationGod := genGodName(lang)
+		creationGod := genGodName(rlgGen, lang)
 		return intro + " " + worldName + " was " + shapingProcess + " from a " + material + " by " + creationGod + "."
 	}
 	return ""
 }
 
-func genGodName(lang *genlanguage.Language) string {
-	appr := genlanguage.DeityMeaningApproaches[rand.Intn(len(genlanguage.DeityMeaningApproaches))]
-	god, meaning := genlanguage.GetDeityName(lang, appr)
-	return god + ", The " + meaning
+func genGodName(rlgGen *genreligion.Generator, lang *genlanguage.Language) string {
+	appr := genreligion.DeityMeaningApproaches[rand.Intn(len(genreligion.DeityMeaningApproaches))]
+	god := rlgGen.GetDeity(lang, appr)
+	return god.FullName()
 }
 
 // intros contains the intro lines for the world creation mythos.
