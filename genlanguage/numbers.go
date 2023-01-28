@@ -22,7 +22,7 @@ var (
 	}
 )
 
-// NumberToWords returns a string representation of the number in English.
+// NumberToWords returns a string representation of the given number in English.
 func NumberToWords(num int) string {
 	if num < 0 {
 		return "negative " + NumberToWords(-num)

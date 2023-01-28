@@ -28,8 +28,9 @@ func NewWorld(seed int64) string {
 	switch strategies[rng.Intn(len(strategies))] {
 	case StratCreationGod:
 		// "was created by flubwubb"
-		creationGod := genGodName(rlgGen, lang)
 		creationProcess := creation[rng.Intn(len(creation))]
+		god := rlgGen.GetDeity(lang, rlgGen.RandDeityGenMethod())
+		creationGod := god.FullName()
 		return intro + " " + worldName + " was " + creationProcess + " by " + creationGod + "."
 	case StratShapingAdjectiveMaterial:
 		// "formed from a lone pearl"
@@ -41,16 +42,11 @@ func NewWorld(seed int64) string {
 		// "was shaped from clay by flubwubb"
 		shapingProcess := shaping[rng.Intn(len(shaping))]
 		material := materials[rng.Intn(len(materials))]
-		creationGod := genGodName(rlgGen, lang)
+		god := rlgGen.GetDeity(lang, rlgGen.RandDeityGenMethod())
+		creationGod := god.FullName()
 		return intro + " " + worldName + " was " + shapingProcess + " from a " + material + " by " + creationGod + "."
 	}
 	return ""
-}
-
-func genGodName(rlgGen *genreligion.Generator, lang *genlanguage.Language) string {
-	appr := genreligion.DeityMeaningApproaches[rand.Intn(len(genreligion.DeityMeaningApproaches))]
-	god := rlgGen.GetDeity(lang, appr)
-	return god.FullName()
 }
 
 // intros contains the intro lines for the world creation mythos.
