@@ -33,6 +33,9 @@ func (g *Generator) GetDeity(lang *genlanguage.Language, approach string) *Deity
 	if lang == nil {
 		return nil
 	}
+	if approach == "" {
+		approach = g.RandDeityGenMethod()
+	}
 	return &Deity{
 		Name:     lang.MakeName(),
 		Meaning:  g.GenerateDeityMeaning(approach),
