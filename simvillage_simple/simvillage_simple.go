@@ -14,18 +14,18 @@ import (
 )
 
 type Village struct {
-	People []*Person
-	maxID  int
-	tick   int
-	day    int
-	year   int
-
+	People   []*Person       // All people in the village.
+	maxID    int             // Current max unique ID.
+	tick     int             // Current tick.
+	day      int             // Current day.
+	year     int             // Current year.
+	firstGen [2]fmt.Stringer // First name generators (male/female).
+	lastGen  fmt.Stringer    // Last name generators.
 	// Food int
 	// Wood int
-	firstGen [2]fmt.Stringer
-	lastGen  fmt.Stringer
 }
 
+// first name prefixes for fantasyname generator.
 const firstNamePrefix = "!(bil|bal|ban|hil|ham|hal|hol|hob|wil|me|or|ol|od|gor|for|fos|tol|ar|fin|ere|leo|vi|bi|bren|thor)"
 
 // New returns a new village.
@@ -33,23 +33,27 @@ func New() *Village {
 	v := new(Village)
 
 	// Initialize name generation.
+
+	// Female first names.
 	genFirstF, err := fantasyname.Compile(firstNamePrefix+"(|ga|orbise|apola|adure|mosi|ri|i|na|olea|ne)", fantasyname.Collapse(true), fantasyname.RandFn(rand.Intn))
 	if err != nil {
 		log.Fatal(err)
 	}
-	v.firstGen[0] = genFirstF // Female first names.
+	v.firstGen[0] = genFirstF
 
+	// Male first names.
 	genFirstM, err := fantasyname.Compile(firstNamePrefix+"(|go|orbis|apol|adur|mos|ole|n)", fantasyname.Collapse(true), fantasyname.RandFn(rand.Intn))
 	if err != nil {
 		log.Fatal(err)
 	}
-	v.firstGen[1] = genFirstM // Male first names.
+	v.firstGen[1] = genFirstM
 
+	// Last names.
 	genLast, err := fantasyname.Compile("!BsVc", fantasyname.Collapse(true), fantasyname.RandFn(rand.Intn))
 	if err != nil {
 		log.Fatal(err)
 	}
-	v.lastGen = genLast // Last names.
+	v.lastGen = genLast
 	return v
 }
 
@@ -62,9 +66,12 @@ func (v *Village) getNextID() int {
 
 // Tick advances the simulation by one day.
 func (v *Village) Tick() {
+	// Advance day and eventually year.
 	v.tick++
 	v.year += (v.day + 1) / 365
 	v.day = (v.day + 1) % 365
+
+	// Log tick.
 	log.Println("Tick", v.tick, "day", v.day, "year", v.year, "Population", len(v.People))
 
 	// Increase age of villagers.
@@ -110,10 +117,12 @@ func (v *Village) popMatchMaker() {
 		}
 	}
 
-	// Pair up singles.
+	// Sort by age, so similar age people are more likely to be paired up quicker.
 	sort.Slice(single, func(a, b int) bool {
 		return single[a].age > single[b].age
 	})
+
+	// Pair up singles.
 	for i, p := range single {
 		if !p.isEligibleSingle() {
 			continue // Not single anymore.
@@ -170,27 +179,48 @@ func (v *Village) popGrowth() {
 			chance *= p.numLivingChildren() + 1
 
 			if rand.Intn(chance) < 1 {
+				// We are pregnant!
+				// Generate a new person and add it to the mother.
 				c := v.newPerson()
 				c.lastName = p.lastName
+
+				// Set the child's parents.
 				c.mother = p
 				c.father = p.spouse
+
+				// Set the child's genes.
+				c.genes = genetics.Mix(c.mother.genes, c.father.genes, 2)
+				c.fixGenes()
+
+				// Assign the child to the mother.
 				p.pregnantWith = c
 			}
 		} else if p.pregnantWith != nil {
 			p.pregnant++
 
 			// Give birth if we are far along enough.
-			if p.pregnant > 9*30 { // TODO: Add some variance
+			// TODO: Add some variance.
+			if p.pregnant > 9*30 {
+				// The miracle of life!
+
+				// Get the child and remove it from the mother.
 				c := p.pregnantWith
 				p.pregnantWith = nil
 				p.pregnant = 0
+
+				// Add the new born to the child's parents.
 				c.mother.children = append(c.mother.children, c)
 				c.father.children = append(c.father.children, c)
-				c.g = genetics.Mix(c.mother.g, c.father.g, 2)
-				c.fixGenes()
-				c.bday = v.day // Birthday!
+
+				// Set the child's birthday.
+				c.bday = v.day
+
+				// Log the joyous event.
+				// LOL you will not sleep for a while, enjoy! :P
+				log.Println(c.mother.String(), "\n", geneticshuman.String(c.mother.genes), "\nand", c.father.String(), "\n", geneticshuman.String(c.father.genes), "\nhad a baby\n", geneticshuman.String(c.genes))
+
+				// Add the child to the pool that will be added to the village.
 				children = append(children, c)
-				log.Println(c.mother.String(), "\n", geneticshuman.String(c.mother.g), "\nand", c.father.String(), "\n", geneticshuman.String(c.father.g), "\nhad a baby\n", geneticshuman.String(c.g))
 			}
 		}
 	}
@@ -204,14 +234,22 @@ func (v *Village) popGrowth() {
 
 // AddRandomPerson adds a random settler to the village.
 func (v *Village) AddRandomPerson() {
+	// Generate a new person.
 	p := v.newPerson()
 	p.lastName = v.lastGen.String()
-	p.age = rand.Intn(20) + 16
+
+	// Set the person's age and birthday.
+	p.age = ageOfAdulthood + rand.Intn(20)
 	p.bday = rand.Intn(365)
-	p.g = genetics.NewRandom()
+
+	// Set the person's genes.
+	p.genes = genetics.NewRandom()
 	p.fixGenes()
+
+	// Add the person to the village.
 	v.People = append(v.People, p)
 
+	// Log the arrival.
 	log.Println(p.String(), "arrived")
 }
 
@@ -235,6 +273,7 @@ func (v *Village) popDeath() {
 		if spouse := p.spouse; spouse != nil {
 			spouse.spouse = nil // Remove dead spouse from spouse.
 		}
+
 		// TODO: Remove child from parents?
 		log.Println(p.String(), "died and has", len(p.children), "children !!!!!!!!", p.numLivingChildren(), "alive")
 		for _, c := range p.children {
@@ -242,119 +281,4 @@ func (v *Village) popDeath() {
 		}
 	}
 	v.People = livingPeople
-}
-
-// Gender represents a gender.
-type Gender int
-
-const (
-	GenderFemale Gender = iota
-	GenderMale
-)
-
-// String returns the string representation of the gender.
-func (g Gender) String() string {
-	switch g {
-	case GenderFemale:
-		return "F"
-	case GenderMale:
-		return "M"
-	default:
-		return "X"
-	}
-}
-
-// randGender returns a random gender.
-func randGender() Gender {
-	return Gender(rand.Intn(2))
-}
-
-// Person represents a person in the village.
-type Person struct {
-	id           int
-	firstName    string
-	lastName     string
-	age          int
-	bday         int
-	dead         bool
-	mother       *Person
-	father       *Person
-	spouse       *Person // TODO: keep track of spouses that might have perished?
-	children     []*Person
-	gender       Gender
-	pregnant     int
-	pregnantWith *Person
-	g            genetics.Genes
-}
-
-// newPerson creates a new person.
-func (v *Village) newPerson() *Person {
-	p := &Person{
-		id:     v.getNextID(),
-		gender: randGender(),
-	}
-	p.firstName = v.firstGen[p.gender].String()
-	return p
-}
-
-// Name returns the name of the person.
-func (p *Person) Name() string {
-	return p.firstName + " " + p.lastName
-}
-
-// String returns the string representation of the person.
-func (p *Person) String() string {
-	deadStr := ""
-	if p.dead {
-		deadStr = " dead"
-	}
-	return p.Name() + fmt.Sprintf(" (%d %s%s)", p.age, p.gender, deadStr)
-}
-
-// numLivingChildren returns the number of children that are still alive.
-func (p *Person) numLivingChildren() int {
-	var n int
-	for _, c := range p.children {
-		if !c.dead {
-			n++
-		}
-	}
-	return n
-}
-
-// isElegibleSingle returns true if the person is old enough and single.
-func (p *Person) isEligibleSingle() bool {
-	// Old enough and single.
-	return p.age > 16 && p.spouse == nil
-}
-
-// canBePregnant returns true if the person is old enough and not pregnant.
-func (p *Person) canBePregnant() bool {
-	// Female, has a spouse (implies old enough), and is currently not pregnant.
-	// TODO: Set randomized upper age limit.
-	return p.gender == GenderFemale && p.spouse != nil && p.pregnantWith == nil
-}
-
-// fixGenes makes sure that the gender is set properly.
-// NOTE: This needs to be done due to the genetics package being a bit weird.
-func (p *Person) fixGenes() {
-	switch p.gender {
-	case GenderFemale:
-		geneticshuman.SetGender(&p.g, geneticshuman.GenderFemale)
-	case GenderMale:
-		geneticshuman.SetGender(&p.g, geneticshuman.GenderMale)
-	default:
-		geneticshuman.SetGender(&p.g, 0)
-	}
-}
-
-// isRelated returns true if a and b are related (first degree).
-func isRelated(a, b *Person) bool {
-	if a == b.father || a == b.mother || b == a.father || b == a.mother {
-		return true
-	}
-	if (a.father == nil && a.mother == nil) || (b.father == nil && b.mother == nil) {
-		return false
-	}
-	return a.mother == b.mother || a.father == b.father
 }
