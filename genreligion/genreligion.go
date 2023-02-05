@@ -57,13 +57,6 @@ func (g *Generator) GenNamedIsm(name string) string {
 	return genlanguage.TrimVowels(name, 3) + "ism"
 }
 
-// GenNamedTypeOfForm generates a name for a named religion type based on a given
-// religion form ("Polytheism", "Dualism", etc).
-// E.g. "Pradanium deities".
-func (g *Generator) GenNamedTypeOfForm(name, form string) string {
-	return name + " " + g.Rw(Types[form])
-}
-
 // GenNameFaitOfSurpreme generates a name for a faith of a supreme deity or leader.
 // E.g. "Way of Grognark".
 func (g *Generator) GenNameFaitOfSupreme(supreme string) string {
