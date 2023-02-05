@@ -7,12 +7,13 @@ import (
 	"github.com/Flokey82/go_gens/utils"
 )
 
+// Index is the central index for all NPCs.
 type Index struct {
-	Entries   []*Character
-	Locations []*Location
-	Topics    *TopicPool
-	TickCount uint64
-	IDCount   uint64
+	Entries   []*Character // All NPCs
+	Locations []*Location  // All locations
+	Topics    *TopicPool   // All topics (shared between NPCs)
+	TickCount uint64       // Current tick count
+	IDCount   uint64       // Current ID count (for unique IDs)
 }
 
 // New returns a new Index.
@@ -85,17 +86,15 @@ func (idx *Index) Tick() {
 
 	// Group people by location.
 	//
-	// Routines that overlap in location and purpose
-	// have a high chance of an encounter.
-	// Based on existing social bonds and psychological
-	// profile, knowledge might be exchanged, and/or
-	// new social bonds being formed.
+	// Routines that overlap in location and purpose have a high chance of an encounter.
+	// Based on existing social bonds and psychological profile, knowledge might be exchanged,
+	// and/or new social bonds being formed.
 	locs := make(map[*Location][]*Character)
 	for i := range idx.Entries {
 		// Identify canidates for encounters.
+		// Group routines by location.
 		c := idx.Entries[i]
 		if c.Location != nil {
-			// Group routines by location.
 			locs[c.Location] = append(locs[c.Location], c)
 		}
 	}
@@ -115,61 +114,69 @@ func (idx *Index) Tick() {
 	}
 }
 
+// Routine is a routine that a character performs.
 type Routine struct {
-	DayOfWeek int
-	Hour      int
-	Location  *Location
-	C         *Character
+	DayOfWeek int        // Day of week the routine is performed.
+	Hour      int        // Hour of day the routine is performed.
+	Location  *Location  // Location of the routine.
+	C         *Character // Character performing the routine.
 }
 
+// AcquiredFact is a fact that a character has acquired.
+//
+// TODO: Add more information about how the fact was acquired.
+// - Who / who else supplied information
+// - When / during what interaction(s)
+// - What was discussed
+// - Who else knows?
+//
+// Method of acquisition:
+// - Casual knowledge
+// - Education
+// - Legend
+// - First hand experience
 type AcquiredFact struct {
-	ID   uint64
-	Fact *Fact
-	// Who / who else supplied information
-	// When / during what interaction(s)
-	// What was discussed
-	//// Who else knows?
-	//
-	// Method of acquisition:
-	//// Casual knowledge
-	//// Education
-	//// Legend
-	//// First hand
+	ID   uint64 // Unique ID
+	Fact *Fact  // The fact itself
 }
 
+// Interaction is a record of an interaction between two characters.
+// TODO: Add more information about the interaction.
+// - Who was part of the interaction.
+// - What was the type of interaction?
+// - What was the outcome of the interaction
+// - Was there an exchange of information
 type Interaction struct {
-	ID uint64
-	// Who was part of the interaction.
-	// What was the type of interaction?
-	// What was the outcome of the interaction
-	// Was there an exchange of information
+	ID uint64 // Unique ID
 }
 
+// Education is a record of a character's education.
 type Education struct {
-	ID uint64
+	ID uint64 // Unique ID
 }
 
 // SpeechModel describes the factors that has an impact on how a
 // Character expresses themselves.
 type SpeechModel struct {
 	// Psychological factors
-	//// High / low openness to experience
-	////// More / less inquisitive
-	//// High / low conscientiousness
-	////// More / less detail and careful descriptions
-	//// High / low extraversion
-	////// More / less trust and willingness to share information
-	//// High / low agreeableness
-	////// More / less stubbornness and confrontation
-	//// High / low neuroticism
-	///// More / less trust
+	// - High / low openness to experience
+	//   - More / less inquisitive
+	// - High / low conscientiousness
+	//   - More / less detail and careful descriptions
+	// - High / low extraversion
+	//   - More / less trust and willingness to share information
+	// - High / low agreeableness
+	//   - More / less stubbornness and confrontation
+	// - High / low neuroticism
+	//   - More / less trust
 	// Place of residence
-	//// The longer the stay, the stronger is the influence of local dialects.
+	// - The longer the stay, the stronger is the influence of local dialects.
 	// Education (to a degree)
 	// Social status
 	// Profession (past and present)
 }
 
+// Impact is a measure of the impact of an interaction.
 type Impact struct {
 	Emotional   float64 // Positive / negative emotion
 	Monitary    float64 // Monitary gain
@@ -185,7 +192,6 @@ type Opinion struct {
 
 // Change the opinion of a character about a subject.
 func (o *Opinion) Change(imp Impact) {
-
 	// Update emotional impact.
 	o.Total.Emotional = utils.IncrementalAvrg(o.Total.Emotional, imp.Emotional, o.Count)
 

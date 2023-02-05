@@ -29,13 +29,13 @@ const (
 // TODO: Add features (farm plot, chicken coop) that allow passive production
 // of goods... Features might require new routines (collecting eggs etc.)
 type Location struct {
-	ID       uint64
-	Name     string
-	Type     LocationType
-	Scale    LocationScale
-	Parent   *Location
-	Children []*Location
-	Host     *Character
+	ID       uint64        // Unique ID
+	Name     string        // Name of the location
+	Type     LocationType  // Type of location
+	Scale    LocationScale // Scale of the location
+	Parent   *Location     // Parent location
+	Children []*Location   // Child locations
+	Host     *Character    // Host of the location (merchant, innkeeper, etc.)
 	// Storage  []*Item
 	// Features []*LocationFeature
 	// Available indoor slots

@@ -1,9 +1,11 @@
 package simnpcs
 
+// Inventory represents a storage of items.
 type Inventory struct {
 	Items []*ItemInstance
 }
 
+// newInventory creates a new inventory.
 func newInventory() *Inventory {
 	return &Inventory{}
 }

@@ -24,11 +24,13 @@ type Plan struct {
 	Width  int
 }
 
+// ReadPlan reads a floor plan from the given reader.
 func ReadPlan(r io.Reader) *Plan {
 	p := &Plan{}
 	br := bufio.NewReader(r)
 	var maxLen int
 	for {
+		// Read each line and transform it into a byte array.
 		line, _, err := br.ReadLine()
 		if err != nil {
 			break
@@ -40,8 +42,12 @@ func ReadPlan(r io.Reader) *Plan {
 			maxLen = len(ln)
 		}
 	}
+
+	// Store the dimensions of the floor plan.
 	p.Height = len(p.cells)
 	p.Width = maxLen
+
+	// Pad the cells with empty space if needed.
 	for i, l := range p.cells {
 		if len(l) < maxLen {
 			p.cells[i] = append(p.cells[i], make([]byte, maxLen-len(l))...)
@@ -52,11 +58,11 @@ func ReadPlan(r io.Reader) *Plan {
 
 // Render 'renders' the floor plan to an array of strings.
 func (p *Plan) Render() (lines []string) {
+	// Iterate over the cells and render them.
 	for y, xRange := range p.cells {
 		var sb strings.Builder
 		for x := range xRange {
-			// Based on the cellVal there are different
-			// ways to render it.
+			// Based on the cellVal there are different ways to render it.
 			sb.WriteRune(p.renderCell(x, y))
 		}
 		lines = append(lines, sb.String())
@@ -66,6 +72,7 @@ func (p *Plan) Render() (lines []string) {
 
 // renderCell returns the rune for the given coordinates.
 func (p *Plan) renderCell(x, y int) rune {
+	// Get the values of neighboring cells.
 	var nc, ec, sc, wc byte
 	if y > 0 {
 		nc = p.cells[y-1][x]
@@ -79,8 +86,11 @@ func (p *Plan) renderCell(x, y int) rune {
 	if x < p.Width-1 {
 		ec = p.cells[y][x+1]
 	}
+
+	// Based on the cellVal there are different ways to render it.
 	switch cell := p.cells[y][x]; cell {
 	case CellWall:
+		// Encode the type of the cell based on the neighboring cells.
 		t := encodeType(nc, ec, sc, wc, cell)
 		switch t {
 		case 10: // 1010

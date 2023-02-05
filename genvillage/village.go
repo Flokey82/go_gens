@@ -9,9 +9,9 @@ import (
 
 // Settlement represents a village with a number of buildings.
 type Settlement struct {
-	Buildings []*Building
-	*Production
-	*BuildingPool
+	Buildings     []*Building // All buildings in the settlement.
+	*Production               // Production totals for the settlement.
+	*BuildingPool             // All known building types.
 }
 
 // NewSettlement returns a new settlement with the given BuildingPool.
@@ -49,11 +49,13 @@ func (s *Settlement) Solve() {
 
 	// Attempt to stabelize the local economy.
 	for i := 0; i < maxAttempts; i++ {
+		// Get the missing resources.
 		req := s.GetMissing()
 		if len(req) == 0 {
 			break
 		}
 
+		// Try to find a buildings that provides the missing resources.
 		for key, val := range req {
 			bts := s.BuildingPool.Provides[key]
 			if len(bts) == 0 {
@@ -61,6 +63,8 @@ func (s *Settlement) Solve() {
 				continue
 			}
 
+			// Add random buildings that provide the missing resource until
+			// we have enough.
 			for val > 0 {
 				b := bts[rand.Intn(len(bts))]
 				changed = true

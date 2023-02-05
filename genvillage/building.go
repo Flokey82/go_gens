@@ -8,8 +8,8 @@ type Building struct {
 // BuildingType represents a class of building requiring and/or providing
 // specific resources.
 type BuildingType struct {
-	Name string
-	*Production
+	Name        string // Name of the building type.
+	*Production        // Produces and requires which resources.
 }
 
 // NewBuildingType returns a new building type with the given name.
@@ -34,9 +34,9 @@ func (bt *BuildingType) NewBuilding() *Building {
 
 // BuildingPool represents all known / registered building types.
 type BuildingPool struct {
-	Types    []*BuildingType
-	Provides map[string][]*BuildingType
-	Requires map[string][]*BuildingType
+	Types    []*BuildingType            // All known building types.
+	Provides map[string][]*BuildingType // Maps resource ID to building types that provide it.
+	Requires map[string][]*BuildingType // Maps resource ID to building types that require it.
 }
 
 // NewBuildingPool returns a new, empty building pool.

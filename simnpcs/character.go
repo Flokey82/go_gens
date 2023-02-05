@@ -36,28 +36,22 @@ const (
 const maxExhaustion = 12
 
 type Character struct {
-	ID        uint64
-	FirstName string
-	LastName  string
-	Title     string
+	ID         uint64          // Unique ID
+	FirstName  string          // First name
+	LastName   string          // Last name
+	Title      string          // Title (Sir, Lady, ...), optional
+	Exhaustion int             // Current exhaustion level (0-8)
+	WakeAt     int             // Time of day to wake up
+	SleepAt    int             // Time of day to go to sleep
+	Status     CharacterStatus // Current status (idle, working, resting, sleeping, ...)
 
-	Exhaustion int // Current exhaustion level (0-8)
-	WakeAt     int
-	SleepAt    int
-	Status     CharacterStatus
+	aifiver.SmallModel // Personality
 
-	aifiver.SmallModel
-
-	// Current and past careers
-	Career      *Career   // TODO: Allow multiple careers
-	PastCareers []*Career // TODO: Add reason for new career
-
-	// Where the character sleeps.
-	Home      *Location
-	PastHomes []*Location // TODO: Add reason for move
-
-	// Current location
-	Location *Location
+	Career      *Career     // Current career (maybe allow multiple careers?)
+	Home        *Location   // Current home (where the character sleeps)
+	Location    *Location   // Current location
+	PastCareers []*Career   // TODO: Add reason for new career
+	PastHomes   []*Location // TODO: Add reason for move
 
 	// Social standing.
 	// Superior / Underlings
@@ -71,8 +65,8 @@ type Character struct {
 	Opinions  map[uint64]Opinion        // ID to opinion mapping
 	Routines  [7][24]*Routine           // Fixed routines
 	Sources   map[uint64][]*Location    // Where to find what
-	Tasks
-	Inventory *Inventory // Personal inventory
+	Tasks                               // Current tasks
+	Inventory *Inventory                // Personal inventory
 }
 
 // NewCharacter creates a new character.
@@ -115,12 +109,20 @@ func (c *Character) AddSources(item *Item, locs ...*Location) {
 
 // Interact with another character.
 func (c *Character) Interact(ct *Character, loc *Location) {
+	// Determine compatibility between the two characters' personalities.
 	compat := aifiver.Compatibility(&c.SmallModel, &ct.SmallModel)
+
 	// TODO: Determine if an interaction is likely.
 	log.Println(fmt.Sprintf("encounter between %q and %q: %d", c.Name(), ct.Name(), compat))
+
+	// TODO: If the personalities allow, exchange topics of interest or gossip.
+
+	// Determine the impact of the interaction.
 	imp := Impact{
 		Emotional: float64(compat),
 	}
+
+	// Change opinions of each other based on the impact of the interaction.
 	op := c.ChangeOpinion(ct.ID, imp)
 	log.Println(fmt.Sprintf("%q %s %q", c.Name(), op.String(), ct.Name()))
 
@@ -130,27 +132,34 @@ func (c *Character) Interact(ct *Character, loc *Location) {
 	// Buy any items we need.
 	hasItems := make(map[*Item]bool)
 	for _, item := range c.Career.SellsItems() {
-		// TODO: Remember where stuff is sold.
+		// Remember where stuff is sold.
 		ct.AddSources(item, loc)
 		hasItems[item] = true
 	}
 	// TODO: Reverse trade information!
+
+	// Execute transactions.
 	var completed []*Task
 	for _, t := range ct.Tasks {
+		// If the character has the item, sell it.
 		if hasItems[t.Item] {
 			if it := c.Career.Storage.Find(t.Item); it != nil {
-				// t.Complete()
+				// There is still enough stock, so buy/sell.
 				c.Career.Storage.Move(it, ct.Career.Storage)
-				// ct.CompleteTask(t)
 				completed = append(completed, t)
 				log.Println(fmt.Sprintf("%q sold %q to %q", c.Name(), t.Item.Name, ct.Name()))
 			} else {
+				// We might have sold out.
 				log.Println(fmt.Sprintf("%q can not sell %q to %q", c.Name(), t.Item.Name, ct.Name()))
 			}
-		} else if len(c.Sources[t.Item.ID]) != 0 { // Exchange of information should only occur if they like each other.
+		} else if len(c.Sources[t.Item.ID]) != 0 {
+			// Exchange information about where to find the item.
+			// TODO: Exchange of information should only occur if they like each other.
 			ct.AddSources(t.Item, c.Sources[t.Item.ID]...)
 		}
 	}
+
+	// Complete completed tasks.
 	for _, t := range completed {
 		ct.CompleteTask(t)
 		log.Println(fmt.Sprintf("%q completed task %q", ct.Name(), t.String()))
@@ -230,7 +239,7 @@ func (c *Character) DoYourThing(day int, hour int) {
 	}
 }
 
-// Set new active career for the character.
+// SetCareer sets a new active career for the character.
 func (c *Character) SetCareer(car *Career) {
 	// TODO: Account for change of workplace, retain experience.
 	if c.Career != nil {
@@ -244,12 +253,12 @@ func (c *Character) SetCareer(car *Career) {
 	}
 }
 
-// Add a specific routine for the character.
+// AddRoutine adds a specific routine for the character.
 func (c *Character) AddRoutine(r *Routine) {
 	c.Routines[r.DayOfWeek][r.Hour] = r
 }
 
-// Get any routine for the given day and hour.
+// GetRoutine gets any routine for the given day and hour.
 func (c *Character) GetRoutine(dayOfWeek int, hour int) *Routine {
 	return c.Routines[dayOfWeek][hour]
 }

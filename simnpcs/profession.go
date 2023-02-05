@@ -8,10 +8,10 @@ import (
 
 // Career is an instance of a profession associated with a person.
 type Career struct {
-	ID           uint64
-	Start        int         // Start cycle
-	Active       int         // Active cycles
-	End          int         // End cycle
+	ID           uint64      // Unique ID
+	Start        int         // Started career at cycle
+	Active       int         // Number of active cycles (experience)
+	End          int         // Last cycle of activity
 	Profession   *Profession // Type of profession
 	Location     *Location   // Main career location
 	Storage      *Inventory  // Produced items, resources...
@@ -22,13 +22,13 @@ type Career struct {
 	// Any apprentices / employees?
 
 	// TODO: Change this to requested items list / orders.
-	WorkingOn *ProductionTask
+	WorkingOn *ProductionTask // Task currently being worked on
 }
 
 // ProductionTask is a task that is being worked on.
 type ProductionTask struct {
-	*Item
-	Remaining int
+	*Item         // Item being produced
+	Remaining int // Remaining cycles until completion
 }
 
 // IsWorkTime returns true if the given day of the week and hour is active for this profession.
@@ -93,13 +93,19 @@ func (c *Career) Update() {
 	//}
 
 	c.Active++
+
 	// We're not working on anything, so select something to work on.
 	if c.WorkingOn == nil {
-		// We assume we have all resources needed for creating the Item.
+		// Determine all items that we can craft given the current experience.
 		canCraft := c.Profession.CanCraft(c.Active)
+
 		// Can we craft anything?
 		if len(canCraft) > 0 {
+			// Select a random item to craft.
+			// TODO: Select based on availability of required items.
 			item := canCraft[rand.Intn(len(canCraft))]
+
+			// Start working on the selected item.
 			c.WorkingOn = &ProductionTask{
 				Item:      item,
 				Remaining: item.RequiresTime,
@@ -107,10 +113,16 @@ func (c *Career) Update() {
 			log.Println(fmt.Sprintf("%q started working on %q", c.Profession.Name, c.WorkingOn.Name))
 		}
 	} else {
+		// We're working on something, so continue working on it.
 		c.WorkingOn.Remaining--
+
+		// Did we finish working on it?
 		if c.WorkingOn.Remaining <= 0 {
+			// Add the produced item to our storage.
 			c.Storage.Add(c.WorkingOn.Item.newInstance(1234567)) // TODO: Generate unique id.
 			log.Println(fmt.Sprintf("%q produced %q", c.Profession.Name, c.WorkingOn.Name))
+
+			// Reset the current production task.
 			c.WorkingOn = nil
 		}
 	}
@@ -118,25 +130,20 @@ func (c *Career) Update() {
 
 // Profession represents a profession like "smith", "farmer", "miner", etc.
 type Profession struct {
-	ID       uint64
-	Name     string       // Name of the profession.
-	Requires LocationType // Requires location type.
-
-	// Time of day
-	TypicalStart int
-	TypicalEnd   int
-	TypicalDays  []DayOfWeek
-	// Required routines
-	// Required items (speer f. hunter, plow f. farmer, ...)
-	RequiresItems []*Item
-
-	// Base Salary?
-
+	ID            uint64       // Unique ID
+	Name          string       // Name of the profession.
+	Requires      LocationType // Requires location type.
+	TypicalStart  int          // Typical time the works starts (hour)
+	TypicalEnd    int          // Typical time the works ends (hour)
+	TypicalDays   []DayOfWeek  // Typical days of the week the profession is performed.
+	RequiresItems []*Item      // Required items (speer f. hunter, plow f. farmer, ...)
+	Novice        int          // Requires number of (active) cycles to be "Novice"
+	Skilled       int          // Requires number of (active) cycles to be "Skilled"
+	Expert        int          // Requires number of (active) cycles to be "Expert"
+	Skills        []*Skill     // Skills that can be learned by this profession.
+	// TODO: Base Salary?
+	// TODO: Required daily routines (e.g. "farmer" needs to water plants every day)
 	// TODO: Expertise should also factor in talent.
-	Novice  int // Requires number of (active) cycles to be "Novice"
-	Skilled int // Requires number of (active) cycles to be "Skilled"
-	Expert  int // Requires number of (active) cycles to be "Expert"
-	Skills  []*Skill
 }
 
 // NewProfession creates a new profession.
@@ -157,6 +164,15 @@ func NewProfession(id uint64, name string, req LocationType) *Profession {
 		},
 	}
 	return prof
+}
+
+// Skill represents a skill that can be used to produce items.
+type Skill struct {
+	ID            uint64      // Unique ID of the skill.
+	Name          string      // Name of the skill.
+	CanProduce    []*Item     // Items that can be produced by this skill.
+	Requires      *Profession // Profession required.
+	MinExperience int         // Minimum number of active cycles needed
 }
 
 // AddSkill adds a new skill to the profession.
@@ -188,13 +204,4 @@ func (p *Profession) CanCraft(activeTics int) []*Item {
 		}
 	}
 	return res
-}
-
-// Skill represents a skill that can be used to produce items.
-type Skill struct {
-	ID            uint64      // Unique ID of the skill.
-	Name          string      // Name of the skill.
-	CanProduce    []*Item     // Items that can be produced by this skill.
-	Requires      *Profession // Profession required.
-	MinExperience int         // Minimum number of active cycles needed
 }

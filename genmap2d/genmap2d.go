@@ -36,10 +36,12 @@ func New(width, height int, seed int64) *Map {
 	return m
 }
 
+// GetIndex returns the index for the given x and y coordinates.
 func (m *Map) GetIndex(x, y int) int {
 	return x + y*m.Width
 }
 
+// GetCoordinates returns the x and y coordinates for the given index.
 func (m *Map) GetCoordinates(idx int) (int, int) {
 	return idx % m.Width, idx / m.Width
 }

@@ -1,3 +1,4 @@
+// Package genpotion implements a simple alchemy generator.
 package genpotion
 
 import (
@@ -10,9 +11,11 @@ import (
 // TODO:
 // - Add the strength of each effect to the ingredient.
 // - Add the price of the ingredient.
+// - Add the rarity of the ingredient.
+// - Use maybe ints instead of strings for effects?
 type Ingredient struct {
-	Name    string
-	Effects []string
+	Name    string   // Name of the ingredient.
+	Effects []string // Potential effects of the ingredient.
 }
 
 // NewIngredient returns a new ingredient with the given name and effects.
@@ -69,11 +72,15 @@ func CanCraftPotion(ingredients ...*Ingredient) bool {
 				continue
 			}
 
+			// If the ingredient has any overlapping effect, we can continue.
 			if in1.hasSomeEffects(in2.Effects) {
 				valid = true
 				break
 			}
 		}
+
+		// If no ingredient has any overlapping effect, the potion cannot be
+		// crafted.
 		if !valid {
 			return false
 		}
