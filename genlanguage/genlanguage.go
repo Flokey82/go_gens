@@ -108,24 +108,49 @@ type Language struct {
 	lastNameConfig  *naming.NameParams
 }
 
+// GetWord returns a random, probably new, word from the language.
 func (l *Language) GetWord(group string) string {
 	return l.lang.GetWord(l.wordConfig, group)
 }
 
+// MakeName returns a random, probably new, name from the language.
 func (l *Language) MakeName() string {
 	return l.lang.MakeName(l.nameConfig)
 }
 
+// MakeCityName returns a random, probably new, city name from the language.
 func (l *Language) MakeCityName() string {
 	return l.lang.MakeName(l.cityConfig)
 }
 
+// GetFirstNamePoolSize returns the number of first names in the language.
+func (l *Language) GetFirstNamePoolSize() int {
+	return len(l.lang.Words.General[l.firstNameConfig.Group])
+}
+
+// MakeFirstName returns a random, probably new, first name from the language.
 func (l *Language) MakeFirstName() string {
 	return l.lang.MakeName(l.firstNameConfig)
 }
 
+// GetFirstName returns a random, pre-existing first name from the language.
+func (l *Language) GetFirstName() string {
+	return strings.Title(l.lang.GetWord(l.firstNameConfig.WordParams, l.firstNameConfig.Group))
+}
+
+// GetLastNamePoolSize returns the number of last names in the language.
+func (l *Language) GetLastNamePoolSize() int {
+	return len(l.lang.Words.General[l.lastNameConfig.Group])
+}
+
+// MakeLastName returns a random, probably new, last name from the language.
 func (l *Language) MakeLastName() string {
 	return l.lang.MakeName(l.lastNameConfig)
+}
+
+// GetLastName returns a random, pre-existing last name from the language.
+func (l *Language) GetLastName() string {
+	return strings.Title(l.lang.GetWord(l.lastNameConfig.WordParams, l.lastNameConfig.Group))
 }
 
 func NewFantasyName() (fmt.Stringer, error) {
