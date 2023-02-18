@@ -50,3 +50,17 @@ func DiesAtAge(age int) bool {
 	}
 	return false
 }
+
+// DiesAtAgeWithinNDays returns true if the person of the given age dies of
+// natural causes within the next n days.
+// TODO: Deduplicate code with DiesAtAge.
+func DiesAtAgeWithinNDays(age, n int) bool {
+	if 35 < age && age < 50 { // Adult
+		return rand.Intn(241995) < n
+	} else if 50 < age && age < 70 { // Old Person
+		return rand.Intn(29380579) < n
+	} else if age > 70 { // Elderly
+		return rand.Intn(5475) < n
+	}
+	return false
+}
