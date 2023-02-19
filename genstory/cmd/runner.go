@@ -10,30 +10,37 @@ import (
 func main() {
 	log.Println(genstory.NewWorld(time.Now().UnixNano()))
 
-	tokens := []genstory.TokenReplacement{{
-		Token:       genstory.TokenNoun,
-		Replacement: "Battle Tactics",
-	}}
-	for i := 0; i < 10; i++ {
-		log.Println(genstory.GenerateTitle(tokens, genstory.BookVariantTitles))
-	}
-	tokens = []genstory.TokenReplacement{{
-		Token:       genstory.TokenName,
-		Replacement: "Glorbnorb",
-	}}
-	for i := 0; i < 10; i++ {
-		log.Println(genstory.GenerateTitle(tokens, genstory.BookInstructionTitles))
-	}
-
-	tokens = []genstory.TokenReplacement{{
-		Token:       genstory.TokenName,
-		Replacement: "Bleepblorp",
+	for _, tc := range []struct {
+		tokens []genstory.TokenReplacement
+		titles []string
+	}{{
+		tokens: []genstory.TokenReplacement{{
+			Token:       genstory.TokenNoun,
+			Replacement: "Battle Tactics",
+		}},
+		titles: genstory.BookVariantTitles,
 	}, {
-		Token:       genstory.TokenNoun,
-		Replacement: "Trickery",
-	}}
-
-	for i := 0; i < 10; i++ {
-		log.Println(genstory.GenerateTitle(tokens, genstory.BookVariantTitles))
+		tokens: []genstory.TokenReplacement{{
+			Token:       genstory.TokenName,
+			Replacement: "Glorbnorb",
+		}},
+		titles: genstory.BookInstructionTitles,
+	}, {
+		tokens: []genstory.TokenReplacement{{
+			Token:       genstory.TokenName,
+			Replacement: "Bleepblorp",
+		}, {
+			Token:       genstory.TokenNoun,
+			Replacement: "Trickery",
+		}},
+		titles: genstory.BookVariantTitles,
+	}} {
+		for i := 0; i < 10; i++ {
+			if title, err := genstory.GenerateTitle(tc.tokens, tc.titles); err != nil {
+				log.Println(i, err)
+			} else {
+				log.Println(i, title)
+			}
+		}
 	}
 }

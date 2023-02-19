@@ -1,6 +1,8 @@
 package genstory
 
 import (
+	"errors"
+	"fmt"
 	"math/rand"
 	"strings"
 
@@ -243,7 +245,7 @@ type TokenReplacement struct {
 //
 // TODO: Also return the selected title template, and the individual replacements,
 // so that the caller can use them for the description or the generation of content.
-func GenerateTitle(provided []TokenReplacement, titleOptions []string) string {
+func GenerateTitle(provided []TokenReplacement, titleOptions []string) (string, error) {
 	// Count how many token replacements we have for each token.
 	tokenReplacements := map[string]int{}
 	for _, replacement := range provided {
@@ -255,7 +257,7 @@ func GenerateTitle(provided []TokenReplacement, titleOptions []string) string {
 	for _, i := range rand.Perm(len(titleOptions)) {
 		title := titleOptions[i]
 		// Check if we have all required tokens the required number of times.
-		missingToken := false
+		var missingToken bool
 		for _, token := range titleTokens {
 			if tokenReplacements[token] < strings.Count(title, token) {
 				if titleTokenIsMandatory[token] {
@@ -264,13 +266,22 @@ func GenerateTitle(provided []TokenReplacement, titleOptions []string) string {
 				}
 			}
 		}
-		// Also make sure all tokens we have provided are available in the title.
+
+		// Something is missing, skip this title.
+		if missingToken {
+			continue
+		}
+
+		// Also make sure all tokens we have provided are available in the title,
+		// since we want to pick a complete title, referencing all provided tokens.
 		for _, replacement := range provided {
 			if strings.Count(title, replacement.Token) < tokenReplacements[replacement.Token] {
 				missingToken = true
 				break
 			}
 		}
+
+		// Something is missing, skip this title.
 		if missingToken {
 			continue
 		}
@@ -279,9 +290,9 @@ func GenerateTitle(provided []TokenReplacement, titleOptions []string) string {
 		possibleTitles = append(possibleTitles, title)
 	}
 
+	// If we have no possible titles, return an error.
 	if len(possibleTitles) == 0 {
-		// We have no possible titles, just return an empty string.
-		return ""
+		return "", errors.New("no possible titles satisfying the provided tokens")
 	}
 
 	// Pick a random title.
@@ -293,26 +304,23 @@ func GenerateTitle(provided []TokenReplacement, titleOptions []string) string {
 	}
 
 	// Replace all optional tokens with random replacements.
-	for {
-		// Relplace each token one by one until we can't find any more.
-		var foundToken bool
-		for _, token := range titleTokens {
-			if !titleTokenIsMandatory[token] && strings.Contains(title, token) {
-				// Pick a random replacement.
-				// TODO: What to do if we don't have any replacements for a token?
-				replacement := randArrayString(bookTokenToRandom[token])
+	remainingTokens, err := ExtractTokens(title)
+	if err != nil {
+		return "", fmt.Errorf("failed to extract tokens from title: %v", err)
+	}
 
-				// Replace the token.
-				title = strings.Replace(title, token, replacement, 1)
-				foundToken = true
-			}
-		}
+	// Relplace each token one by one until we can't find any more.
+	for _, token := range remainingTokens {
+		if !titleTokenIsMandatory[token] && strings.Contains(title, token) {
+			// Pick a random replacement.
+			// TODO: What to do if we don't have any replacements for a token?
+			replacement := randArrayString(bookTokenToRandom[token])
 
-		if !foundToken {
-			break
+			// Replace the token.
+			title = strings.Replace(title, token, replacement, 1)
 		}
 	}
-	return strings.Title(title)
+	return strings.Title(title), nil
 }
 
 func randArrayString(arr []string) string {
@@ -500,4 +508,32 @@ var bookTitlePlaces = []string{
 	"world",
 	"universe",
 	"pit",
+}
+
+// ExtractTokens extracts all tokens from a string.
+// A token is a string surrounded by square brackets ('[]').
+func ExtractTokens(s string) ([]string, error) {
+	// Scan through the string, looking for tokens.
+	var tokens []string
+	var tokenStart int
+	var inToken bool
+	for i, c := range s {
+		if c == '[' {
+			if inToken {
+				return nil, fmt.Errorf("unexpected token start at %d", i)
+			}
+			inToken = true
+			tokenStart = i
+		} else if c == ']' {
+			if !inToken {
+				return nil, fmt.Errorf("unexpected token end at %d", i)
+			}
+			inToken = false
+			tokens = append(tokens, s[tokenStart:i+1])
+		}
+	}
+	if inToken {
+		return nil, fmt.Errorf("unexpected end of string")
+	}
+	return tokens, nil
 }
