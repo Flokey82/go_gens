@@ -62,4 +62,19 @@ func main() {
 			}
 		}
 	}
+
+	log.Println("weapon flavor text")
+	for i := 0; i < 10; i++ {
+		if title, err := genstory.WeaponsTextConfig.Generate([]genstory.TokenReplacement{{
+			Token:       genstory.WeaponTokenName,
+			Replacement: "Soul Cleaver",
+		}, {
+			Token:       genstory.WeaponTokenType,
+			Replacement: "longsword",
+		}}); err != nil {
+			log.Println(i, err)
+		} else {
+			log.Println(i, title)
+		}
+	}
 }

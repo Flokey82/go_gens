@@ -1,139 +1,18 @@
 package genstory
 
 import (
-	"errors"
-	"fmt"
-	"math/rand"
-	"strings"
-
 	"github.com/Flokey82/go_gens/genlanguage"
 )
 
-// TokenReplacement is a replacement for a token in a title.
-type TokenReplacement struct {
-	Token       string // The token to replace.
-	Replacement string // The replacement text.
-}
-
-// TitleConfig is a configuration for generating titles.
-type TitleConfig struct {
-	TokenPools       map[string][]string // A map of token names to a list of possible values.
-	TokenIsMandatory map[string]bool     // A map of token names to a boolean indicating whether the token is mandatory.
-	Tokens           []string            // A list of tokens that are required to be replaced.
-	Titles           []string            // A list of possible titles.
-}
-
 // NewSimpleTitleConfig returns a simple title configuration.
-func NewSimpleTitleConfig(titles []string) *TitleConfig {
-	return &TitleConfig{
+func NewSimpleTitleConfig(templates []string) *TextConfig {
+	return &TextConfig{
 		TokenPools:       DefaultTitleTokenPool,
 		TokenIsMandatory: DefaultTitleTokenIsMandatory,
 		Tokens:           DefaultTitleTokens,
-		Titles:           titles,
+		Templates:        templates,
+		Title:            true,
 	}
-}
-
-// Generate generates a title from the provided tokens and the configuration.
-func (c *TitleConfig) Generate(provided []TokenReplacement) (string, error) {
-	return generateTitle(provided, c.Titles, c.Tokens, c.TokenIsMandatory, c.TokenPools)
-}
-
-// GenerateTitle generates a title from the provided tokens and a list of
-// possible titles.
-//   - The provided tokens are used to replace the tokens in the possible titles.
-//   - If a token is not provided, it is replaced with a random value.
-//   - If a token is not provided and is not optional, all possible titles are
-//     excluded that require that token.
-//
-// TODO: Also return the selected title template, and the individual replacements,
-// so that the caller can use them for the description or the generation of content.
-func GenerateTitle(provided []TokenReplacement, titles []string) (string, error) {
-	return generateTitle(provided, titles, DefaultTitleTokens, DefaultTitleTokenIsMandatory, DefaultTitleTokenPool)
-}
-
-func generateTitle(provided []TokenReplacement, titles, tokens []string, isMandatory map[string]bool, tokenRandom map[string][]string) (string, error) {
-	// Count how many token replacements we have for each token.
-	tokenReplacements := map[string]int{}
-	for _, replacement := range provided {
-		tokenReplacements[replacement.Token]++
-	}
-
-	// Loop over all titles and find the ones where we have all required tokens.
-	possibleTitles := []string{}
-	for _, i := range rand.Perm(len(titles)) {
-		title := titles[i]
-		// Check if we have all required tokens the required number of times.
-		var missingToken bool
-		for _, token := range tokens {
-			if tokenReplacements[token] < strings.Count(title, token) {
-				if DefaultTitleTokenIsMandatory[token] {
-					missingToken = true
-					break
-				}
-			}
-		}
-
-		// Something is missing, skip this title.
-		if missingToken {
-			continue
-		}
-
-		// Also make sure all tokens we have provided are available in the title,
-		// since we want to pick a complete title, referencing all provided tokens.
-		for _, replacement := range provided {
-			if strings.Count(title, replacement.Token) < tokenReplacements[replacement.Token] {
-				missingToken = true
-				break
-			}
-		}
-
-		// Something is missing, skip this title.
-		if missingToken {
-			continue
-		}
-
-		// We have all required tokens, add the title to the list of possible titles.
-		possibleTitles = append(possibleTitles, title)
-	}
-
-	// If we have no possible titles, return an error.
-	if len(possibleTitles) == 0 {
-		return "", errors.New("no possible titles satisfying the provided tokens")
-	}
-
-	// Pick a random title.
-	title := randArrayString(possibleTitles)
-
-	// Replace all tokens with the provided replacements.
-	for _, replacement := range provided {
-		title = strings.Replace(title, replacement.Token, replacement.Replacement, 1)
-	}
-
-	// Replace all optional tokens with random replacements.
-	remainingTokens, err := ExtractTokens(title)
-	if err != nil {
-		return "", fmt.Errorf("failed to extract tokens from title: %v", err)
-	}
-
-	// Relplace each token one by one until we can't find any more.
-	for _, token := range remainingTokens {
-		if !isMandatory[token] && strings.Contains(title, token) {
-			// Pick a random replacement.
-			// TODO: What to do if we don't have any replacements for a token?
-			replacement := randArrayString(tokenRandom[token])
-
-			// Replace the token.
-			title = strings.Replace(title, token, replacement, 1)
-		}
-	}
-	return strings.Title(title), nil
-}
-
-func randArrayString(arr []string) string {
-	if len(arr) == 0 {
-		return ""
-	}
-	return arr[rand.Intn(len(arr))]
 }
 
 const (
