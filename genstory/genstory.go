@@ -9,48 +9,69 @@ import (
 )
 
 // NewWorld generates a new world creation mythos using the given seed.
-func NewWorld(seed int64) string {
+func NewWorld(seed int64) (string, error) {
 	rng := rand.New(rand.NewSource(seed))
 	rlgGen := genreligion.NewGenerator(seed)
 
 	// Generate a new language.
 	lang := genlanguage.GenLanguage(rng.Int63())
 
-	// Pick a random intro line.
-	// "Long ago,"
-	intro := intros[rng.Intn(len(intros))]
-
 	// Pick a random world name.
-	// "Flubwubbworld"
 	worldName := strings.Title(lang.GetWord("world"))
 
 	// Pick a random strategy for creation of the world.
-	switch strategies[rng.Intn(len(strategies))] {
-	case StratCreationGod:
+	tokenReplacements := []TokenReplacement{{Token: StoryTokenWorld, Replacement: worldName}}
+	if rand.Intn(2) == 0 {
 		// "was created by flubwubb"
-		creationProcess := creation[rng.Intn(len(creation))]
 		god := rlgGen.GetDeity(lang, rlgGen.RandDeityGenMethod())
-		creationGod := god.FullName()
-		return intro + " " + worldName + " was " + creationProcess + " by " + creationGod + "."
-	case StratShapingAdjectiveMaterial:
-		// "formed from a lone pearl"
-		shapingProcess := shaping[rng.Intn(len(shaping))]
-		adjective := adjectives[rng.Intn(len(adjectives))]
-		material := materials[rng.Intn(len(materials))]
-		return intro + " " + worldName + " was " + shapingProcess + " from a " + adjective + " " + material + "."
-	case StratShapingMaterialGod:
-		// "was shaped from clay by flubwubb"
-		shapingProcess := shaping[rng.Intn(len(shaping))]
-		material := materials[rng.Intn(len(materials))]
-		god := rlgGen.GetDeity(lang, rlgGen.RandDeityGenMethod())
-		creationGod := god.FullName()
-		return intro + " " + worldName + " was " + shapingProcess + " from a " + material + " by " + creationGod + "."
+		tokenReplacements = append(tokenReplacements, TokenReplacement{Token: StoryTokenGod, Replacement: god.FullName()})
 	}
-	return ""
+	return StoryConfig.Generate(tokenReplacements)
 }
 
-// intros contains the intro lines for the world creation mythos.
-var intros = []string{
+var StoryConfig = &TextConfig{
+	TokenPools: map[string][]string{
+		StoryTokenIntro:     StoryIntros,
+		StoryTokenCreation:  StoryCreationPool,
+		StoryTokenAdjective: StoryAdjectivesPool,
+		StoryTokenMaterial:  StoryMaterialsPool,
+		StoryTokenShaping:   StoryShapingPool,
+	},
+	TokenIsMandatory: map[string]bool{
+		StoryTokenWorld: true,
+	},
+	Tokens:    StoryTokens,
+	Templates: StoryTemplates,
+}
+
+var StoryTemplates = []string{
+	"[INTRO] [WORLD] was [CREATION] by [GOD].",
+	"[INTRO] [WORLD] was [SHAPING] from a [ADJECTIVE] [MATERIAL].",
+	"[INTRO] [WORLD] was [SHAPING] from a [MATERIAL] by [GOD].",
+}
+
+const (
+	StoryTokenIntro     = "[INTRO]"
+	StoryTokenWorld     = "[WORLD]"
+	StoryTokenCreation  = "[CREATION]"
+	StoryTokenGod       = "[GOD]"
+	StoryTokenAdjective = "[ADJECTIVE]"
+	StoryTokenMaterial  = "[MATERIAL]"
+	StoryTokenShaping   = "[SHAPING]"
+)
+
+var StoryTokens = []string{
+	StoryTokenIntro,
+	StoryTokenWorld,
+	StoryTokenCreation,
+	StoryTokenGod,
+	StoryTokenAdjective,
+	StoryTokenMaterial,
+	StoryTokenShaping,
+}
+
+// StoryIntros contains the intro lines for the world creation mythos.
+var StoryIntros = []string{
 	"Long ago,",
 	"As it is written in the ancient texts,",
 	"According to the legends,",
@@ -60,33 +81,21 @@ var intros = []string{
 	"During the spark of creation,",
 }
 
-const (
-	StratCreationGod              = "creation + god"
-	StratShapingAdjectiveMaterial = "shaping + adjective + material"
-	StratShapingMaterialGod       = "shaping + material + god"
-)
-
-var strategies = []string{
-	StratCreationGod,              // "was created by flubwubb"
-	StratShapingAdjectiveMaterial, // "formed from a lone pearl"
-	StratShapingMaterialGod,       // "was shaped from clay by flubwubb"
-}
-
-var creation = []string{
+var StoryCreationPool = []string{
 	"created by",
 	"shaped in a dream of",
 	"given existence by",
 	"brought into being by",
 }
 
-var shaping = []string{
+var StoryShapingPool = []string{
 	"formed",
 	"shaped",
 	"created",
 	"made",
 }
 
-var adjectives = []string{
+var StoryAdjectivesPool = []string{
 	"lone",
 	"pure",
 	"perfect",
@@ -97,7 +106,7 @@ var adjectives = []string{
 	"beautifully round",
 }
 
-var materials = []string{
+var StoryMaterialsPool = []string{
 	"pearl",
 	"gem",
 	"crystal",

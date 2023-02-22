@@ -8,7 +8,13 @@ import (
 )
 
 func main() {
-	log.Println(genstory.NewWorld(time.Now().UnixNano()))
+	for i := 0; i < 10; i++ {
+		if myth, err := genstory.NewWorld(time.Now().UnixNano()); err != nil {
+			log.Println(i, err)
+		} else {
+			log.Println(i, myth)
+		}
+	}
 
 	for _, tc := range []struct {
 		desc   string
