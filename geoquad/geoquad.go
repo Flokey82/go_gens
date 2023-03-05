@@ -63,16 +63,9 @@ func (r Rect) containsPoint(p Point) bool {
 }
 
 func distHaversine(lat1, lon1, lat2, lon2 float64) float64 {
-	// distance between latitudes and longitudes
-	dLat := degToRad(lat2 - lat1)
-	dLon := degToRad(lon2 - lon1)
-
-	// convert to radians
-	lat1 = degToRad(lat1)
-	lat2 = degToRad(lat2)
-
-	// apply formula
-	a := math.Pow(math.Sin(dLat/2), 2) + math.Pow(math.Sin(dLon/2), 2)*math.Cos(lat1)*math.Cos(lat2)
+	dLatSin := math.Sin(degToRad(lat2-lat1) / 2)
+	dLonSin := math.Sin(degToRad(lon2-lon1) / 2)
+	a := dLatSin*dLatSin + dLonSin*dLonSin*math.Cos(degToRad(lat1))*math.Cos(degToRad(lat2))
 	return 2 * math.Atan2(math.Sqrt(a), math.Sqrt(1-a))
 }
 
