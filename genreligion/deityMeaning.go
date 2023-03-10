@@ -1,6 +1,9 @@
 package genreligion
 
-import "github.com/Flokey82/go_gens/genlanguage"
+import (
+	"github.com/Flokey82/go_gens/genlanguage"
+	"github.com/Flokey82/go_gens/genstory"
+)
 
 var GenBase = genlanguage.GenBase
 
@@ -22,71 +25,121 @@ func (g *Generator) RandDeityGenMethod() string {
 // https://github.com/Azgaar/Fantasy-Map-Generator/blob/master/modules/religions-generator.js
 func (g *Generator) GenerateDeityMeaning(approach string) string {
 	switch approach { // select generation approach
-	case ApproachNumber:
+	case TemplateMeaningNumber:
 		return g.Ra(GenBase[GenBaseNumber])
-	case ApproachBeing:
+	case TemplateMeaningBeing:
 		return g.Ra(GenBase[GenBaseBeing])
-	case ApproachAdjective:
+	case TemplateMeaningAdjective:
 		return g.Ra(GenBase[GenBaseAdjective])
-	case ApproachColorAnimal:
+	case TemplateMeaningColorAnimal:
 		return g.Ra(GenBase[GenBaseColor]) + " " + g.Ra(GenBase[GenBaseAnimal])
-	case ApproachAdjectiveAnimal:
+	case TemplateMeaningAdjectiveAnimal:
 		return g.Ra(GenBase[GenBaseAdjective]) + " " + g.Ra(GenBase[GenBaseAnimal])
-	case ApproachAdjectiveBeing:
+	case TemplateMeaningAdjectiveBeing:
 		return g.Ra(GenBase[GenBaseAdjective]) + " " + g.Ra(GenBase[GenBaseBeing])
-	case ApproachAdjectiveGenitive:
+	case TemplateMeaningAdjectiveGenitive:
 		return g.Ra(GenBase[GenBaseAdjective]) + " " + g.Ra(GenBase[GenBaseGenitive])
-	case ApproachColorBeing:
+	case TemplateMeaningColorBeing:
 		return g.Ra(GenBase[GenBaseColor]) + " " + g.Ra(GenBase[GenBaseBeing])
-	case ApproachColorGenitive:
+	case TemplateMeaningColorGenitive:
 		return g.Ra(GenBase[GenBaseColor]) + " " + g.Ra(GenBase[GenBaseGenitive])
-	case ApproachBeingOfGenitive:
+	case TemplateMeaningBeingOfGenitive:
 		return g.Ra(GenBase[GenBaseBeing]) + " of " + g.Ra(GenBase[GenBaseGenitive])
-	case ApproachBeingOfTheGenitive:
+	case TemplateMeaningBeingOfTheGenitive:
 		return g.Ra(GenBase[GenBaseBeing]) + " of the " + g.Ra(GenBase[GenBaseTheGenitive])
-	case ApproachAnimalOfGenitive:
+	case TemplateMeaningAnimalOfGenitive:
 		return g.Ra(GenBase[GenBaseAnimal]) + " of " + g.Ra(GenBase[GenBaseGenitive])
-	case ApproachAdjectiveBeingOfGenitive:
+	case TemplateMeaningAdjectiveBeingOfGenitive:
 		return g.Ra(GenBase[GenBaseAdjective]) + " " + g.Ra(GenBase[GenBaseBeing]) + " of " + g.Ra(GenBase[GenBaseGenitive])
-	case ApproachAdjectiveAnimalOfGenitive:
+	case TemplateMeaningAdjectiveAnimalOfGenitive:
 		return g.Ra(GenBase[GenBaseAdjective]) + " " + g.Ra(GenBase[GenBaseAnimal]) + " of " + g.Ra(GenBase[GenBaseGenitive])
 	default:
 		return "ERROR"
 	}
 }
 
+// GenerateDeityMeaningV2 generates a meaning for a deity name.
+func (g *Generator) GenerateDeityMeaningV2(provided []genstory.TokenReplacement, approach string) (string, error) {
+	return approachConfig.GenerateWithTemplate(provided, approach)
+}
+
 // GenMeaningApproaches contains a map of name generation
 // approaches and their relative chance to be selected.
 var GenMeaningApproaches = map[string]int{
-	ApproachNumber:                    1,
-	ApproachBeing:                     3,
-	ApproachAdjective:                 5,
-	ApproachColorAnimal:               5,
-	ApproachAdjectiveAnimal:           5,
-	ApproachAdjectiveBeing:            5,
-	ApproachAdjectiveGenitive:         1,
-	ApproachColorBeing:                3,
-	ApproachColorGenitive:             3,
-	ApproachBeingOfGenitive:           2,
-	ApproachBeingOfTheGenitive:        1,
-	ApproachAnimalOfGenitive:          1,
-	ApproachAdjectiveBeingOfGenitive:  2,
-	ApproachAdjectiveAnimalOfGenitive: 2,
+	TemplateMeaningNumber:                    1,
+	TemplateMeaningBeing:                     3,
+	TemplateMeaningAdjective:                 5,
+	TemplateMeaningColorAnimal:               5,
+	TemplateMeaningAdjectiveAnimal:           5,
+	TemplateMeaningAdjectiveBeing:            5,
+	TemplateMeaningAdjectiveGenitive:         1,
+	TemplateMeaningColorBeing:                3,
+	TemplateMeaningColorGenitive:             3,
+	TemplateMeaningBeingOfGenitive:           2,
+	TemplateMeaningBeingOfTheGenitive:        1,
+	TemplateMeaningAnimalOfGenitive:          1,
+	TemplateMeaningAdjectiveBeingOfGenitive:  2,
+	TemplateMeaningAdjectiveAnimalOfGenitive: 2,
 }
 
 const (
-	ApproachNumber                    = "Number"
-	ApproachBeing                     = "Being"
-	ApproachAdjective                 = "Adjective"
-	ApproachColorAnimal               = "Color + Animal"
-	ApproachAdjectiveAnimal           = "Adjective + Animal"
-	ApproachAdjectiveBeing            = "Adjective + Being"
-	ApproachAdjectiveGenitive         = "Adjective + Genitive"
-	ApproachColorBeing                = "Color + Being"
-	ApproachColorGenitive             = "Color + Genitive"
-	ApproachBeingOfGenitive           = "Being + of + Genitive"
-	ApproachBeingOfTheGenitive        = "Being + of the + Genitive"
-	ApproachAnimalOfGenitive          = "Animal + of + Genitive"
-	ApproachAdjectiveBeingOfGenitive  = "Adjective + Being + of + Genitive"
-	ApproachAdjectiveAnimalOfGenitive = "Adjective + Animal + of + Genitive"
+	TokenNumber    = "[NUMBER]"
+	TokenBeing     = "[BEING]"
+	TokenAdjective = "[ADJECTIVE]"
+	TokenColor     = "[COLOR]"
+	TokenAnimal    = "[ANIMAL]"
+	TokenGenitive  = "[GENITIVE]"
 )
+
+const (
+	TemplateMeaningNumber                    = "[NUMBER]"
+	TemplateMeaningBeing                     = "[BEING]"
+	TemplateMeaningAdjective                 = "[ADJECTIVE]"
+	TemplateMeaningColorAnimal               = "[COLOR] [ANIMAL]"
+	TemplateMeaningAdjectiveAnimal           = "[ADJECTIVE] [ANIMAL]"
+	TemplateMeaningAdjectiveBeing            = "[ADJECTIVE] [BEING]"
+	TemplateMeaningAdjectiveGenitive         = "[ADJECTIVE] [GENITIVE]"
+	TemplateMeaningColorBeing                = "[COLOR] [BEING]"
+	TemplateMeaningColorGenitive             = "[COLOR] [GENITIVE]"
+	TemplateMeaningBeingOfGenitive           = "[BEING] of [GENITIVE]"
+	TemplateMeaningBeingOfTheGenitive        = "[BEING] of the [GENITIVE]"
+	TemplateMeaningAnimalOfGenitive          = "[ANIMAL] of [GENITIVE]"
+	TemplateMeaningAdjectiveBeingOfGenitive  = "[ADJECTIVE] [BEING] of [GENITIVE]"
+	TemplateMeaningAdjectiveAnimalOfGenitive = "[ADJECTIVE] [ANIMAL] of [GENITIVE]"
+)
+
+var approachConfig = &genstory.TextConfig{
+	TokenPools: map[string][]string{
+		TokenNumber:    GenBase[GenBaseNumber],
+		TokenBeing:     GenBase[GenBaseBeing],
+		TokenAdjective: GenBase[GenBaseAdjective],
+		TokenColor:     GenBase[GenBaseColor],
+		TokenAnimal:    GenBase[GenBaseAnimal],
+		TokenGenitive:  GenBase[GenBaseGenitive],
+	},
+	TokenIsMandatory: map[string]bool{},
+	Tokens: []string{
+		TokenNumber,
+		TokenBeing,
+		TokenAdjective,
+		TokenColor,
+		TokenAnimal,
+		TokenGenitive,
+	},
+	Templates: []string{
+		TemplateMeaningNumber,
+		TemplateMeaningBeing,
+		TemplateMeaningAdjective,
+		TemplateMeaningColorAnimal,
+		TemplateMeaningAdjectiveAnimal,
+		TemplateMeaningAdjectiveBeing,
+		TemplateMeaningAdjectiveGenitive,
+		TemplateMeaningColorBeing,
+		TemplateMeaningColorGenitive,
+		TemplateMeaningBeingOfGenitive,
+		TemplateMeaningBeingOfTheGenitive,
+		TemplateMeaningAnimalOfGenitive,
+		TemplateMeaningAdjectiveBeingOfGenitive,
+		TemplateMeaningAdjectiveAnimalOfGenitive,
+	},
+}

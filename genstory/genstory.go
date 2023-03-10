@@ -1,121 +1,138 @@
 package genstory
 
 import (
+	"errors"
+	"fmt"
 	"math/rand"
 	"strings"
-
-	"github.com/Flokey82/go_gens/genlanguage"
-	"github.com/Flokey82/go_gens/genreligion"
 )
 
-// NewWorld generates a new world creation mythos using the given seed.
-func NewWorld(seed int64) (string, error) {
-	rng := rand.New(rand.NewSource(seed))
-	rlgGen := genreligion.NewGenerator(seed)
+// TokenReplacement is a replacement for a token in a text.
+type TokenReplacement struct {
+	Token       string // The token to replace.
+	Replacement string // The replacement text.
+}
 
-	// Generate a new language.
-	lang := genlanguage.GenLanguage(rng.Int63())
+// TextConfig is a configuration for generating text.
+type TextConfig struct {
+	TokenPools       map[string][]string // A map of token names to a list of possible values.
+	TokenIsMandatory map[string]bool     // A map of token names to a boolean indicating whether the token is mandatory.
+	Tokens           []string            // A list of tokens that are required to be replaced.
+	Templates        []string            // A list of possible templates.
+	Title            bool                // Capitalize the first letter of each word in the text.
+}
 
-	// Pick a random world name.
-	worldName := strings.Title(lang.GetWord("world"))
+// Generate generates a text from the provided tokens and the configuration.
+func (c *TextConfig) Generate(provided []TokenReplacement) (string, error) {
+	return generateText(provided, c.Templates, c.Tokens, c.TokenIsMandatory, c.TokenPools, c.Title)
+}
 
-	// Pick a random strategy for creation of the world.
-	tokenReplacements := []TokenReplacement{{Token: StoryTokenWorld, Replacement: worldName}}
-	if rand.Intn(2) == 0 {
-		// "was created by flubwubb"
-		god := rlgGen.GetDeity(lang, rlgGen.RandDeityGenMethod())
-		tokenReplacements = append(tokenReplacements, TokenReplacement{Token: StoryTokenGod, Replacement: god.FullName()})
+// GenerateWithTemplate generates a text from the provided tokens and the provided template.
+func (c *TextConfig) GenerateWithTemplate(provided []TokenReplacement, template string) (string, error) {
+	return generateText(provided, []string{template}, c.Tokens, c.TokenIsMandatory, c.TokenPools, c.Title)
+}
+
+// GenerateTitle generates a text from the provided tokens and a list of
+// possible templates.
+//   - The provided tokens are used to replace the tokens in the possible templates.
+//   - If a token is not provided and optional, it is replaced with a random value.
+//   - If a token is not provided and not optional, all templates that require that
+//     token are excluded.
+//
+// TODO: Also return the selected template, and the individual replacements,
+// so that the caller can use them for the description or the generation of content.
+func GenerateTitle(provided []TokenReplacement, titles []string) (string, error) {
+	return generateText(provided, titles, DefaultTitleTokens, DefaultTitleTokenIsMandatory, DefaultTitleTokenPool, true)
+}
+
+func generateText(provided []TokenReplacement, templates, tokens []string, isMandatory map[string]bool, tokenRandom map[string][]string, capitalize bool) (string, error) {
+	// Count how many token replacements we have for each token.
+	tokenReplacements := map[string]int{}
+	for _, replacement := range provided {
+		tokenReplacements[replacement.Token]++
 	}
-	return StoryConfig.Generate(tokenReplacements)
+
+	// Loop over all templates and find the ones where we have all required tokens.
+	possibleTemplates := []string{}
+	for _, i := range rand.Perm(len(templates)) {
+		template := templates[i]
+		// Check if we have all required tokens the required number of times.
+		var missingToken bool
+		for _, token := range tokens {
+			if tokenReplacements[token] < strings.Count(template, token) {
+				if isMandatory[token] {
+					missingToken = true
+					break
+				}
+			}
+		}
+
+		// Something is missing, skip this template.
+		if missingToken {
+			continue
+		}
+
+		// Also make sure all tokens we have provided are available in the template,
+		// since we want to pick a complete template, referencing all provided tokens.
+		for _, replacement := range provided {
+			if strings.Count(template, replacement.Token) < tokenReplacements[replacement.Token] {
+				missingToken = true
+				break
+			}
+		}
+
+		// Something is missing, skip this template.
+		if missingToken {
+			continue
+		}
+
+		// We have all required tokens, add the template to the list of possible templates.
+		possibleTemplates = append(possibleTemplates, template)
+	}
+
+	// If we have no possible templates, return an error.
+	if len(possibleTemplates) == 0 {
+		return "", errors.New("no possible templates satisfying the provided tokens")
+	}
+
+	// Pick a random text.
+	text := randArrayString(possibleTemplates)
+
+	// Replace all tokens with the provided replacements.
+	for _, replacement := range provided {
+		text = strings.Replace(text, replacement.Token, replacement.Replacement, 1)
+	}
+
+	// Replace all optional tokens with random replacements.
+	remainingTokens, err := ExtractTokens(text)
+	if err != nil {
+		return "", fmt.Errorf("failed to extract tokens from template: %v", err)
+	}
+
+	// Relplace each token one by one until we can't find any more.
+	for _, token := range remainingTokens {
+		if !isMandatory[token] && strings.Contains(text, token) {
+			// Pick a random replacement.
+			// TODO: What to do if we don't have any replacements for a token?
+			replacement := randArrayString(tokenRandom[token])
+
+			// Replace the token.
+			text = strings.Replace(text, token, replacement, 1)
+		}
+	}
+	if capitalize {
+		// Capitalize the first letter of each word in the text.
+		text = strings.Title(text)
+	} else {
+		// Capitalize the first letter of the text.
+		text = strings.ToUpper(text[:1]) + text[1:]
+	}
+	return text, nil
 }
 
-var StoryConfig = &TextConfig{
-	TokenPools: map[string][]string{
-		StoryTokenIntro:     StoryIntros,
-		StoryTokenCreation:  StoryCreationPool,
-		StoryTokenAdjective: StoryAdjectivesPool,
-		StoryTokenMaterial:  StoryMaterialsPool,
-		StoryTokenShaping:   StoryShapingPool,
-	},
-	TokenIsMandatory: map[string]bool{
-		StoryTokenWorld: true,
-	},
-	Tokens:    StoryTokens,
-	Templates: StoryTemplates,
-}
-
-var StoryTemplates = []string{
-	"[INTRO] [WORLD] was [CREATION] by [GOD].",
-	"[INTRO] [WORLD] was [SHAPING] from a [ADJECTIVE] [MATERIAL].",
-	"[INTRO] [WORLD] was [SHAPING] from a [MATERIAL] by [GOD].",
-}
-
-const (
-	StoryTokenIntro     = "[INTRO]"
-	StoryTokenWorld     = "[WORLD]"
-	StoryTokenCreation  = "[CREATION]"
-	StoryTokenGod       = "[GOD]"
-	StoryTokenAdjective = "[ADJECTIVE]"
-	StoryTokenMaterial  = "[MATERIAL]"
-	StoryTokenShaping   = "[SHAPING]"
-)
-
-var StoryTokens = []string{
-	StoryTokenIntro,
-	StoryTokenWorld,
-	StoryTokenCreation,
-	StoryTokenGod,
-	StoryTokenAdjective,
-	StoryTokenMaterial,
-	StoryTokenShaping,
-}
-
-// StoryIntros contains the intro lines for the world creation mythos.
-var StoryIntros = []string{
-	"Long ago,",
-	"As it is written in the ancient texts,",
-	"According to the legends,",
-	"According to the ancient texts,",
-	"In the time before time,",
-	"In the beginning,",
-	"During the spark of creation,",
-}
-
-var StoryCreationPool = []string{
-	"created by",
-	"shaped in a dream of",
-	"given existence by",
-	"brought into being by",
-}
-
-var StoryShapingPool = []string{
-	"formed",
-	"shaped",
-	"created",
-	"made",
-}
-
-var StoryAdjectivesPool = []string{
-	"lone",
-	"pure",
-	"perfect",
-	"perfectly round",
-	"perfectly square",
-	"precious",
-	"beautiful",
-	"beautifully round",
-}
-
-var StoryMaterialsPool = []string{
-	"pearl",
-	"gem",
-	"crystal",
-	"piece of stone",
-	"rock",
-	"chunk of clay",
-	"speck of dust",
-	"drop of water",
-	"gust of air",
-	"mote of fire",
-	"ball of earth",
+func randArrayString(arr []string) string {
+	if len(arr) == 0 {
+		return ""
+	}
+	return arr[rand.Intn(len(arr))]
 }

@@ -58,3 +58,4 @@ genworldvoronoi/cmd/server/main
 genworldvoronoi/cmd/cpu.prof
 genstory/cmd/runner
 genthesaurus/cmd/runner
+genreligion/cmd/runner

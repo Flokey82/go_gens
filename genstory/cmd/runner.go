@@ -2,20 +2,11 @@ package main
 
 import (
 	"log"
-	"time"
 
 	"github.com/Flokey82/go_gens/genstory"
 )
 
 func main() {
-	for i := 0; i < 10; i++ {
-		if myth, err := genstory.NewWorld(time.Now().UnixNano()); err != nil {
-			log.Println(i, err)
-		} else {
-			log.Println(i, myth)
-		}
-	}
-
 	for _, tc := range []struct {
 		desc   string
 		tokens []genstory.TokenReplacement
