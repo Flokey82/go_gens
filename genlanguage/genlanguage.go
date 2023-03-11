@@ -379,3 +379,69 @@ func P(probability float64) bool {
 	}
 	return rand.Float64() < probability
 }
+
+// GetArticle returns the article for a noun.
+func GetArticle(s string) string {
+	if IsVowel(rune(s[0])) {
+		return "an"
+	}
+	return "a"
+}
+
+// GetPresentSingular returns the singular present tense of a verb.
+// 'walk' -> 'walks'
+// 'cry' -> 'cries'
+// 'amaze' -> 'amazes'
+// 'raz' -> 'razzes'
+// 'fuzz' -> 'fuzzes'
+func GetPresentSingular(verb string) string {
+	if strings.HasSuffix(verb, "e") {
+		return verb + "s"
+	}
+	if strings.HasSuffix(verb, "y") {
+		if IsVowel(rune(verb[len(verb)-2])) {
+			return verb + "s"
+		}
+		return stringSlice(verb, 0, -1) + "ies"
+	}
+	if strings.HasSuffix(verb, "zz") {
+		return verb + "es"
+	}
+	if strings.HasSuffix(verb, "z") {
+		return verb + "zes"
+	}
+	return verb + "s"
+}
+
+// GetPresentParticiple returns the present participle of a verb.
+func GetPresentParticiple(verb string) string {
+	if strings.HasSuffix(verb, "e") {
+		return stringSlice(verb, 0, -1) + "ing"
+	}
+	if strings.HasSuffix(verb, "y") {
+		if IsVowel(rune(verb[len(verb)-2])) {
+			return verb + "ing"
+		}
+		return stringSlice(verb, 0, -1) + "ying"
+	}
+	return verb + "ing"
+}
+
+// GetPastTense returns the past tense of a verb.
+func GetPastTense(verb string) string {
+	if strings.HasSuffix(verb, "e") {
+		return verb + "d"
+	}
+	if strings.HasSuffix(verb, "y") {
+		if IsVowel(rune(verb[len(verb)-2])) {
+			return verb + "ed"
+		}
+		return stringSlice(verb, 0, -1) + "ied"
+	}
+	return verb + "ed"
+}
+
+// GetPronounIsPlural returns true if the pronoun is plural.
+func GetPronounIsPlural(pronoun string) bool {
+	return pronoun == "they" || pronoun == "them" || pronoun == "their"
+}
