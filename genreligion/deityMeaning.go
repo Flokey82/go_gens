@@ -23,44 +23,18 @@ func (g *Generator) RandDeityGenMethod() string {
 // GenerateDeityMeaning generates a meaning for a deity name.
 // This code is based on:
 // https://github.com/Azgaar/Fantasy-Map-Generator/blob/master/modules/religions-generator.js
-func (g *Generator) GenerateDeityMeaning(approach string) string {
-	switch approach { // select generation approach
-	case TemplateMeaningNumber:
-		return g.Ra(GenBase[GenBaseNumber])
-	case TemplateMeaningBeing:
-		return g.Ra(GenBase[GenBaseBeing])
-	case TemplateMeaningAdjective:
-		return g.Ra(GenBase[GenBaseAdjective])
-	case TemplateMeaningColorAnimal:
-		return g.Ra(GenBase[GenBaseColor]) + " " + g.Ra(GenBase[GenBaseAnimal])
-	case TemplateMeaningAdjectiveAnimal:
-		return g.Ra(GenBase[GenBaseAdjective]) + " " + g.Ra(GenBase[GenBaseAnimal])
-	case TemplateMeaningAdjectiveBeing:
-		return g.Ra(GenBase[GenBaseAdjective]) + " " + g.Ra(GenBase[GenBaseBeing])
-	case TemplateMeaningAdjectiveGenitive:
-		return g.Ra(GenBase[GenBaseAdjective]) + " " + g.Ra(GenBase[GenBaseGenitive])
-	case TemplateMeaningColorBeing:
-		return g.Ra(GenBase[GenBaseColor]) + " " + g.Ra(GenBase[GenBaseBeing])
-	case TemplateMeaningColorGenitive:
-		return g.Ra(GenBase[GenBaseColor]) + " " + g.Ra(GenBase[GenBaseGenitive])
-	case TemplateMeaningBeingOfGenitive:
-		return g.Ra(GenBase[GenBaseBeing]) + " of " + g.Ra(GenBase[GenBaseGenitive])
-	case TemplateMeaningBeingOfTheGenitive:
-		return g.Ra(GenBase[GenBaseBeing]) + " of the " + g.Ra(GenBase[GenBaseTheGenitive])
-	case TemplateMeaningAnimalOfGenitive:
-		return g.Ra(GenBase[GenBaseAnimal]) + " of " + g.Ra(GenBase[GenBaseGenitive])
-	case TemplateMeaningAdjectiveBeingOfGenitive:
-		return g.Ra(GenBase[GenBaseAdjective]) + " " + g.Ra(GenBase[GenBaseBeing]) + " of " + g.Ra(GenBase[GenBaseGenitive])
-	case TemplateMeaningAdjectiveAnimalOfGenitive:
-		return g.Ra(GenBase[GenBaseAdjective]) + " " + g.Ra(GenBase[GenBaseAnimal]) + " of " + g.Ra(GenBase[GenBaseGenitive])
-	default:
-		return "ERROR"
-	}
+func (g *Generator) GenerateDeityMeaning(approach string) (string, error) {
+	return g.txtGen.GenerateButUseThisTemplate(nil, approachConfig, approach)
 }
 
 // GenerateDeityMeaningV2 generates a meaning for a deity name.
 func (g *Generator) GenerateDeityMeaningV2(provided []genstory.TokenReplacement, approach string) (string, error) {
-	return approachConfig.GenerateWithTemplate(provided, approach)
+	return g.txtGen.GenerateButUseThisTemplate(provided, approachConfig, approach)
+}
+
+// GenerateDeityMeaningV3 generates a meaning for a deity name.
+func (g *Generator) GenerateDeityMeaningV3(provided []genstory.TokenReplacement) (string, string, error) {
+	return g.txtGen.GenerateAndGiveMeTheTemplate(provided, approachConfig)
 }
 
 // GenMeaningApproaches contains a map of name generation
@@ -142,4 +116,5 @@ var approachConfig = &genstory.TextConfig{
 		TemplateMeaningAdjectiveBeingOfGenitive,
 		TemplateMeaningAdjectiveAnimalOfGenitive,
 	},
+	UseAllProvided: true,
 }

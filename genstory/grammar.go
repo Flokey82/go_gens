@@ -2,6 +2,7 @@ package genstory
 
 import (
 	"fmt"
+	"math/rand"
 	"strings"
 
 	"github.com/Flokey82/go_gens/genlanguage"
@@ -14,10 +15,11 @@ type Rules struct {
 }
 
 // NewStory creates a new story from the given rules.
-func (r *Rules) NewStory() *Story {
+func (r *Rules) NewStory(seed int64) *Story {
 	return &Story{
 		Rules:    r,
 		Assigned: make(map[string]string),
+		rng:      rand.New(rand.NewSource(seed)),
 	}
 }
 
@@ -74,6 +76,7 @@ var ExampleRules = &Rules{
 type Story struct {
 	*Rules                     // Rules for the story
 	Assigned map[string]string // Assigned expansions for tokens that have assigned expansions
+	rng      RandInterface
 }
 
 // Expand expands the story from the start rule.
@@ -127,7 +130,7 @@ func (g *Story) ExpandToken(token GrammarToken) (string, error) {
 	}
 
 	// Choose a random expansion from the pool.
-	expansion := randArrayString(pool)
+	expansion := randArrayString(g.rng, pool)
 
 	// Store the expansion for the token.
 	g.Assigned[token.Token] = expansion

@@ -9,7 +9,12 @@ import (
 
 func main() {
 	for i := 0; i < 10; i++ {
-		if myth, err := genreligion.NewWorld(time.Now().UnixNano()); err != nil {
+		seed := time.Now().UnixNano()
+		gen := genreligion.NewGenerator(seed, nil)
+		god, err := gen.GetDeity()
+		if err != nil {
+			log.Println(i, err)
+		} else if myth, err := gen.NewCreation(god); err != nil {
 			log.Println(i, err)
 		} else {
 			log.Println(i, myth)

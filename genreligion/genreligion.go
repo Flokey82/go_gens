@@ -5,17 +5,26 @@ import (
 	"strings"
 
 	"github.com/Flokey82/go_gens/genlanguage"
+	"github.com/Flokey82/go_gens/genstory"
 )
 
 // Generator is a generator for religions.
 type Generator struct {
-	rng *rand.Rand
+	rng    *rand.Rand
+	txtGen *genstory.TextGenerator
+	lang   *genlanguage.Language
 }
 
 // NewGenerator creates a new religion generator.
-func NewGenerator(seed int64) *Generator {
+func NewGenerator(seed int64, lang *genlanguage.Language) *Generator {
+	rng := rand.New(rand.NewSource(seed))
+	if lang == nil {
+		lang = genlanguage.GenLanguage(seed)
+	}
 	return &Generator{
-		rng: rand.New(rand.NewSource(seed)),
+		rng:    rng,
+		txtGen: genstory.NewTextGenerator(rng),
+		lang:   lang,
 	}
 }
 
@@ -57,6 +66,11 @@ func (g *Generator) GenNamedIsm(name string) string {
 	return genlanguage.TrimVowels(name, 3) + "ism"
 }
 
+// GenFaithName generates a name for a faith.
+func (g *Generator) GenFaithName(tokens []genstory.TokenReplacement) (name, method string, err error) {
+	return g.txtGen.GenerateAndGiveMeTheTemplate(tokens, &NameConfig)
+}
+
 // GenNameFaitOfSurpreme generates a name for a faith of a supreme deity or leader.
 // E.g. "Way of Grognark".
 func (g *Generator) GenNameFaitOfSupreme(supreme string) string {
@@ -74,62 +88,6 @@ func (g *Generator) GenNameFaitOfSupreme(supreme string) string {
 	return prefix + " of " + supreme
 }
 
-// FaitOfSupremePrefixes contains a list of prefixes identifying the group of
-// followers of a supreme deity or leader.
-var FaitOfSupremePrefixes = []string{
-	"Faith",
-	"Way",
-	"Path",
-	"Word",
-	"Truth",
-	"Law",
-	"Order",
-	"Light",
-	"Darkness",
-	"Gift",
-	"Grace",
-	"Witnesses",
-	"Servants",
-	"Messengers",
-	"Believers",
-	"Disciples",
-	"Followers",
-	"Children",
-	"Brothers",
-	"Sisters",
-	"Brothers and Sisters",
-	"Sons",
-	"Daughters",
-	"Sons and Daughters",
-	"Brides",
-	"Grooms",
-	"Brides and Grooms",
-}
-
-const (
-	MethodRandomType     = "Random + type"
-	MethodRandomIsm      = "Random + ism"
-	MethodSurpremeIsm    = "Supreme + ism"
-	MethodFaithOfSupreme = "Faith of + Supreme"
-	MethodPlaceIsm       = "Place + ism"
-	MethodCultureIsm     = "Culture + ism"
-	MethodPlaceIanType   = "Place + ian + type"
-	MethodCultureType    = "Culture + type"
-)
-
-// genReligionMethods contains a map of religion name generation
-// methods and their relative chance to be selected.
-var GenReligionMethods = map[string]int{
-	MethodRandomType:     3,
-	MethodRandomIsm:      1,
-	MethodSurpremeIsm:    5,
-	MethodFaithOfSupreme: 5,
-	MethodPlaceIsm:       1,
-	MethodCultureIsm:     2,
-	MethodPlaceIanType:   6,
-	MethodCultureType:    4,
-}
-
 // weightedToArray converts a map of weighted values to an array.
 func weightedToArray(weighted map[string]int) []string {
 	var res []string
@@ -140,3 +98,10 @@ func weightedToArray(weighted map[string]int) []string {
 	}
 	return res
 }
+
+const (
+	// Expansion modes.
+	ReligionExpGlobal  = "global"
+	ReligionExpState   = "state"
+	ReligionExpCulture = "culture"
+)

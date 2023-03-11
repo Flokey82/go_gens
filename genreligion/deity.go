@@ -1,7 +1,5 @@
 package genreligion
 
-import "github.com/Flokey82/go_gens/genlanguage"
-
 var DeityMeaningApproaches []string
 
 func init() {
@@ -29,16 +27,19 @@ func (d *Deity) FullName() string {
 // GetDeity returns a deity name for the given culture.
 // This code is based on:
 // https://github.com/Azgaar/Fantasy-Map-Generator/blob/master/modules/religions-generator.js
-func (g *Generator) GetDeity(lang *genlanguage.Language, approach string) *Deity {
-	if lang == nil {
-		return nil
-	}
-	if approach == "" {
-		approach = g.RandDeityGenMethod()
+func (g *Generator) GetDeity() (*Deity, error) {
+	return g.GetDeityWithApproach(g.RandDeityGenMethod())
+}
+
+// GetDeityWithApproach returns a deity name for the given culture.
+func (g *Generator) GetDeityWithApproach(approach string) (*Deity, error) {
+	meaning, err := g.GenerateDeityMeaning(approach)
+	if err != nil {
+		return nil, err
 	}
 	return &Deity{
-		Name:     lang.MakeName(),
-		Meaning:  g.GenerateDeityMeaning(approach),
+		Name:     g.lang.MakeName(),
+		Meaning:  meaning,
 		Approach: approach,
-	}
+	}, nil
 }

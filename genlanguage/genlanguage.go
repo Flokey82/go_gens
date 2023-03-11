@@ -354,10 +354,17 @@ func IsVowel(c rune) bool {
 
 // TrimVowels remove vowels from the end of the string.
 func TrimVowels(str string, minLength int) string {
-	for len(str) > minLength && IsVowel(rune(str[len(str)-1])) {
-		str = str[:len(str)-1]
+	if len(str) <= minLength {
+		return str
 	}
-	return str
+	remaining := len(str) - minLength
+	return strings.TrimRightFunc(str, func(r rune) bool {
+		if remaining == 0 {
+			return false
+		}
+		remaining--
+		return IsVowel(r)
+	})
 }
 
 // GetNounPlural returns the plural form of a noun.
@@ -392,6 +399,16 @@ func GetArticle(s string) string {
 // RuneToLowerCase returns the lowercase rune.
 func RuneToLowerCase(c rune) rune {
 	return rune(unicode.ToLower(c))
+}
+
+// Capitalize returns the string with the first letter capitalized.
+func Capitalize(s string) string {
+	if len(s) == 0 {
+		return s
+	}
+	r := []rune(s)
+	r[0] = unicode.ToUpper(r[0])
+	return string(r)
 }
 
 // GetPresentSingular returns the singular present tense of a verb.

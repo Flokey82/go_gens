@@ -32,8 +32,9 @@ var WeaponsTextConfig = &TextConfig{
 	TokenIsMandatory: map[string]bool{
 		WeaponTokenName: true,
 	},
-	Tokens:    WeaponTokens,
-	Templates: WeaponIntros,
+	Tokens:         WeaponTokens,
+	Templates:      WeaponIntros,
+	UseAllProvided: true,
 }
 
 var WeaponIntros = []string{

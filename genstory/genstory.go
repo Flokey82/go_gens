@@ -2,7 +2,6 @@ package genstory
 
 import (
 	"errors"
-	"fmt"
 	"math/rand"
 	"strings"
 
@@ -23,39 +22,71 @@ type TextConfig struct {
 	Tokens           []string                       // A list of tokens that are required to be replaced.
 	Templates        []string                       // A list of possible templates.
 	Title            bool                           // Capitalize the first letter of each word in the text.
+	UseAllProvided   bool                           // Use all provided tokens, even if they are not used in the template.
 	Modifiers        map[string]func(string) string // A map of token names to a function that modifies the replacement text.
 }
 
 // Generate generates a text from the provided tokens and the configuration.
 func (c *TextConfig) Generate(provided []TokenReplacement) (string, error) {
-	return generateText(provided, c.Templates, c.Tokens, c.TokenIsMandatory, c.TokenPools, c.Modifiers, c.Title)
+	txt, _, err := defaultTextGenerator.generateFromConfig(provided, c, nil)
+	return txt, err
+}
+
+// GenerateAndGiveMeTheTemplate generates a text from the provided tokens and the configuration.
+// It also returns the template that was used to generate the text.
+func (c *TextConfig) GenerateAndGiveMeTheTemplate(provided []TokenReplacement) (string, string, error) {
+	return defaultTextGenerator.generateFromConfig(provided, c, nil)
 }
 
 // GenerateWithTemplate generates a text from the provided tokens and the provided template.
 func (c *TextConfig) GenerateWithTemplate(provided []TokenReplacement, template string) (string, error) {
-	return generateText(provided, []string{template}, c.Tokens, c.TokenIsMandatory, c.TokenPools, c.Modifiers, c.Title)
+	txt, _, err := defaultTextGenerator.generateFromConfig(provided, c, []string{template})
+	return txt, err
 }
 
-// GenerateTitle generates a text from the provided tokens and a list of
-// possible templates.
-//   - The provided tokens are used to replace the tokens in the possible templates.
-//   - If a token is not provided and optional, it is replaced with a random value.
-//   - If a token is not provided and not optional, all templates that require that
-//     token are excluded.
-//
-// TODO: Also return the selected template, and the individual replacements,
-// so that the caller can use them for the description or the generation of content.
-func GenerateTitle(provided []TokenReplacement, titles []string) (string, error) {
-	return generateText(provided, titles, DefaultTitleTokens, DefaultTitleTokenIsMandatory, DefaultTitleTokenPool, nil, true)
+// TextGenerator is a generator for text using TextConfigs.
+// Using this over the TextConfig methods allows you to use a custom random number generator
+// and to (re-)set the random number generator's seed.
+type TextGenerator struct {
+	RandInterface
 }
 
-func generateText(
-	provided []TokenReplacement,
-	templates, tokens []string,
-	isMandatory map[string]bool,
-	tokenRandom map[string][]string,
-	modifierFuncs map[string]func(string) string,
-	capitalize bool) (string, error) {
+// NewTextGenerator creates a new TextGenerator using the provided random number generator.
+func NewTextGenerator(rng RandInterface) *TextGenerator {
+	return &TextGenerator{
+		RandInterface: rng,
+	}
+}
+
+// Generate generates a text from the provided tokens and the configuration.
+func (g *TextGenerator) Generate(provided []TokenReplacement, config *TextConfig) (string, error) {
+	txt, _, err := g.generateFromConfig(provided, config, nil)
+	return txt, err
+}
+
+// GenerateAndGiveMeTheTemplate generates a text from the provided tokens and the configuration.
+// It also returns the template that was used to generate the text.
+func (g *TextGenerator) GenerateAndGiveMeTheTemplate(provided []TokenReplacement, config *TextConfig) (string, string, error) {
+	return g.generateFromConfig(provided, config, nil)
+}
+
+// GenerateButUseThisTemplate generates a text from the provided tokens and the provided template.
+func (g *TextGenerator) GenerateButUseThisTemplate(provided []TokenReplacement, config *TextConfig, template string) (string, error) {
+	txt, _, err := g.generateFromConfig(provided, config, []string{template})
+	return txt, err
+}
+
+func (g *TextGenerator) generateFromConfig(provided []TokenReplacement, config *TextConfig, altTemplates []string) (string, string, error) {
+	templates := config.Templates
+	if altTemplates != nil {
+		templates = altTemplates
+	}
+	tokens := config.Tokens
+	isMandatory := config.TokenIsMandatory
+	tokenRandom := config.TokenPools
+	modifierFuncs := config.Modifiers
+	capitalize := config.Title
+	useAllProvided := config.UseAllProvided
 
 	// Function for applying modifiers to a string.
 	applyModifiers := func(s string, modifiers []string) string {
@@ -92,7 +123,7 @@ func generateText(
 		// TODO: Maybe cache the extracted tokens somewhere.
 		extracted, err := ExtractTokens(template)
 		if err != nil {
-			return "", err
+			return "", "", err
 		}
 
 		// Count how many times each token appears in the template.
@@ -120,17 +151,19 @@ func generateText(
 
 		// Also make sure all tokens we have provided are available in the template,
 		// since we want to pick a complete template, referencing all provided tokens.
-		for _, replacement := range provided {
-			// TODO: Take in account that tokens might have modifiers, which defeats strings.Count.
-			if tokenCounts[replacement.Token] < len(tokenReplacements[replacement.Token]) {
-				missingToken = true
-				break
+		if useAllProvided {
+			for _, replacement := range provided {
+				// TODO: Take in account that tokens might have modifiers, which defeats strings.Count.
+				if tokenCounts[replacement.Token] < len(tokenReplacements[replacement.Token]) {
+					missingToken = true
+					break
+				}
 			}
-		}
 
-		// Something is missing, skip this template.
-		if missingToken {
-			continue
+			// Something is missing, skip this template.
+			if missingToken {
+				continue
+			}
 		}
 
 		// We have all required tokens, add the template to the list of possible templates.
@@ -142,7 +175,7 @@ func generateText(
 
 	// If we have no possible templates, return an error.
 	if len(possibleTemplates) == 0 {
-		return "", errors.New("no possible templates satisfying the provided tokens")
+		return "", "", errors.New("no possible templates satisfying the provided tokens")
 	}
 
 	// Pick a random text.
@@ -158,7 +191,7 @@ func generateText(
 			replacement = tokenReplacements[token.Token][replacementsUsed[token.Token]]
 			replacementsUsed[token.Token]++
 		} else {
-			replacement = randArrayString(tokenRandom[token.Token])
+			replacement = randArrayString(g, tokenRandom[token.Token])
 		}
 
 		// Apply modifiers.
@@ -172,16 +205,18 @@ func generateText(
 		text = strings.Title(text)
 	} else {
 		// Capitalize the first letter of the text.
-		text = strings.ToUpper(text[:1]) + text[1:]
+		// We have to make sure we don't just use the slice operator, since that
+		// might corrupt UTF-8 characters.
+		text = genlanguage.Capitalize(text)
 	}
-	return text, nil
+	return text, chosen.template, nil
 }
 
-func randArrayString(arr []string) string {
+func randArrayString(rng RandInterface, arr []string) string {
 	if len(arr) == 0 {
 		return ""
 	}
-	return arr[rand.Intn(len(arr))]
+	return arr[rng.Intn(len(arr))]
 }
 
 func ApplyModifiers(s string, modifiers []string) string {
@@ -195,40 +230,45 @@ func ApplyModifiers(s string, modifiers []string) string {
 
 // DefaultModifiers is a map of default modifiers that can be used in templates.
 var DefaultModifiers = map[string]func(string) string{
-	"title": func(s string) string {
-		return strings.Title(s)
-	},
-	"upper": func(s string) string {
-		return strings.ToUpper(s)
-	},
-	"lower": func(s string) string {
-		return strings.ToLower(s)
-	},
+	"title":             strings.Title,          // Title case.
+	"capitalize":        genlanguage.Capitalize, // Capitalize the first letter.
+	"upper":             strings.ToUpper,
+	"lower":             strings.ToLower,
+	"adjecive":          genlanguage.GetAdjective,
+	"nounplural":        genlanguage.GetNounPlural,
+	"past":              genlanguage.GetPastTense,
+	"presentsingular":   genlanguage.GetPresentSingular,
+	"presentparticiple": genlanguage.GetPresentParticiple,
 	"quote": func(s string) string {
-		return fmt.Sprintf("'%s'", s)
+		return "'" + s + "'"
 	},
 	"doublequote": func(s string) string {
-		return fmt.Sprintf("%q", s)
+		return "\"" + s + "\""
 	},
 	"trimvowels": func(s string) string {
-		return genlanguage.TrimVowels(s, 7)
-	},
-	"adjecive": func(s string) string {
-		return genlanguage.GetAdjective(s)
-	},
-	"nounplural": func(s string) string {
-		return genlanguage.GetNounPlural(s)
+		return genlanguage.TrimVowels(s, 3)
 	},
 	"a": func(s string) string {
+		// Add an article to the string.
 		return genlanguage.GetArticle(s) + " " + s
 	},
-	"past": func(s string) string {
-		return genlanguage.GetPastTense(s)
-	},
-	"presentsingular": func(s string) string {
-		return genlanguage.GetPresentSingular(s)
-	},
-	"presentparticiple": func(s string) string {
-		return genlanguage.GetPresentParticiple(s)
-	},
 }
+
+type RandInterface interface {
+	Intn(n int) int
+	Seed(seed int64)
+}
+
+type randWrapper struct{}
+
+func (r *randWrapper) Intn(n int) int {
+	return rand.Intn(n)
+}
+
+func (r *randWrapper) Seed(seed int64) {
+	rand.Seed(seed)
+}
+
+var defaultRand = &randWrapper{}
+
+var defaultTextGenerator = NewTextGenerator(defaultRand)

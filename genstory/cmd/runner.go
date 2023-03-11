@@ -2,7 +2,6 @@ package main
 
 import (
 	"log"
-	"math/rand"
 	"time"
 
 	"github.com/Flokey82/go_gens/genstory"
@@ -79,8 +78,7 @@ func main() {
 
 	log.Println("grammar example")
 	for i := 0; i < 10; i++ {
-		rand.Seed(time.Now().UnixNano())
-		g := genstory.ExampleRules.NewStory()
+		g := genstory.ExampleRules.NewStory(time.Now().UnixNano())
 		if title, err := g.Expand(); err != nil {
 			log.Println(i, err)
 		} else {

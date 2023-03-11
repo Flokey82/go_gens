@@ -12,7 +12,22 @@ func NewSimpleTitleConfig(templates []string) *TextConfig {
 		Tokens:           DefaultTitleTokens,
 		Templates:        templates,
 		Title:            true,
+		UseAllProvided:   true,
 	}
+}
+
+// GenerateTitle generates a text from the provided tokens and a list of
+// possible templates.
+//   - The provided tokens are used to replace the tokens in the possible templates.
+//   - If a token is not provided and optional, it is replaced with a random value.
+//   - If a token is not provided and not optional, all templates that require that
+//     token are excluded.
+//
+// TODO: Also return the selected template, and the individual replacements,
+// so that the caller can use them for the description or the generation of content.
+func GenerateTitle(provided []TokenReplacement, titles []string) (string, error) {
+	txt, _, err := defaultTextGenerator.generateFromConfig(provided, NewSimpleTitleConfig(titles), nil)
+	return txt, err
 }
 
 const (
