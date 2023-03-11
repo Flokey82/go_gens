@@ -184,6 +184,15 @@ func randArrayString(arr []string) string {
 	return arr[rand.Intn(len(arr))]
 }
 
+func ApplyModifiers(s string, modifiers []string) string {
+	for _, modifier := range modifiers {
+		if fn, ok := DefaultModifiers[modifier]; ok {
+			s = fn(s)
+		}
+	}
+	return s
+}
+
 // DefaultModifiers is a map of default modifiers that can be used in templates.
 var DefaultModifiers = map[string]func(string) string{
 	"title": func(s string) string {

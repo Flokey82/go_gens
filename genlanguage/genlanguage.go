@@ -5,6 +5,7 @@ import (
 	"math/rand"
 	"regexp"
 	"strings"
+	"unicode"
 
 	"github.com/Flokey82/naming-language-gen/naming"
 	"github.com/s0rg/fantasyname"
@@ -382,10 +383,15 @@ func P(probability float64) bool {
 
 // GetArticle returns the article for a noun.
 func GetArticle(s string) string {
-	if IsVowel(rune(s[0])) {
+	if IsVowel(RuneToLowerCase(rune(s[0]))) {
 		return "an"
 	}
 	return "a"
+}
+
+// RuneToLowerCase returns the lowercase rune.
+func RuneToLowerCase(c rune) rune {
+	return rune(unicode.ToLower(c))
 }
 
 // GetPresentSingular returns the singular present tense of a verb.

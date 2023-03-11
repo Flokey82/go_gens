@@ -2,6 +2,8 @@ package main
 
 import (
 	"log"
+	"math/rand"
+	"time"
 
 	"github.com/Flokey82/go_gens/genstory"
 )
@@ -69,6 +71,17 @@ func main() {
 			Token:       genstory.WeaponTokenType,
 			Replacement: "longsword",
 		}}); err != nil {
+			log.Println(i, err)
+		} else {
+			log.Println(i, title)
+		}
+	}
+
+	log.Println("grammar example")
+	for i := 0; i < 10; i++ {
+		rand.Seed(time.Now().UnixNano())
+		g := genstory.ExampleRules.NewStory()
+		if title, err := g.Expand(); err != nil {
 			log.Println(i, err)
 		} else {
 			log.Println(i, title)
