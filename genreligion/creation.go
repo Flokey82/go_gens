@@ -7,7 +7,7 @@ import (
 )
 
 // NewCreation generates a new world creation mythos using the given seed.
-func (g *Generator) NewCreation(god *Deity) (string, error) {
+func (g *Generator) NewCreation(god *Deity) (*genstory.Generated, error) {
 	// Pick a random world name.
 	worldName := strings.Title(g.lang.GetWord("world"))
 

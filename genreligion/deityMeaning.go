@@ -23,18 +23,18 @@ func (g *Generator) RandDeityGenMethod() string {
 // GenerateDeityMeaning generates a meaning for a deity name.
 // This code is based on:
 // https://github.com/Azgaar/Fantasy-Map-Generator/blob/master/modules/religions-generator.js
-func (g *Generator) GenerateDeityMeaning(approach string) (string, error) {
-	return g.txtGen.GenerateButUseThisTemplate(nil, approachConfig, approach)
+func (g *Generator) GenerateDeityMeaning(approach string) (*genstory.Generated, error) {
+	return g.txtGen.GenerateButUseThisTemplate(nil, DeityMeaningConfig, approach)
 }
 
 // GenerateDeityMeaningV2 generates a meaning for a deity name.
-func (g *Generator) GenerateDeityMeaningV2(provided []genstory.TokenReplacement, approach string) (string, error) {
-	return g.txtGen.GenerateButUseThisTemplate(provided, approachConfig, approach)
+func (g *Generator) GenerateDeityMeaningV2(provided []genstory.TokenReplacement, approach string) (*genstory.Generated, error) {
+	return g.txtGen.GenerateButUseThisTemplate(provided, DeityMeaningConfig, approach)
 }
 
 // GenerateDeityMeaningV3 generates a meaning for a deity name.
-func (g *Generator) GenerateDeityMeaningV3(provided []genstory.TokenReplacement) (string, string, error) {
-	return g.txtGen.GenerateAndGiveMeTheTemplate(provided, approachConfig)
+func (g *Generator) GenerateDeityMeaningV3(provided []genstory.TokenReplacement) (*genstory.Generated, error) {
+	return g.txtGen.GenerateAndGiveMeTheTemplate(provided, DeityMeaningConfig)
 }
 
 // GenMeaningApproaches contains a map of name generation
@@ -82,7 +82,7 @@ const (
 	TemplateMeaningAdjectiveAnimalOfGenitive = "[ADJECTIVE] [ANIMAL] of [GENITIVE]"
 )
 
-var approachConfig = &genstory.TextConfig{
+var DeityMeaningConfig = &genstory.TextConfig{
 	TokenPools: map[string][]string{
 		TokenNumber:    GenBase[GenBaseNumber],
 		TokenBeing:     GenBase[GenBaseBeing],

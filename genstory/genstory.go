@@ -27,21 +27,19 @@ type TextConfig struct {
 }
 
 // Generate generates a text from the provided tokens and the configuration.
-func (c *TextConfig) Generate(provided []TokenReplacement) (string, error) {
-	txt, _, err := defaultTextGenerator.generateFromConfig(provided, c, nil)
-	return txt, err
+func (c *TextConfig) Generate(provided []TokenReplacement) (*Generated, error) {
+	return defaultTextGenerator.generateFromConfig(provided, c, nil)
 }
 
 // GenerateAndGiveMeTheTemplate generates a text from the provided tokens and the configuration.
 // It also returns the template that was used to generate the text.
-func (c *TextConfig) GenerateAndGiveMeTheTemplate(provided []TokenReplacement) (string, string, error) {
+func (c *TextConfig) GenerateAndGiveMeTheTemplate(provided []TokenReplacement) (*Generated, error) {
 	return defaultTextGenerator.generateFromConfig(provided, c, nil)
 }
 
 // GenerateWithTemplate generates a text from the provided tokens and the provided template.
-func (c *TextConfig) GenerateWithTemplate(provided []TokenReplacement, template string) (string, error) {
-	txt, _, err := defaultTextGenerator.generateFromConfig(provided, c, []string{template})
-	return txt, err
+func (c *TextConfig) GenerateWithTemplate(provided []TokenReplacement, template string) (*Generated, error) {
+	return defaultTextGenerator.generateFromConfig(provided, c, []string{template})
 }
 
 // TextGenerator is a generator for text using TextConfigs.
@@ -59,24 +57,29 @@ func NewTextGenerator(rng RandInterface) *TextGenerator {
 }
 
 // Generate generates a text from the provided tokens and the configuration.
-func (g *TextGenerator) Generate(provided []TokenReplacement, config *TextConfig) (string, error) {
-	txt, _, err := g.generateFromConfig(provided, config, nil)
-	return txt, err
+func (g *TextGenerator) Generate(provided []TokenReplacement, config *TextConfig) (*Generated, error) {
+	return g.generateFromConfig(provided, config, nil)
 }
 
 // GenerateAndGiveMeTheTemplate generates a text from the provided tokens and the configuration.
 // It also returns the template that was used to generate the text.
-func (g *TextGenerator) GenerateAndGiveMeTheTemplate(provided []TokenReplacement, config *TextConfig) (string, string, error) {
+func (g *TextGenerator) GenerateAndGiveMeTheTemplate(provided []TokenReplacement, config *TextConfig) (*Generated, error) {
 	return g.generateFromConfig(provided, config, nil)
 }
 
 // GenerateButUseThisTemplate generates a text from the provided tokens and the provided template.
-func (g *TextGenerator) GenerateButUseThisTemplate(provided []TokenReplacement, config *TextConfig, template string) (string, error) {
-	txt, _, err := g.generateFromConfig(provided, config, []string{template})
-	return txt, err
+func (g *TextGenerator) GenerateButUseThisTemplate(provided []TokenReplacement, config *TextConfig, template string) (*Generated, error) {
+	return g.generateFromConfig(provided, config, []string{template})
 }
 
-func (g *TextGenerator) generateFromConfig(provided []TokenReplacement, config *TextConfig, altTemplates []string) (string, string, error) {
+// Generated provides information about a generated text.
+type Generated struct {
+	Text     string
+	Template string
+	Tokens   []TokenReplacement
+}
+
+func (g *TextGenerator) generateFromConfig(provided []TokenReplacement, config *TextConfig, altTemplates []string) (*Generated, error) {
 	templates := config.Templates
 	if altTemplates != nil {
 		templates = altTemplates
@@ -123,7 +126,7 @@ func (g *TextGenerator) generateFromConfig(provided []TokenReplacement, config *
 		// TODO: Maybe cache the extracted tokens somewhere.
 		extracted, err := ExtractTokens(template)
 		if err != nil {
-			return "", "", err
+			return nil, err
 		}
 
 		// Count how many times each token appears in the template.
@@ -175,12 +178,15 @@ func (g *TextGenerator) generateFromConfig(provided []TokenReplacement, config *
 
 	// If we have no possible templates, return an error.
 	if len(possibleTemplates) == 0 {
-		return "", "", errors.New("no possible templates satisfying the provided tokens")
+		return nil, errors.New("no possible templates satisfying the provided tokens")
 	}
 
 	// Pick a random text.
 	chosen := possibleTemplates[rand.Intn(len(possibleTemplates))]
-	text := chosen.template
+	generated := &Generated{
+		Text:     chosen.template,
+		Template: chosen.template,
+	}
 
 	// Relplace each token one by one until we can't find any more.
 	replacementsUsed := make(map[string]int)
@@ -194,22 +200,29 @@ func (g *TextGenerator) generateFromConfig(provided []TokenReplacement, config *
 			replacement = randArrayString(g, tokenRandom[token.Token])
 		}
 
+		// Remember the token and the replacement we used.
+		generated.Tokens = append(generated.Tokens, TokenReplacement{
+			Token:       token.Token,
+			Replacement: replacement,
+		})
+
 		// Apply modifiers.
 		replacement = applyModifiers(replacement, token.Modifiers)
 
 		// Replace the token with the replacement.
-		text = strings.Replace(text, token.FullToken, replacement, 1)
+		generated.Text = strings.Replace(generated.Text, token.FullToken, replacement, 1)
 	}
 	if capitalize {
 		// Capitalize the first letter of each word in the text.
-		text = strings.Title(text)
+		generated.Text = strings.Title(generated.Text)
 	} else {
 		// Capitalize the first letter of the text.
 		// We have to make sure we don't just use the slice operator, since that
 		// might corrupt UTF-8 characters.
-		text = genlanguage.Capitalize(text)
+		generated.Text = genlanguage.Capitalize(generated.Text)
 	}
-	return text, chosen.template, nil
+
+	return generated, nil
 }
 
 func randArrayString(rng RandInterface, arr []string) string {

@@ -25,9 +25,8 @@ func NewSimpleTitleConfig(templates []string) *TextConfig {
 //
 // TODO: Also return the selected template, and the individual replacements,
 // so that the caller can use them for the description or the generation of content.
-func GenerateTitle(provided []TokenReplacement, titles []string) (string, error) {
-	txt, _, err := defaultTextGenerator.generateFromConfig(provided, NewSimpleTitleConfig(titles), nil)
-	return txt, err
+func GenerateTitle(provided []TokenReplacement, titles []string) (*Generated, error) {
+	return defaultTextGenerator.generateFromConfig(provided, NewSimpleTitleConfig(titles), nil)
 }
 
 const (

@@ -17,7 +17,7 @@ func main() {
 		} else if myth, err := gen.NewCreation(god); err != nil {
 			log.Println(i, err)
 		} else {
-			log.Println(i, myth)
+			log.Println(i, myth.Text)
 		}
 	}
 }

@@ -67,7 +67,7 @@ func (g *Generator) GenNamedIsm(name string) string {
 }
 
 // GenFaithName generates a name for a faith.
-func (g *Generator) GenFaithName(tokens []genstory.TokenReplacement) (name, method string, err error) {
+func (g *Generator) GenFaithName(tokens []genstory.TokenReplacement) (*genstory.Generated, error) {
 	return g.txtGen.GenerateAndGiveMeTheTemplate(tokens, &NameConfig)
 }
 
