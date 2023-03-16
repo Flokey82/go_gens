@@ -59,3 +59,4 @@ genworldvoronoi/cmd/cpu.prof
 genstory/cmd/runner
 genthesaurus/cmd/runner
 genreligion/cmd/runner
+gengeometry/cmd/runner
