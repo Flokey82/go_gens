@@ -12,6 +12,7 @@ import (
 
 	"github.com/Flokey82/go_gens/vectors"
 	"github.com/llgcode/draw2d/draw2dimg"
+	"github.com/mazznoer/colorgrad"
 )
 
 // https://glumbosch.home.blog/2020/01/12/layouts-of-a-village-in-the-middle-ages/
@@ -19,16 +20,17 @@ import (
 
 // Map is a map.
 type Map struct {
-	Root        *Segment
 	rng         *rand.Rand
 	queue       PriorityQueue
 	allSegments []*Segment // until we add a quadTree, we need to keep track of all segments
+	cfg         *MapConfig
 }
 
 // NewMap creates a new map.
-func NewMap(seed int64) *Map {
+func NewMap(seed int64, cfg *MapConfig) *Map {
 	return &Map{
 		rng: rand.New(rand.NewSource(seed)),
+		cfg: cfg,
 	}
 }
 
@@ -68,19 +70,22 @@ func (m *Map) ExportToPNG(path string) error {
 	gc.SetStrokeColor(color.RGBA{0, 0, 0, 255})
 	gc.SetLineWidth(2)
 
+	// Get a new color palette.
+	grad := colorgrad.Rainbow()
+	cols := grad.Colors(uint(len(m.cfg.Rules) + 1))
+
 	// Draw segments.
 	for _, seg := range m.allSegments {
 		if seg.Prev == nil {
 			continue
 		}
-		switch seg.Type {
-		case Highway:
-			gc.SetStrokeColor(color.RGBA{255, 0, 0, 255})
-		case Street:
-			gc.SetStrokeColor(color.RGBA{0, 255, 0, 255})
-		case Footpath:
-			gc.SetStrokeColor(color.RGBA{255, 255, 255, 255})
-		}
+		colR, colG, colB, colA := cols[seg.Type].RGBA()
+		// Convert to 0-255 range.
+		colR = colR >> 8
+		colG = colG >> 8
+		colB = colB >> 8
+		colA = colA >> 8
+		gc.SetStrokeColor(color.RGBA{uint8(colR), uint8(colG), uint8(colB), uint8(colA)})
 		gc.BeginPath()
 		gc.MoveTo(seg.Point.X-minX, seg.Point.Y-minY)
 		gc.LineTo(seg.Prev.Point.X-minX, seg.Prev.Point.Y-minY)
@@ -99,28 +104,12 @@ func (m *Map) ExportToPNG(path string) error {
 
 // Generate generates the map.
 func (m *Map) Generate() {
-	// Create root segment.
-	m.Root = &Segment{
-		Point: vectors.NewVec2(0, 0),
-		Type:  Highway,
-		Step:  0,
-	}
-
 	// Initialize priority queue.
 	m.queue = make(PriorityQueue, 0)
 	heap.Init(&m.queue)
-	heap.Push(&m.queue, m.Root)
-
-	// Also generate a segment into the opposite direction.
-	// This will ensure we grow the highway in both directions.
-	opposite := &Segment{
-		Point: vectors.NewVec2(-1, 0),
-		Type:  Highway,
-		Step:  0,
-		Prev:  m.Root,
+	for _, rootSeg := range m.cfg.SeedRoots() {
+		heap.Push(&m.queue, rootSeg)
 	}
-	m.Root.Prev = opposite
-	heap.Push(&m.queue, opposite)
 }
 
 // Step performs one iteration of the map generation.
@@ -135,7 +124,7 @@ func (m *Map) Step() {
 	}
 
 	// Add a branch by chance.
-	cfg := getSegTypeConfig(seg.Type)
+	cfg := m.cfg.getTypeConfig(seg.Type)
 	if seg.Prev != nil && m.rng.Float64() < cfg.BranchingChance {
 		m.newSegment(seg, true)
 	}
@@ -143,16 +132,19 @@ func (m *Map) Step() {
 
 func (m *Map) newSegment(origin *Segment, branch bool) *Segment {
 	segType := origin.Type
-	if branch && segType < Footpath {
-		segType++
+	config := m.cfg.getTypeConfig(segType)
+	if branch && segType < RoadType(len(m.cfg.Rules)-1) {
+		if !config.BranchSameType || m.rng.Float64() > config.BranchSameTypeChance {
+			segType++
+			config = m.cfg.getTypeConfig(segType)
+		}
 	}
-	config := getSegTypeConfig(segType)
 
 	// Calculate length.
-	dist := config.MinLength + config.MinLength*m.rng.Float64()*config.LengthVariation
+	dist := config.LengthMin + config.LengthMin*m.rng.Float64()*config.LengthVariation
 
 	// Calculate angle.
-	angle := config.MinAngle + m.rng.Float64()*config.AngleVariance
+	angle := config.AngleMin + m.rng.Float64()*config.AngleVariance
 
 	// 50% chance to flip angle.
 	if config.AngleReversal && m.rng.Float64() < 0.5 {
@@ -161,7 +153,7 @@ func (m *Map) newSegment(origin *Segment, branch bool) *Segment {
 
 	// If branch, add branching angle.
 	if branch {
-		originConfig := getSegTypeConfig(origin.Type)
+		originConfig := m.cfg.getTypeConfig(origin.Type)
 
 		// 50% chance to flip angle.
 		// TODO: Maybe also sometimes flip 180 degrees?
@@ -192,7 +184,11 @@ func (m *Map) newSegment(origin *Segment, branch bool) *Segment {
 	}
 
 	// Find if any segments intersect with the new segment.
+	// Find closest intersection point and set that as the end point.
 	// NOTE: This should be maybe optimized by using a quadtree or something.
+	var foundIntersect bool
+	var currentDist float64
+	var ipClosest vectors.Vec2
 	for _, seg := range m.allSegments {
 		if seg == origin || seg == newSeg {
 			continue
@@ -204,11 +200,21 @@ func (m *Map) newSegment(origin *Segment, branch bool) *Segment {
 			if !newSeg.IsPointOnLine(ip) {
 				continue
 			}
-			newSeg.Point = ip
-			newSeg.Length = vectors.Dist2(ip, origin.Point)
-			newSeg.End = true
-			break
+			// No intersection or point is closer than the current closest.
+			newDist := vectors.Dist2(ip, origin.Point)
+			if !foundIntersect || newDist < currentDist {
+				ipClosest = ip
+				currentDist = newDist
+				foundIntersect = true
+			}
 		}
+	}
+
+	// If we found an intersection, set the end point of the new segment to the intersection point.
+	if foundIntersect {
+		newSeg.Point = ipClosest
+		newSeg.Length = vectors.Dist2(ipClosest, origin.Point)
+		newSeg.End = true
 	}
 
 	// Add to queue (if not end).
@@ -216,7 +222,7 @@ func (m *Map) newSegment(origin *Segment, branch bool) *Segment {
 		heap.Push(&m.queue, newSeg)
 	}
 
-	// add branch to origin
+	// Add branch to origin.
 	if branch {
 		origin.Branches = append(origin.Branches, newSeg)
 	}

@@ -5,7 +5,7 @@ import (
 )
 
 func main() {
-	m := gencitymap.NewMap(123)
+	m := gencitymap.NewMap(123, gencitymap.DefaultMapConfig)
 	m.Generate()
 	for i := 0; i < 1940; i++ {
 		m.Step()

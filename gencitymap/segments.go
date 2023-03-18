@@ -44,41 +44,25 @@ func (s *Segment) IsPointOnLine(p vectors.Vec2) bool {
 
 type RoadType int
 
-const (
-	Highway RoadType = iota
-	Street
-	Footpath
-)
-
 // SegmentTypeConfig is the configuration for a segment type.
 type SegmentTypeConfig struct {
-	MinLength         float64 // minimum length of a segment of this type
-	LengthVariation   float64 // maximum length variation of a segment of this type (0.1 = 10%)
-	MinAngle          float64 // minimum angle of a segment extension in degrees (10.0 = 10°)
-	AngleVariance     float64 // maximum angle variation of a segment extension in degrees (10.0 = 10°)
-	AngleReversal     bool    // allow reverse angle of the road
-	BranchingChance   float64 // chance of branching (0.1 = 10%)
-	BranchingAngle    float64 // angle of subbranches in degrees (10.0 = 10°)
-	BranchingReversal bool    // allow reverse branching direction of the road
-}
-
-func getSegTypeConfig(segType RoadType) SegmentTypeConfig {
-	switch segType {
-	case Highway:
-		return HighwayConfig
-	case Street:
-		return StreetConfig
-	case Footpath:
-		return FootpathConfig
-	}
-	return FootpathConfig
+	LengthMin            float64 // minimum length of a segment of this type
+	LengthVariation      float64 // maximum length variation of a segment of this type (0.1 = 10%)
+	AngleMin             float64 // minimum angle of a segment extension in degrees (10.0 = 10°)
+	AngleVariance        float64 // maximum angle variation of a segment extension in degrees (10.0 = 10°)
+	AngleReversal        bool    // allow reverse angle of the road
+	BranchingChance      float64 // chance of branching (0.1 = 10%)
+	BranchingAngle       float64 // angle of subbranches in degrees (10.0 = 10°)
+	BranchingReversal    bool    // allow reverse branching direction of the road
+	BranchSameType       bool    // allow branching to the same type of road
+	BranchSameTypeChance float64 // chance of branching to the same type of road (0.1 = 10%)
 }
 
 var (
 	HighwayConfig = SegmentTypeConfig{
-		MinLength:         200,
-		MinAngle:          10.0,
+		LengthMin:         200,
 		LengthVariation:   0.1,
+		AngleMin:          10.0,
 		AngleVariance:     1.0,
 		AngleReversal:     true,
 		BranchingChance:   0.3,
@@ -86,16 +70,18 @@ var (
 		BranchingReversal: true,
 	}
 	StreetConfig = SegmentTypeConfig{
-		MinLength:         100,
-		LengthVariation:   0.5,
-		AngleVariance:     4.0,
-		AngleReversal:     true,
-		BranchingChance:   0.7,
-		BranchingAngle:    90.0,
-		BranchingReversal: true,
+		LengthMin:            100,
+		LengthVariation:      0.5,
+		AngleVariance:        4.0,
+		AngleReversal:        true,
+		BranchingChance:      0.7,
+		BranchingAngle:       90.0,
+		BranchingReversal:    true,
+		BranchSameType:       true,
+		BranchSameTypeChance: 0.2,
 	}
 	FootpathConfig = SegmentTypeConfig{
-		MinLength:       50,
+		LengthMin:       50,
 		LengthVariation: 0.6,
 		AngleVariance:   3.0,
 		AngleReversal:   true,
@@ -123,4 +109,41 @@ func doLineSegmentsIntersectVec2(p0, p1, p2, p3 vectors.Vec2) (ok bool, res vect
 
 func degToRad(deg float64) float64 {
 	return deg * math.Pi / 180
+}
+
+type MapConfig struct {
+	SeedRoots func() []*Segment
+	Rules     []*SegmentTypeConfig
+}
+
+func (mc *MapConfig) getTypeConfig(segType RoadType) *SegmentTypeConfig {
+	if segType < 0 {
+		return mc.Rules[0]
+	}
+	if segType >= RoadType(len(mc.Rules)) {
+		return mc.Rules[len(mc.Rules)-1]
+	}
+	return mc.Rules[segType]
+}
+
+var DefaultMapConfig = &MapConfig{
+	SeedRoots: func() []*Segment {
+		root1 := &Segment{
+			Point:  vectors.NewVec2(0, 0),
+			Length: 100,
+			Type:   0,
+		}
+		opposite := &Segment{
+			Point: vectors.NewVec2(-1, 0),
+			Type:  0,
+			Step:  0,
+			Prev:  root1,
+		}
+		root1.Prev = opposite
+		return []*Segment{root1, opposite}
+	}, Rules: []*SegmentTypeConfig{
+		&HighwayConfig,
+		&StreetConfig,
+		&FootpathConfig,
+	},
 }
