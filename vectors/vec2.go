@@ -153,3 +153,81 @@ func Equalish(a, b float64) bool {
 func Angle2(v Vec2) float64 {
 	return math.Atan2(v.Y, v.X) * 180 / math.Pi
 }
+
+// Segment represents a line segment.
+type Segment struct {
+	Start Vec2
+	End   Vec2
+}
+
+// NewSegment returns a new segment.
+func NewSegment(start, end Vec2) Segment {
+	return Segment{
+		Start: start,
+		End:   end,
+	}
+}
+
+// Intersect returns true if the two segments intersect.
+func (s1 Segment) Intersect(s2 Segment) bool {
+	return s1.IntersectPoint(s2) != nil
+}
+
+// IntersectPoint returns the intersection point of the two segments.
+func (s1 Segment) IntersectPoint(s2 Segment) *Vec2 {
+	denom := (s2.End.Y-s2.Start.Y)*(s1.End.X-s1.Start.X) - (s2.End.X-s2.Start.X)*(s1.End.Y-s1.Start.Y)
+	if denom == 0 {
+		return nil
+	}
+	ua := ((s2.End.X-s2.Start.X)*(s1.Start.Y-s2.Start.Y) - (s2.End.Y-s2.Start.Y)*(s1.Start.X-s2.Start.X)) / denom
+	ub := ((s1.End.X-s1.Start.X)*(s1.Start.Y-s2.Start.Y) - (s1.End.Y-s1.Start.Y)*(s1.Start.X-s2.Start.X)) / denom
+	if ua >= 0 && ua <= 1 && ub >= 0 && ub <= 1 {
+		x := s1.Start.X + ua*(s1.End.X-s1.Start.X)
+		y := s1.Start.Y + ua*(s1.End.Y-s1.Start.Y)
+		return &Vec2{X: x, Y: y}
+	}
+	return nil
+}
+
+// IsPointOnLine returns true if the point is on the line.
+func (s1 Segment) IsPointOnLine(p Vec2) bool {
+	if s1.Start.X == s1.End.X {
+		// vertical line
+		return p.X == s1.Start.X
+	}
+	if s1.Start.Y == s1.End.Y {
+		// horizontal line
+		return p.Y == s1.Start.Y
+	}
+	return (p.X-s1.Start.X)*(s1.End.Y-s1.Start.Y) == (p.Y-s1.Start.Y)*(s1.End.X-s1.Start.X)
+}
+
+// Intersects returns true if the line intersects with the other line.
+func (s1 Segment) Intersects(l2 Segment) (bool, Vec2) {
+	// Check if one of the points is somewhere on the other line.
+	if l2.IsPointOnLine(s1.Start) {
+		return true, s1.Start
+	}
+	if l2.IsPointOnLine(s1.End) {
+		return true, s1.End
+	}
+	if s1.IsPointOnLine(l2.Start) {
+		return true, l2.Start
+	}
+	if s1.IsPointOnLine(l2.End) {
+		return true, l2.End
+	}
+	denominator := (l2.End.Y-l2.Start.Y)*(s1.End.X-s1.Start.X) - (l2.End.X-l2.Start.X)*(s1.End.Y-s1.Start.Y)
+	if denominator == 0 {
+		return false, Vec2{}
+	}
+	uA := ((l2.End.X-l2.Start.X)*(s1.Start.Y-l2.Start.Y) - (l2.End.Y-l2.Start.Y)*(s1.Start.X-l2.Start.X)) / denominator
+	uB := ((s1.End.X-s1.Start.X)*(s1.Start.Y-l2.Start.Y) - (s1.End.Y-s1.Start.Y)*(s1.Start.X-l2.Start.X)) / denominator
+	if uA >= 0 && uA <= 1 && uB >= 0 && uB <= 1 {
+		return true, Vec2{
+			X: s1.Start.X + (uA * (s1.End.X - s1.Start.X)),
+			Y: s1.Start.Y + (uA * (s1.End.Y - s1.Start.Y)),
+		}
+	}
+	return false, Vec2{}
+}

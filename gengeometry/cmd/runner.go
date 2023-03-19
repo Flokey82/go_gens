@@ -8,13 +8,14 @@ import (
 	"os"
 
 	"github.com/Flokey82/go_gens/gengeometry"
+	"github.com/Flokey82/go_gens/vectors"
 	"github.com/mazznoer/colorgrad"
 )
 
 func main() {
 	// Set up a normal square as polygon.
 	poly := gengeometry.Polygon{
-		Points: []gengeometry.Point{
+		Points: []vectors.Vec2{
 			{X: 0, Y: 0},
 			{X: 0, Y: 1},
 			{X: 1, Y: 1},
@@ -24,7 +25,7 @@ func main() {
 
 	// Set up a U shape as polygon.
 	poly = gengeometry.Polygon{
-		Points: []gengeometry.Point{
+		Points: []vectors.Vec2{
 			{X: 0, Y: 0},
 			{X: 0, Y: 1},
 			{X: 1, Y: 1},
@@ -37,16 +38,16 @@ func main() {
 	}
 
 	// Set up a line that cuts the polygon in half.
-	line := gengeometry.Line{
-		Start: gengeometry.Point{X: -1, Y: 0.5},
-		End:   gengeometry.Point{X: 2, Y: 0.5},
-	}
+	line := vectors.NewSegment(
+		vectors.Vec2{X: -1, Y: 0.5},
+		vectors.Vec2{X: 2, Y: 0.5},
+	)
 
 	// Set up a diagonal line that cuts the polygon in half.
-	line = gengeometry.Line{
-		Start: gengeometry.Point{X: -0.9, Y: -1.1},
-		End:   gengeometry.Point{X: 1.2, Y: 1.1},
-	}
+	line = vectors.NewSegment(
+		vectors.Vec2{X: -0.9, Y: -1.1},
+		vectors.Vec2{X: 1.2, Y: 1.1},
+	)
 
 	// Split into multiple polygons.
 	polys := poly.Split(line)
@@ -74,10 +75,31 @@ func main() {
 			A: uint8(ca >> 8),
 		}
 		log.Printf("Poly %d:", i)
-		p.Log()
 		p.DrawToImage(img, col, 900/float64(i+1))
 	}
-	line.DrawToImage(img, color.RGBA{0, 0, 255, 255}, 1000)
+	gengeometry.DrawLine(img, line.Start, line.End, color.RGBA{0, 0, 255, 255}, 1000)
 
 	png.Encode(f, img)
+
+	// Generate a mesh from a path.
+	crossPath := gengeometry.PlusShape{
+		Width:     1,
+		Length:    1,
+		WingWidth: 0.2,
+	}
+	path := crossPath.GetPath()
+	mesh := gengeometry.ExtrudePath(path, 0.2)
+
+	/*
+		squarePath := gengeometry.RectangleShape{
+			Width:  1,
+			Length: 1,
+		}
+		path = squarePath.GetPath()
+		mesh2 := gencitymap.TaperPath(path, 0.2)
+	*/
+	mesh2 := gengeometry.TaperPath(path, 0.1)
+	mesh.AddMesh(mesh2, 0.2)
+
+	mesh.ExportToObj("test.obj")
 }

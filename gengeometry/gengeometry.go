@@ -1,15 +1,15 @@
 package gengeometry
 
 import (
-	"fmt"
 	"image"
 	"image/color"
 	"log"
-	"math"
 	"sort"
+
+	"github.com/Flokey82/go_gens/vectors"
 )
 
-func DrawLine(img *image.RGBA, a, b Point, color color.RGBA, scale float64) {
+func DrawLine(img *image.RGBA, a, b vectors.Vec2, color color.RGBA, scale float64) {
 	// Bresenham's line algorithm
 	x0 := int(a.X * scale)
 	y0 := int(a.Y * scale)
@@ -52,82 +52,10 @@ func Abs(x float64) float64 {
 	return x
 }
 
-// Point represents a point in 2D space.
-type Point struct {
-	X float64
-	Y float64
-}
-
-func (p Point) Log() {
-	fmt.Println(p.X, p.Y)
-}
-
-// Distance returns the distance between two points.
-func (p Point) Distance(p2 Point) float64 {
-	return math.Sqrt(math.Pow(p2.X-p.X, 2) + math.Pow(p2.Y-p.Y, 2))
-}
-
-// Line is a line between two points.
-type Line struct {
-	Start Point
-	End   Point
-}
-
-// IsPointOnLine returns true if the point is on the line.
-func (l Line) IsPointOnLine(p Point) bool {
-	if l.Start.X == l.End.X {
-		// vertical line
-		return p.X == l.Start.X
-	}
-	if l.Start.Y == l.End.Y {
-		// horizontal line
-		return p.Y == l.Start.Y
-	}
-	return (p.X-l.Start.X)*(l.End.Y-l.Start.Y) == (p.Y-l.Start.Y)*(l.End.X-l.Start.X)
-}
-
-// Intersects returns true if the line intersects with the other line.
-func (l Line) Intersects(l2 Line) (bool, Point) {
-	// Check if one of the points is somewhere on the other line.
-	if l2.IsPointOnLine(l.Start) {
-		return true, l.Start
-	}
-	if l2.IsPointOnLine(l.End) {
-		return true, l.End
-	}
-	if l.IsPointOnLine(l2.Start) {
-		return true, l2.Start
-	}
-	if l.IsPointOnLine(l2.End) {
-		return true, l2.End
-	}
-	denominator := (l2.End.Y-l2.Start.Y)*(l.End.X-l.Start.X) - (l2.End.X-l2.Start.X)*(l.End.Y-l.Start.Y)
-	if denominator == 0 {
-		return false, Point{}
-	}
-	uA := ((l2.End.X-l2.Start.X)*(l.Start.Y-l2.Start.Y) - (l2.End.Y-l2.Start.Y)*(l.Start.X-l2.Start.X)) / denominator
-	uB := ((l.End.X-l.Start.X)*(l.Start.Y-l2.Start.Y) - (l.End.Y-l.Start.Y)*(l.Start.X-l2.Start.X)) / denominator
-	if uA >= 0 && uA <= 1 && uB >= 0 && uB <= 1 {
-		return true, Point{l.Start.X + (uA * (l.End.X - l.Start.X)), l.Start.Y + (uA * (l.End.Y - l.Start.Y))}
-	}
-	return false, Point{}
-}
-
-// DrawToImage draws the line to an image.
-func (l Line) DrawToImage(img *image.RGBA, color color.RGBA, scale float64) {
-	DrawLine(img, l.Start, l.End, color, scale)
-}
-
 // Polygon is a polygon with multiple points.
 type Polygon struct {
-	Points []Point
+	Points []vectors.Vec2
 	// SubAreas []Polygon TODO: Populate when splitting a polygon.
-}
-
-func (p Polygon) Log() {
-	for _, point := range p.Points {
-		point.Log()
-	}
 }
 
 // DrawToImage draws the polygon to an image.
@@ -143,21 +71,21 @@ func (p Polygon) DrawToImage(img *image.RGBA, color color.RGBA, scale float64) {
 
 // Split splits a polygon into multiple polygons by cutting it along a line.
 // NOTE: This is buggy, especially when an intersection point is on a vertex.
-func (p *Polygon) Split(l Line) []*Polygon {
+func (p *Polygon) Split(l vectors.Segment) []*Polygon {
 	// https://github.com/gilengel/mapme/blob/main/src/algorithm/geo.rs
 	// https://github.com/gpicavet/split-poly/blob/master/index.js
 	// https://github.com/xidiq/gitinit/blob/main/lizmap/www/OpenLayers-2.13/lib/OpenLayers/Geometry/Polygon.js
 	type interPoint struct {
-		is        int      // start segment index
-		ie        int      // end segment index
-		p         Point    // intersection point
-		t         float64  // distance from start to intersection point
-		crossback *Polygon // polygon connected through this intersection
+		is        int          // start segment index
+		ie        int          // end segment index
+		p         vectors.Vec2 // intersection point
+		t         float64      // distance from start to intersection point
+		crossback *Polygon     // polygon connected through this intersection
 	}
 
 	var interPoints []interPoint
 	rayOrig := l.Start
-	rayDir := Point{
+	rayDir := vectors.Vec2{
 		X: l.End.X - l.Start.X,
 		Y: l.End.Y - l.Start.Y,
 	}
@@ -168,7 +96,7 @@ func (p *Polygon) Split(l Line) []*Polygon {
 		// li := Line{start, end}
 		// _, intPt := l.Intersects(li)
 		// inter = start + s * (end-start)
-		edgeDir := Point{
+		edgeDir := vectors.Vec2{
 			X: end.X - start.X,
 			Y: end.Y - start.Y,
 		}
@@ -177,7 +105,7 @@ func (p *Polygon) Split(l Line) []*Polygon {
 			num := rayDir.X*(rayOrig.Y-start.Y) - rayDir.Y*(rayOrig.X-start.X)
 			// s = (rayOrig-start) dot (-rayDir.y, rayDir.x) / (end-start) dot (-rayDir.y, rayDir.x)
 			if s := num / den; s >= 0 && s <= 1 { // intersection in edge if s>=0 && s<=1
-				pt := Point{
+				pt := vectors.Vec2{
 					X: start.X + s*edgeDir.X,
 					Y: start.Y + s*edgeDir.Y,
 				}
