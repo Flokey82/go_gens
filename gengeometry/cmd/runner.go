@@ -82,7 +82,7 @@ func main() {
 	png.Encode(f, img)
 
 	// Generate a mesh from a path.
-	crossPath := gengeometry.PlusShape{
+	crossPath := gengeometry.HShape{
 		Width:     1,
 		Length:    1,
 		WingWidth: 0.2,

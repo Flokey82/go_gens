@@ -43,6 +43,46 @@ type Shape interface {
 // Rectangle:
 //  ______
 // |______|
+//
+// H-Shape:
+//  _    _
+// | |__| |
+// |  __  |
+// |_|  |_|
+
+type HShape struct {
+	Width, Length float64
+	WingWidth     float64
+}
+
+func (h HShape) ConnectionPoints() []vectors.Vec2 {
+	return []vectors.Vec2{
+		{X: 0, Y: h.Length / 2},
+		{X: h.Width / 2, Y: 0},
+		{X: h.Width, Y: h.Length / 2},
+		{X: h.Width / 2, Y: h.Length},
+	}
+}
+
+func (h HShape) GetPath() []vectors.Vec2 {
+	widthMargin := h.WingWidth
+	lengthMargin := h.WingWidth
+
+	return []vectors.Vec2{
+		{X: 0, Y: 0},
+		{X: widthMargin, Y: 0},
+		{X: widthMargin, Y: (h.Length - lengthMargin) / 2},
+		{X: h.Width - widthMargin, Y: (h.Length - lengthMargin) / 2},
+		{X: h.Width - widthMargin, Y: 0},
+		{X: h.Width, Y: 0},
+		{X: h.Width, Y: h.Length},
+		{X: h.Width - widthMargin, Y: h.Length},
+		{X: h.Width - widthMargin, Y: (h.Length + lengthMargin) / 2},
+		{X: widthMargin, Y: (h.Length + lengthMargin) / 2},
+		{X: widthMargin, Y: h.Length},
+		{X: 0, Y: h.Length},
+	}
+}
 
 type PlusShape struct {
 	Width, Length, WingWidth float64
@@ -74,7 +114,6 @@ func (p PlusShape) GetPath() []vectors.Vec2 {
 		{X: 0, Y: p.Length - lengthMargin},
 		{X: 0, Y: lengthMargin},
 		{X: widthMargin, Y: lengthMargin},
-		{X: widthMargin, Y: 0},
 	}
 }
 
@@ -103,7 +142,6 @@ func (u UShape) GetPath() []vectors.Vec2 {
 		{X: u.WingWidth, Y: u.WingWidth},
 		{X: u.WingWidth, Y: u.Length},
 		{X: 0, Y: u.Length},
-		{X: 0, Y: 0},
 	}
 }
 
@@ -128,7 +166,6 @@ func (l LShape) GetPath() []vectors.Vec2 {
 		{X: l.Width - l.WingWidth, Y: l.Length},
 		{X: l.Width - l.WingWidth, Y: l.WingWidth},
 		{X: 0, Y: l.WingWidth},
-		{X: 0, Y: 0},
 	}
 }
 
@@ -151,6 +188,5 @@ func (r RectangleShape) GetPath() []vectors.Vec2 {
 		{X: r.Width, Y: 0},
 		{X: r.Width, Y: r.Length},
 		{X: 0, Y: r.Length},
-		{X: 0, Y: 0},
 	}
 }

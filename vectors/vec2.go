@@ -154,6 +154,14 @@ func Angle2(v Vec2) float64 {
 	return math.Atan2(v.Y, v.X) * 180 / math.Pi
 }
 
+// Sub2 subtracts v2 from v1 and returns the result.
+func Sub2(v1, v2 Vec2) Vec2 {
+	return Vec2{
+		X: v1.X - v2.X,
+		Y: v1.Y - v2.Y,
+	}
+}
+
 // Segment represents a line segment.
 type Segment struct {
 	Start Vec2
@@ -230,4 +238,67 @@ func (s1 Segment) Intersects(l2 Segment) (bool, Vec2) {
 		}
 	}
 	return false, Vec2{}
+}
+
+func PointInTriangle(p Vec2, triangle []Vec2) bool {
+	// https://stackoverflow.com/questions/2049582/how-to-determine-if-a-point-is-in-a-2d-triangle
+	// Compute vectors
+	v0 := Sub2(triangle[2], triangle[0])
+	v1 := Sub2(triangle[1], triangle[0])
+	v2 := Sub2(p, triangle[0])
+
+	// Compute dot products
+	dot00 := Dot2(v0, v0)
+	dot01 := Dot2(v0, v1)
+	dot02 := Dot2(v0, v2)
+	dot11 := Dot2(v1, v1)
+	dot12 := Dot2(v1, v2)
+
+	// Compute barycentric coordinates
+	invDenom := 1 / (dot00*dot11 - dot01*dot01)
+	u := (dot11*dot02 - dot01*dot12) * invDenom
+	v := (dot00*dot12 - dot01*dot02) * invDenom
+
+	// Check if point is in triangle
+	return (u >= 0) && (v >= 0) && (u+v < 1)
+}
+
+// AngleBetween returns the angle between the three points.
+func AngleBetween(p1, p2, p3 Vec2) float64 {
+	// https://stackoverflow.com/questions/14066933/direct-way-of-computing-clockwise-angle-between-2-vectors
+	v1 := Sub2(p2, p1)
+	v2 := Sub2(p3, p2)
+	dot := Dot2(v1, v2)
+	det := v1.X*v2.Y - v1.Y*v2.X
+	return math.Atan2(det, dot)
+}
+
+// Ray2 represents a ray in 2D space.
+type Ray2 struct {
+	Origin Vec2 // Origin of the ray.
+	Dir    Vec2 // Direction of the ray.
+}
+
+// Intersects returns true if the ray intersects with the line segment.
+func (r Ray2) Intersects(s Segment) bool {
+	// Determine if the ray (that is infinitely long) intersects with the line segment.
+	denom := (s.End.Y-s.Start.Y)*r.Dir.X - (s.End.X-s.Start.X)*r.Dir.Y
+	nume_a := (s.End.X-s.Start.X)*(r.Origin.Y-s.Start.Y) - (s.End.Y-s.Start.Y)*(r.Origin.X-s.Start.X)
+	nume_b := (r.Dir.X)*(r.Origin.Y-s.Start.Y) - (r.Dir.Y)*(r.Origin.X-s.Start.X)
+	if denom == 0 {
+		if nume_a == 0 && nume_b == 0 {
+			// Collinear
+			return true
+		}
+		// Parallel
+		return false
+	}
+	u_a := nume_a / denom
+	u_b := nume_b / denom
+	if u_a >= 0 && u_b >= 0 && u_b <= 1 {
+		// Intersection
+		return true
+	}
+	// No intersection
+	return false
 }
