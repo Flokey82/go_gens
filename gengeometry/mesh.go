@@ -145,8 +145,8 @@ func Triangulate(polygon []vectors.Vec2) []int {
 	}
 
 	// Check if the polygon is clockwise or counter-clockwise.
-	// If it is counter-clockwise, reverse the order of the points.
-	if !isPolyClockwise(poly) {
+	// If it is clockwise, reverse the order of the points.
+	if isPolyClockwise(poly) {
 		for i := len(poly)/2 - 1; i >= 0; i-- {
 			opp := len(poly) - 1 - i
 			poly[i], poly[opp] = poly[opp], poly[i]
