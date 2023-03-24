@@ -81,6 +81,7 @@ func main() {
 
 	png.Encode(f, img)
 
+	// Make a house :]
 	// Generate a mesh from a path.
 	crossPath := gengeometry.HShape{
 		Width:     1,
@@ -88,18 +89,15 @@ func main() {
 		WingWidth: 0.2,
 	}
 	path := crossPath.GetPath()
-	mesh := gengeometry.ExtrudePath(path, 0.2)
-
-	/*
-		squarePath := gengeometry.RectangleShape{
-			Width:  1,
-			Length: 1,
-		}
-		path = squarePath.GetPath()
-		mesh2 := gencitymap.TaperPath(path, 0.2)
-	*/
-	mesh2 := gengeometry.TaperPath(path, 0.1)
-	mesh.AddMesh(mesh2, 0.2)
+	mesh, err := gengeometry.ExtrudePath(path, 0.2)
+	if err != nil {
+		log.Fatal(err)
+	}
+	roofMesh, err := gengeometry.TaperPath(path, 0.1)
+	if err != nil {
+		log.Fatal(err)
+	}
+	mesh.AddMesh(roofMesh, 0.2)
 
 	mesh.ExportToObj("test.obj")
 }

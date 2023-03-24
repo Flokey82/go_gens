@@ -1,6 +1,7 @@
 package gengeometry
 
 import (
+	"errors"
 	"fmt"
 	"log"
 	"math"
@@ -39,7 +40,7 @@ func (m *Mesh) ExportToObj(filename string) {
 }
 
 // AddMesh adds a mesh to the current mesh (at a given vertical offset).
-func (m *Mesh) AddMesh(mesh Mesh, verticalOffset float64) {
+func (m *Mesh) AddMesh(mesh *Mesh, verticalOffset float64) {
 	lenVerts := len(m.Vertices)
 	// Add the vertices.
 	for _, v := range mesh.Vertices {
@@ -53,7 +54,7 @@ func (m *Mesh) AddMesh(mesh Mesh, verticalOffset float64) {
 }
 
 // ExtrudePath extrudes a path to a 3D shape.
-func ExtrudePath(path []vectors.Vec2, height float64) Mesh {
+func ExtrudePath(path []vectors.Vec2, height float64) (*Mesh, error) {
 	// For every point in the path, create two vertices.
 	// The first vertex is the point itself, the second vertex is the point
 	// with the height added.
@@ -81,20 +82,26 @@ func ExtrudePath(path []vectors.Vec2, height float64) Mesh {
 	}
 
 	// Add triangles for the bottom and top.
-	triBottomTop := Triangulate(path)
-	for _, t := range Triangulate(path) {
+	bottom, err := Triangulate(path)
+	if err != nil {
+		return nil, err
+	}
+
+	// Add the offset to the top indices.
+	triBottomTop := bottom
+	for _, t := range bottom {
 		triBottomTop = append(triBottomTop, t+len(path))
 	}
 
-	return Mesh{
+	return &Mesh{
 		Vertices:  vertices,
 		Triangles: append(triangles, triBottomTop...),
-	}
+	}, nil
 }
 
 // TaperPath tapers a path to a 3D shape to generate a roof.
 // NOTE: This is WIP since it doesn't get the angle right.
-func TaperPath(path []vectors.Vec2, height float64) Mesh {
+func TaperPath(path []vectors.Vec2, height float64) (*Mesh, error) {
 	// For every point in the path, create two vertices.
 	// The first vertex is the point itself, the second vertex is the point
 	// with the height added and translated towards the shrunk center.
@@ -123,19 +130,30 @@ func TaperPath(path []vectors.Vec2, height float64) Mesh {
 	}
 
 	// Add triangles for the bottom and top.
-	triBottomTop := Triangulate(path)
-	for _, t := range Triangulate(shrunk) {
+	bottom, err := Triangulate(path)
+	if err != nil {
+		return nil, err
+	}
+	top, err := Triangulate(shrunk)
+	if err != nil {
+		return nil, err
+	}
+
+	// Add the offset to the top indices.
+	triBottomTop := bottom
+	for _, t := range top {
 		triBottomTop = append(triBottomTop, t+len(path))
 	}
-	return Mesh{
+
+	return &Mesh{
 		Vertices:  vertices,
 		Triangles: append(triangles, triBottomTop...),
-	}
+	}, nil
 }
 
 // Triangulate triangulates a polygon using the ear clipping algorithm.
 // It returns the indices of each vertex of each triangle in pairs of 3.
-func Triangulate(polygon []vectors.Vec2) []int {
+func Triangulate(polygon []vectors.Vec2) ([]int, error) {
 	// Create a copy of the polygon.
 	poly := make([]vectors.Vec2, len(polygon))
 	copy(poly, polygon)
@@ -161,6 +179,9 @@ func Triangulate(polygon []vectors.Vec2) []int {
 	for len(poly) > 3 {
 		// Find the ear.
 		ear := findEar(poly)
+		if ear == -1 {
+			return nil, errors.New("no ear found")
+		}
 
 		// Get the triangle formed by ear and the surrounding points.
 		t1, t2, t3 := getTriPointIndexes(len(poly), ear)
@@ -174,7 +195,7 @@ func Triangulate(polygon []vectors.Vec2) []int {
 	// Create the last triangle.
 	triangles = append(triangles, polyIndex[0], polyIndex[1], polyIndex[2])
 
-	return triangles
+	return triangles, nil
 }
 
 func getTriPointIndexes(polyLen, i int) (int, int, int) {
