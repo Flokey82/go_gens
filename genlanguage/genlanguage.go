@@ -461,6 +461,12 @@ func GetPastTense(verb string) string {
 		}
 		return stringSlice(verb, 0, -1) + "ied"
 	}
+
+	// Flop -> flopped, drop -> dropped, chop -> chopped
+	if strings.HasSuffix(verb, "p") {
+		return verb + "ped"
+	}
+
 	return verb + "ed"
 }
 
