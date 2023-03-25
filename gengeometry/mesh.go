@@ -39,11 +39,15 @@ func (m *Mesh) ExportToObj(filename string) {
 }
 
 // AddMesh adds a mesh to the current mesh (at a given vertical offset).
-func (m *Mesh) AddMesh(mesh *Mesh, verticalOffset float64) {
+func (m *Mesh) AddMesh(mesh *Mesh, position vectors.Vec3) {
 	lenVerts := len(m.Vertices)
 	// Add the vertices.
 	for _, v := range mesh.Vertices {
-		m.Vertices = append(m.Vertices, vectors.Vec3{X: v.X, Y: v.Y, Z: v.Z + verticalOffset})
+		m.Vertices = append(m.Vertices, vectors.Vec3{
+			X: v.X + position.X,
+			Y: v.Y + position.Y,
+			Z: v.Z + position.Z,
+		})
 	}
 
 	// Add the triangles.
@@ -340,4 +344,44 @@ func isPolyClockwise(polygon []vectors.Vec2) bool {
 		sum += (p2.X - p1.X) * (p2.Y + p1.Y)
 	}
 	return sum > 0
+}
+
+/*
+func reversePolygon(polygon []vectors.Vec2) []vectors.Vec2 {
+	reversed := make([]vectors.Vec2, len(polygon))
+	for i, p := range polygon {
+		reversed[len(polygon)-1-i] = p
+	}
+	return reversed
+}
+*/
+
+// RotatePolygonAroundPoint rotates a polygon around a point by the given angle.
+func RotatePolygonAroundPoint(polygon []vectors.Vec2, point vectors.Vec2, angle float64) []vectors.Vec2 {
+	rotated := make([]vectors.Vec2, len(polygon))
+	for i, p := range polygon {
+		rotated[i] = p.RotateAroundPoint(point, angle)
+	}
+	return rotated
+}
+
+// AngleOfSide returns the absolute angle of the normal of the side of the
+// polygon with the given index.
+func AngleOfSide(polygon []vectors.Vec2, i int) float64 {
+	// Get the points of the side.
+	p1Idx, p2Idx := getSidePointIndexes(len(polygon), i)
+	p1 := polygon[p1Idx]
+	p2 := polygon[p2Idx]
+
+	// Get the normal of the side.
+	normal := vectors.Sub2(p2, p1).Normal()
+
+	// Get the angle of the normal.
+	return normal.Angle()
+}
+
+// getSidePointIndexes returns the indexes of the points of the side of the
+// polygon with the given index.
+func getSidePointIndexes(polygonLen, i int) (int, int) {
+	return i, (i + 1) % polygonLen
 }

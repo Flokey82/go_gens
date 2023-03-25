@@ -105,6 +105,32 @@ func (v1 Vec2) Cross(v2 Vec2) float64 {
 	return v1.X*v2.Y - v1.Y*v2.X
 }
 
+// RotateAroundPoint rotates the vector around the given point.
+func (v Vec2) RotateAroundPoint(p Vec2, angle float64) Vec2 {
+	// https://stackoverflow.com/questions/2259476/rotating-a-point-about-another-point-2d
+	s := math.Sin(angle)
+	c := math.Cos(angle)
+	x := v.X - p.X
+	y := v.Y - p.Y
+	return Vec2{
+		X: x*c - y*s + p.X,
+		Y: x*s + y*c + p.Y,
+	}
+}
+
+// Normal returns the normal of the vector.
+func (v Vec2) Normal() Vec2 {
+	return Vec2{
+		X: -v.Y,
+		Y: v.X,
+	}
+}
+
+// Angle returns the angle of the vector.
+func (v Vec2) Angle() float64 {
+	return math.Atan2(v.Y, v.X)
+}
+
 // Normalize returns the normalized vector (with a length/magnitude of 1).
 func Normalize(vec Vec2) (dest Vec2) {
 	x := vec.X

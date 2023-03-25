@@ -104,8 +104,30 @@ func main() {
 	if err != nil {
 		log.Println(err)
 	} else {
-		mesh.AddMesh(roofMesh, 0.2)
+		mesh.AddMesh(roofMesh, vectors.NewVec3(0, 0, 0.2))
 	}
+
+	// Add a wing to the house.
+	wingPath := gengeometry.LShape{
+		Width:     0.8,
+		Length:    0.8,
+		WingWidth: 0.3,
+	}
+	wingMesh, err := gengeometry.ExtrudePath(wingPath.GetPath(), 0.2)
+	if err != nil {
+		log.Println(err)
+	}
+
+	// Add a roof to the wing.
+	roofMesh, err = gengeometry.TaperPath(wingPath.GetPath(), 0.1)
+	if err != nil {
+		log.Println(err)
+	} else {
+		wingMesh.AddMesh(roofMesh, vectors.NewVec3(0, 0, 0.2))
+	}
+
+	// Add the wing to the house.
+	mesh.AddMesh(wingMesh, vectors.NewVec3(1, 0, 0.0))
 
 	mesh.ExportToObj("test.obj")
 }
