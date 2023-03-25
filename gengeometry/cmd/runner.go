@@ -83,21 +83,29 @@ func main() {
 
 	// Make a house :]
 	// Generate a mesh from a path.
-	crossPath := gengeometry.HShape{
+	crossPath := gengeometry.LShape{
 		Width:     1,
 		Length:    1,
-		WingWidth: 0.2,
+		WingWidth: 0.35,
 	}
+
+	/*crossPath := gengeometry.CircleShape{
+		Radius: 0.5,
+		Steps:  100,
+	}*/
+
 	path := crossPath.GetPath()
 	mesh, err := gengeometry.ExtrudePath(path, 0.2)
 	if err != nil {
+		log.Println("here")
 		log.Fatal(err)
 	}
-	roofMesh, err := gengeometry.TaperPath(path, 0.1)
+	roofMesh, err := gengeometry.TaperPath(path, 0.2)
 	if err != nil {
-		log.Fatal(err)
+		log.Println(err)
+	} else {
+		mesh.AddMesh(roofMesh, 0.2)
 	}
-	mesh.AddMesh(roofMesh, 0.2)
 
 	mesh.ExportToObj("test.obj")
 }

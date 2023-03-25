@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"log"
-	"math"
 	"os"
 
 	"github.com/Flokey82/go_gens/vectors"
@@ -110,7 +109,7 @@ func TaperPath(path []vectors.Vec2, height float64) (*Mesh, error) {
 
 	// Create the vertices.
 	vertices := make([]vectors.Vec3, len(path)*2)
-	shrunk := StraightSkeleton(path, 0.1, -0.09)
+	shrunk := StraightSkeleton(path, height, -height*0.8)
 	for i, point := range path {
 		vertices[i] = vectors.Vec3{X: point.X, Y: point.Y, Z: 0}
 		vertices[i+len(path)] = vectors.Vec3{X: shrunk[i].X, Y: shrunk[i].Y, Z: height}
@@ -164,7 +163,7 @@ func Triangulate(polygon []vectors.Vec2) ([]int, error) {
 
 	// Check if the polygon is clockwise or counter-clockwise.
 	// If it is clockwise, reverse the order of the points.
-	if isPolyClockwise(poly) {
+	if !isPolyClockwise(poly) {
 		for i := len(poly)/2 - 1; i >= 0; i-- {
 			opp := len(poly) - 1 - i
 			poly[i], poly[opp] = poly[opp], poly[i]
@@ -264,11 +263,19 @@ func isConvex(polygon []vectors.Vec2, i int) bool {
 	p2 := polygon[p2Idx]
 	p3 := polygon[p3Idx]
 
-	// TODO: This requires clockwise winding order... we don't check for
-	// that yet. O_o
+	// Get the vectors from p2 to p1 and p2 to p3.
+	v1 := vectors.Sub2(p1, p2)
+	v2 := vectors.Sub2(p3, p2)
 
-	// Check if the angle between the points is less than 180 degrees.
-	return vectors.AngleBetween(p1, p2, p3) < math.Pi
+	// Get the cross product of the vectors.
+	cross := vectors.Cross2(v1, v2)
+
+	// If the cross product is positive, the angle is less than 180 degrees.
+	// If the cross product is negative, the angle is greater than 180 degrees.
+	// If the cross product is 0, the angle is 180 degrees.
+	// We want the angle to be less than 180 degrees, so we check if the
+	// cross product is positive.
+	return cross > 0
 }
 
 // isInside checks if any point in a polygon is inside the triangle
