@@ -1,7 +1,6 @@
 package simvillage
 
 import (
-	"fmt"
 	"log"
 )
 
@@ -17,7 +16,6 @@ func NewHistoryManager(game_timer *Calendar) *HistoryManager {
 	return &HistoryManager{
 		cal:      game_timer,
 		curr_log: NewLog(game_timer.get_date()),
-		logs:     nil,
 	}
 }
 
@@ -101,11 +99,11 @@ func (l *Log) display_log() {
 	if v > 4 {
 		verbose_stack = append(verbose_stack, l.t3_events...)
 	}
-	log.Println(fmt.Sprintf("     ~~~ %s ~~~", l.date))
+	log.Printf("     ~~~ %s ~~~\n", l.date)
 	for _, categories := range verbose_stack {
 		log.Println(categories)
-		//for _, items := range categories {
+		// for _, items := range categories {
 		//	log.Println(items)
-		//}
+		// }
 	}
 }

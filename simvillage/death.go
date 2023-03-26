@@ -20,33 +20,22 @@ type Death struct {
 }
 
 func NewDeath(pmanager *PeopleManager, mark *MarkovGen) *Death {
-	d := &Death{
+	return &Death{
 		pop:  pmanager,
 		mark: mark,
+		ways_to_die: []string{ // By chance ways to die
+			"%s dies in their sleep",
+			"%s is lost in the night",
+			"%s drowned",
+		},
+		old_age: []string{ // Aging related deaths
+			"%s had a heart attack",
+		},
+		suicides: []string{ // Self-inflicted deaths
+			"%s hangs themself",
+			"%s jumps from a tree",
+		}, // TODO: Work related deaths
 	}
-
-	// By chance ways to die
-	d.ways_to_die = []string{
-		"%s dies in their sleep",
-		"%s is lost in the night",
-		"%s drowned",
-	}
-
-	// Aging related deaths
-	d.old_age = []string{
-		"%s had a heart attack",
-	}
-
-	// TODO: Work related deaths
-
-	// Self-inflicted deaths
-	d.suicides = []string{
-		"%s hangs themself",
-		"%s jumps from a tree",
-	}
-
-	d.log = nil
-	return d
 }
 
 func (d *Death) Tick() []string {

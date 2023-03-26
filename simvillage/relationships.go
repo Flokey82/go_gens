@@ -18,15 +18,10 @@ type Relations struct {
 }
 
 func NewRelations(my_name string, my_id int) *Relations {
-	r := &Relations{
+	return &Relations{
 		my_name: my_name,
 		my_id:   my_id,
-	}
-
-	// Holds person obj, rel value, text to describe it
-	r.rel = nil
-	r.log = nil
-	return r
+	} // Holds person obj, rel value, text to describe it
 }
 
 func (r *Relations) Tick() []string {

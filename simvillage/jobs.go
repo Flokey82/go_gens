@@ -28,12 +28,8 @@ func NewJobManager(people_manager *PeopleManager, city_stats *CityManager) *JobM
 			"Hunter":     0.2,
 		},
 		employed: make(map[string][]*Person),
+		rng:      NewRandomEffects(),
 	}
-
-	m.rng = NewRandomEffects()
-	m.mothers = nil
-	m.unemployed = nil
-	m.logs = nil
 
 	// Init workers jobs
 	m.init_workers()
