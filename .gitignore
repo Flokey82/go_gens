@@ -63,3 +63,4 @@ gengeometry/cmd/runner
 gencitymap/cmd/runner
 gencitymap/cmd/test.png
 genfood/cmd/runner
+genarchitecture/cmd/runner

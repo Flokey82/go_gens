@@ -283,3 +283,50 @@ func (c CircleShape) GetPath() []vectors.Vec2 {
 	}
 	return path
 }
+
+// TriangleShape is a shape that is a triangle.
+type TriangleShape struct {
+	Width, Length float64
+}
+
+// ConnectionPoints returns the connection points of the triangle
+func (t TriangleShape) ConnectionPoints() []vectors.Vec2 {
+	return []vectors.Vec2{
+		{X: t.Width / 2, Y: 0},
+		{X: t.Width, Y: t.Length},
+		{X: 0, Y: t.Length},
+	}
+}
+
+// GetPath returns the path of the triangle
+func (t TriangleShape) GetPath() []vectors.Vec2 {
+	return []vectors.Vec2{
+		{X: 0, Y: 0},
+		{X: t.Width, Y: 0},
+		{X: t.Width / 2, Y: t.Length},
+	}
+}
+
+// TrapezoidShape is a shape that is a trapezoid.
+type TrapezoidShape struct {
+	Width, Length, WidthTop float64
+}
+
+// ConnectionPoints returns the connection points of the trapezoid
+func (t TrapezoidShape) ConnectionPoints() []vectors.Vec2 {
+	return []vectors.Vec2{
+		{X: t.Width / 2, Y: 0},
+		{X: t.WidthTop, Y: t.Length},
+		{X: 0, Y: t.Length},
+	}
+}
+
+// GetPath returns the path of the trapezoid
+func (t TrapezoidShape) GetPath() []vectors.Vec2 {
+	return []vectors.Vec2{
+		{X: 0, Y: 0},
+		{X: t.Width, Y: 0},
+		{X: (t.Width - t.WidthTop) / 2, Y: t.Length},
+		{X: t.WidthTop + (t.Width-t.WidthTop)/2, Y: t.Length},
+	}
+}

@@ -396,6 +396,14 @@ func GetArticle(s string) string {
 	return "a"
 }
 
+// GetDegreeAdverbFromAdjective returns the degree adverb for an adjective.
+func GetDegreeAdverbFromAdjective(adjective string) string {
+	if strings.HasSuffix(adjective, "ly") {
+		return adjective
+	}
+	return adjective + "ly"
+}
+
 // RuneToLowerCase returns the lowercase rune.
 func RuneToLowerCase(c rune) rune {
 	return rune(unicode.ToLower(c))
