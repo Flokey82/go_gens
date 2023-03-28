@@ -10,25 +10,25 @@ import (
 
 // Death controls chance of death, and death events
 type Death struct {
-	pop         *PeopleManager
-	mark        *MarkovGen
-	dead        []*Person
-	ways_to_die []string
-	old_age     []string
-	suicides    []string
-	log         []string
+	pop       *PeopleManager
+	mark      *MarkovGen
+	dead      []*Person
+	waysToDie []string
+	oldAge    []string
+	suicides  []string
+	log       []string
 }
 
 func NewDeath(pmanager *PeopleManager, mark *MarkovGen) *Death {
 	return &Death{
 		pop:  pmanager,
 		mark: mark,
-		ways_to_die: []string{ // By chance ways to die
+		waysToDie: []string{ // By chance ways to die
 			"%s dies in their sleep",
 			"%s is lost in the night",
 			"%s drowned",
 		},
-		old_age: []string{ // Aging related deaths
+		oldAge: []string{ // Aging related deaths
 			"%s had a heart attack",
 		},
 		suicides: []string{ // Self-inflicted deaths
@@ -42,21 +42,21 @@ func (d *Death) Tick() []string {
 	for _, p := range d.pop.people {
 		d.tick_death(p)
 	}
-	cp_log := d.log
+	cpLog := d.log
 	d.log = nil
-	return cp_log
+	return cpLog
 }
 
 // tick_death check if the villager will die today by aging
 func (d *Death) tick_death(v *Person) {
 	// Check if the villager dies of natural causes.
 	if gameconstants.DiesAtAge(v.age) {
-		d.kill_villager(v, "")
+		d.killVillager(v, "")
 	}
 
 	// Check if the villager is depressed
-	if v.mood.is_depressed && rand.Intn(10) == 0 {
-		d.kill_villager(v, "%s loses the will to exist -- "+d.mark.get_death())
+	if v.mood.isDepressed && rand.Intn(10) == 0 {
+		d.killVillager(v, "%s loses the will to exist -- "+d.mark.getDeath())
 		return
 	}
 
@@ -65,18 +65,18 @@ func (d *Death) tick_death(v *Person) {
 
 	// Check if villager starved
 	if v.hunger == 0 {
-		d.kill_villager(v, "%s starved to death.")
+		d.killVillager(v, "%s starved to death.")
 		return
 	}
 }
 
-func (d *Death) kill_villager(villager *Person, reason string) {
+func (d *Death) killVillager(villager *Person, reason string) {
 	// Time to kick the bucket
 	if reason == "" {
-		reason = d.mark.get_death()
+		reason = d.mark.getDeath()
 	}
 	if strings.Contains(reason, "starved") {
-		reason = "%s's hunger lead them to " + d.mark.get_death()
+		reason = "%s's hunger lead them to " + d.mark.getDeath()
 	}
 	d.log = append(d.log, fmt.Sprintf(reason, "\u001b[31;1m"+villager.name+"\u001b[0m"))
 
@@ -95,9 +95,9 @@ func (d *Death) kill_villager(villager *Person, reason string) {
 	for _, people := range d.pop.people {
 
 		// Get rel value and remove the person
-		rel_strength := people.relationships.del_relationship(villager)
+		relStrength := people.relationships.delRelationship(villager)
 
 		// Stronger relationships mean more sadness
-		people.mood.death_event(rel_strength, people.name, villager.name, "")
+		people.mood.deathEvent(relStrength, people.name, villager.name, "")
 	}
 }

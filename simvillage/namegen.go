@@ -11,61 +11,61 @@ var consonant = []string{"b", "c", "d", "f", "g", "h", "j", "k", "l", "m", "n", 
 // Input: Structure of a word
 // Output: Word generated from said structure
 
-func name_gen() string {
-	var new_name string
+func nameGen() string {
+	var newName string
 	for x := 0; x <= 10; x++ { // This algo uses 1/3 vowel and 2/3 consts
 		if (rand.Float64() * 3) > 1 {
-			new_name += pickRandString(consonant)
+			newName += pickRandString(consonant)
 		} else {
-			new_name += pickRandString(vowel)
+			newName += pickRandString(vowel)
 		}
 	}
-	return new_name
+	return newName
 }
 
-func get_name() string {
-	if rand.Intn(1) > 0 {
+func getName() string {
+	if rand.Intn(2) > 0 {
 		if rand.Intn(4) > 3 {
-			return strings.ToTitle(name_cvcv()) + name_cvcv()
+			return strings.ToTitle(nameCVCV()) + nameCVCV()
 		} else {
-			return strings.ToTitle(name_cvcv())
+			return strings.ToTitle(nameCVCV())
 		}
 	} else {
 		if rand.Intn(4) > 2 {
-			return strings.ToTitle(name_cvcvc())
+			return strings.ToTitle(nameCVCVC())
 		} else {
-			return strings.ToTitle(name_cvcvc())
+			return strings.ToTitle(nameCVCVC())
 		}
 	}
 }
 
-func get_first_name() string {
-	return strings.ToTitle(name_cvcv())
+func getFirstName() string {
+	return strings.ToTitle(nameCVCV())
 }
 
-func get_last_name() string {
-	return strings.ToTitle(name_cvcv()) + name_cvcv()
+func getLastName() string {
+	return strings.ToTitle(nameCVCV()) + nameCVCV()
 }
 
-func name_cvcv() string {
-	return (add_const() + add_vowel() + add_const() + add_vowel())
+func nameCVCV() string {
+	return (addConsonant() + addVowel() + addConsonant() + addVowel())
 }
 
-func name_cvcvc() string {
-	return (add_const() + add_vowel() + add_const() + add_vowel() + add_const())
+func nameCVCVC() string {
+	return (addConsonant() + addVowel() + addConsonant() + addVowel() + addConsonant())
 }
 
-// Generates a word sructure in the form of a string
-func word_struc() string {
-	return add_const() + add_vowel() + add_const() + add_const()
+// wordStruc generates a word sructure in the form of a string
+func wordStruc() string {
+	return addConsonant() + addVowel() + addConsonant() + addConsonant()
 }
 
 // adds a vowel
-func add_vowel() string {
+func addVowel() string {
 	return pickRandString(vowel)
 }
 
-// adds a constonant
-func add_const() string {
+// addConsonant adds a consonant.
+func addConsonant() string {
 	return pickRandString(consonant)
 }

@@ -26,7 +26,7 @@ func NewAge(age int) *Age {
 		age:  age,
 		bday: rand.Intn(359) + 1,
 	}
-	a.reassign_age_text()
+	a.reassignAgeText()
 	return a
 }
 
@@ -35,7 +35,7 @@ func NewAgeWithBDay(age, bday int) *Age {
 		age:  age,
 		bday: bday,
 	}
-	a.reassign_age_text()
+	a.reassignAgeText()
 	return a
 }
 
@@ -43,7 +43,7 @@ func (a *Age) Tick() []string {
 	return nil
 }
 
-func (a *Age) reassign_age_text() {
+func (a *Age) reassignAgeText() {
 	if a.age < 4 {
 		a.age_text = AgeInfant
 	} else if 4 < a.age && a.age < 10 {

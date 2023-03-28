@@ -11,7 +11,7 @@ func NewRandomEffects() *RandomEffects {
 	return &RandomEffects{}
 }
 
-func (r *RandomEffects) get_mod() float64 {
+func (r *RandomEffects) getMod() float64 {
 	p := rand.Intn(100)
 	if p >= 0 && p <= 80 {
 		return 1.0
@@ -24,8 +24,8 @@ func (r *RandomEffects) get_mod() float64 {
 	}
 }
 
-// Returns output for a day of farming
-func (r *RandomEffects) get_farming() float64 {
+// getFarming returns output for a day of farming
+func (r *RandomEffects) getFarming() float64 {
 	p := rand.Intn(100)
 	if p >= 0 && p <= 80 {
 		return 1.0

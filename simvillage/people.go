@@ -8,31 +8,31 @@ import (
 )
 
 type PeopleManager struct {
-	people   []*Person
-	last_pop int
-	log      []string
+	people  []*Person
+	lastPop int
+	log     []string
 }
 
 func NewPeopleManager() *PeopleManager {
 	m := &PeopleManager{
 		people: nil,
 	}
-	m.init_population(STARTING_POP)
+	m.initPopulation(STARTING_POP)
 
 	// Give all existing people relationship objects
-	m.init_pop_relationships()
+	m.initPopRelationships()
 
 	// Used to only sort when size changes
-	m.last_pop = 0
+	m.lastPop = 0
 	return m
 }
 
-func (m *PeopleManager) init_population(to_generate int) {
-	if to_generate < 4 {
-		to_generate = 4
+func (m *PeopleManager) initPopulation(toGenerate int) {
+	if toGenerate < 4 {
+		toGenerate = 4
 	}
-	for i := 0; i <= to_generate; i++ {
-		if rand.Intn(1) < 1 {
+	for i := 0; i <= toGenerate; i++ {
+		if rand.Intn(2) < 1 {
 			m.people = append(m.people, NewPerson("", rand.Intn(20)+14, 1))
 			m.people = append(m.people, NewPerson("", rand.Intn(20)+14, 0))
 		} else {
@@ -42,25 +42,25 @@ func (m *PeopleManager) init_population(to_generate int) {
 	}
 }
 
-func (m *PeopleManager) init_pop_relationships() {
+func (m *PeopleManager) initPopRelationships() {
 	for _, p := range m.people {
 		// Every person has a relationship with every other person
-		p.init_relationships(m.people)
+		p.initRelationships(m.people)
 	}
 }
 
-func (m *PeopleManager) marriage_manager() {
-	var single_men, single_women []*Person
+func (m *PeopleManager) marriageManager() {
+	var singleMen, singleWomen []*Person
 	for _, p := range m.people {
 		if p.gender == GenderStrMale && p.romance {
-			single_men = append(single_men, p)
+			singleMen = append(singleMen, p)
 		} else if p.gender == GenderStrFemale && p.romance {
-			single_women = append(single_women, p)
+			singleWomen = append(singleWomen, p)
 		}
 	}
 }
 
-func (m *PeopleManager) add_child(father, mother *Person) {
+func (m *PeopleManager) addChild(father, mother *Person) {
 	mother.job = ""
 	child := NewPerson("", 0, GenderRandom)
 	child.lname = father.lname
@@ -81,12 +81,12 @@ func (m *PeopleManager) children() {
 		m.people = append(m.people, NewPerson("", rand.Intn(59)+1, -1))
 
 		// Init persons relationships
-		m.people[len(m.people)-1].relationships.init_relationships(m.people)
+		m.people[len(m.people)-1].relationships.initRelationships(m.people)
 
 		// Update everyone but the persons relationship
 		// objects to include the new person
 		for _, p := range m.people[:len(m.people)-1] {
-			p.relationships.add_relationship(m.people[len(m.people)-1], 0, "")
+			p.relationships.addRelationship(m.people[len(m.people)-1], 0, "")
 		}
 		m.log = append(m.log, fmt.Sprintf("%s has appeared!", m.people[len(m.people)-1].name))
 	}
@@ -96,20 +96,20 @@ func (m *PeopleManager) children() {
 		m.people = append(m.people, NewPerson("", 1, -1))
 
 		// Init childs relationships
-		m.people[len(m.people)-1].relationships.init_relationships(m.people)
+		m.people[len(m.people)-1].relationships.initRelationships(m.people)
 
 		// Update everyone but the childs relationship
 		// objects to include the new child
 		for _, p := range m.people[:len(m.people)-1] {
-			p.relationships.add_relationship(m.people[len(m.people)-1], 0, "")
+			p.relationships.addRelationship(m.people[len(m.people)-1], 0, "")
 		}
 		// Log the event
 		m.log = append(m.log, fmt.Sprintf("%s was born!", m.people[len(m.people)-1].name))
 	}
 }
 
-func (m *PeopleManager) sort_people(sort_by string) {
-	if sort_by == "job" {
+func (m *PeopleManager) sortPeople(sortBy string) {
+	if sortBy == "job" {
 		sort.Slice(m.people, func(i, j int) bool {
 			return m.people[i].job < m.people[j].job
 		})
@@ -118,10 +118,10 @@ func (m *PeopleManager) sort_people(sort_by string) {
 
 func (m *PeopleManager) Tick() []string {
 	// only sort when needed
-	if len(m.people) != m.last_pop {
+	if len(m.people) != m.lastPop {
 		// Sorts the people
-		m.sort_people("job")
-		m.last_pop = len(m.people)
+		m.sortPeople("job")
+		m.lastPop = len(m.people)
 	}
 
 	// Check if a child is randomly born
@@ -137,7 +137,7 @@ func (m *PeopleManager) Tick() []string {
 
 	// Get stats
 	for _, p := range m.people {
-		m.log = append(m.log, p.show_stats())
+		m.log = append(m.log, p.showStats())
 	}
 
 	cp_log := m.log
@@ -159,10 +159,10 @@ const (
 )
 
 type Person struct {
-	id_num        int
+	idNum         int
 	name          string
 	lname         string
-	can_work      bool
+	canWork       bool
 	job           string
 	age           int
 	gender        string
@@ -174,18 +174,18 @@ type Person struct {
 	spouse        string
 	children      []*Person
 	log           []string
-	history_log   []string
+	historyLog    []string
 }
 
 func NewPerson(job string, age int, gender GenderType) *Person {
 	p := &Person{
-		id_num: int(rand.Int31()), // Unique identifier
-		name:   get_name(),        // Assigned a name
-		lname:  get_last_name(),   // Assigned a name
+		idNum: int(rand.Int31()), // Unique identifier
+		name:  getName(),         // Assigned a name
+		lname: getLastName(),     // Assigned a name
 	}
 
 	// Assign job
-	p.can_work = false
+	p.canWork = false
 	if 0 < age && age < 5 {
 		p.job = JobInfant.name
 	}
@@ -193,7 +193,7 @@ func NewPerson(job string, age int, gender GenderType) *Person {
 		p.job = JobChild.name
 	} else {
 		p.job = job
-		p.can_work = true
+		p.canWork = true
 	}
 	p.age = age
 
@@ -202,7 +202,7 @@ func NewPerson(job string, age int, gender GenderType) *Person {
 		p.gender = GenderStrMale
 	} else if gender == GenderFemale {
 		p.gender = GenderStrFemale
-	} else if rand.Intn(1) < 1 {
+	} else if rand.Intn(2) < 1 {
 		p.gender = GenderStrMale
 	} else {
 		p.gender = GenderStrFemale
@@ -215,7 +215,7 @@ func NewPerson(job string, age int, gender GenderType) *Person {
 	p.spouse = ""
 
 	// Relationship objects
-	p.relationships = NewRelations(p.name, p.id_num)
+	p.relationships = NewRelations(p.name, p.idNum)
 
 	// Statuses
 	// Hunger
@@ -225,11 +225,11 @@ func NewPerson(job string, age int, gender GenderType) *Person {
 	// 6-8 = Sated
 	// 9-10 = Fed
 	p.hunger = 5
-	p.history_log = nil
+	p.historyLog = nil
 	p.log = nil
 
 	// Log about the person when they are made
-	p.log = append(p.log, p.pers.get_backstory())
+	p.log = append(p.log, p.pers.getBackstory())
 	return p
 }
 
@@ -240,7 +240,7 @@ func (p *Person) Tick() []string {
 	p.mood.Tick()
 
 	// Manage romance
-	p.check_marriage()
+	p.checkMarriage()
 	// TODO
 	// else: // Roll for spouse
 	//  pass
@@ -253,27 +253,27 @@ func (p *Person) Tick() []string {
 	return cp_log
 }
 
-func (p *Person) init_relationships(people []*Person) {
-	p.relationships.init_relationships(people)
+func (p *Person) initRelationships(people []*Person) {
+	p.relationships.initRelationships(people)
 }
 
 // todo put in romance manager?
-func (p *Person) check_marriage() {
+func (p *Person) checkMarriage() {
 	// Check for spouse
-	if p.romance == false && 18 < p.age && p.age < 50 && p.spouse == "" {
+	if !p.romance && 18 < p.age && p.age < 50 && p.spouse == "" {
 		p.romance = true // Now eligable to marry
 		p.log = append(p.log, fmt.Sprintf("%s (%s) is looking for a partner.", p.name, p.gender))
-	} else if p.romance == true {
+	} else if p.romance {
 		// Looking for a partner
 		// TODO: Find a partner that we like.
 	}
 }
 
-func (p *Person) set_spouse(person *Person) {
+func (p *Person) setSpouse(person *Person) {
 	p.spouse = person.name
 }
 
-func (p *Person) show_stats() string {
+func (p *Person) showStats() string {
 	symb := "\u001b[34m♂\u001b[0m"
 	if p.gender == GenderStrFemale {
 		symb = "\u001b[35;1m♀\u001b[0m"
@@ -295,18 +295,18 @@ func (p *Person) show_stats() string {
 	}
 
 	// Basic information about a villager
-	basic_info := fmt.Sprintf("%8s  %20s  Age:%3d %s", p.name, job, p.age, symb)
+	basicInfo := fmt.Sprintf("%8s  %20s  Age:%3d %s", p.name, job, p.age, symb)
 
 	// Relationship info about a villager
-	rel_info := p.relationships.get_rels_str()
+	relInfo := p.relationships.getRelsStr()
 
 	// Advanced information on a villager and mood.
-	show_rel := "--"
-	if p.romance == true && p.spouse == "" {
-		show_rel = "Single"
-	} else if p.romance == true && p.spouse != "" {
-		show_rel = "Married"
+	showRel := "--"
+	if p.romance && p.spouse == "" {
+		showRel = "Single"
+	} else if p.romance && p.spouse != "" {
+		showRel = "Married"
 	}
-	adv_info := fmt.Sprintf("[%12s | %8s]", p.mood.mood, show_rel)
-	return basic_info + adv_info + strings.Join(rel_info, ",")
+	advInfo := fmt.Sprintf("[%12s | %8s]", p.mood.mood, showRel)
+	return basicInfo + advInfo + strings.Join(relInfo, ",")
 }

@@ -31,18 +31,18 @@ func NewCalendar() *Calendar {
 
 func (c *Calendar) Tick() []string {
 	c.sum_ticks++
-	c.increment_date()
+	c.incrementDate()
 	cp_logs := c.logs
 	c.logs = nil
 	return cp_logs
 }
 
-func (c *Calendar) increment_date() {
+func (c *Calendar) incrementDate() {
 	c.day++
 	if c.day%10 == 0 {
 		c.day = 1
 		c.month += 1
-		c.set_season()
+		c.setSeason()
 		c.logs = append(c.logs, fmt.Sprintf("It is now month %d", c.month))
 		c.logs = append(c.logs, fmt.Sprintf("It is now %s", c.season))
 		if c.month%12 == 0 {
@@ -54,7 +54,7 @@ func (c *Calendar) increment_date() {
 	}
 }
 
-func (c *Calendar) set_season() {
+func (c *Calendar) setSeason() {
 	if c.month == 12 || c.month == 1 {
 		c.season = SeasonWinter
 	} else if c.month >= 2 && c.month <= 5 {
@@ -66,6 +66,6 @@ func (c *Calendar) set_season() {
 	}
 }
 
-func (c *Calendar) get_date() string {
+func (c *Calendar) getDate() string {
 	return fmt.Sprintf("%d/%d/%d %s", c.month, c.day, c.year, c.season)
 }

@@ -17,9 +17,9 @@ type SocialEvents struct {
 	log             []string
 }
 
-func NewSocialEvents(people_objs *PeopleManager) *SocialEvents {
+func NewSocialEvents(peopleObjs *PeopleManager) *SocialEvents {
 	return &SocialEvents{
-		people: people_objs,
+		people: peopleObjs,
 		places: []string{
 			"street",
 			"store",
@@ -51,69 +51,69 @@ func NewSocialEvents(people_objs *PeopleManager) *SocialEvents {
 }
 
 func (s *SocialEvents) Tick() []string {
-	prct_tick := SOCIAL_CHANCE
-	loops := int(math.Floor(prct_tick * float64(len(s.people.people))))
+	prctTick := SOCIAL_CHANCE
+	loops := int(math.Floor(prctTick * float64(len(s.people.people))))
 	for i := 0; i < loops; i++ {
-		s.random_event()
+		s.randomEvent()
 	}
-	cp_log := s.log
+	cpLog := s.log
 	s.log = nil
-	return cp_log
+	return cpLog
 }
 
 func randPerson(pp []*Person) *Person {
 	return pp[rand.Intn(len(pp))]
 }
 
-func (s *SocialEvents) random_event() {
+func (s *SocialEvents) randomEvent() {
 	// Add timeouts here
 	// Select a random villager to have an event happen
-	selected_person := randPerson(s.people.people)
-	for selected_person.age < 2 {
-		selected_person = randPerson(s.people.people) // TODO: Hangs here!
+	selectedPerson := randPerson(s.people.people)
+	for selectedPerson.age < 2 {
+		selectedPerson = randPerson(s.people.people) // TODO: Hangs here!
 	}
 
-	another_person := randPerson(s.people.people)
-	for (another_person == selected_person) && (another_person.age < 2) {
-		another_person = randPerson(s.people.people)
+	anotherPerson := randPerson(s.people.people)
+	for (anotherPerson == selectedPerson) && (anotherPerson.age < 2) {
+		anotherPerson = randPerson(s.people.people)
 	}
 
 	// Now we have two people to trigger an event with
-	sel_p_rel := selected_person.relationships.get_relationship(another_person)
-	ano_p_rel := another_person.relationships.get_relationship(selected_person)
-	if sel_p_rel == 0 || ano_p_rel == 0 {
+	selPersonRel := selectedPerson.relationships.getRelationship(anotherPerson)
+	anoPersonRel := anotherPerson.relationships.getRelationship(selectedPerson)
+	if selPersonRel == 0 || anoPersonRel == 0 {
 		return
 	}
 
 	// See if their relationship is bad, neutral, or good
-	sum_relationship := sel_p_rel + ano_p_rel
-	if sum_relationship < 1 {
+	sumRelationship := selPersonRel + anoPersonRel
+	if sumRelationship < 1 {
 		// Disliked
-		s.negative_event(selected_person, another_person)
-	} else if 1 < sum_relationship && sum_relationship < 3 {
+		s.negativeEvent(selectedPerson, anotherPerson)
+	} else if 1 < sumRelationship && sumRelationship < 3 {
 		// Neutral
 		// See if the neutral event will be positive or negative
 		if rand.Float64() < FRIENDLY_CHANCE {
-			s.negative_event(selected_person, another_person)
+			s.negativeEvent(selectedPerson, anotherPerson)
 		} else {
-			s.positive_event(selected_person, another_person)
+			s.positiveEvent(selectedPerson, anotherPerson)
 		}
-	} else if 3 < sum_relationship {
+	} else if 3 < sumRelationship {
 		// Positive
-		s.positive_event(selected_person, another_person)
+		s.positiveEvent(selectedPerson, anotherPerson)
 	}
 }
 
-func (s *SocialEvents) negative_event(p_one, p_two *Person) {
-	event_text := fmt.Sprintf(pickRandString(s.disliked_events), p_one.name, pickRandString(s.negative_verbs), p_two.name, pickRandString(s.places))
-	p_one.relationships.mod_relationship(0.9, p_two)
-	p_two.relationships.mod_relationship(0.9, p_one)
-	s.log = append(s.log, event_text)
+func (s *SocialEvents) negativeEvent(p1, p2 *Person) {
+	eventText := fmt.Sprintf(pickRandString(s.disliked_events), p1.name, pickRandString(s.negative_verbs), p2.name, pickRandString(s.places))
+	p1.relationships.modRelationship(0.9, p2)
+	p2.relationships.modRelationship(0.9, p1)
+	s.log = append(s.log, eventText)
 }
 
-func (s *SocialEvents) positive_event(p_one, p_two *Person) {
-	event_text := fmt.Sprintf(pickRandString(s.friendly_events), p_one.name, pickRandString(s.verbs), p_two.name, pickRandString(s.places))
-	p_one.relationships.mod_relationship(1.1, p_two)
-	p_two.relationships.mod_relationship(1.1, p_one)
-	s.log = append(s.log, event_text)
+func (s *SocialEvents) positiveEvent(p1, p2 *Person) {
+	eventText := fmt.Sprintf(pickRandString(s.friendly_events), p1.name, pickRandString(s.verbs), p2.name, pickRandString(s.places))
+	p1.relationships.modRelationship(1.1, p2)
+	p2.relationships.modRelationship(1.1, p1)
+	s.log = append(s.log, eventText)
 }

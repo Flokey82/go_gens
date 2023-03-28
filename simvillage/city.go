@@ -16,7 +16,7 @@ type CityManager struct {
 func NewCityManager(people *PeopleManager) *CityManager {
 	return &CityManager{
 		pop:        people,
-		name:       get_name(),
+		name:       getName(),
 		population: len(people.people),
 		wood:       20,
 		stone:      20,
@@ -26,30 +26,30 @@ func NewCityManager(people *PeopleManager) *CityManager {
 
 func (c *CityManager) Tick() []string {
 	c.population = len(c.pop.people)
-	c.food_eaten()
-	c.wood_burned()
-	c.log_stats()
+	c.foodEaten()
+	c.woodBurned()
+	c.logStats()
 	cp_log := c.log
 	c.log = nil
 	return cp_log
 }
 
-func (c *CityManager) log_stats() {
+func (c *CityManager) logStats() {
 	c.log = append(c.log, fmt.Sprintf("Pop:%d Wood:%d Stone:%d Food:%d\n", c.population, c.wood, c.stone, c.food))
 }
 
-func (c *CityManager) food_eaten() {
-	sum_food := 0
+func (c *CityManager) foodEaten() {
+	sumFood := 0
 	for _, p := range c.pop.people {
 		if 0 < p.age && p.age < 4 {
-			sum_food += 1
+			sumFood += 1
 		} else if 4 < p.age && p.age < 10 {
-			sum_food += 3
+			sumFood += 3
 		} else {
-			sum_food += 5
+			sumFood += 5
 		}
 	}
-	c.food -= sum_food
+	c.food -= sumFood
 	if c.food < 0 {
 		c.food = 0
 		c.log = append(c.log, "Food stocks are empty! Bad times are ahead")
@@ -57,7 +57,7 @@ func (c *CityManager) food_eaten() {
 			p.hunger -= 1
 		}
 	} else {
-		c.log = append(c.log, fmt.Sprintf("The citizens eat %d food", sum_food))
+		c.log = append(c.log, fmt.Sprintf("The citizens eat %d food", sumFood))
 		for _, p := range c.pop.people {
 			if p.hunger < 11 {
 				p.hunger += 1
@@ -66,15 +66,15 @@ func (c *CityManager) food_eaten() {
 	}
 }
 
-func (c *CityManager) wood_burned() {
-	sum_burned_cook := 5
-	sum_burned_warmth := 5
-	c.wood -= (sum_burned_cook + sum_burned_warmth)
+func (c *CityManager) woodBurned() {
+	sumBurnedCook := 5
+	sumBurnedWarmth := 5
+	c.wood -= (sumBurnedCook + sumBurnedWarmth)
 	if c.wood < 0 {
 		c.wood = 0
 		c.log = append(c.log, "Wood stocks are empty! Bad times are ahead")
 	} else {
-		c.log = append(c.log, fmt.Sprintf("The citizens burn %d wood to cook", sum_burned_cook))
-		c.log = append(c.log, fmt.Sprintf("The citizens burn %d wood to stay warm", sum_burned_warmth))
+		c.log = append(c.log, fmt.Sprintf("The citizens burn %d wood to cook", sumBurnedCook))
+		c.log = append(c.log, fmt.Sprintf("The citizens burn %d wood to stay warm", sumBurnedWarmth))
 	}
 }

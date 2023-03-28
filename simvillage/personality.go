@@ -11,20 +11,20 @@ func pickRandString(strs []string) string {
 }
 
 type Personality struct {
-	person_traits []string
-	big_five      []int
-	story         string
+	personTraits []string
+	bigFive      []int
+	story        string
 }
 
 // Each villager gets a personality archetype which
 // effects how social, work, and life events effect them.
 func NewPersonality(name string) *Personality {
 	p := &Personality{
-		person_traits: nil,
-		big_five:      nil,
+		personTraits: nil,
+		bigFive:      nil,
 	}
 	for i := 0; i <= 5; i++ {
-		p.big_five = append(p.big_five, rand.Intn(100))
+		p.bigFive = append(p.bigFive, rand.Intn(100))
 	}
 
 	// Openness
@@ -48,38 +48,38 @@ func NewPersonality(name string) *Personality {
 	low_n := []string{"secure", "confident"}
 
 	// Openness
-	if p.big_five[0] > 50 {
-		p.person_traits = append(p.person_traits, pickRandString(high_o))
+	if p.bigFive[0] > 50 {
+		p.personTraits = append(p.personTraits, pickRandString(high_o))
 	} else {
-		p.person_traits = append(p.person_traits, pickRandString(low_o))
+		p.personTraits = append(p.personTraits, pickRandString(low_o))
 	}
 
 	// Conscientiousness
-	if p.big_five[1] > 50 {
-		p.person_traits = append(p.person_traits, pickRandString(high_c))
+	if p.bigFive[1] > 50 {
+		p.personTraits = append(p.personTraits, pickRandString(high_c))
 	} else {
-		p.person_traits = append(p.person_traits, pickRandString(low_c))
+		p.personTraits = append(p.personTraits, pickRandString(low_c))
 	}
 
 	// Extraversion
-	if p.big_five[2] > 50 {
-		p.person_traits = append(p.person_traits, pickRandString(high_e))
+	if p.bigFive[2] > 50 {
+		p.personTraits = append(p.personTraits, pickRandString(high_e))
 	} else {
-		p.person_traits = append(p.person_traits, pickRandString(low_e))
+		p.personTraits = append(p.personTraits, pickRandString(low_e))
 	}
 
 	// Agreeableness
-	if p.big_five[3] > 50 {
-		p.person_traits = append(p.person_traits, pickRandString(high_a))
+	if p.bigFive[3] > 50 {
+		p.personTraits = append(p.personTraits, pickRandString(high_a))
 	} else {
-		p.person_traits = append(p.person_traits, pickRandString(low_a))
+		p.personTraits = append(p.personTraits, pickRandString(low_a))
 	}
 
 	// Neuroticism
-	if p.big_five[4] > 50 {
-		p.person_traits = append(p.person_traits, pickRandString(high_n))
+	if p.bigFive[4] > 50 {
+		p.personTraits = append(p.personTraits, pickRandString(high_n))
 	} else {
-		p.person_traits = append(p.person_traits, pickRandString(low_n))
+		p.personTraits = append(p.personTraits, pickRandString(low_n))
 	}
 
 	s_lines := []string{
@@ -94,12 +94,12 @@ func NewPersonality(name string) *Personality {
 	}
 
 	p.story = strings.Join([]string{
-		fmt.Sprintf(pickRandString(t_lines), name, p.person_traits[0], p.person_traits[1]),
-		fmt.Sprintf(pickRandString(t_lines), name, p.person_traits[2], p.person_traits[3]),
-		fmt.Sprintf(pickRandString(s_lines), name, p.person_traits[4]),
+		fmt.Sprintf(pickRandString(t_lines), name, p.personTraits[0], p.personTraits[1]),
+		fmt.Sprintf(pickRandString(t_lines), name, p.personTraits[2], p.personTraits[3]),
+		fmt.Sprintf(pickRandString(s_lines), name, p.personTraits[4]),
 	}, " ")
 	return p
 }
-func (p *Personality) get_backstory() string {
+func (p *Personality) getBackstory() string {
 	return p.story
 }

@@ -11,26 +11,26 @@ type Relationship struct {
 }
 
 type Relations struct {
-	my_name string
-	my_id   int
-	rel     []*Relationship
-	log     []string
+	myName string
+	myID   int
+	rel    []*Relationship
+	log    []string
 }
 
-func NewRelations(my_name string, my_id int) *Relations {
+func NewRelations(myName string, myID int) *Relations {
 	return &Relations{
-		my_name: my_name,
-		my_id:   my_id,
+		myName: myName,
+		myID:   myID,
 	} // Holds person obj, rel value, text to describe it
 }
 
 func (r *Relations) Tick() []string {
-	cp_log := r.log
+	cpLog := r.log
 	r.log = nil
-	return cp_log
+	return cpLog
 }
 
-func (r *Relations) get_rels_str() []string {
+func (r *Relations) getRelsStr() []string {
 	var rels []string
 	for _, r := range r.rel {
 		rels = append(rels, fmt.Sprintf("%.2f ", r.Value))
@@ -38,63 +38,63 @@ func (r *Relations) get_rels_str() []string {
 	return rels
 }
 
-func (r *Relations) init_relationships(people []*Person) {
+func (r *Relations) initRelationships(people []*Person) {
 	for _, p := range people {
-		r.add_relationship(p, 2.0, "")
+		r.addRelationship(p, 2.0, "")
 	}
 }
 
-func (r *Relations) add_relationship(person *Person, rel_value float64, rel_text string) {
-	if rel_value == 0.0 {
-		rel_value = 2.0
+func (r *Relations) addRelationship(person *Person, relValue float64, relText string) {
+	if relValue == 0.0 {
+		relValue = 2.0
 	}
-	r.rel = append(r.rel, &Relationship{person, rel_value, rel_text})
+	r.rel = append(r.rel, &Relationship{person, relValue, relText})
 }
 
-func (r *Relations) del_relationship(tgt_person *Person) float64 {
+func (r *Relations) delRelationship(tgtPerson *Person) float64 {
 	// When a villager dies remove the relationship.
 	// Return strength of relationship and relationship
 	// text to create a mood event.
-	var dead_rel_value float64
+	var deadRelValue float64
 	for _, person := range r.rel {
-		if person.A == tgt_person {
-			dead_rel_value = person.Value
+		if person.A == tgtPerson {
+			deadRelValue = person.Value
 			break
 		}
 	}
-	return dead_rel_value
+	return deadRelValue
 }
 
-func (r *Relations) mod_relationship(value float64, person *Person) {
+func (r *Relations) modRelationship(value float64, person *Person) {
 	for _, people := range r.rel {
 		if people.A == person {
 			// Get old relationship text
-			old_rel_text := r.get_rel_text(people.Value)
+			oldRelText := r.getRelText(people.Value)
 
 			// Update new relationship data
-			fin_rel_value := people.Value * value
-			people.Value = fin_rel_value
+			finRelValue := people.Value * value
+			people.Value = finRelValue
 
 			// Get new relationship text
-			rel_text := r.get_rel_text(fin_rel_value)
+			relText := r.getRelText(finRelValue)
 
 			// If the relationship catagorychanged
-			if old_rel_text != rel_text {
-				if rel_text == RelLiked {
-					rel_text = "\u001b[32m" + rel_text + "\u001b[0m"
-				} else if rel_text == RelDisliked {
-					rel_text = "\u001b[31m" + rel_text + "\u001b[0m"
-				} else if rel_text == RelFriendly {
-					rel_text = " \u001b[32;1m" + rel_text + "\u001b[0m"
+			if oldRelText != relText {
+				if relText == RelLiked {
+					relText = "\u001b[32m" + relText + "\u001b[0m"
+				} else if relText == RelDisliked {
+					relText = "\u001b[31m" + relText + "\u001b[0m"
+				} else if relText == RelFriendly {
+					relText = " \u001b[32;1m" + relText + "\u001b[0m"
 				}
-				new_rel_text := fmt.Sprintf("%s is now %s with %s. (%.2f)", r.my_name, rel_text, people.A.name, fin_rel_value)
-				r.log = append(r.log, new_rel_text)
+				newRelText := fmt.Sprintf("%s is now %s with %s. (%.2f)", r.myName, relText, people.A.name, finRelValue)
+				r.log = append(r.log, newRelText)
 			}
 		}
 	}
 }
 
-func (r *Relations) get_relationship(person *Person) float64 {
+func (r *Relations) getRelationship(person *Person) float64 {
 	for _, people := range r.rel {
 		if people.A == person {
 			return people.Value
@@ -113,17 +113,17 @@ const (
 	RelFriendly = "Friendly"
 )
 
-func (r *Relations) get_rel_text(rel_value float64) string {
-	if rel_value < 1.00 {
+func (r *Relations) getRelText(relValue float64) string {
+	if relValue < 1.00 {
 		return RelDisliked
 	}
-	if 1.00 < rel_value && rel_value < 2.00 {
+	if 1.00 < relValue && relValue < 2.00 {
 		return RelNeutral
 	}
-	if 2.00 < rel_value && rel_value < 3.00 {
+	if 2.00 < relValue && relValue < 3.00 {
 		return RelLiked
 	}
-	if 3.00 < rel_value {
+	if 3.00 < relValue {
 		return RelFriendly
 	}
 	return "?"

@@ -7,21 +7,21 @@ import (
 )
 
 type JobManager struct {
-	job_ratios     map[string]float64
-	people_manager *PeopleManager
-	city_stats     *CityManager
-	rng            *RandomEffects
-	employed       map[string][]*Person
-	mothers        []*Person
-	unemployed     []*Person
-	logs           []string
+	jobRatios     map[string]float64
+	peopleManager *PeopleManager
+	cityStats     *CityManager
+	rng           *RandomEffects
+	employed      map[string][]*Person
+	mothers       []*Person
+	unemployed    []*Person
+	logs          []string
 }
 
-func NewJobManager(people_manager *PeopleManager, city_stats *CityManager) *JobManager {
+func NewJobManager(peopleManager *PeopleManager, cityStats *CityManager) *JobManager {
 	m := &JobManager{
-		people_manager: people_manager,
-		city_stats:     city_stats,
-		job_ratios: map[string]float64{
+		peopleManager: peopleManager,
+		cityStats:     cityStats,
+		jobRatios: map[string]float64{
 			"Farmer":     0.30,
 			"Woodcutter": 0.25,
 			"Miner":      0.25,
@@ -32,40 +32,40 @@ func NewJobManager(people_manager *PeopleManager, city_stats *CityManager) *JobM
 	}
 
 	// Init workers jobs
-	m.init_workers()
+	m.initWorkers()
 	return m
 }
 
 func (m *JobManager) Tick() []string {
-	m.age_based_jobs()
-	m.assign_workers()
-	m.tick_jobs()
-	cp_logs := m.logs
+	m.ageBasedJobs()
+	m.assignWorkers()
+	m.tickJobs()
+	cpLogs := m.logs
 	m.logs = nil
-	return cp_logs
+	return cpLogs
 }
 
-func (m *JobManager) age_based_jobs() {
-	for _, p := range m.people_manager.people {
+func (m *JobManager) ageBasedJobs() {
+	for _, p := range m.peopleManager.people {
 		if (0 < p.age && p.age < 5) && (p.job != JobInfant.name) {
 			p.job = JobInfant.name
-			p.can_work = false
+			p.canWork = false
 		} else if (6 < p.age && p.age < 10) && (p.job != JobChild.name) {
 			p.job = JobChild.name
-			p.can_work = false
+			p.canWork = false
 		} else if (65 < p.age) && (p.job != JobOldPerson.name) {
 			// remove from lists
 			p.job = JobOldPerson.name
-			p.can_work = false
+			p.canWork = false
 		}
 	}
 }
 
-func (m *JobManager) update_unemployed() {
+func (m *JobManager) updateUnemployed() {
 	// Get a list of unnasigned workers
 	var unassigned []*Person
-	for _, person := range m.people_manager.people {
-		if (person.job == "") && (person.can_work) {
+	for _, person := range m.peopleManager.people {
+		if (person.job == "") && (person.canWork) {
 			unassigned = append(unassigned, person)
 		}
 	}
@@ -73,8 +73,8 @@ func (m *JobManager) update_unemployed() {
 }
 
 // Call when first init village
-func (m *JobManager) init_workers() {
-	m.update_unemployed()
+func (m *JobManager) initWorkers() {
+	m.updateUnemployed()
 
 	def_jobs := []string{"Farmer", "Woodcutter", "Miner", "Hunter"}
 
@@ -85,47 +85,47 @@ func (m *JobManager) init_workers() {
 		m.logs = append(m.logs, fmt.Sprintf("%s was chosen to be a %s.", m.unemployed[i].name, chosen))
 		m.employed[chosen] = append(m.employed[chosen], m.unemployed[i])
 	}
-	m.update_unemployed()
+	m.updateUnemployed()
 }
 
-func (m *JobManager) assign_workers() {
-	m.update_unemployed()
+func (m *JobManager) assignWorkers() {
+	m.updateUnemployed()
 
 	// Find jobs that need to be filled
-	pop := len(m.people_manager.people)
+	pop := len(m.peopleManager.people)
 
 	// Clean up dead people.
 	m.employed = make(map[string][]*Person)
-	for _, w := range m.people_manager.people {
+	for _, w := range m.peopleManager.people {
 		m.employed[w.job] = append(m.employed[w.job], w)
 	}
 
-	var needed_jobs []string
-	for _, j := range def_jobs {
-		if (float64(len(m.employed[j.name])) / float64(pop)) < m.job_ratios[j.name] {
-			needed_jobs = append(needed_jobs, j.name)
+	var neededJobs []string
+	for _, j := range defaultJobs {
+		if (float64(len(m.employed[j.name])) / float64(pop)) < m.jobRatios[j.name] {
+			neededJobs = append(neededJobs, j.name)
 		}
 	}
 
 	// Give default job
-	if needed_jobs == nil {
+	if neededJobs == nil {
 		// TODO: Better fix for no needed jobs being selected
-		needed_jobs = append(needed_jobs, JobFarmer.name)
+		neededJobs = append(neededJobs, JobFarmer.name)
 	}
 
 	// Assign workers to jobs that aren't as filled
 	for _, worker := range m.unemployed {
-		chosen := needed_jobs[rand.Intn(len(needed_jobs))]
+		chosen := neededJobs[rand.Intn(len(neededJobs))]
 		worker.job = chosen
 
 		m.logs = append(m.logs, fmt.Sprintf("%s was chosen to be a %s.", worker.name, chosen))
 		m.employed[chosen] = append(m.employed[chosen], worker)
 	}
-	m.update_unemployed()
+	m.updateUnemployed()
 }
 
-func (m *JobManager) tick_jobs() {
-	for _, j := range def_jobs {
+func (m *JobManager) tickJobs() {
+	for _, j := range defaultJobs {
 		for _, n := range m.employed[j.name] {
 			base := j.Tick() // base gathered
 			if base > 0.0 {
@@ -133,17 +133,17 @@ func (m *JobManager) tick_jobs() {
 				prod := n.mood.productivity
 
 				// Sample by chance productivity
-				chance := m.rng.get_mod()
+				chance := m.rng.getMod()
 
 				// Get final gathering quota
 				final := math.Floor((base * prod) * chance)
 				switch j.produces {
 				case ResGame, ResCrops:
-					m.city_stats.food += int(final)
+					m.cityStats.food += int(final)
 				case ResStone:
-					m.city_stats.stone += int(final)
+					m.cityStats.stone += int(final)
 				case ResWood:
-					m.city_stats.wood += int(final)
+					m.cityStats.wood += int(final)
 				}
 				m.logs = append(m.logs, fmt.Sprintf(j.successMsg, n.name, final))
 			} else {
@@ -152,14 +152,14 @@ func (m *JobManager) tick_jobs() {
 		}
 	}
 	// TODO: Remove dead.
-	m.tick_unemployed()
-	m.tick_mothers()
+	m.tickUnemployed()
+	m.tickMothers()
 }
 
-func (m *JobManager) tick_unemployed() {
+func (m *JobManager) tickUnemployed() {
 }
 
-func (m *JobManager) tick_mothers() {
+func (m *JobManager) tickMothers() {
 	for _, n := range m.mothers {
 		youngest := 99
 		for _, c := range n.children {
@@ -267,4 +267,4 @@ var (
 		chance:      2,
 	}
 )
-var def_jobs = []*Job{JobFarmer, JobWoodcutter, JobMiner, JobHunter}
+var defaultJobs = []*Job{JobFarmer, JobWoodcutter, JobMiner, JobHunter}

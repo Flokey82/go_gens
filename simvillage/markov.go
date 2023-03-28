@@ -1,7 +1,7 @@
 package simvillage
 
 type MgenModel interface {
-	make_short_sentence(l int) string
+	makeShortSentence(l int) string
 }
 
 type MgenIf interface {
@@ -19,7 +19,7 @@ func NewMarkovGen() *MarkovGen {
 	}
 }
 
-func (m *MarkovGen) get_chef() string {
+func (m *MarkovGen) getChef() string {
 	/*
 		fdat, err := os.ReadFile(m.prefix + "/cooking.txt")
 		if err != nil {
@@ -31,7 +31,7 @@ func (m *MarkovGen) get_chef() string {
 	return "cooked stuff"
 }
 
-func (m *MarkovGen) get_death() string {
+func (m *MarkovGen) getDeath() string {
 	/*
 		fdat, err := os.ReadFile(m.prefix + "/death.txt")
 		if err != nil {
