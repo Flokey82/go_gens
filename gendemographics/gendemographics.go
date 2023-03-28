@@ -8,8 +8,13 @@ type Client struct {
 
 // New returns a new client for generating businesses based on demographics.
 func New() *Client {
+	return NewCustom(BusinessTypes)
+}
+
+// NewCustom returns a new client for generating businesses based on demographics.
+func NewCustom(businessTypes []*BusinessType) *Client {
 	return &Client{
-		BT: BusinessTypes,
+		BT: businessTypes,
 	}
 }
 

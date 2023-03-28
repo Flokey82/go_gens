@@ -1,7 +1,6 @@
 package gendemographics
 
 import (
-	"fmt"
 	"log"
 	"math"
 	"math/rand"
@@ -143,7 +142,7 @@ func NewSettlement(population int) *Settlement {
 
 // Log prints information on the settlement to the console.
 func (s *Settlement) Log() {
-	log.Println(fmt.Sprintf("Settlement (%d) %.2f sqm farmland, %d farms", s.Population, s.Farmland(), CalcNumberFarms(s.Population)))
+	log.Printf("Settlement (%d) %.2f sqm farmland, %d farms\n", s.Population, s.Farmland(), CalcNumberFarms(s.Population))
 	log.Println(GenBusinesses(s.Population))
 }
 

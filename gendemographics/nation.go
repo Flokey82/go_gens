@@ -1,7 +1,6 @@
 package gendemographics
 
 import (
-	"fmt"
 	"log"
 	"math"
 )
@@ -31,7 +30,7 @@ func NewNation(size, density int) *Nation {
 
 // Log prints information on the nation to the console.
 func (n *Nation) Log() {
-	log.Println(fmt.Sprintf("Population: %d", n.Population()))
+	log.Printf("Population: %d\n", n.Population())
 	for _, s := range n.Settlements {
 		s.Log()
 	}

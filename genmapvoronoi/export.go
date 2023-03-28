@@ -206,9 +206,21 @@ func svgVisualizeSlopes(svg *svgo.SVG, render *Terrain, width, height int) {
 
 				// Shadow experiment
 				if ts[0] > 0 { // ts[1] <= 0 &&
-					sunStrokes = append(sunStrokes, []voronoi.Vertex{{x + u - l, y + v + l*s}, {x + u + l, y + v - l*s}})
+					sunStrokes = append(sunStrokes, []voronoi.Vertex{{
+						X: x + u - l,
+						Y: y + v + l*s,
+					}, {
+						X: x + u + l,
+						Y: y + v - l*s,
+					}})
 				} else {
-					shadeStrokes = append(shadeStrokes, []voronoi.Vertex{{x + u - l, y + v + l*s}, {x + u + l, y + v - l*s}})
+					shadeStrokes = append(shadeStrokes, []voronoi.Vertex{{
+						X: x + u - l,
+						Y: y + v + l*s,
+					}, {
+						X: x + u + l,
+						Y: y + v - l*s,
+					}})
 				}
 				//strokes = append(strokes, []voronoi.Vertex{voronoi.Vertex{x + u - l, y + v + l*s}, voronoi.Vertex{x + u + l, y + v - l*s}})
 			}
@@ -216,9 +228,21 @@ func svgVisualizeSlopes(svg *svgo.SVG, render *Terrain, width, height int) {
 
 			// Shadow experiment
 			if ts[0] > 0 { // ts[1] <= 0 &&
-				sunStrokes = append(sunStrokes, []voronoi.Vertex{{x - l, y + l*s}, {x + l, y - l*s}})
+				sunStrokes = append(sunStrokes, []voronoi.Vertex{{
+					X: x - l,
+					Y: y + l*s,
+				}, {
+					X: x + l,
+					Y: y - l*s,
+				}})
 			} else {
-				shadeStrokes = append(shadeStrokes, []voronoi.Vertex{{x - l, y + l*s}, {x + l, y - l*s}})
+				shadeStrokes = append(shadeStrokes, []voronoi.Vertex{{
+					X: x - l,
+					Y: y + l*s,
+				}, {
+					X: x + l,
+					Y: y - l*s,
+				}})
 			}
 			//strokes = append(strokes, []voronoi.Vertex{voronoi.Vertex{x - l, y + l*s}, voronoi.Vertex{x + l, y - l*s}})
 		}
