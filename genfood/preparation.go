@@ -1,5 +1,6 @@
 package genfood
 
+// https://en.wikipedia.org/wiki/Cooking
 const (
 	MethodBaked        = "baked"
 	MethodBasted       = "basted"

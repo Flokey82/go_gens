@@ -22,4 +22,11 @@ func main() {
 	} else {
 		log.Println(sto)
 	}
+
+	st2 := genfood.SandwichRules.NewStory(time.Now().UnixNano())
+	if sto, err := st2.Expand(); err != nil {
+		log.Println(err)
+	} else {
+		log.Println(sto)
+	}
 }
