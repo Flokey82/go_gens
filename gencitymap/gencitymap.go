@@ -62,6 +62,13 @@ func (m *Map) ExportToPNG(path string) error {
 	// create image
 	img := image.NewRGBA(image.Rect(0, 0, int(maxX-minX), int(maxY-minY)))
 
+	// Fill the background with black.
+	for x := 0; x < img.Bounds().Dx(); x++ {
+		for y := 0; y < img.Bounds().Dy(); y++ {
+			img.Set(x, y, color.RGBA{0, 0, 0, 255})
+		}
+	}
+
 	// Create a new graphic context
 	gc := draw2dimg.NewGraphicContext(img)
 

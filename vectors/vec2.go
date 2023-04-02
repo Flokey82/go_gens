@@ -105,6 +105,11 @@ func (v1 Vec2) Cross(v2 Vec2) float64 {
 	return v1.X*v2.Y - v1.Y*v2.X
 }
 
+// Dot returns the dotproduct of two vectors.
+func (v1 Vec2) Dot(v2 Vec2) float64 {
+	return v1.Y*v2.Y + v1.X*v2.X
+}
+
 // RotateAroundPoint rotates the vector around the given point.
 func (v Vec2) RotateAroundPoint(p Vec2, angle float64) Vec2 {
 	// https://stackoverflow.com/questions/2259476/rotating-a-point-about-another-point-2d
@@ -129,6 +134,39 @@ func (v Vec2) Normal() Vec2 {
 // Angle returns the angle of the vector.
 func (v Vec2) Angle() float64 {
 	return math.Atan2(v.Y, v.X)
+}
+
+// SetLength sets the length of the vector.
+func (v *Vec2) SetLength(length float64) Vec2 {
+	return v.Mul(length / v.Len())
+}
+
+// LengthSquared returns the squared length of the vector.
+func (v Vec2) LengthSquared() float64 {
+	return v.X*v.X + v.Y*v.Y
+}
+
+// DistanceTo returns the distance to the given vector.
+func (v Vec2) DistanceTo(v2 Vec2) float64 {
+	return math.Sqrt((v.X-v2.X)*(v.X-v2.X) + (v.Y-v2.Y)*(v.Y-v2.Y))
+}
+
+// DistanceToSquared returns the squared distance to the given vector.
+func (v Vec2) DistanceToSquared(v2 Vec2) float64 {
+	return (v.X-v2.X)*(v.X-v2.X) + (v.Y-v2.Y)*(v.Y-v2.Y)
+}
+
+// AngleBetweenTwoVectors returns the angle between two vectors.
+func AngleBetweenTwoVectors(v1, v2 Vec2) float64 {
+	return math.Atan2(v1.X*v2.Y-v1.Y*v2.X, v1.X*v2.X+v1.Y*v2.Y)
+}
+
+// Negate negates the vector.
+func (v Vec2) Negate() Vec2 {
+	return Vec2{
+		X: -v.X,
+		Y: -v.Y,
+	}
 }
 
 // Normalize returns the normalized vector (with a length/magnitude of 1).

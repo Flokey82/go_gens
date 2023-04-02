@@ -12,4 +12,6 @@ func main() {
 	}
 
 	m.ExportToPNG("test.png")
+
+	gencitymap.Tensstuff()
 }
