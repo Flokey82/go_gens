@@ -1,6 +1,7 @@
 package gencitymap
 
 import (
+	"errors"
 	"image"
 	"image/color"
 	"log"
@@ -16,9 +17,9 @@ import (
 type StreamlineIntegration struct {
 	Seed          vectors.Vec2
 	OriginalDir   vectors.Vec2
-	Streamline    []vectors.Vec2
 	PreviousDir   vectors.Vec2
 	PreviousPoint vectors.Vec2
+	Streamline    []vectors.Vec2
 	Valid         bool
 }
 
@@ -40,29 +41,29 @@ type StreamlineGenerator struct {
 	NEAR_EDGE            int // Sample near edge
 	majorGrid            *GridStorage
 	minorGrid            *GridStorage
-	paramsSq             *StreamlineParams
 	nStreamlineStep      int
 	nStreamlineLookBack  int
 	dcollideselfSq       float64
 	candidateSeedsMajor  []vectors.Vec2
 	candidateSeedsMinor  []vectors.Vec2
 	streamlinesDone      bool
-	resolve              func()
 	lastStreamlineMajor  bool
+	resolve              func()
 	allStreamlines       [][]vectors.Vec2
 	streamlinesMajor     [][]vectors.Vec2
 	streamlinesMinor     [][]vectors.Vec2
 	allStreamlinesSimple [][]vectors.Vec2 // Reduced vertex count
 	params               *StreamlineParams
+	paramsSq             *StreamlineParams
 	worldDimensions      vectors.Vec2
 	origin               vectors.Vec2
 	integrator           FieldIntegratorIf
 	rng                  *rand.Rand
 }
 
-func NewStreamlineGenerator(seed int64, integrator FieldIntegratorIf, origin, worldDimensions vectors.Vec2, params *StreamlineParams) *StreamlineGenerator {
+func NewStreamlineGenerator(seed int64, integrator FieldIntegratorIf, origin, worldDimensions vectors.Vec2, params *StreamlineParams) (*StreamlineGenerator, error) {
 	if params.Dstep > params.Dsep {
-		log.Println("STREAMLINE SAMPLE DISTANCE BIGGER THAN DSEP")
+		return nil, errors.New("STREAMLINE SAMPLE DISTANCE BIGGER THAN DSEP")
 	}
 
 	// Enforce test < sep
@@ -70,49 +71,30 @@ func NewStreamlineGenerator(seed int64, integrator FieldIntegratorIf, origin, wo
 		params.Dtest = params.Dsep
 	}
 
-	/*
-	   // Enforce test < sep
-	   params.dtest = Math.min(params.dtest, params.dsep);
-
-	   // Needs to be less than circlejoin
-	   this.dcollideselfSq = (params.dcirclejoin / 2) ** 2;
-	   this.nStreamlineStep = Math.floor(params.dcirclejoin / params.dstep);
-	   this.nStreamlineLookBack = 2 * this.nStreamlineStep;
-
-	   this.majorGrid = new GridStorage(this.worldDimensions, this.origin, params.dsep);
-	   this.minorGrid = new GridStorage(this.worldDimensions, this.origin, params.dsep);
-
-	   this.setParamsSq();
-	*/
 	gen := &StreamlineGenerator{
-		SEED_AT_ENDPOINTS:    true,
-		NEAR_EDGE:            3, // Sample near edge
-		majorGrid:            NewGridStorage(worldDimensions, origin, params.Dsep),
-		minorGrid:            NewGridStorage(worldDimensions, origin, params.Dsep),
-		paramsSq:             params,
-		nStreamlineStep:      int(params.Dcirclejoin / params.Dstep),
-		nStreamlineLookBack:  int(2 * params.Dcirclejoin / params.Dstep),
-		dcollideselfSq:       (params.Dcirclejoin / 2) * (params.Dcirclejoin / 2),
-		candidateSeedsMajor:  nil,
-		candidateSeedsMinor:  nil,
-		streamlinesDone:      true,
-		resolve:              nil,
-		lastStreamlineMajor:  true,
-		allStreamlines:       nil,
-		streamlinesMajor:     nil,
-		streamlinesMinor:     nil,
-		allStreamlinesSimple: nil, // Reduced vertex count
-		params:               params,
-		worldDimensions:      worldDimensions,
-		origin:               origin,
-		integrator:           integrator,
-		rng:                  rand.New(rand.NewSource(seed)),
+		SEED_AT_ENDPOINTS:   true,
+		NEAR_EDGE:           3, // Sample near edge
+		majorGrid:           NewGridStorage(worldDimensions, origin, params.Dsep),
+		minorGrid:           NewGridStorage(worldDimensions, origin, params.Dsep),
+		streamlinesDone:     true,
+		lastStreamlineMajor: true,
+		params:              params,
+		paramsSq:            params,
+		worldDimensions:     worldDimensions,
+		origin:              origin,
+		integrator:          integrator,
+		rng:                 rand.New(rand.NewSource(seed)),
 	}
-	log.Println("StreamlineGenerator", gen)
+
+	// Needs to be less than circlejoin
+	gen.dcollideselfSq = (params.Dcirclejoin / 2) * (params.Dcirclejoin / 2)
+	gen.nStreamlineStep = int(params.Dcirclejoin / params.Dstep)
+	gen.nStreamlineLookBack = 2 * gen.nStreamlineStep
 	gen.setParamsSq()
-	return gen
+	return gen, nil
 }
 
+// ExportToPNG exports the streamlines to a PNG file.
 func (sg *StreamlineGenerator) ExportToPNG(filename string) error {
 	img := image.NewRGBA(image.Rect(0, 0, int(sg.worldDimensions.X), int(sg.worldDimensions.Y)))
 
@@ -154,6 +136,7 @@ func (sg *StreamlineGenerator) ExportToPNG(filename string) error {
 	return draw2dimg.SaveToPngFile(filename, img)
 }
 
+// ExportToSVG exports the streamlines to an SVG file.
 func (sg *StreamlineGenerator) ExportToSVG(filename string) error {
 	svgFile, err := os.Create(filename)
 	if err != nil {
@@ -184,11 +167,12 @@ func (sg *StreamlineGenerator) ClearStreamlines() {
 	sg.streamlinesMinor = nil
 }
 
+// joinDanglingStreamlines joins streamlines that are not closed.
 func (sg *StreamlineGenerator) joinDanglingStreamlines() {
 	// TODO do in update method
 	for _, major := range []bool{true, false} {
 		for _, streamline := range sg.streamlines(major) {
-			// Ignore circles
+			// Ignore circles.
 			if streamline[0].Equalish(streamline[len(streamline)-1]) {
 				continue
 			}
@@ -218,10 +202,7 @@ func (sg *StreamlineGenerator) joinDanglingStreamlines() {
 	}
 }
 
-/**
- * Returns array of points from v1 to v2 such that they are separated by at most dsep
- * not including v1
- */
+// pointsBetween returns array of points from v1 to v2 such that they are separated by at most dsep, not including v1.
 func (sg *StreamlineGenerator) pointsBetween(v1, v2 vectors.Vec2, dstep float64) []vectors.Vec2 {
 	d := v1.DistanceTo(v2)
 	nPoints := int(d / dstep)
@@ -247,10 +228,7 @@ func (sg *StreamlineGenerator) pointsBetween(v1, v2 vectors.Vec2, dstep float64)
 	return out
 }
 
-/**
- * Gets next best point to join streamline
- * returns null if there are no good candidates
- */
+// getBestNextPoint returns the next point to join a streamline and returns a zero vector if there are no good candidates.
 func (sg *StreamlineGenerator) getBestNextPoint(point, previousPoint vectors.Vec2, streamline []vectors.Vec2) vectors.Vec2 {
 	nearbyPoints := sg.majorGrid.GetNearbyPoints(point, sg.params.Dlookahead)
 	nearbyPoints = append(nearbyPoints, sg.minorGrid.GetNearbyPoints(point, sg.params.Dlookahead)...)
@@ -305,10 +283,8 @@ func streamlineIncludes(streamline []vectors.Vec2, point vectors.Vec2) bool {
 	return false
 }
 
-/**
- * Assumes s has already generated
- */
-
+// addExistingStreamlines adds existing streamlines from another generator.
+// NOTE: This assumes 's' has already generated streamlines
 func (sg *StreamlineGenerator) addExistingStreamlines(s *StreamlineGenerator) {
 	sg.majorGrid.AddAll(s.majorGrid)
 	sg.minorGrid.AddAll(s.minorGrid)
@@ -319,9 +295,7 @@ func (sg *StreamlineGenerator) setGrid(s *StreamlineGenerator) {
 	sg.minorGrid = s.minorGrid
 }
 
-/**
- * returns true if state updates
- */
+// update updates the streamline generator if necessary and returns true if state updates.
 func (sg *StreamlineGenerator) update() bool {
 	if !sg.streamlinesDone {
 		sg.lastStreamlineMajor = !sg.lastStreamlineMajor
@@ -334,12 +308,9 @@ func (sg *StreamlineGenerator) update() bool {
 	return false
 }
 
-/**
- * All at once - will freeze if dsep small
- */
+// createAllStreamlines creates all streamlines all at once - will freeze if dsep small.
 func (sg *StreamlineGenerator) createAllStreamlines(animate bool) {
 	sg.streamlinesDone = false
-
 	if !animate {
 		major := true
 		for sg.createStreamline(major) {
@@ -360,11 +331,8 @@ func (sg *StreamlineGenerator) simplifyStreamline(streamline []vectors.Vec2) []v
 	return streamline
 }
 
-/**
- * Finds seed and creates a streamline from that point
- * Pushes new candidate seeds to queue
- * @return {Vector[]} returns false if seed isn't found within params.seedTries
- */
+// createStreamline finds a seed, creates a streamline from that point, and pushes new candidate seeds to the queue.
+// Returns false if seed isn't found within params.seedTries.
 func (sg *StreamlineGenerator) createStreamline(major bool) bool {
 	seed := sg.getSeed(major)
 	if seed == emptyVec2 {
@@ -412,11 +380,9 @@ func (sg *StreamlineGenerator) samplePoint() vectors.Vec2 {
 	}.Add(sg.origin)
 }
 
-/**
- * Tries this.candidateSeeds first, then samples using this.samplePoint
- */
+// getSeed returns a seed point for a streamline.
+// Tries this.candidateSeeds first, then samples using this.samplePoint.
 func (sg *StreamlineGenerator) getSeed(major bool) vectors.Vec2 {
-	log.Println("getSeed", major)
 	// Candidate seeds first
 	if sg.SEED_AT_ENDPOINTS && len(sg.candidateSeeds(major)) > 0 {
 		for len(sg.candidateSeeds(major)) > 0 {
@@ -429,7 +395,6 @@ func (sg *StreamlineGenerator) getSeed(major bool) vectors.Vec2 {
 	}
 
 	seed := sg.samplePoint()
-
 	log.Println("seed", seed)
 	i := 0
 	for !sg.isValidSample(major, seed, sg.paramsSq.Dsep, false) {
@@ -440,7 +405,6 @@ func (sg *StreamlineGenerator) getSeed(major bool) vectors.Vec2 {
 		seed = sg.samplePoint()
 		i++
 	}
-
 	return seed
 }
 
@@ -505,13 +469,9 @@ func (sg *StreamlineGenerator) pointInBounds(v vectors.Vec2) bool {
 		v.Y < sg.worldDimensions.Y+sg.origin.Y
 }
 
-/**
- * Didn't end up using - bit expensive, used streamlineTurned instead
- * Stops spirals from forming
- * uses 0.5 dcirclejoin so that circles are still joined up
- * testSample is candidate to pushed on end of streamlineForwards
- * returns true if streamline collides with itself
- */
+// doesStreamlineCollideSelf stops spirals from forming, uses 0.5 dcirclejoin so that circles are still joined up.
+// TestSample is candidate to pushed on end of streamlineForwards, returns true if streamling collides with itself
+// NOTE: Currently unused - bit expensive, used streamlineTurned instead.
 func (sg *StreamlineGenerator) doesStreamlineCollideSelf(testSample vectors.Vec2, streamlineForwards, streamlineBackwards []vectors.Vec2) bool {
 	// Streamline long enough
 	if len(streamlineForwards) > sg.nStreamlineLookBack {
@@ -521,38 +481,32 @@ func (sg *StreamlineGenerator) doesStreamlineCollideSelf(testSample vectors.Vec2
 				return true
 			}
 		}
-
 		// Backwards check
 		for i := 0; i < len(streamlineBackwards); i += sg.nStreamlineStep {
 			if testSample.DistanceToSquared(streamlineBackwards[i]) < sg.dcollideselfSq {
 				return true
 			}
 		}
-
 	}
-
 	return false
 }
 
-/**
- * Tests whether streamline has turned through greater than 180 degrees
- */
+// streamlineTurned tests whether streamline has turned through greater than 180 degrees and
+// stops spirals from forming.
 func (sg *StreamlineGenerator) streamlineTurned(seed, originalDir, point, direction vectors.Vec2) bool {
 	if originalDir.Dot(direction) < 0 {
-		// TODO optimise
-		perpendicularVector := vectors.Vec2{originalDir.Y, -originalDir.X}
+		// TODO: Optimize!
+		perpendicularVector := vectors.Vec2{X: originalDir.Y, Y: -originalDir.X}
 		isLeft := point.Sub(seed).Dot(perpendicularVector) < 0
 		directionUp := direction.Dot(perpendicularVector) > 0
 		return isLeft == directionUp
 	}
-
 	return false
 }
 
-/**
- * // TODO this doesn't work well - consider something disallowing one direction (F/B) to turn more than 180 deg
- * One step of the streamline integration process
- */
+// streamlineIntegrationStep performs one step of the streamline integration process.
+// TODO: this doesn't work well - consider something disallowing one direction (F/B)
+// to turn more than 180 degrees.
 func (sg *StreamlineGenerator) streamlineIntegrationStep(params *StreamlineIntegration, major bool, collideBoth bool) {
 	if params.Valid {
 		params.Streamline = append(params.Streamline, params.PreviousPoint)
@@ -590,11 +544,9 @@ func (sg *StreamlineGenerator) streamlineIntegrationStep(params *StreamlineInteg
 	}
 }
 
-/**
- * By simultaneously integrating in both directions we reduce the impact of circles not joining
- * up as the error matches at the join
- */
-
+// integrateStreamline integrates a streamline from a seed point in both directions.
+// By simultaneously integrating in both directions we reduce the impact of circles
+// not joining up as the error matches at the join.
 func (sg *StreamlineGenerator) integrateStreamline(seed vectors.Vec2, major bool) []vectors.Vec2 {
 	count := 0
 	pointsEscaped := false // True once two integration fronts have moved dlookahead away
@@ -613,7 +565,6 @@ func (sg *StreamlineGenerator) integrateStreamline(seed vectors.Vec2, major bool
 		PreviousPoint: seed.Add(d),
 		Valid:         true,
 	}
-
 	forwardParams.Valid = sg.pointInBounds(forwardParams.PreviousPoint)
 
 	negD := d.Negate()
@@ -625,26 +576,23 @@ func (sg *StreamlineGenerator) integrateStreamline(seed vectors.Vec2, major bool
 		PreviousPoint: seed.Add(negD),
 		Valid:         true,
 	}
-
 	backwardParams.Valid = sg.pointInBounds(backwardParams.PreviousPoint)
+
 	for count < sg.params.PathIterations && (forwardParams.Valid || backwardParams.Valid) {
 		sg.streamlineIntegrationStep(&forwardParams, major, collideBoth)
 		sg.streamlineIntegrationStep(&backwardParams, major, collideBoth)
 
 		// Join up circles
 		sqDistanceBetweenPoints := forwardParams.PreviousPoint.DistanceToSquared(backwardParams.PreviousPoint)
-
 		if !pointsEscaped && sqDistanceBetweenPoints > sg.paramsSq.Dcirclejoin {
 			pointsEscaped = true
 		}
-
 		if pointsEscaped && sqDistanceBetweenPoints <= sg.paramsSq.Dcirclejoin {
 			forwardParams.Streamline = append(forwardParams.Streamline, forwardParams.PreviousPoint)
 			forwardParams.Streamline = append(forwardParams.Streamline, backwardParams.PreviousPoint)
 			backwardParams.Streamline = append(backwardParams.Streamline, backwardParams.PreviousPoint)
 			break
 		}
-
 		count++
 	}
 
@@ -655,7 +603,6 @@ func (sg *StreamlineGenerator) integrateStreamline(seed vectors.Vec2, major bool
 	}
 
 	// Append forwards to backwards
-	//backwardParams.Streamline = append(backwardParams.Streamline, backwardParams.PreviousPoint)
 	backwardParams.Streamline = append(backwardParams.Streamline, forwardParams.Streamline...)
 	return backwardParams.Streamline
 }

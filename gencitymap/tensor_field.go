@@ -20,12 +20,12 @@ type NoiseParams struct {
 
 type TensorField struct {
 	basisFields []BasisFieldInterface
-	noise       opensimplex.Noise
 	parks       [][]vectors.Vec2
 	sea         []vectors.Vec2
 	river       []vectors.Vec2
 	ignoreRiver bool
 	smooth      bool
+	noise       opensimplex.Noise
 	noiseParams *NoiseParams
 }
 
@@ -74,8 +74,7 @@ func (t *TensorField) getCentrePoints() []vectors.Vec2 {
 
 func (t *TensorField) samplePoint(point vectors.Vec2) *Tensor {
 	if !t.onLand(point) {
-		// Degenerate point
-		return newZeroTensor()
+		return newZeroTensor() // Degenerate point
 	}
 
 	// Default field is a grid
@@ -90,8 +89,8 @@ func (t *TensorField) samplePoint(point vectors.Vec2) *Tensor {
 
 	// Add rotational noise for parks - range -pi/2 to pi/2
 	for _, park := range t.parks {
-		if InsidePolygon(point, park) {
-			// TODO optimise insidePolygon e.g. distance
+		if insidePolygon(point, park) {
+			// TODO: optimise insidePolygon e.g. distance
 			tensorAcc.rotate(t.getRotationalNoise(point, t.noiseParams.noiseSizePark, t.noiseParams.noiseAnglePark))
 			break
 		}
@@ -104,10 +103,8 @@ func (t *TensorField) samplePoint(point vectors.Vec2) *Tensor {
 	return tensorAcc
 }
 
-/**
- * Noise Angle is in degrees
- */
-
+// getRotationalNoise returns a random angle in radians based on the coordinates and noise parameters.
+// NOTE: Noise Angle is in degrees.
 func (t *TensorField) getRotationalNoise(point vectors.Vec2, noiseSize float64, noiseAngle float64) float64 {
 	return t.noise.Eval2(point.X/noiseSize, point.Y/noiseSize) * noiseAngle * math.Pi / 180
 }
@@ -124,15 +121,16 @@ func (t *TensorField) onLand(point vectors.Vec2) bool {
 
 func (t *TensorField) inParks(point vectors.Vec2) bool {
 	for _, p := range t.parks {
-		if InsidePolygon(point, p) {
+		if insidePolygon(point, p) {
 			return true
 		}
 	}
 	return false
 }
 
-func InsidePolygon(point vectors.Vec2, polygon []vectors.Vec2) bool {
-	// TODO optimise insidePolygon e.g. distance
+// insidePolygon returns true if the point is inside the polygon.
+func insidePolygon(point vectors.Vec2, polygon []vectors.Vec2) bool {
+	// TODO: optimise insidePolygon e.g. distance.
 	for i := 0; i < len(polygon); i++ {
 		j := (i + 1) % len(polygon)
 		if (polygon[i].Y > point.Y) != (polygon[j].Y > point.Y) &&

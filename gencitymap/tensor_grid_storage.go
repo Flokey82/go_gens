@@ -6,10 +6,8 @@ import (
 	"github.com/Flokey82/go_gens/vectors"
 )
 
-/**
- * Cartesian grid accelerated data structure
- * Grid of cells, each containing a list of vectors
- */
+// GridStorage is a grid-based storage for samples.
+// NOTE: Cartesian grid accelerated data structure, Grid of cells, each containing a list of vectors.
 type GridStorage struct {
 	worldDimensions vectors.Vec2
 	gridDimensions  vectors.Vec2
@@ -19,10 +17,8 @@ type GridStorage struct {
 	origin          vectors.Vec2
 }
 
-/**
- * worldDimensions assumes origin of 0,0
- * @param {number} dsep Separation distance between samples
- */
+// NewGridStorage creates a new grid storage.
+// NOTE: worldDimensions assumes origin of 0,0, dsep is the separation distance between samples.
 func NewGridStorage(worldDimensions vectors.Vec2, origin vectors.Vec2, dsep float64) *GridStorage {
 	gs := &GridStorage{
 		dsepSq:          dsep * dsep,
@@ -41,9 +37,7 @@ func NewGridStorage(worldDimensions vectors.Vec2, origin vectors.Vec2, dsep floa
 	return gs
 }
 
-/**
- * Add all samples from another grid to this one
- */
+// AddAll adds all samples from another grid to this one.
 func (gs *GridStorage) AddAll(gridStorage *GridStorage) {
 	for x := range gridStorage.grid {
 		for y := range gridStorage.grid[x] {
@@ -60,10 +54,8 @@ func (gs *GridStorage) AddPolyline(line []vectors.Vec2) {
 	}
 }
 
-/**
- * Does not enforce separation
- * Does not clone
- */
+// AddSample adds a sample to the grid.
+// NOTE: Does not enforce separation, does not clone.
 func (gs *GridStorage) AddSample(v vectors.Vec2, coords *vectors.Vec2) {
 	if coords == nil {
 		coord := gs.GetSampleCoords(v)
@@ -72,13 +64,11 @@ func (gs *GridStorage) AddSample(v vectors.Vec2, coords *vectors.Vec2) {
 	gs.grid[int(coords.X)][int(coords.Y)] = append(gs.grid[int(coords.X)][int(coords.Y)], v)
 }
 
-/**
- * Tests whether v is at least d away from samples
- * Performance very important - this is called at every integration step
- * @param dSq=this.dsepSq squared test distance
- * Could be dtest if we are integrating a streamline
- */
-
+// IsValidSample returns true if the sample is valid and within the world dimensions.
+// Tests whether v is at least d away from samples.
+// NOTE: Performance is very important - this is called at every integration step!
+// dSq=this.dsepSq squared test distance
+// Could be dtest if we are integrating a streamline
 func (gs *GridStorage) IsValidSample(v vectors.Vec2, dSq float64) bool {
 	// Code duplication with this.getNearbyPoints but much slower when calling
 	// this.getNearbyPoints due to array creation in that method
@@ -100,12 +90,10 @@ func (gs *GridStorage) IsValidSample(v vectors.Vec2, dSq float64) bool {
 	return true
 }
 
-/**
- * Test whether v is at least d away from vectors
- * Performance very important - this is called at every integration step
- * @param {number}   dSq     squared test distance
- */
-
+// vectorFarFromVectors returns true if the vector is far from the vectors.
+// Test whether v is at least d away from vectors.
+// NOTE: Performance very important - this is called at every integration step
+// dSq squared test distance
 func (gs *GridStorage) vectorFarFromVectors(v vectors.Vec2, vectors []vectors.Vec2, dSq float64) bool {
 	for _, sample := range vectors {
 		if sample != v {
@@ -119,12 +107,10 @@ func (gs *GridStorage) vectorFarFromVectors(v vectors.Vec2, vectors []vectors.Ve
 	return true
 }
 
-/**
- * Returns points in cells surrounding v
- * Results include v, if it exists in the grid
- * @param {number} returns samples (kind of) closer than distance - returns all samples in
- * cells so approximation (square to approximate circle)
- */
+// GetNearbyPoints returns points in cells surrounding v.
+// Results include v, if it exists in the grid.
+// NOTE: Returns samples (kind of) closer than distance - returns all samples in
+// cells so approximation (square to approximate circle).
 func (gs *GridStorage) GetNearbyPoints(v vectors.Vec2, distance float64) []vectors.Vec2 {
 	radius := int(math.Ceil((distance / gs.dsep) - 0.5))
 	coords := gs.GetSampleCoords(v)
@@ -156,10 +142,8 @@ func (gs *GridStorage) VectorOutOfBounds(v vectors.Vec2, bounds vectors.Vec2) bo
 		v.X >= bounds.X || v.Y >= bounds.Y)
 }
 
-/**
- * @return {Vector}   Cell coords corresponding to vector
- * Performance important - called at every integration step
- */
+// GetSampleCoords returns the cell coords corresponding to the vector.
+// NOTE: Performance is important here - this is called at every integration step.
 func (gs *GridStorage) GetSampleCoords(worldV vectors.Vec2) vectors.Vec2 {
 	v := gs.worldToGrid(worldV)
 	if gs.VectorOutOfBounds(v, gs.worldDimensions) {

@@ -26,7 +26,7 @@ var DefaultStreamlineParams = &StreamlineParams{
 	CollideEarly:      0.01,
 }
 
-func Tensstuff() {
+func TensorTest() (*StreamlineGenerator, error) {
 	// Set up some tensor stuff.
 	tensorField := NewTensorField(DefaultNoiseParams)
 
@@ -39,14 +39,12 @@ func Tensstuff() {
 	streamlineParams := DefaultStreamlineParams
 	origin := vectors.Vec2{X: 500, Y: 500}
 	dimensions := vectors.Vec2{X: 2000, Y: 2000}
-	gen := NewStreamlineGenerator(1234, NewRK4Integrator(tensorField, streamlineParams), origin, dimensions, streamlineParams)
+	gen, err := NewStreamlineGenerator(1234, NewRK4Integrator(tensorField, streamlineParams), origin, dimensions, streamlineParams)
+	if err != nil {
+		return nil, err
+	}
 	gen.createAllStreamlines(false)
-
-	// Create a png image.
-	gen.ExportToPNG("test2.png")
-
-	// Create an svg image.
-	gen.ExportToSVG("test2.svg")
+	return gen, nil
 }
 
 func convToPairs(vectors []vectors.Vec2, origin vectors.Vec2) ([]int, []int) {
