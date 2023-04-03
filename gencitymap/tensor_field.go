@@ -110,13 +110,10 @@ func (t *TensorField) getRotationalNoise(point vectors.Vec2, noiseSize float64, 
 }
 
 func (t *TensorField) onLand(point vectors.Vec2) bool {
-	//log.Println("Hack! onLand always returns true")
-	return true
-	/*
-		if t.ignoreRiver {
-			return InsidePolygon(point, t.sea)
-		}
-		return InsidePolygon(point, t.sea) && !InsidePolygon(point, t.river)*/
+	if t.ignoreRiver {
+		return !insidePolygon(point, t.sea)
+	}
+	return !insidePolygon(point, t.sea) && !insidePolygon(point, t.river)
 }
 
 func (t *TensorField) inParks(point vectors.Vec2) bool {

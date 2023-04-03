@@ -12,4 +12,10 @@ https://github.com/ProbableTrain/MapGenerator
 
 NOTE: HEAVILY WIP!! Do not use this yet!
 
+### TODO
+
+- [ ] Add coastline, water, rivers, etc.
+- [ ] Add graph generation from streamlines
+- [ ] Add polygon extraction for identifying plots and buildings
+
 ![alt text](https://raw.githubusercontent.com/Flokey82/go_gens/master/gencitymap/images/tensor.png "Screenshot of basic tensor field!")

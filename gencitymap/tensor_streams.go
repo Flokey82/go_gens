@@ -321,14 +321,7 @@ func (sg *StreamlineGenerator) createAllStreamlines(animate bool) {
 }
 
 func (sg *StreamlineGenerator) simplifyStreamline(streamline []vectors.Vec2) []vectors.Vec2 {
-	/*
-		simplified := make([]vectors.Vec2, 0, len(streamline))
-		for _, point := range simplify(streamline, sg.params.SimplifyTolerance) {
-			simplified = append(simplified, vectors.Vec2{point[0], point[1]})
-		}
-		return simplified
-	*/
-	return streamline
+	return simplify(streamline, sg.params.SimplifyTolerance, false)
 }
 
 // createStreamline finds a seed, creates a streamline from that point, and pushes new candidate seeds to the queue.

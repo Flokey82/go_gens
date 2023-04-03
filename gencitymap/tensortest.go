@@ -29,12 +29,16 @@ var DefaultStreamlineParams = &StreamlineParams{
 func TensorTest() (*StreamlineGenerator, error) {
 	// Set up some tensor stuff.
 	tensorField := NewTensorField(DefaultNoiseParams)
-
 	// Add some basis fields.
 	tensorField.AddGrid(vectors.Vec2{X: 800, Y: 600}, 400, 20.5, 45)
 	tensorField.AddGrid(vectors.Vec2{X: 1200, Y: 1000}, 400, 20.5, -45)
 	tensorField.AddRadial(vectors.Vec2{X: 1400, Y: 1400}, 300, 20.5, 0.5)
 	tensorField.AddRadial(vectors.Vec2{X: 1200, Y: 1200}, 150, 20.5, 0.5)
+
+	// Add a random sea.
+	// tensorField.sea = append(tensorField.sea, vectors.Vec2{X: 500, Y: 500}, vectors.Vec2{X: 1500, Y: 1500}, vectors.Vec2{X: 1100, Y: 1100}, vectors.Vec2{X: 100, Y: 100})
+	// tensorField.river = append(tensorField.river, vectors.Vec2{X: 500, Y: 500}, vectors.Vec2{X: 1500, Y: 1500}, vectors.Vec2{X: 1100, Y: 1100}, vectors.Vec2{X: 100, Y: 100})
+	// tensorField.river = append(tensorField.river, vectors.Vec2{X: 100, Y: 100}, vectors.Vec2{X: 500, Y: 100}, vectors.Vec2{X: 500, Y: 400}, vectors.Vec2{X: 100, Y: 400})
 
 	streamlineParams := DefaultStreamlineParams
 	origin := vectors.Vec2{X: 500, Y: 500}
@@ -44,6 +48,20 @@ func TensorTest() (*StreamlineGenerator, error) {
 		return nil, err
 	}
 	gen.createAllStreamlines(false)
+
+	/*
+		g := NewGraph(gen.allStreamlinesSimple, streamlineParams.Dstep, false)
+		for _, in := range g.intersections {
+			log.Println("intersection", in)
+		}
+		for _, n := range g.nodes {
+			if len(n.neighbors) == 0 {
+				println("dangling node")
+			} else {
+				println("ok node with neighbors")
+			}
+		}
+	*/
 	return gen, nil
 }
 
