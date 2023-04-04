@@ -1,14 +1,11 @@
 package gencitymap
 
 import (
-	"math"
-
 	"github.com/Flokey82/go_gens/vectors"
 )
 
-func getSqDist(p1, p2 vectors.Vec2) float64 {
-	return math.Pow(p1.X-p2.X, 2) + math.Pow(p1.Y-p2.Y, 2)
-}
+// NOTE: This code is based on:
+// https://github.com/mourner/simplify-js
 
 func getSqSegDist(p vectors.Vec2, p1, p2 vectors.Vec2) float64 {
 	x := p1.X
@@ -37,7 +34,7 @@ func simplifyRadialDist(points []vectors.Vec2, sqTolerance float64) []vectors.Ve
 	var point vectors.Vec2
 	for i := 1; i < len(points); i++ {
 		point = points[i]
-		if getSqDist(point, prevPoint) > sqTolerance {
+		if point.DistanceToSquared(prevPoint) > sqTolerance {
 			newPoints = append(newPoints, point)
 			prevPoint = point
 		}

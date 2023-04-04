@@ -10,6 +10,7 @@ import (
 	"os"
 
 	"github.com/Flokey82/go_gens/vectors"
+
 	svgo "github.com/ajstarks/svgo"
 	"github.com/llgcode/draw2d/draw2dimg"
 )

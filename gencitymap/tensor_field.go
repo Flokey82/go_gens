@@ -47,8 +47,8 @@ func (t *TensorField) AddGrid(centre vectors.Vec2, size float64, decay float64, 
 	t.basisFields = append(t.basisFields, NewGridField(centre, size, decay, theta))
 }
 
-func (t *TensorField) AddRadial(centre vectors.Vec2, size float64, decay float64, theta float64) {
-	t.basisFields = append(t.basisFields, NewRadialField(centre, size, decay, theta))
+func (t *TensorField) AddRadial(centre vectors.Vec2, size float64, decay float64) {
+	t.basisFields = append(t.basisFields, NewRadialField(centre, size, decay))
 }
 
 func (t *TensorField) addField(field BasisFieldInterface) {

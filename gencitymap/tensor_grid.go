@@ -26,7 +26,7 @@ type BasisField struct {
 }
 
 // NewBasisField creates a new basis field.
-func NewBasisField(centre vectors.Vec2, size float64, decay float64, fieldType int) *BasisField {
+func NewBasisField(centre vectors.Vec2, size, decay float64, fieldType int) *BasisField {
 	return &BasisField{
 		Centre:    centre,
 		FieldType: fieldType,
@@ -55,14 +55,12 @@ func (b *BasisField) getTensorWeight(point vectors.Vec2, smooth bool) float64 {
 
 type RadialField struct {
 	*BasisField
-	Theta float64
 }
 
 // NewRadialField creates a new radial field.
-func NewRadialField(centre vectors.Vec2, size float64, decay float64, theta float64) *RadialField {
+func NewRadialField(centre vectors.Vec2, size, decay float64) *RadialField {
 	return &RadialField{
 		BasisField: NewBasisField(centre, size, decay, FTRadialField),
-		Theta:      theta,
 	}
 }
 
@@ -83,10 +81,10 @@ type GridField struct {
 }
 
 // NewGridField creates a new grid field.
-func NewGridField(centre vectors.Vec2, size float64, decay float64, theta float64) *GridField {
+func NewGridField(centre vectors.Vec2, size, decay, theta float64) *GridField {
 	return &GridField{
 		BasisField: NewBasisField(centre, size, decay, FTGridField),
-		Theta:      theta,
+		Theta:      theta * math.Pi / 180,
 	}
 }
 
@@ -99,4 +97,55 @@ func (r *GridField) GetTensor(point vectors.Vec2) *Tensor {
 
 func (r *GridField) GetWeightedTensor(point vectors.Vec2, smooth bool) *Tensor {
 	return r.GetTensor(point).Scale(r.getTensorWeight(point, smooth))
+}
+
+type OvalField struct {
+	*BasisField
+	Theta float64 // Direction of the major axis
+	Ratio float64 // Ratio of the major and minor axis
+}
+
+// NewOvalField creates a new oval field.
+// NOTE: This tends to create spirals, so use with caution.
+func NewOvalField(centre vectors.Vec2, size, decay, theta, ratio float64) *OvalField {
+	return &OvalField{
+		BasisField: NewBasisField(centre, size, decay, FTGridField),
+		Theta:      theta,
+		Ratio:      ratio,
+	}
+}
+
+func (r *OvalField) GetTensor(point vectors.Vec2) *Tensor {
+	t := point.Sub(r.Centre)
+	// Adjust the point to be relative to the centre of the oval
+	t = t.Rotate(r.Theta)
+	t.X *= r.Ratio
+
+	// Calculate the x/y ratios based on the angle of the major axis
+	t1 := t.Y*t.Y - t.X*t.X
+	t2 := -2 * t.X * t.Y
+	return newTensor(1, [2]float64{t1, t2})
+}
+
+func (r *OvalField) GetWeightedTensor(point vectors.Vec2, smooth bool) *Tensor {
+	return r.GetTensor(point).Scale(r.getTensorWeight(point, smooth))
+}
+
+func (r *OvalField) getTensorWeight(point vectors.Vec2, smooth bool) float64 {
+	diff := point.Sub(r.Centre)
+	// Adjust the point to be relative to the centre of the oval
+	diff = diff.Rotate(r.Theta)
+	diff.X *= r.Ratio
+
+	// Interpolates between (0 and 1)^decay
+	distanceToCentre := diff.Len()
+	if distanceToCentre > r.Size {
+		return 0
+	}
+
+	weight := math.Pow(1-distanceToCentre/r.Size, r.Decay)
+	if smooth {
+		weight = math.Pow(weight, 0.5)
+	}
+	return weight
 }

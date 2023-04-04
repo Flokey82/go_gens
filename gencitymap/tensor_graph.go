@@ -109,12 +109,12 @@ func NewGraph(streamlines [][]vectors.Vec2, dstep float64, deleteDangling bool) 
 	}
 
 	// Remove dangling nodes
-	if deleteDangling {
-		for _, node := range quadtree.All() {
-			if len(node.neighbors) == 0 {
-				quadtree.Remove(node)
-			}
+	for _, node := range quadtree.All() {
+		if deleteDangling {
+			deleteDanglingNodes(node, quadtree)
 		}
+		node.adj = make([]*Node, len(node.neighbors))
+		copy(node.adj, node.neighbors)
 	}
 
 	log.Println("Done removing dangling nodes")
@@ -140,12 +140,12 @@ func NewGraph(streamlines [][]vectors.Vec2, dstep float64, deleteDangling bool) 
 
 // deleteDanglingNodes removes nodes that are not connected to any other nodes.
 // Remove dangling edges from graph to facilitate polygon finding.
-func (g *Graph) deleteDanglingNodes(n *Node, quadtree QuadTree) {
+func deleteDanglingNodes(n *Node, quadtree QuadTree) {
 	if len(n.neighbors) == 1 {
 		quadtree.Remove(n)
 		for _, neighbor := range n.neighbors {
 			neighbor.removeNeighbor(n)
-			g.deleteDanglingNodes(neighbor, quadtree)
+			deleteDanglingNodes(neighbor, quadtree)
 		}
 	}
 }
@@ -215,7 +215,6 @@ func fuzzySegmentsEqual(s1 vectors.Segment, s2 vectors.Segment, tolerance float6
 	}
 
 	// To
-
 	if s1.End.X-s2.End.X > tolerance {
 		return false
 	}
@@ -285,7 +284,6 @@ func findAllIntersections(streamlines []vectors.Segment) []intersection {
 			}
 		}
 	}
-
 	return intersections
 }
 
@@ -326,7 +324,6 @@ func (f *fakeQuadtree) Find(point vectors.Vec2, radius float64) *Node {
 			return n
 		}
 	}
-
 	return nil
 }
 
@@ -337,7 +334,6 @@ func (f *fakeQuadtree) Search(point vectors.Vec2, radius float64) []*Node {
 			out = append(out, n)
 		}
 	}
-
 	return out
 }
 
