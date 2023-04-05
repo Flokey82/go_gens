@@ -553,8 +553,8 @@ func (sg *StreamlineGenerator) integrateStreamline(seed vectors.Vec2, major bool
 
 	forwardParams := StreamlineIntegration{
 		Seed:          seed,
-		OriginalDir:   d,
 		Streamline:    []vectors.Vec2{seed},
+		OriginalDir:   d,
 		PreviousDir:   d,
 		PreviousPoint: seed.Add(d),
 		Valid:         true,
@@ -565,7 +565,6 @@ func (sg *StreamlineGenerator) integrateStreamline(seed vectors.Vec2, major bool
 	backwardParams := StreamlineIntegration{
 		Seed:          seed,
 		OriginalDir:   negD,
-		Streamline:    []vectors.Vec2{},
 		PreviousDir:   negD,
 		PreviousPoint: seed.Add(negD),
 		Valid:         true,

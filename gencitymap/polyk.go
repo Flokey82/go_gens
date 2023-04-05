@@ -168,10 +168,9 @@ func Triangulate(polygon []float64) []int {
 	p := polygon
 	n := len(p) >> 1
 	if n < 3 {
-		return []int{}
+		return nil
 	}
-	tgs := []int{}
-	avl := []int{}
+	var tgs, avl []int
 	for i := 0; i < n; i++ {
 		avl = append(avl, i)
 	}
@@ -213,8 +212,7 @@ func Triangulate(polygon []float64) []int {
 			break // no convex angles :(
 		}
 	}
-	tgs = append(tgs, avl[0], avl[1], avl[2])
-	return tgs
+	return append(tgs, avl[0], avl[1], avl[2])
 }
 
 func Slice(polygon []float64, startX, startY, endX, endY float64) [][]float64 {
@@ -264,7 +262,6 @@ func Slice(polygon []float64, startX, startY, endX, endY float64) [][]float64 {
 
 	var pgs [][]Point
 	var dir int
-
 	for len(iscs) > 1 {
 		// n := len(ps) // is assigned a value but never used. (no-unused-vars)
 		i0 := iscs[0]

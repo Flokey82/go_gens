@@ -92,10 +92,10 @@ func CalcPolygonArea(polygon []vectors.Vec2) float64 {
 func SubdividePolygon(poly []vectors.Vec2, minArea float64) [][]vectors.Vec2 {
 	area := CalcPolygonArea(poly)
 	if area < 0.5*minArea {
-		return [][]vectors.Vec2{}
+		return nil
 	}
 
-	divided := [][]vectors.Vec2{} // Array of polygons
+	var divided [][]vectors.Vec2 // Array of polygons
 
 	longestSideLength := 0.0
 	longestSide := []vectors.Vec2{poly[0], poly[1]}
@@ -114,7 +114,7 @@ func SubdividePolygon(poly []vectors.Vec2, minArea float64) [][]vectors.Vec2 {
 	// Using rectangle ratio of 1:4 as limit
 	// if area/perimeter*perimeter < 0.04 {
 	if area/(perimeter*perimeter) < 0.04 {
-		return [][]vectors.Vec2{}
+		return nil
 	}
 
 	if area < 2*minArea {
@@ -126,7 +126,7 @@ func SubdividePolygon(poly []vectors.Vec2, minArea float64) [][]vectors.Vec2 {
 
 	averagePoint := longestSide[0].Add(longestSide[1]).Mul(deviation)
 	differenceVector := longestSide[0].Sub(longestSide[1])
-	perpVector := vectors.Normalize(vectors.Vec2{differenceVector.Y, -1 * differenceVector.X}).Mul(100)
+	perpVector := vectors.Normalize(vectors.Vec2{X: differenceVector.Y, Y: -1 * differenceVector.X}).Mul(100)
 
 	bisect := []vectors.Vec2{averagePoint.Add(perpVector), averagePoint.Sub(perpVector)}
 

@@ -24,12 +24,12 @@ func NewGridStorage(worldDimensions vectors.Vec2, origin vectors.Vec2, dsep floa
 		dsepSq:          dsep * dsep,
 		worldDimensions: worldDimensions,
 		gridDimensions:  worldDimensions.Mul(1 / dsep),
-		grid:            make([][][]vectors.Vec2, int(worldDimensions.X/dsep)),
+		grid:            make([][][]vectors.Vec2, int(worldDimensions.X/dsep)+1),
 		dsep:            dsep,
 		origin:          origin,
 	}
 	for x := range gs.grid {
-		gs.grid[x] = make([][]vectors.Vec2, int(worldDimensions.Y/dsep))
+		gs.grid[x] = make([][]vectors.Vec2, int(worldDimensions.Y/dsep)+1)
 		for y := range gs.grid[x] {
 			gs.grid[x][y] = make([]vectors.Vec2, 0)
 		}

@@ -32,11 +32,7 @@ type TensorField struct {
 // NewTensorField creates a new tensor field.
 func NewTensorField(n *NoiseParams) *TensorField {
 	return &TensorField{
-		basisFields: []BasisFieldInterface{},
 		noise:       opensimplex.New(n.Seed),
-		parks:       [][]vectors.Vec2{},
-		sea:         []vectors.Vec2{},
-		river:       []vectors.Vec2{},
 		ignoreRiver: false,
 		smooth:      false,
 		noiseParams: n,
@@ -65,7 +61,7 @@ func (t *TensorField) removeField(field BasisFieldInterface) {
 }
 
 func (t *TensorField) getCentrePoints() []vectors.Vec2 {
-	centrePoints := []vectors.Vec2{}
+	var centrePoints []vectors.Vec2
 	for _, field := range t.basisFields {
 		centrePoints = append(centrePoints, field.GetCentre())
 	}

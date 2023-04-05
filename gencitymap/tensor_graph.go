@@ -36,12 +36,14 @@ func (n *Node) removeNeighbor(node *Node) {
 	for i, neighbor := range n.neighbors {
 		if neighbor == node {
 			n.neighbors = append(n.neighbors[:i], n.neighbors[i+1:]...)
+			break
 		}
 	}
 
 	for i, neighbor := range node.neighbors {
 		if neighbor == n {
 			node.neighbors = append(node.neighbors[:i], node.neighbors[i+1:]...)
+			break
 		}
 	}
 }
@@ -57,7 +59,10 @@ func NewGraph(streamlines [][]vectors.Vec2, dstep float64, deleteDangling bool) 
 	// Find all intersections
 	log.Println("Finding intersections")
 	intersections := findAllIntersections(streamlinesToSegment(streamlines))
+	// boo := bush(streamlinesToSegment(streamlines), nil)
+	// intersections := boo.Run()
 	log.Println("Found intersections:", len(intersections))
+
 	quadtree := newFakeQuadtree()
 	nodeAddRadius := 0.01
 
@@ -71,15 +76,12 @@ func NewGraph(streamlines [][]vectors.Vec2, dstep float64, deleteDangling bool) 
 			if i > 0 {
 				node.addSegment(vectorsToSegment(streamline[i-1], streamline[i]))
 			}
-
 			if i < len(streamline)-1 {
 				node.addSegment(vectorsToSegment(streamline[i], streamline[i+1]))
 			}
-
 			fuzzyAddToQuadtree(quadtree, node, nodeAddRadius)
 		}
 	}
-
 	log.Println("Intersections:", len(intersections))
 
 	// Add all intersections
@@ -88,10 +90,8 @@ func NewGraph(streamlines [][]vectors.Vec2, dstep float64, deleteDangling bool) 
 		for _, s := range intersection.Segments {
 			node.addSegment(s)
 		}
-
 		fuzzyAddToQuadtree(quadtree, node, nodeAddRadius)
 	}
-
 	log.Println("Done adding nodes to quadtree")
 
 	// For each simplified streamline, build list of nodes in order along streamline
@@ -110,44 +110,47 @@ func NewGraph(streamlines [][]vectors.Vec2, dstep float64, deleteDangling bool) 
 
 	// Remove dangling nodes
 	for _, node := range quadtree.All() {
-		if deleteDangling {
-			deleteDanglingNodes(node, quadtree)
+		if !deleteDangling || !deleteDanglingNodes(node, quadtree) {
+			node.adj = make([]*Node, len(node.neighbors))
+			copy(node.adj, node.neighbors)
 		}
-		node.adj = make([]*Node, len(node.neighbors))
-		copy(node.adj, node.neighbors)
 	}
-
 	log.Println("Done removing dangling nodes")
 
 	// Create a list of nodes
-	nodes := make([]*Node, 0)
+	var nodes []*Node
 	for _, node := range quadtree.All() {
-		nodes = append(nodes, node)
+		if !deleteDangling || len(node.neighbors) > 1 {
+			nodes = append(nodes, node)
+		}
 	}
-
 	log.Println("Done creating list of nodes")
 
 	// Create a list of intersections
-	intersections2 := make([]vectors.Vec2, 0)
-	for _, intersection := range intersections {
-		intersections2 = append(intersections2, intersection.Point)
+	var intersections2 []vectors.Vec2
+	for i := range intersections {
+		intersections2 = append(intersections2, intersections[i].Point)
 	}
-
 	log.Println("Done creating list of intersections")
 
-	return &Graph{nodes: nodes, intersections: intersections2}
+	return &Graph{
+		nodes:         nodes,
+		intersections: intersections2,
+	}
 }
 
 // deleteDanglingNodes removes nodes that are not connected to any other nodes.
 // Remove dangling edges from graph to facilitate polygon finding.
-func deleteDanglingNodes(n *Node, quadtree QuadTree) {
+func deleteDanglingNodes(n *Node, quadtree QuadTree) bool {
 	if len(n.neighbors) == 1 {
 		quadtree.Remove(n)
 		for _, neighbor := range n.neighbors {
 			neighbor.removeNeighbor(n)
 			deleteDanglingNodes(neighbor, quadtree)
 		}
+		return true
 	}
+	return false
 }
 
 // getNodesAlongSegment returns all nodes along a segment.
@@ -156,9 +159,7 @@ func getNodesAlongSegment(segment vectors.Segment, quadtree QuadTree, radius flo
 	// Walk dstep along each streamline, adding nodes within dstep/2
 	// and connected to this streamline (fuzzy - nodeAddRadius) to list, removing from
 	// quadtree and adding them all back at the end
-
-	foundNodes := make([]*Node, 0)
-	nodesAlongSegment := make([]*Node, 0)
+	var foundNodes, nodesAlongSegment []*Node
 
 	start := vectors.Vec2{X: segment.Start.X, Y: segment.Start.Y}
 	end := vectors.Vec2{X: segment.End.X, Y: segment.End.Y}
@@ -186,22 +187,24 @@ func getNodesAlongSegment(segment vectors.Segment, quadtree QuadTree, radius flo
 					break
 				}
 			}
-
 			if nodeOnSegment {
 				nodesToAdd = append(nodesToAdd, closestNode)
 			}
-
 			closestNode = quadtree.Find(currentPoint, radius+step/2)
 		}
 
 		sort.Slice(nodesToAdd, func(i, j int) bool {
-			return nodesToAdd[i].value.Sub(currentPoint).Dot(differenceVector) < nodesToAdd[j].value.Sub(currentPoint).Dot(differenceVector)
+			return dotProductToSegment(nodesToAdd[i], start, differenceVector) < dotProductToSegment(nodesToAdd[j], start, differenceVector)
 		})
 		nodesAlongSegment = append(nodesAlongSegment, nodesToAdd...)
 	}
 
 	quadtree.Add(foundNodes...)
 	return nodesAlongSegment
+}
+
+func dotProductToSegment(node *Node, start, differenceVector vectors.Vec2) float64 {
+	return differenceVector.Dot(node.value.Sub(start))
 }
 
 func fuzzySegmentsEqual(s1 vectors.Segment, s2 vectors.Segment, tolerance float64) bool {
@@ -249,13 +252,12 @@ func fuzzyAddToQuadtree(quadtree QuadTree, node *Node, radius float64) {
 }
 
 func streamlinesToSegment(streamlines [][]vectors.Vec2) []vectors.Segment {
-	out := make([]vectors.Segment, 0)
+	var out []vectors.Segment
 	for _, s := range streamlines {
 		for i := 0; i < len(s)-1; i++ {
 			out = append(out, vectorsToSegment(s[i], s[i+1]))
 		}
 	}
-
 	return out
 }
 
@@ -273,13 +275,12 @@ type intersection struct {
 
 func findAllIntersections(streamlines []vectors.Segment) []intersection {
 	// Find all intersections
-	intersections := make([]intersection, 0)
+	var intersections []intersection
 	for i := 0; i < len(streamlines); i++ {
 		s1 := streamlines[i]
 		for j := i + 1; j < len(streamlines); j++ {
 			s2 := streamlines[j]
-			ok, p := s1.Intersects(s2)
-			if ok {
+			if ok, p := s1.Intersects(s2); ok {
 				intersections = append(intersections, intersection{Point: p, Segments: []vectors.Segment{s1, s2}})
 			}
 		}
@@ -328,7 +329,7 @@ func (f *fakeQuadtree) Find(point vectors.Vec2, radius float64) *Node {
 }
 
 func (f *fakeQuadtree) Search(point vectors.Vec2, radius float64) []*Node {
-	out := make([]*Node, 0)
+	var out []*Node
 	for _, n := range f.nodes {
 		if n.value.DistanceTo(point) < radius {
 			out = append(out, n)

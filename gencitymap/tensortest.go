@@ -65,14 +65,14 @@ func TensorTest() (*StreamlineGenerator, error) {
 	for _, n := range g.nodes {
 		if len(n.neighbors) == 0 {
 			println("dangling node")
-		} else {
-			println("ok node with neighbors")
-		}
+		} // else {
+		//	println("ok node with neighbors")
+		//}
 	}
 	f := NewPolygonFinder(g.nodes, PolygonParams{
-		MaxLength:      25,
+		MaxLength:      40,
 		MinArea:        30,
-		ShrinkSpacing:  4,
+		ShrinkSpacing:  1,
 		ChanceNoDivide: 0.01,
 	}, tensorField)
 	//f.findPolygons()

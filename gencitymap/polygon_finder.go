@@ -170,8 +170,7 @@ func (p *PolygonFinder) findPolygons() {
 	// If edge already traversed in this direction, this polygon has already been found
 	p.ShrunkPolygons = nil
 	p.DividedPolygons = nil
-	polygons := make([][]vectors.Vec2, 0)
-
+	var polygons [][]vectors.Vec2
 	for _, node := range p.Nodes {
 		if len(node.adj) < 2 {
 			continue
@@ -182,7 +181,8 @@ func (p *PolygonFinder) findPolygons() {
 			if polygon != nil && len(polygon) < p.Params.MaxLength {
 				p.removePolygonAdjacencies(polygon)
 				var polygonPoints []vectors.Vec2
-				for _, n := range polygon {
+				for i := range polygon {
+					n := polygon[i]
 					polygonPoints = append(polygonPoints, n.value)
 				}
 				polygons = append(polygons, polygonPoints)
@@ -194,7 +194,7 @@ func (p *PolygonFinder) findPolygons() {
 }
 
 func (p *PolygonFinder) filterPolygonsByWater(polygons [][]vectors.Vec2) [][]vectors.Vec2 {
-	out := make([][]vectors.Vec2, 0)
+	var out [][]vectors.Vec2
 	for _, poly := range polygons {
 		averagePoint := AveragePoint(poly)
 		if p.TensorField.onLand(averagePoint) && !p.TensorField.inParks(averagePoint) {
@@ -271,13 +271,12 @@ func (p *PolygonFinder) getRightmostNode(nodeFrom, nodeTo *Node) *Node {
 	smallestTheta := math.Pi * 2
 
 	for _, nextNode := range nodeTo.adj {
-		if nextNode != nodeFrom {
+		if nextNode != nodeFrom { // && len(nextNode.adj) > 0 {
 			nextVector := nextNode.value.Sub(nodeTo.value)
 			nextAngle := math.Atan2(nextVector.Y, nextVector.X) - transformAngle
 			if nextAngle < 0 {
 				nextAngle += math.Pi * 2
 			}
-
 			if nextAngle < smallestTheta {
 				smallestTheta = nextAngle
 				rightmostNode = nextNode
