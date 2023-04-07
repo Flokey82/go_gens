@@ -64,3 +64,4 @@ gencitymap/cmd/runner
 gencitymap/cmd/test.png
 genfood/cmd/runner
 genarchitecture/cmd/runner
+simnpcs2/cmd/runner

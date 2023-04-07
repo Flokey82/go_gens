@@ -68,6 +68,12 @@ func (v1 Vec2) Mul(c float64) Vec2 {
 	}
 }
 
+// SetXY sets the x and y values of the vector.
+func (v1 *Vec2) SetXY(x, y float64) {
+	v1.X = x
+	v1.Y = y
+}
+
 // MulWithThis multiplies the current vector with c.
 func (v1 *Vec2) MulWithThis(c float64) {
 	v1.X *= c
