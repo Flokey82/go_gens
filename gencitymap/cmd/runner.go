@@ -10,7 +10,7 @@ func main() {
 	// Create a rules based map.
 	m := gencitymap.NewMap(123, gencitymap.DefaultMapConfig)
 	m.Generate()
-	for i := 0; i < 1940; i++ {
+	for i := 0; i < 1540; i++ {
 		m.Step()
 	}
 
@@ -27,11 +27,6 @@ func main() {
 
 	// Create a png image.
 	if err := gen.ExportToPNG("test_tensor.png"); err != nil {
-		log.Fatal(err)
-	}
-
-	// Create an svg image.
-	if err := gen.ExportToSVG("test_tensor.svg"); err != nil {
 		log.Fatal(err)
 	}
 }

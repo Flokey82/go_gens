@@ -42,6 +42,32 @@ func (s *Segment) IsPointOnLine(p vectors.Vec2) bool {
 	return math.Abs((p.X-s.Prev.Point.X)*(s.Point.Y-s.Prev.Point.Y)-(p.Y-s.Prev.Point.Y)*(s.Point.X-s.Prev.Point.X)) < 0.0001
 }
 
+// Split splits the segment at the given point and returns the new segment.
+func (s *Segment) Split(p vectors.Vec2) *Segment {
+	if s.Prev == nil {
+		return nil
+	}
+
+	// create new segment
+	newSeg := &Segment{
+		Point:    p,
+		Length:   s.Point.Sub(p).Len(),
+		Next:     s,
+		Prev:     s.Prev,
+		Type:     s.Type,
+		Branches: s.Branches,
+		Step:     s.Step,
+		End:      false,
+	}
+
+	// update old segment
+	s.Prev.Next = newSeg
+	s.Prev = newSeg
+	s.Length = s.Point.Sub(newSeg.Point).Len()
+
+	return newSeg
+}
+
 type RoadType int
 
 // SegmentTypeConfig is the configuration for a segment type.
@@ -100,7 +126,7 @@ func doLineSegmentsIntersectVec2(p0, p1, p2, p3 vectors.Vec2) (ok bool, res vect
 	}
 	f /= k
 	e := vectors.Cross2(p2.Sub(p0), d) / k
-	intersect := 0.001 < e && 0.999 > e && 0.001 < f && 0.999 > f
+	intersect := 0.00001 < e && 0.99999 > e && 0.00001 < f && 0.99999 > f
 	if intersect {
 		return true, vectors.NewVec2(p0.X+e*b.X, p0.Y+e*b.Y), e
 	}
@@ -133,14 +159,17 @@ var DefaultMapConfig = &MapConfig{
 			Length: 100,
 			Type:   0,
 		}
-		opposite := &Segment{
-			Point: vectors.NewVec2(-1, 0),
-			Type:  0,
-			Step:  0,
-			Prev:  root1,
-		}
-		root1.Prev = opposite
-		return []*Segment{root1, opposite}
+		/*
+			opposite := &Segment{
+				Point: vectors.NewVec2(-1, 0),
+				Type:  0,
+				Step:  0,
+				Prev:  root1,
+			}
+			root1.Prev = opposite
+			return []*Segment{root1, opposite}
+		*/
+		return []*Segment{root1}
 	}, Rules: []*SegmentTypeConfig{
 		&HighwayConfig,
 		&StreetConfig,

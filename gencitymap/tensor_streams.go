@@ -2,8 +2,6 @@ package gencitymap
 
 import (
 	"errors"
-	"image"
-	"image/color"
 	"log"
 	"math"
 	"math/rand"
@@ -12,7 +10,6 @@ import (
 	"github.com/Flokey82/go_gens/vectors"
 
 	svgo "github.com/ajstarks/svgo"
-	"github.com/llgcode/draw2d/draw2dimg"
 )
 
 type StreamlineIntegration struct {
@@ -93,48 +90,6 @@ func NewStreamlineGenerator(seed int64, integrator FieldIntegratorIf, origin, wo
 	gen.nStreamlineLookBack = 2 * gen.nStreamlineStep
 	gen.setParamsSq()
 	return gen, nil
-}
-
-// ExportToPNG exports the streamlines to a PNG file.
-func (sg *StreamlineGenerator) ExportToPNG(filename string) error {
-	img := image.NewRGBA(image.Rect(0, 0, int(sg.worldDimensions.X), int(sg.worldDimensions.Y)))
-
-	// Fill the background with black.
-	for x := 0; x < img.Bounds().Dx(); x++ {
-		for y := 0; y < img.Bounds().Dy(); y++ {
-			img.Set(x, y, color.RGBA{0, 0, 0, 255})
-		}
-	}
-
-	// New draw2d graphics context on an RGBA image.
-	gc := draw2dimg.NewGraphicContext(img)
-
-	// Draw minor streamlines.
-	gc.SetStrokeColor(color.RGBA{255, 255, 255, 255})
-	gc.SetLineWidth(4.0)
-	for _, v := range sg.streamlinesMajor {
-		// Draw a path.
-		gc.MoveTo(v[0].X-sg.origin.X, v[0].Y-sg.origin.Y)
-		for _, p := range v[1:] {
-			gc.LineTo(p.X-sg.origin.X, p.Y-sg.origin.Y)
-		}
-		gc.Stroke()
-	}
-
-	gc.SetStrokeColor(color.RGBA{255, 255, 255, 255})
-	gc.SetLineWidth(2.0)
-	for _, v := range sg.streamlinesMinor {
-		// Draw a path.
-		gc.BeginPath()
-		gc.MoveTo(v[0].X-sg.origin.X, v[0].Y-sg.origin.Y)
-		for _, p := range v[1:] {
-			gc.LineTo(p.X-sg.origin.X, p.Y-sg.origin.Y)
-		}
-		gc.Stroke()
-	}
-
-	// Save to file.
-	return draw2dimg.SaveToPngFile(filename, img)
 }
 
 // ExportToSVG exports the streamlines to an SVG file.

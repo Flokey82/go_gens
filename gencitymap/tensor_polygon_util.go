@@ -13,18 +13,21 @@ type PolygonUtil struct {
 
 // SliceRectangle slices a rectangle by line, returning the smallest polygon.
 func (p *PolygonUtil) SliceRectangle(origin, worldDimensions, p1, p2 vectors.Vec2) []vectors.Vec2 {
-	rectangle := []float64{
-		origin.X, origin.Y,
-		origin.X + worldDimensions.X, origin.Y,
-		origin.X + worldDimensions.X, origin.Y + worldDimensions.Y,
-		origin.X, origin.Y + worldDimensions.Y,
+	rectangle := []vectors.Vec2{
+		{X: origin.X, Y: origin.Y},
+		{X: origin.X + worldDimensions.X, Y: origin.Y},
+		{X: origin.X + worldDimensions.X, Y: origin.Y + worldDimensions.Y},
+		{X: origin.X, Y: origin.Y + worldDimensions.Y},
 	}
-	sliced := Slice(rectangle, p1.X, p1.Y, p2.X, p2.Y)
-	minArea := CalcPolygonArea(convPairsToVec2s(sliced[0]))
-	if len(sliced) > 1 && CalcPolygonArea(convPairsToVec2s(sliced[1])) < minArea {
-		return convPairsToVec2s(sliced[1])
+	sliced, ok := Slice(rectangle, p1.X, p1.Y, p2.X, p2.Y)
+	if !ok {
+		return rectangle
 	}
-	return convPairsToVec2s(sliced[0])
+	minArea := CalcPolygonArea(sliced[0])
+	if len(sliced) > 1 && CalcPolygonArea(sliced[1]) < minArea {
+		return sliced[1]
+	}
+	return sliced[0]
 }
 
 func convPairsToVec2s(pairs []float64) []vectors.Vec2 {
@@ -95,18 +98,20 @@ func SubdividePolygon(poly []vectors.Vec2, minArea float64) [][]vectors.Vec2 {
 		return nil
 	}
 
-	var divided [][]vectors.Vec2 // Array of polygons
-
+	var longestSide vectors.Segment
 	longestSideLength := 0.0
-	longestSide := []vectors.Vec2{poly[0], poly[1]}
 	perimeter := 0.0
 
 	for i := 0; i < len(poly); i++ {
-		sideLength := poly[i].Sub(poly[(i+1)%len(poly)]).Len()
+		if math.IsNaN(poly[i].X) || math.IsNaN(poly[i].Y) {
+			panic("NaN in polygon")
+		}
+		side := vectors.Segment{Start: poly[i], End: poly[(i+1)%len(poly)]}
+		sideLength := side.Len()
 		perimeter += sideLength
 		if sideLength > longestSideLength {
+			longestSide = side
 			longestSideLength = sideLength
-			longestSide = []vectors.Vec2{poly[i], poly[(i+1)%len(poly)]}
 		}
 	}
 
@@ -121,29 +126,73 @@ func SubdividePolygon(poly []vectors.Vec2, minArea float64) [][]vectors.Vec2 {
 		return [][]vectors.Vec2{poly}
 	}
 
-	// Between 0.4 and 0.6
-	deviation := (rand.Float64() * 0.2) + 0.4
+	var sliced [][]vectors.Vec2
 
-	averagePoint := longestSide[0].Add(longestSide[1]).Mul(deviation)
-	differenceVector := longestSide[0].Sub(longestSide[1])
-	perpVector := vectors.Normalize(vectors.Vec2{X: differenceVector.Y, Y: -1 * differenceVector.X}).Mul(100)
+	// Attempt to slice polygon.
+	var ok bool
+	for i := 0; i < 20; i++ {
+		// Between 0.4 and 0.6
+		deviation := (rand.Float64() * 0.2) + 0.4
 
-	bisect := []vectors.Vec2{averagePoint.Add(perpVector), averagePoint.Sub(perpVector)}
+		averagePoint := longestSide.Start.Add(longestSide.End).Mul(deviation)
+		differenceVector := longestSide.Start.Sub(longestSide.End)
+		perpVector := vectors.Normalize(vectors.Vec2{
+			X: differenceVector.Y,
+			Y: -1 * differenceVector.X,
+		}).Mul(100)
 
-	// Array of polygons
-	sliced := Slice(PolygonToPolygonArray(poly), bisect[0].X, bisect[0].Y, bisect[1].X, bisect[1].Y)
+		bisect := vectors.Segment{
+			Start: averagePoint.Add(perpVector),
+			End:   averagePoint.Sub(perpVector),
+		}
 
-	// Recursive call
-	for _, s := range sliced {
-		divided = append(divided, SubdividePolygon(PolygonArrayToPolygon(s), minArea)...)
+		// Array of polygons
+		sliced, ok = Slice(poly, bisect.Start.X, bisect.Start.Y, bisect.End.X, bisect.End.Y)
+		if ok {
+			break
+		}
+		// check if sliced contains nan
+		for _, p := range sliced {
+			for _, v := range p {
+				if math.IsNaN(v.X) || math.IsNaN(v.Y) {
+					panic("NaN in polygon")
+				}
+			}
+		}
+	}
+	if !ok {
+		return [][]vectors.Vec2{poly}
 	}
 
+	// Recursive call
+	var divided [][]vectors.Vec2 // Array of polygons
+	for _, s := range sliced {
+		divided = append(divided, SubdividePolygon(s, minArea)...)
+	}
 	return divided
+}
+
+func copyPolygon(poly []vectors.Vec2) []vectors.Vec2 {
+	res := make([]vectors.Vec2, len(poly))
+	copy(res, poly)
+	return res
+}
+
+func isPolyEqual(p1, p2 []vectors.Vec2) bool {
+	if len(p1) != len(p2) {
+		return false
+	}
+	for i, v := range p1 {
+		if !v.Equal(p2[i]) {
+			return false
+		}
+	}
+	return true
 }
 
 // ResizeGeometry resizes a polygon to a given spacing.
 func ResizeGeometry(geometry []vectors.Vec2, spacing float64, isPolygon bool) []vectors.Vec2 {
-	return gengeometry.StraightSkeleton(geometry, 0.9, spacing)
+	return gengeometry.StraightSkeleton(geometry, 1, spacing)
 }
 
 // AveragePoint returns the average point of a polygon.

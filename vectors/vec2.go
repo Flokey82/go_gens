@@ -240,6 +240,11 @@ func NewSegment(start, end Vec2) Segment {
 	}
 }
 
+// Len returns the length of the segment.
+func (s Segment) Len() float64 {
+	return s.Start.DistanceTo(s.End)
+}
+
 // Intersect returns true if the two segments intersect.
 func (s1 Segment) Intersect(s2 Segment) bool {
 	return s1.IntersectPoint(s2) != nil

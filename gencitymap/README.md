@@ -15,10 +15,11 @@ NOTE: HEAVILY WIP!! Do not use this yet!
 ### TODO
 
 - [ ] Add coastline, water, rivers, etc.
-- [ ] Add graph generation from streamlines
-- [ ] Add polygon extraction for identifying plots and buildings
+- [X] Add graph generation from streamlines
+- [X] Add polygon extraction for identifying plots and buildings
 - [ ] Make code less buggy (crashes constantly)
+- [ ] Add more map styles
+- [ ] Eliminate artifacts in polygon extraction
+- [ ] Investigate polygon extraction failure in polygons that contain dangling roads
 
 ![alt text](https://raw.githubusercontent.com/Flokey82/go_gens/master/gencitymap/images/tensor.png "Screenshot of basic tensor field!")
-
-![alt text](https://raw.githubusercontent.com/Flokey82/go_gens/master/gencitymap/images/tensor_polygons.png "Screenshot of basic tensor field polygon / lot extraction!")

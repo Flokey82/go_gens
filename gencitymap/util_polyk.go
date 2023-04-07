@@ -5,6 +5,7 @@ import (
 	"sort"
 
 	"github.com/Flokey82/go_gens/utils"
+	"github.com/Flokey82/go_gens/vectors"
 )
 
 // NOTE: This code is based on the PolyK library:
@@ -215,22 +216,22 @@ func Triangulate(polygon []float64) []int {
 	return append(tgs, avl[0], avl[1], avl[2])
 }
 
-func Slice(polygon []float64, startX, startY, endX, endY float64) [][]float64 {
+func Slice(polygon []vectors.Vec2, startX, startY, endX, endY float64) ([][]vectors.Vec2, bool) {
 	p := polygon
 	ax := startX
 	ay := startY
 	bx := endX
 	by := endY
-	// if ContainsPoint(p, ax, ay) || ContainsPoint(p, bx, by) {
-	// 	return []float64{p}
-	// }
+	if ContainsPoint(PolygonToPolygonArray(p), ax, ay) || ContainsPoint(PolygonToPolygonArray(p), bx, by) {
+		return [][]vectors.Vec2{copyPolygon(polygon)}, false
+	}
 
 	a := Point{x: ax, y: ay}
 	b := Point{x: bx, y: by}
 	var iscs []Point // intersections
 	var ps []Point   // points
-	for i := 0; i < len(p); i += 2 {
-		ps = append(ps, Point{x: p[i], y: p[i+1]})
+	for i := 0; i < len(p); i++ {
+		ps = append(ps, Point{x: p[i].X, y: p[i].Y})
 	}
 	for i := 0; i < len(ps); i++ {
 		isc := Point{}
@@ -253,7 +254,7 @@ func Slice(polygon []float64, startX, startY, endX, endY float64) [][]float64 {
 	}
 
 	if len(iscs) < 2 {
-		return [][]float64{p}
+		return [][]vectors.Vec2{copyPolygon(polygon)}, false
 	}
 	var comp = func(u, v Point) bool {
 		return distance(a, u)-distance(a, v) < 0
@@ -302,16 +303,16 @@ func Slice(polygon []float64, startX, startY, endX, endY float64) [][]float64 {
 			break
 		}
 	}
-	result := make([][]float64, 0)
+	result := make([][]vectors.Vec2, 0)
 	for i := 0; i < len(pgs); i++ {
 		pg := pgs[i]
-		npg := make([]float64, 0)
+		npg := make([]vectors.Vec2, 0)
 		for j := 0; j < len(pg); j++ {
-			npg = append(npg, pg[j].x, pg[j].y)
+			npg = append(npg, vectors.Vec2{X: pg[j].x, Y: pg[j].y})
 		}
 		result = append(result, npg)
 	}
-	return result
+	return result, true
 }
 
 func reversePoints(points []Point) []Point {

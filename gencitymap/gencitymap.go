@@ -34,16 +34,14 @@ func NewMap(seed int64, cfg *MapConfig) *Map {
 	}
 }
 
-// ExportToPNG exports the map to a PNG file.
-func (m *Map) ExportToPNG(path string) error {
-	f, err := os.Create(path)
-	if err != nil {
-		return err
-	}
-	defer f.Close()
+// Dimensions returns the dimensions of the map.
+func (m *Map) Dimensions() (float64, float64) {
+	minX, minY, maxX, maxY := m.GetExtent()
 
-	// calculate bounds
-	var minX, minY, maxX, maxY float64
+	return maxX - minX, maxY - minY
+}
+
+func (m *Map) GetExtent() (minX, minY, maxX, maxY float64) {
 	for _, seg := range m.allSegments {
 		if seg.Point.X < minX {
 			minX = seg.Point.X
@@ -59,6 +57,27 @@ func (m *Map) ExportToPNG(path string) error {
 		}
 	}
 
+	return
+}
+
+// Origin returns the origin of the map.
+func (m *Map) Origin() (float64, float64) {
+	minX, minY, _, _ := m.GetExtent()
+
+	return minX, minY
+}
+
+// ExportToPNG exports the map to a PNG file.
+func (m *Map) ExportToPNG(path string) error {
+	f, err := os.Create(path)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+
+	// calculate bounds
+	minX, minY, maxX, maxY := m.GetExtent()
+
 	// create image
 	img := image.NewRGBA(image.Rect(0, 0, int(maxX-minX), int(maxY-minY)))
 
@@ -71,6 +90,47 @@ func (m *Map) ExportToPNG(path string) error {
 
 	// Create a new graphic context
 	gc := draw2dimg.NewGraphicContext(img)
+
+	lines := m.Streamlines()
+	mgr := NewGraph(lines, 1, false)
+
+	find := NewPolygonFinder(mgr.Nodes, PolygonParams{
+		MaxLength:      10,
+		MinArea:        50,
+		ShrinkSpacing:  5,
+		ChanceNoDivide: 0.01,
+	}, nil)
+	//find.findPolygons()
+	find.Shrink(false)
+	find.Divide(false)
+
+	originX, originY := m.Origin()
+	drawPolygon := func(p []vectors.Vec2, colFill, colStroke color.RGBA) {
+		gc.BeginPath()
+		gc.SetFillColor(colFill)
+		gc.SetStrokeColor(colStroke)
+		gc.SetLineWidth(1)
+		for i, v := range p {
+			if i == 0 {
+				gc.MoveTo(v.X-originX, v.Y-originY)
+			} else {
+				gc.LineTo(v.X-originX, v.Y-originY)
+			}
+		}
+		gc.Close()
+		gc.FillStroke()
+	}
+
+	// Draw the polygons.
+	for _, p := range find.Polygons {
+		drawPolygon(p, color.RGBA{0, 0, 255, 255}, color.RGBA{0, 0, 122, 255})
+	}
+	for _, p := range find.ShrunkPolygons {
+		drawPolygon(p, color.RGBA{0, 255, 0, 255}, color.RGBA{0, 220, 222, 255})
+	}
+	for _, p := range find.DividedPolygons {
+		drawPolygon(p, color.RGBA{255, 0, 0, 255}, color.RGBA{0, 0, 42, 255})
+	}
 
 	// Set some properties
 	gc.SetFillColor(color.RGBA{0, 0, 0, 0})
@@ -107,6 +167,32 @@ func (m *Map) ExportToPNG(path string) error {
 	}
 
 	return nil
+}
+
+func (m *Map) Streamlines() [][]vectors.Vec2 {
+	var streamlines [][]vectors.Vec2
+	for _, seg := range m.allSegments {
+		if seg.Prev == nil {
+			if seg.Next != nil {
+				streamlines = append(streamlines, []vectors.Vec2{{
+					X: seg.Point.X,
+					Y: seg.Point.Y,
+				}, {
+					X: seg.Next.Point.X,
+					Y: seg.Next.Point.Y,
+				}})
+			}
+		} else {
+			streamlines = append(streamlines, []vectors.Vec2{{
+				X: seg.Point.X,
+				Y: seg.Point.Y,
+			}, {
+				X: seg.Prev.Point.X,
+				Y: seg.Prev.Point.Y,
+			}})
+		}
+	}
+	return streamlines
 }
 
 // Generate generates the map.
@@ -196,7 +282,8 @@ func (m *Map) newSegment(origin *Segment, branch bool) *Segment {
 	var foundIntersect bool
 	var currentDist float64
 	var ipClosest vectors.Vec2
-	for _, seg := range m.allSegments {
+	var intersectIdx int
+	for idx, seg := range m.allSegments {
 		if seg == origin || seg == newSeg {
 			continue
 		}
@@ -213,6 +300,7 @@ func (m *Map) newSegment(origin *Segment, branch bool) *Segment {
 				ipClosest = ip
 				currentDist = newDist
 				foundIntersect = true
+				intersectIdx = idx
 			}
 		}
 	}
@@ -222,6 +310,11 @@ func (m *Map) newSegment(origin *Segment, branch bool) *Segment {
 		newSeg.Point = ipClosest
 		newSeg.Length = vectors.Dist2(ipClosest, origin.Point)
 		newSeg.End = true
+
+		// Split the segment that was intersected.
+		seg := m.allSegments[intersectIdx]
+		second := seg.Split(ipClosest)
+		m.allSegments = append(m.allSegments, second)
 	}
 
 	// Add to queue (if not end).

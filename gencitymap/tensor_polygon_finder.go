@@ -1,6 +1,7 @@
 package gencitymap
 
 import (
+	"log"
 	"math"
 	"math/rand"
 
@@ -109,6 +110,13 @@ func (p *PolygonFinder) Shrink(animate bool) {
 func (p *PolygonFinder) stepShrink(polygon []vectors.Vec2) bool {
 	shrunk := ResizeGeometry(polygon, -p.Params.ShrinkSpacing, true)
 	if len(shrunk) > 0 {
+		// Panic if shrunk contains a NaN
+		for _, v := range shrunk {
+			if math.IsNaN(v.X) || math.IsNaN(v.Y) {
+				log.Println("Shrunk polygon contains NaN", polygon, shrunk)
+				panic("Shrunk polygon contains NaN")
+			}
+		}
 		p.ShrunkPolygons = append(p.ShrunkPolygons, shrunk)
 		return true
 	}
@@ -173,8 +181,10 @@ func (p *PolygonFinder) findPolygons() {
 	var polygons [][]vectors.Vec2
 	for _, node := range p.Nodes {
 		if len(node.adj) < 2 {
+			log.Println("Node has less than 2 adjacencies", node)
 			continue
 		}
+		log.Println("Node has", len(node.adj), "adjacencies", node)
 
 		for _, nextNode := range node.adj {
 			polygon := p.recursiveWalk([]*Node{node, nextNode})
@@ -197,7 +207,7 @@ func (p *PolygonFinder) filterPolygonsByWater(polygons [][]vectors.Vec2) [][]vec
 	var out [][]vectors.Vec2
 	for _, poly := range polygons {
 		averagePoint := AveragePoint(poly)
-		if p.TensorField.onLand(averagePoint) && !p.TensorField.inParks(averagePoint) {
+		if p.TensorField == nil || p.TensorField.onLand(averagePoint) && !p.TensorField.inParks(averagePoint) {
 			out = append(out, poly)
 		}
 	}

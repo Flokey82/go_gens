@@ -49,8 +49,8 @@ func (n *Node) removeNeighbor(node *Node) {
 }
 
 type Graph struct {
-	nodes         []*Node
-	intersections []vectors.Vec2
+	Nodes         []*Node
+	Intersections []vectors.Vec2
 }
 
 // NewGraph creates a graph from a set of streamlines.
@@ -134,8 +134,8 @@ func NewGraph(streamlines [][]vectors.Vec2, dstep float64, deleteDangling bool) 
 	log.Println("Done creating list of intersections")
 
 	return &Graph{
-		nodes:         nodes,
-		intersections: intersections2,
+		Nodes:         nodes,
+		Intersections: intersections2,
 	}
 }
 
