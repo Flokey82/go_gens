@@ -1,4 +1,4 @@
-package gencitymap
+package gengeometry
 
 import (
 	"math"
@@ -165,7 +165,7 @@ func GetAABB(polygon []float64) AABB {
  * var ids = PolyK.Triangulate([0, 0, 1, 0, 1, 1, 0, 1]);
  * //=[0, 1, 2, 0, 2, 3]
  */
-func Triangulate(polygon []float64) []int {
+func TriangulatePolyk(polygon []float64) []int {
 	p := polygon
 	n := len(p) >> 1
 	if n < 3 {
@@ -865,3 +865,31 @@ func emptyPoints(num int) []Point {
 	return container
 }
 */
+
+func copyPolygon(poly []vectors.Vec2) []vectors.Vec2 {
+	res := make([]vectors.Vec2, len(poly))
+	copy(res, poly)
+	return res
+}
+
+/**
+ * [ v.x, v.y, v.x, v.y ]...
+ */
+func PolygonToPolygonArray(polygon []vectors.Vec2) []float64 {
+	outP := []float64{}
+	for _, v := range polygon {
+		outP = append(outP, v.X, v.Y)
+	}
+	return outP
+}
+
+/**
+ * [ v.x, v.y, v.x, v.y ]...
+ */
+func PolygonArrayToPolygon(polygon []float64) []vectors.Vec2 {
+	outP := []vectors.Vec2{}
+	for i := 0; i < len(polygon)/2; i++ {
+		outP = append(outP, vectors.Vec2{X: polygon[2*i], Y: polygon[2*i+1]})
+	}
+	return outP
+}

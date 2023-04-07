@@ -1,11 +1,8 @@
-package gencitymap
+package gengeometry
 
 import (
 	"github.com/Flokey82/go_gens/vectors"
 )
-
-// NOTE: This code is based on:
-// https://github.com/mourner/simplify-js
 
 func getSqSegDist(p vectors.Vec2, p1, p2 vectors.Vec2) float64 {
 	x := p1.X
@@ -74,7 +71,10 @@ func simplifyDouglasPeucker(points []vectors.Vec2, sqTolerance float64) []vector
 	return simplified
 }
 
-func simplify(points []vectors.Vec2, tolerance float64, highestQuality bool) []vectors.Vec2 {
+// SimplifyPolyline simplifies a polyline.
+// NOTE: This code is based on:
+// https://github.com/mourner/simplify-js
+func SimplifyPolyline(points []vectors.Vec2, tolerance float64, highestQuality bool) []vectors.Vec2 {
 	if len(points) <= 2 {
 		return points
 	}

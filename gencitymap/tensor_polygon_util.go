@@ -19,7 +19,7 @@ func (p *PolygonUtil) SliceRectangle(origin, worldDimensions, p1, p2 vectors.Vec
 		{X: origin.X + worldDimensions.X, Y: origin.Y + worldDimensions.Y},
 		{X: origin.X, Y: origin.Y + worldDimensions.Y},
 	}
-	sliced, ok := Slice(rectangle, p1.X, p1.Y, p2.X, p2.Y)
+	sliced, ok := gengeometry.Slice(rectangle, p1.X, p1.Y, p2.X, p2.Y)
 	if !ok {
 		return rectangle
 	}
@@ -147,7 +147,7 @@ func SubdividePolygon(poly []vectors.Vec2, minArea float64) [][]vectors.Vec2 {
 		}
 
 		// Array of polygons
-		sliced, ok = Slice(poly, bisect.Start.X, bisect.Start.Y, bisect.End.X, bisect.End.Y)
+		sliced, ok = gengeometry.Slice(poly, bisect.Start.X, bisect.Start.Y, bisect.End.X, bisect.End.Y)
 		if ok {
 			break
 		}
@@ -170,24 +170,6 @@ func SubdividePolygon(poly []vectors.Vec2, minArea float64) [][]vectors.Vec2 {
 		divided = append(divided, SubdividePolygon(s, minArea)...)
 	}
 	return divided
-}
-
-func copyPolygon(poly []vectors.Vec2) []vectors.Vec2 {
-	res := make([]vectors.Vec2, len(poly))
-	copy(res, poly)
-	return res
-}
-
-func isPolyEqual(p1, p2 []vectors.Vec2) bool {
-	if len(p1) != len(p2) {
-		return false
-	}
-	for i, v := range p1 {
-		if !v.Equal(p2[i]) {
-			return false
-		}
-	}
-	return true
 }
 
 // ResizeGeometry resizes a polygon to a given spacing.
@@ -232,26 +214,4 @@ func (p *PolygonUtil) InsidePolygon(point vectors.Vec2, polygon []vectors.Vec2) 
 
 func (p *PolygonUtil) PointInRectangle(point vectors.Vec2, origin vectors.Vec2, dimensions vectors.Vec2) bool {
 	return point.X >= origin.X && point.Y >= origin.Y && point.X <= dimensions.X && point.Y <= dimensions.Y
-}
-
-/**
- * [ v.x, v.y, v.x, v.y ]...
- */
-func PolygonToPolygonArray(polygon []vectors.Vec2) []float64 {
-	outP := []float64{}
-	for _, v := range polygon {
-		outP = append(outP, v.X, v.Y)
-	}
-	return outP
-}
-
-/**
- * [ v.x, v.y, v.x, v.y ]...
- */
-func PolygonArrayToPolygon(polygon []float64) []vectors.Vec2 {
-	outP := []vectors.Vec2{}
-	for i := 0; i < len(polygon)/2; i++ {
-		outP = append(outP, vectors.Vec2{X: polygon[2*i], Y: polygon[2*i+1]})
-	}
-	return outP
 }

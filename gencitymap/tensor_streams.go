@@ -7,6 +7,7 @@ import (
 	"math/rand"
 	"os"
 
+	"github.com/Flokey82/go_gens/gengeometry"
 	"github.com/Flokey82/go_gens/vectors"
 
 	svgo "github.com/ajstarks/svgo"
@@ -277,7 +278,7 @@ func (sg *StreamlineGenerator) createAllStreamlines(animate bool) {
 }
 
 func (sg *StreamlineGenerator) simplifyStreamline(streamline []vectors.Vec2) []vectors.Vec2 {
-	return simplify(streamline, sg.params.SimplifyTolerance, false)
+	return gengeometry.SimplifyPolyline(streamline, sg.params.SimplifyTolerance, false)
 }
 
 // createStreamline finds a seed, creates a streamline from that point, and pushes new candidate seeds to the queue.
