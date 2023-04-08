@@ -4,10 +4,13 @@ import (
 	"fmt"
 
 	"github.com/Flokey82/go_gens/vectors"
+	"github.com/ojrac/opensimplex-go"
 )
 
 // World represents the game world.
 type World struct {
+	*gifExport
+	*webpExport
 	Beings []Entity
 	Items  []Entity
 	Width  int
@@ -16,21 +19,33 @@ type World struct {
 }
 
 // NewWorld creates a new world.
-func NewWorld(w, h int) *World {
+func NewWorld(w, h int, seed int64) *World {
 	world := &World{
-		Width:  w,
-		Height: h,
-		Cells:  make([]bool, w*h),
+		gifExport:  newGifExport(),
+		webpExport: newWebPExport(w, h),
+		Width:      w,
+		Height:     h,
+		Cells:      make([]bool, w*h),
 	}
-	world.init()
+	world.init(seed)
 	return world
 }
 
-func (w *World) init() {
+func (w *World) init(seed int64) {
+	// New simplex noise.
+	noise := opensimplex.New(seed)
+
 	// Set up some obstacles.
-	// TODO: Use noise or something to generate more interesting obstacles.
-	for i := 0; i < 100; i++ {
-		w.Cells[int(randFloat(float64(w.Width))*float64(w.Height))] = true
+	noisethreshold := -0.55
+	for x := 0; x < w.Width; x++ {
+		for y := 0; y < w.Height; y++ {
+			// Get noise value.
+			nval := noise.Eval2(float64(x)/10, float64(y)/10)
+			// Set cell to obstacle if noise value is below 0.2.
+			if nval < noisethreshold {
+				w.Cells[x+y*w.Width] = true
+			}
+		}
 	}
 }
 
@@ -63,6 +78,8 @@ func (w *World) Update(delta float64) {
 	for _, b := range w.Beings {
 		b.Update(delta)
 	}
+	w.storeWebPFrame()
+	w.storeGifFrame()
 }
 
 // GetEntitiesInRadius returns all entities within a radius of a position.

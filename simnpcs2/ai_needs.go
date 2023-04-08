@@ -30,6 +30,7 @@ func (n *Needs) Update(delta float64) {
 			Y: randFloat(float64(n.World.Height)),
 		}); err != nil {
 			log.Println(err)
+			n.Pathfinding.Destination = nil
 		}
 	}
 

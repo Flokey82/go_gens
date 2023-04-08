@@ -221,6 +221,7 @@ func (a *astar) calculateNode(node *Node) {
 	for _, wNode := range a.config.WeightedNodes {
 		if node.X == wNode.X && node.Y == wNode.Y {
 			node.g = node.g + wNode.Weighting
+			break
 		}
 	}
 
