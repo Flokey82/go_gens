@@ -60,3 +60,20 @@ func (a *AI) Update(delta float64) {
 	// Update our being.
 	a.Being.Update(delta)
 }
+
+// Dead returns true if the being this AI is controlling is dead.
+func (a *AI) Dead() bool {
+	return a.Being.Dead()
+}
+
+// TakeDamage registers incoming damage from an attacker.
+// TODO: Find a better way to do this. Maybe via an event system?
+func (a *AI) TakeDamage(damage float64, attacker Entity) {
+	// TODO: Based on psychological profile, we might either flee or attack.
+	// This may also be influenced by our chances to win a fight.
+	// Depending on how perceptive we are, we might also be able to tell
+	// if the attacker is stronger than us, or has less health.
+	a.Needs.Enemy = attacker.(*Being)
+	a.Needs.Needs[NeedRevenge] = true
+	a.Being.TakeDamage(damage, attacker)
+}

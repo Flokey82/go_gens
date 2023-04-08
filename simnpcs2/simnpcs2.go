@@ -2,6 +2,7 @@ package simnpcs2
 
 import (
 	"fmt"
+	"math/rand"
 
 	"github.com/Flokey82/go_gens/vectors"
 	"github.com/ojrac/opensimplex-go"
@@ -12,7 +13,7 @@ type World struct {
 	*gifExport
 	*webpExport
 	Beings []Entity
-	Items  []Entity
+	Items  []*Item
 	Width  int
 	Height int
 	Cells  []bool
@@ -73,6 +74,19 @@ func (w *World) CheckIdxReachable(idx int) error {
 	return nil
 }
 
+func (w *World) findValidPos() vectors.Vec2 {
+	var pos vectors.Vec2
+	for i := 0; i < 100; i++ {
+		idx := rand.Intn(len(w.Cells))
+		if w.CheckIdxReachable(idx) != nil {
+			continue
+		}
+		pos = *w.CellIdxToPos(idx)
+		break
+	}
+	return pos
+}
+
 // Update updates the state of the world.
 func (w *World) Update(delta float64) {
 	for _, b := range w.Beings {
@@ -94,8 +108,8 @@ func (w *World) GetEntitiesInRadius(pos vectors.Vec2, radius float64) []Entity {
 }
 
 // GetItemsInRadius returns all items within a radius of a position.
-func (w *World) GetItemsInRadius(pos vectors.Vec2, radius float64) []Entity {
-	entities := make([]Entity, 0, 10)
+func (w *World) GetItemsInRadius(pos vectors.Vec2, radius float64) []*Item {
+	entities := make([]*Item, 0, 10)
 	for _, e := range w.Items {
 		if pos.DistanceTo(e.Pos()) < radius {
 			entities = append(entities, e)
@@ -109,6 +123,8 @@ type Entity interface {
 	Type() EntityType
 	Pos() vectors.Vec2
 	Update(delta float64)
+	Dead() bool
+	TakeDamage(damage float64, attacker Entity)
 }
 
 type EntityType int

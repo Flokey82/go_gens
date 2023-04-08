@@ -1,33 +1,6 @@
 package simnpcs2
 
-import (
-	"log"
-	"math/rand"
-
-	"github.com/Flokey82/go_gens/vectors"
-)
-
-// CompMoveable is a movable component.
-type CompMoveable struct {
-	Pos   vectors.Vec2
-	Speed vectors.Vec2
-}
-
-// newCompMoveable returns a new moveable component.
-func newCompMoveable(pos vectors.Vec2) *CompMoveable {
-	return &CompMoveable{
-		Pos: pos,
-	}
-}
-
-// Update moves the position in the component by the speed within the
-// given time.
-func (c *CompMoveable) Update(delta float64) {
-	c.Pos.AddToThis(c.Speed)
-	log.Println("speed:", c.Speed)
-
-	// TODO: Check for collisions and provide a way to react to them.
-}
+import "math/rand"
 
 const (
 	HungerPeckish   = 20
@@ -46,8 +19,8 @@ const (
 
 // CompStats is a stats component.
 type CompStats struct {
-	Health         float64
-	HealthMax      float64
+	Health         float64 // Current health.
+	HealthMax      float64 // Maximum health.
 	StarvationRate float64 // How fast we starve.
 	Starvation     float64 // Current level of starvation.
 	ExhaustionRate float64 // How fast we get tired.
@@ -55,10 +28,10 @@ type CompStats struct {
 }
 
 // newCompStats returns a new stats component.
-func newCompStats() *CompStats {
+func newCompStats(maxHealth float64) *CompStats {
 	return &CompStats{
-		Health:         100,
-		HealthMax:      100,
+		Health:         maxHealth,
+		HealthMax:      maxHealth,
 		StarvationRate: HungerPerSecond,
 		ExhaustionRate: ExhaustionPerSecond,
 	}
@@ -70,10 +43,12 @@ func (c *CompStats) Update(delta float64) {
 	if rand.Float64() < 0.01 {
 		c.Health -= 10
 	}
+
 	// If we are lucky we find some food.
 	if rand.Float64() < 0.01 {
 		c.Starvation -= 10
 	}
+
 	// If we are lucky we find some rest.
 	if rand.Float64() < 0.01 {
 		c.Exhaustion -= 10
@@ -99,35 +74,4 @@ func (c *CompStats) Update(delta float64) {
 			c.Health -= 10
 		}
 	}
-}
-
-// StarvationLevel returns the current level of starvation.
-func (c *CompStats) StarvationLevel() float64 {
-	if c.Starvation >= HungerStarved {
-		return HungerStarved
-	}
-	if c.Starvation >= HungerStarving {
-		return HungerStarving
-	}
-	if c.Starvation >= HungerHungry {
-		return HungerHungry
-	}
-	if c.Starvation >= HungerPeckish {
-		return HungerPeckish
-	}
-	return 0
-}
-
-// ExhaustionLevel returns the current level of exhaustion.
-func (c *CompStats) ExhaustionLevel() float64 {
-	if c.Exhaustion >= ExhaustionDead {
-		return ExhaustionDead
-	}
-	if c.Exhaustion >= ExhaustionExhausted {
-		return ExhaustionExhausted
-	}
-	if c.Exhaustion >= ExhaustionTired {
-		return ExhaustionTired
-	}
-	return 0
 }

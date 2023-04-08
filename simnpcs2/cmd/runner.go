@@ -15,6 +15,10 @@ func main() {
 	w.AddBeing()
 	w.AddBeing()
 
+	w.AddItem()
+	w.AddItem()
+	w.AddItem()
+
 	gl := gameloop.New(time.Second/60, func(f float64) {
 		w.Update(f)
 	})

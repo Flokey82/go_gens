@@ -11,11 +11,8 @@ type Item struct {
 // AddItem adds a random item to the world.
 func (w *World) AddItem() {
 	w.Items = append(w.Items, &Item{
-		id: int64(len(w.Items)),
-		Position: vectors.Vec2{
-			X: randFloat(float64(w.Width)),
-			Y: randFloat(float64(w.Height)),
-		},
+		id:       int64(len(w.Items)),
+		Position: w.findValidPos(),
 	})
 }
 
@@ -32,9 +29,4 @@ func (i *Item) Type() EntityType {
 // Pos returns the position of the item.
 func (i *Item) Pos() vectors.Vec2 {
 	return i.Position
-}
-
-// Update updates the state of the item.
-func (i *Item) Update(delta float64) {
-	// Do nothing.
 }

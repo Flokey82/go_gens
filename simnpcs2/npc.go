@@ -16,21 +16,13 @@ type Being struct {
 
 func NewBeing(world *World) *Being {
 	// Find a location that is not an obstacle.
-	var pos vectors.Vec2
-	for i := 0; i < 100; i++ {
-		idx := rand.Intn(len(world.Cells))
-		if world.CheckIdxReachable(idx) != nil {
-			continue
-		}
-		pos = *world.CellIdxToPos(idx)
-		break
-	}
+	pos := world.findValidPos()
 
 	// TODO: Return error if no location found.
 	return &Being{
 		id:           int64(len(world.Beings)),
 		CompMoveable: newCompMoveable(pos),
-		CompStats:    newCompStats(),
+		CompStats:    newCompStats(100),
 		World:        world,
 	}
 }
@@ -62,6 +54,17 @@ func (b *Being) Update(delta float64) {
 
 	// Execute steering behaviors.
 	b.CompMoveable.Update(delta)
+}
+
+// Dead returns true if the being is dead.
+func (b *Being) Dead() bool {
+	return b.CompStats.Health <= 0
+}
+
+// TakeDamage reduces the health of the being.
+// TODO: Find a better way to do this. Maybe via an event system?
+func (b *Being) TakeDamage(damage float64, attacker Entity) {
+	b.CompStats.Health -= damage
 }
 
 // randFloat returns a random float between 0 and max.

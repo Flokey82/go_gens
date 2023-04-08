@@ -7,12 +7,19 @@ This package is a skeleton for a rebuilt version of the simnpcs and gamecs packa
 
 ## TODO
 
-- [X] Add pathfinding
 - [X] Add noise for obstacle generation
-- [ ] Add needs and remediaion (food, water, sleep, etc.)
 - [ ] Add AI
-- [ ] Add combat / interactions
+    - [ ] Add needs and remediaion (food, water, sleep, etc.)
+    - [ ] Add combat / interactions
+    - [X] Add pathfinding
 - [ ] Add inventory
+- [ ] Add events
+    - [ ] Add event system
+        - [ ] Damage events
+        - [ ] Interactions
+        - [ ] Item pickup
+    - [ ] Add event logging
+    - [ ] Add quadtree for event detection
 - [ ] Exports
     - [X] Unify rendering
     - [X] Add GIF export
@@ -40,14 +47,21 @@ The AI should be able to do the following:
 - [ ] Can chain certain actions together to complete tasks
       (e.g. hungry? -> find food -> eat -> resume previous task)
 - [ ] Can be interrupted by other NPCs
+- [ ] Can be interrupted by events (e.g. other NPCs, items, etc.)
 - [ ] Tasks can be sorted by priority (and feasibility)
 - [ ] Tasks can be interrupted and resumed (or completely restarted?)
+- [ ] Memory
+    - [ ] Remember positive experiences (e.g. finding food)
+    - [ ] Remember negative experiences (e.g. being attacked by another NPC)
+    - [ ] Remember locations (e.g. where food was found)
 
 ### Needs
 
 Needs are a way to determine what an NPC should do. They are based on Maslow's hierarchy of needs. The needs are:
 
 - [ ] Physiological (e.g. food, water, sleep)
+    - [X] Basic mockup
+    - [ ] Full implementation
 - [ ] Safety (e.g. shelter, protection)
 - [ ] Belongingness (e.g. friends, family)
 - [ ] Esteem (e.g. respect, recognition)
