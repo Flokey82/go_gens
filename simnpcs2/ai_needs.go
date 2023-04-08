@@ -23,10 +23,13 @@ func (n *Needs) Update(delta float64) {
 	// Check if we are hungry, thirsty, tired, etc.
 	// If so, make sure that the AI knows about it.
 	if n.Destination == nil {
+		log.Println("I'm bored!")
 		// Wander to a random destination.
-		n.Destination = &vectors.Vec2{
+		if err := n.Pathfinding.SetDestination(&vectors.Vec2{
 			X: randFloat(float64(n.World.Width)),
 			Y: randFloat(float64(n.World.Height)),
+		}); err != nil {
+			log.Println(err)
 		}
 	}
 

@@ -15,14 +15,23 @@ type Being struct {
 }
 
 func NewBeing(world *World) *Being {
+	// Find a location that is not an obstacle.
+	var pos vectors.Vec2
+	for i := 0; i < 100; i++ {
+		idx := rand.Intn(len(world.Cells))
+		if world.CheckIdxReachable(idx) != nil {
+			continue
+		}
+		pos = *world.CellIdxToPos(idx)
+		break
+	}
+
+	// TODO: Return error if no location found.
 	return &Being{
-		id: int64(len(world.Beings)),
-		CompMoveable: newCompMoveable(vectors.Vec2{
-			X: randFloat(float64(world.Width)),
-			Y: randFloat(float64(world.Height)),
-		}),
-		CompStats: newCompStats(),
-		World:     world,
+		id:           int64(len(world.Beings)),
+		CompMoveable: newCompMoveable(pos),
+		CompStats:    newCompStats(),
+		World:        world,
 	}
 }
 
