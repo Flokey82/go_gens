@@ -14,7 +14,7 @@ This package is a skeleton for a rebuilt version of the simnpcs and gamecs packa
 - [ ] Add combat / interactions
 - [ ] Add inventory
 - [ ] Exports
-    - [ ] Unify rendering
+    - [X] Unify rendering
     - [X] Add GIF export
         - [ ] Make it optional
     - [X] Add WEBP export

@@ -43,36 +43,5 @@ func (w *World) storeGifFrame() {
 	img := image.NewPaletted(image.Rect(0, 0, w.Width, w.Height), w.palette)
 	w.images = append(w.images, img)
 	w.delays = append(w.delays, 0)
-
-	// Draw all entities and their paths.
-	for _, c := range w.Beings {
-		ai := c.(*AI)
-		if ai.Pathfinding.Waypoints != nil {
-			for _, wpIdx := range ai.Pathfinding.Waypoints[ai.Pathfinding.WaypointIdx:] {
-				wp := w.CellIdxToPos(wpIdx)
-				img.Set(int(wp.X), int(wp.Y), color.RGBA{0xFF, 0xFF, 0x00, 255})
-			}
-		}
-
-		pos := c.Pos()
-		img.Set(int(pos.X), int(pos.Y), color.RGBA{0xFF, 0x00, 0x00, 255})
-
-		if dst := ai.Destination; dst != nil {
-			img.Set(int(dst.X), int(dst.Y), color.RGBA{0x00, 0xFF, 0x00, 255})
-		}
-	}
-
-	// Draw all obstacles.
-	for i, c := range w.Cells {
-		if c {
-			pos := w.CellIdxToPos(i)
-			img.Set(int(pos.X), int(pos.Y), color.RGBA{0x00, 0x00, 0xFF, 255})
-		}
-	}
-
-	// Draw all items that are visible.
-	for _, c := range w.Items {
-		pos := c.Pos()
-		img.Set(int(pos.X), int(pos.Y), color.RGBA{0xff, 0x00, 0xff, 255})
-	}
+	w.renderFrame(img)
 }
