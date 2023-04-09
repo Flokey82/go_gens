@@ -5,6 +5,18 @@ NOTE: This is currently a modified fork of https://github.com/samuel-pratt/rayca
 - https://github.com/TheInvader360/dungeon-crawler
 - https://github.com/Myu-Unix/ray_engine
 
+This is an excellent collection of tutorials on raycasting:
+
+- https://github.com/vinibiavatti1/RayCastingTutorial
+
 The ultimate goal is to create a basic dungeon crawler for the various dungeon and tile map generators that accumulate in this repository.
 
 ![alt text](https://raw.githubusercontent.com/Flokey82/go_gens/master/gameraycast/images/basic.png "Screenshot of basic raycast!")
+
+## TODO
+
+- [X] Basic raycasting, movement, rendering
+- [X] Add different wall types and colors
+- [ ] Add textures
+- [ ] Add minimap
+- [ ] Add custom maps

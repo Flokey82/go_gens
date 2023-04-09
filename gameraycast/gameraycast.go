@@ -26,7 +26,8 @@ type Game struct {
 	drawMap      bool    // Draw Map
 }
 
-func newGame() *Game {
+// NewGame creates a new Game
+func NewGame() *Game {
 	return &Game{
 		windowHeight: 500,
 		windowWidth:  720,
@@ -44,7 +45,7 @@ func newGame() *Game {
 			1, 0, 1, 0, 0, 0, 0, 1,
 			1, 0, 1, 0, 0, 0, 0, 1,
 			1, 0, 0, 0, 0, 0, 0, 1,
-			1, 0, 1, 0, 0, 0, 0, 1,
+			1, 0, 1, 0, 0, 2, 0, 1,
 			1, 0, 1, 0, 0, 0, 0, 1,
 			1, 0, 1, 0, 0, 0, 0, 1,
 			1, 1, 1, 1, 1, 1, 1, 1,
@@ -134,7 +135,7 @@ func (g *Game) CastRays(screen *ebiten.Image) {
 
 		// Check vertical lines
 		dof = 0
-		var disV float64 = 1000 // Distance to vertical wall
+		disV := 1000.0 // Distance to vertical wall
 		vx := g.px
 		vy := g.py
 		nTan := -math.Tan(ra)
@@ -201,11 +202,23 @@ func (g *Game) CastRays(screen *ebiten.Image) {
 			lineH = float64(g.windowHeight)
 		}
 
-		if isVertical {
-			ebitenutil.DrawRect(screen, float64(r*g.windowWidth/120), float64(g.windowHeight/2)-lineH/2, float64(g.windowWidth/120), lineH, color.RGBA{255, 0, 0, 255})
-		} else {
-			ebitenutil.DrawRect(screen, float64(r*g.windowWidth/120), float64(g.windowHeight/2)-lineH/2, float64(g.windowWidth/120), lineH, color.RGBA{204, 0, 0, 255})
+		// Find the type of tile we hit with the ray.
+		var tileType int
+		{
+			mx = (int(rx) >> 6)
+			my = (int(ry) >> 6)
+			mp = my*g.mapx + mx
+			if mp > 0 && mp < g.mapx*g.mapy {
+				tileType = g.mapArray[mp]
+			}
 		}
+
+		// Set the color of the wall.
+		col := getWallColor(tileType)
+		if !isVertical {
+			col = darkenColor(col, 0.7) // Horizontal walls are darker.
+		}
+		ebitenutil.DrawRect(screen, float64(r*g.windowWidth/120), float64(g.windowHeight/2)-lineH/2, float64(g.windowWidth/120), lineH, col)
 
 		ra += 0.00872665 // half a degree in radians
 		if ra < 0 {
@@ -216,8 +229,30 @@ func (g *Game) CastRays(screen *ebiten.Image) {
 	}
 }
 
+func getWallColor(t int) color.RGBA {
+	if t <= 0 && t >= len(wallTypeColors) {
+		return wallTypeColors[0]
+	}
+	return wallTypeColors[t]
+}
+
+var wallTypeColors = []color.RGBA{
+	{0, 0, 0, 255},
+	{255, 0, 0, 255},
+	{0, 255, 0, 255},
+}
+
+func darkenColor(c color.RGBA, amount float64) color.RGBA {
+	return color.RGBA{
+		uint8(float64(c.R) * amount),
+		uint8(float64(c.G) * amount),
+		uint8(float64(c.B) * amount),
+		c.A,
+	}
+}
+
 func Run() {
-	g := newGame()
+	g := NewGame()
 	ebiten.SetWindowSize(g.windowWidth, g.windowHeight)
 	ebiten.SetWindowTitle("Hello, World!")
 	if err := ebiten.RunGame(g); err != nil {
