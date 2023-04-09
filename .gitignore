@@ -66,3 +66,4 @@ genfood/cmd/runner
 genarchitecture/cmd/runner
 simnpcs2/cmd/runner
 simnpcs2/cmd/test.webp
+gameraycast/cmd/runner
