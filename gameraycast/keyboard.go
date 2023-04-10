@@ -8,18 +8,18 @@ import (
 
 func (g *Game) KeyboardHandler() {
 	if ebiten.IsKeyPressed(ebiten.KeyUp) || ebiten.IsKeyPressed(ebiten.KeyW) {
-		if g.mapArray[int((int(g.py)>>6))*g.mapx+int((int(g.px+g.pdx)>>6))] == 0 {
+		if g.Array[int((int(g.py)>>6))*g.X+int((int(g.px+g.pdx)>>6))] == 0 {
 			g.px += g.pdx
 		}
-		if g.mapArray[int((int(g.py+g.pdy)>>6))*g.mapx+int((int(g.px)>>6))] == 0 {
+		if g.Array[int((int(g.py+g.pdy)>>6))*g.X+int((int(g.px)>>6))] == 0 {
 			g.py += g.pdy
 		}
 	}
 	if ebiten.IsKeyPressed(ebiten.KeyDown) || ebiten.IsKeyPressed(ebiten.KeyS) {
-		if g.mapArray[int((int(g.py)>>6))*g.mapx+int((int(g.px-g.pdx)>>6))] == 0 {
+		if g.Array[int((int(g.py)>>6))*g.X+int((int(g.px-g.pdx)>>6))] == 0 {
 			g.px -= g.pdx
 		}
-		if g.mapArray[int((int(g.py-g.pdy)>>6))*g.mapx+int((int(g.px)>>6))] == 0 {
+		if g.Array[int((int(g.py-g.pdy)>>6))*g.X+int((int(g.px)>>6))] == 0 {
 			g.py -= g.pdy
 		}
 	}

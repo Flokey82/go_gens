@@ -9,6 +9,34 @@ import (
 	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
 )
 
+// Map represents the map.
+type Map struct {
+	X     int   // Map Width
+	Y     int   // Map Height
+	Scale int   // Map Scale (Array Size) TODO: We can drop this in favor of len(Array)
+	Array []int // Map Array
+}
+
+// NewMap creates a new Map.
+func NewMap() *Map {
+	return &Map{
+		X:     8,
+		Y:     8,
+		Scale: 64,
+		Array: []int{
+			1, 1, 1, 1, 1, 1, 1, 1,
+			1, 0, 1, 0, 0, 0, 0, 1,
+			1, 0, 1, 0, 0, 0, 0, 1,
+			1, 0, 0, 0, 0, 0, 0, 1,
+			1, 0, 0, 0, 0, 0, 0, 1,
+			1, 0, 2, 0, 0, 0, 0, 1,
+			1, 0, 0, 0, 0, 0, 0, 1,
+			1, 1, 1, 1, 1, 1, 1, 1,
+		},
+	}
+}
+
+// Game represents the game.
 type Game struct {
 	windowHeight int     // Window Height
 	windowWidth  int     // Window Width
@@ -18,16 +46,13 @@ type Game struct {
 	pdy          float64 // Player delta Y
 	pa           float64 // Player Angle
 	ps           float64 // Player Speed
-	mapx         int     // Map Width
-	mapy         int     // Map Height
-	mapScale     int     // Map Unit Size
-	mapArray     [64]int // Map Array
 	drawRays     bool    // Draw Rays
 	drawMap      bool    // Draw Map
+	*Map                 // Map
 }
 
 // NewGame creates a new Game
-func NewGame() *Game {
+func NewGame(m *Map) *Game {
 	return &Game{
 		windowHeight: 500,
 		windowWidth:  720,
@@ -37,29 +62,28 @@ func NewGame() *Game {
 		pdy:          1,   // Player delta Y
 		pa:           0,   // Player Angle
 		ps:           2,   // Player Speed
-		mapx:         8,   // Map Width
-		mapy:         8,   // Map Height
-		mapScale:     64,  // Map Unit Size
-		mapArray: [64]int{
-			1, 1, 1, 1, 1, 1, 1, 1,
-			1, 0, 1, 0, 0, 0, 0, 1,
-			1, 0, 1, 0, 0, 0, 0, 1,
-			1, 0, 0, 0, 0, 0, 0, 1,
-			1, 0, 1, 0, 0, 2, 0, 1,
-			1, 0, 1, 0, 0, 0, 0, 1,
-			1, 0, 1, 0, 0, 0, 0, 1,
-			1, 1, 1, 1, 1, 1, 1, 1,
-		},
-		drawRays: false,
-		drawMap:  false,
+		drawRays:     false,
+		drawMap:      false,
+		Map:          m,
 	}
 }
 
+// Run starts the game.
+func (g *Game) Run() {
+	ebiten.SetWindowSize(g.windowWidth, g.windowHeight)
+	ebiten.SetWindowTitle("Hello, World!")
+	if err := ebiten.RunGame(g); err != nil {
+		log.Fatal(err)
+	}
+}
+
+// Update updates the game state (keyboard input).
 func (g *Game) Update() error {
 	g.KeyboardHandler()
 	return nil
 }
 
+// Draw draws the game screen.
 func (g *Game) Draw(screen *ebiten.Image) {
 	if g.drawMap {
 		g.DrawMap(screen)
@@ -68,10 +92,12 @@ func (g *Game) Draw(screen *ebiten.Image) {
 	g.CastRays(screen)
 }
 
+// Layout returns the screen size.
 func (g *Game) Layout(outsideWidth, outsideHeight int) (screenWidth, screenHeight int) {
 	return outsideWidth, outsideHeight
 }
 
+// CastRays casts rays from the player to the map.
 func (g *Game) CastRays(screen *ebiten.Image) {
 	var (
 		r    int
@@ -105,12 +131,12 @@ func (g *Game) CastRays(screen *ebiten.Image) {
 		if ra > math.Pi { // Looking up
 			ry = float64(((int(g.py) >> 6) << 6)) - 0.0001
 			rx = (g.py-ry)*aTan + g.px
-			yo = float64(-1 * g.mapScale)
+			yo = float64(-1 * g.Scale)
 			xo = -1 * yo * aTan
 		} else if ra < math.Pi { // Looking down
 			ry = float64(((int(g.py) >> 6) << 6)) + 64.0
 			rx = (g.py-ry)*aTan + g.px
-			yo = float64(g.mapScale)
+			yo = float64(g.Scale)
 			xo = -1 * yo * aTan
 		} else if ra == 0 || ra == math.Pi { // Looking straight left or right
 			rx = g.px
@@ -120,8 +146,8 @@ func (g *Game) CastRays(screen *ebiten.Image) {
 		for dof < 8 {
 			mx = (int(rx) >> 6)
 			my = (int(ry) >> 6)
-			mp = my*g.mapx + mx
-			if mp > 0 && mp < g.mapx*g.mapy && g.mapArray[mp] > 0 {
+			mp = my*g.X + mx
+			if mp > 0 && mp < g.X*g.Y && g.Array[mp] > 0 {
 				disH = Dist(g.px, g.py, rx, ry)
 				hx = rx
 				hy = ry
@@ -143,12 +169,12 @@ func (g *Game) CastRays(screen *ebiten.Image) {
 		if ra > math.Pi/2 && ra < 3*math.Pi/2 { // Looking left
 			rx = float64(((int(g.px) >> 6) << 6)) - 0.0001
 			ry = (g.px-rx)*nTan + g.py
-			xo = float64(-1 * g.mapScale)
+			xo = float64(-1 * g.Scale)
 			yo = -1 * xo * nTan
 		} else if ra < math.Pi/2 || ra > 3*math.Pi/2 { // Looking right
 			rx = float64(((int(g.px) >> 6) << 6)) + 64.0
 			ry = (g.px-rx)*nTan + g.py
-			xo = float64(g.mapScale)
+			xo = float64(g.Scale)
 			yo = -1 * xo * nTan
 		} else if ra == math.Pi/2 || ra == 3*math.Pi/2 { // Looking up or down
 			rx = g.px
@@ -159,8 +185,8 @@ func (g *Game) CastRays(screen *ebiten.Image) {
 		for dof < 8 {
 			mx = (int(rx) >> 6)
 			my = (int(ry) >> 6)
-			mp = my*g.mapx + mx
-			if mp > 0 && mp < g.mapx*g.mapy && g.mapArray[mp] > 0 {
+			mp = my*g.X + mx
+			if mp > 0 && mp < g.X*g.Y && g.Array[mp] > 0 {
 				disV = Dist(g.px, g.py, rx, ry)
 				vx = rx
 				vy = ry
@@ -197,7 +223,7 @@ func (g *Game) CastRays(screen *ebiten.Image) {
 		}
 
 		disT = disT * math.Cos(ca)
-		lineH := float64(g.mapScale*g.windowHeight) / disT
+		lineH := float64(g.Scale*g.windowHeight) / disT
 		if lineH > float64(g.windowHeight) {
 			lineH = float64(g.windowHeight)
 		}
@@ -207,9 +233,9 @@ func (g *Game) CastRays(screen *ebiten.Image) {
 		{
 			mx = (int(rx) >> 6)
 			my = (int(ry) >> 6)
-			mp = my*g.mapx + mx
-			if mp > 0 && mp < g.mapx*g.mapy {
-				tileType = g.mapArray[mp]
+			mp = my*g.X + mx
+			if mp > 0 && mp < g.X*g.Y {
+				tileType = g.Array[mp]
 			}
 		}
 
@@ -248,15 +274,6 @@ func darkenColor(c color.RGBA, amount float64) color.RGBA {
 		uint8(float64(c.G) * amount),
 		uint8(float64(c.B) * amount),
 		c.A,
-	}
-}
-
-func Run() {
-	g := NewGame()
-	ebiten.SetWindowSize(g.windowWidth, g.windowHeight)
-	ebiten.SetWindowTitle("Hello, World!")
-	if err := ebiten.RunGame(g); err != nil {
-		log.Fatal(err)
 	}
 }
 
