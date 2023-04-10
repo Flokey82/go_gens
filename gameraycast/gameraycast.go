@@ -46,6 +46,8 @@ type Game struct {
 	pdy          float64 // Player delta Y
 	pa           float64 // Player Angle
 	ps           float64 // Player Speed
+	pFov         float64 // Player Field of View
+	rayPrecision int     // Number of rays to cast
 	drawRays     bool    // Draw Rays
 	drawMap      bool    // Draw Map
 	*Map                 // Map
@@ -62,6 +64,8 @@ func NewGame(m *Map) *Game {
 		pdy:          1,   // Player delta Y
 		pa:           0,   // Player Angle
 		ps:           2,   // Player Speed
+		pFov:         60,  // Player Field of View
+		rayPrecision: 120, // Number of rays to cast
 		drawRays:     false,
 		drawMap:      false,
 		Map:          m,
@@ -113,14 +117,20 @@ func (g *Game) CastRays(screen *ebiten.Image) {
 		disT float64
 	)
 
-	ra = g.pa - 0.00872665*30 // half a degree in radians times 30
+	fovHalf := g.pFov / 2.0
+	degToRad := math.Pi / 180.0
+	fovStart := degToRad * fovHalf
+	fovStep := degToRad * g.pFov / float64(g.rayPrecision)
+
+	ra = g.pa - fovStart // start at half fov to the left of the player
+	// Keep angle between 0 and 2PI
 	if ra < 0 {
 		ra += 2 * math.Pi
 	} else if ra > 2*math.Pi {
 		ra -= 2 * math.Pi
 	}
 
-	for r = 0; r < 120; r++ {
+	for r = 0; r < g.rayPrecision; r++ {
 		// Check horizontal lines
 		dof = 0
 		disH := 1000.0 // Distance to horizontal wall
@@ -134,7 +144,7 @@ func (g *Game) CastRays(screen *ebiten.Image) {
 			yo = float64(-1 * g.Scale)
 			xo = -1 * yo * aTan
 		} else if ra < math.Pi { // Looking down
-			ry = float64(((int(g.py) >> 6) << 6)) + 64.0
+			ry = float64(((int(g.py) >> 6) << 6)) + float64(g.Map.Scale)
 			rx = (g.py-ry)*aTan + g.px
 			yo = float64(g.Scale)
 			xo = -1 * yo * aTan
@@ -172,7 +182,7 @@ func (g *Game) CastRays(screen *ebiten.Image) {
 			xo = float64(-1 * g.Scale)
 			yo = -1 * xo * nTan
 		} else if ra < math.Pi/2 || ra > 3*math.Pi/2 { // Looking right
-			rx = float64(((int(g.px) >> 6) << 6)) + 64.0
+			rx = float64(((int(g.px) >> 6) << 6)) + float64(g.Map.Scale)
 			ry = (g.px-rx)*nTan + g.py
 			xo = float64(g.Scale)
 			yo = -1 * xo * nTan
@@ -216,6 +226,7 @@ func (g *Game) CastRays(screen *ebiten.Image) {
 		}
 
 		ca := g.pa - ra
+		// Keep angle between 0 and 2PI
 		if ca < 0 {
 			ca += 2 * math.Pi
 		} else if ca > 2*math.Pi {
@@ -244,9 +255,10 @@ func (g *Game) CastRays(screen *ebiten.Image) {
 		if !isVertical {
 			col = darkenColor(col, 0.7) // Horizontal walls are darker.
 		}
-		ebitenutil.DrawRect(screen, float64(r*g.windowWidth/120), float64(g.windowHeight/2)-lineH/2, float64(g.windowWidth/120), lineH, col)
+		ebitenutil.DrawRect(screen, float64(r*g.windowWidth/g.rayPrecision), float64(g.windowHeight/2)-lineH/2, float64(g.windowWidth/g.rayPrecision), lineH, col)
 
-		ra += 0.00872665 // half a degree in radians
+		ra += fovStep // render angle += fovStep
+		// Keep angle between 0 and 2PI
 		if ra < 0 {
 			ra += 2 * math.Pi
 		} else if ra > 2*math.Pi {
