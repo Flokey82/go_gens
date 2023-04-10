@@ -50,6 +50,7 @@ type Game struct {
 	rayPrecision int     // Number of rays to cast
 	drawRays     bool    // Draw Rays
 	drawMap      bool    // Draw Map
+	useAltCast   bool    // Use alternative ray casting
 	*Map                 // Map
 }
 
@@ -68,6 +69,7 @@ func NewGame(m *Map) *Game {
 		rayPrecision: 120, // Number of rays to cast
 		drawRays:     false,
 		drawMap:      false,
+		useAltCast:   true,
 		Map:          m,
 	}
 }
@@ -103,6 +105,15 @@ func (g *Game) Layout(outsideWidth, outsideHeight int) (screenWidth, screenHeigh
 
 // CastRays casts rays from the player to the map.
 func (g *Game) CastRays(screen *ebiten.Image) {
+	if g.useAltCast {
+		g.rayCastingB(screen)
+	} else {
+		g.rayCastingA(screen)
+	}
+}
+
+// rayCastingA casts rays from the player to the map.
+func (g *Game) rayCastingA(screen *ebiten.Image) {
 	var (
 		r    int
 		mx   int
@@ -266,6 +277,94 @@ func (g *Game) CastRays(screen *ebiten.Image) {
 		}
 	}
 }
+
+// Raycasting logic
+// Alternative algorithm from:
+// https://github.com/vinibiavatti1/RayCastingTutorial/blob/master/basic/raycasting.js
+func (g *Game) rayCastingB(screen *ebiten.Image) {
+	// Calculate the angle of the first ray
+	degToRad := math.Pi / 180.0
+	fovHalf := g.pFov / 2.0
+	fovStart := degToRad * fovHalf
+
+	// Keep angle between 0 and 2PI
+	ra := g.pa - fovStart
+	if ra < 0 {
+		ra += 2 * math.Pi
+	} else if ra > 2*math.Pi {
+		ra -= 2 * math.Pi
+	}
+
+	fovStep := degToRad * float64(g.pFov) / float64(g.rayPrecision)
+	for r := 0; r < g.rayPrecision; r++ {
+		// Ray data
+		rX := g.px
+		rY := g.py
+
+		// Ray path incrementers
+		rayCos := math.Cos(ra) / float64(g.rayPrecision)
+		raySin := math.Sin(ra) / float64(g.rayPrecision)
+
+		// Wall finder
+		var wall int
+		for wall == 0 {
+			rX += rayCos
+			rY += raySin
+			wall = g.Array[int(rY/float64(g.Scale))*g.X+int(rX/float64(g.Scale))]
+		}
+
+		// Pythagoras theorem
+		disH := math.Sqrt(math.Pow(g.px-rX, 2) + math.Pow(g.py-rY, 2))
+
+		// Fish eye correction
+		disH = disH * math.Cos(ra-g.pa) / 200 // Adjust the distance, so the walls won't be tiny.
+
+		// Wall height
+		lineH := float64(g.windowHeight/2) / disH
+
+		// Set the color of the wall.
+		col := getWallColor(wall)
+		if wall == 1 {
+			col = darkenColor(col, 0.7) // Horizontal walls are darker.
+		}
+		ebitenutil.DrawRect(screen, float64(r*g.windowWidth/g.rayPrecision), float64(g.windowHeight/2)-lineH/2, float64(g.windowWidth/g.rayPrecision), lineH, col)
+
+		// Keep angle between 0 and 2PI
+		ra += fovStep // render angle += fovStep
+		if ra < 0 {
+			ra += 2 * math.Pi
+		} else if ra > 2*math.Pi {
+			ra -= 2 * math.Pi
+		}
+	}
+}
+
+/*
+type Texture struct {
+	Width  int
+	Height int
+	Bitmap [][]byte
+	Colors []color.RGBA
+}
+
+var testure = Texture{
+	Width:  8,
+	Height: 8,
+	Bitmap: [][]byte{
+		{1, 1, 1, 1, 1, 1, 1, 1},
+		{0, 0, 0, 1, 0, 0, 0, 1},
+		{1, 1, 1, 1, 1, 1, 1, 1},
+		{0, 1, 0, 0, 0, 1, 0, 0},
+		{1, 1, 1, 1, 1, 1, 1, 1},
+		{0, 0, 0, 1, 0, 0, 0, 1},
+		{1, 1, 1, 1, 1, 1, 1, 1},
+		{0, 1, 0, 0, 0, 1, 0, 0},
+	},
+	Colors: []color.RGBA{
+		{255, 241, 232, 255},
+		{194, 195, 199, 255},
+	},
+}*/
 
 func getWallColor(t int) color.RGBA {
 	if t <= 0 && t >= len(wallTypeColors) {
