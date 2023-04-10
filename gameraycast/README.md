@@ -19,6 +19,8 @@ The ultimate goal is to create a basic dungeon crawler for the various dungeon a
 - [X] Add different wall types and colors
 - [X] Custom FOV and ray resolution
 - [ ] Add textures
+    - [X] Basic, single texture
+    - [ ] Multiple textures
 - [ ] Add minimap
 - [ ] Add custom maps
     - [X] Remove hardcoded map
