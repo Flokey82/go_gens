@@ -22,6 +22,8 @@ func convertDungeonToMap(dng *gendungeon.Dungeon) *gameraycast.Map {
 		for x := 0; x < m.X; x++ {
 			if dng.Tiles[y][x].Material == gendungeon.MatWall {
 				m.Array[y*m.X+x] = 1
+			} else if dng.Tiles[y][x].Material == gendungeon.MatDoor {
+				m.Array[y*m.X+x] = 2
 			} else {
 				m.Array[y*m.X+x] = 0
 			}

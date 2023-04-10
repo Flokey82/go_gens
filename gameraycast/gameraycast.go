@@ -289,21 +289,24 @@ func (g *Game) rayCastingA(screen *ebiten.Image) {
 		width := float64(g.windowWidth / g.rayPrecision)
 		height := lineH
 
+		// Draw the floor, which is a rectangle that goes from the bottom of the
+		// screen to the bottom of the wall.
+		ebitenutil.DrawRect(screen, xPos, yPos+height, width, float64(g.windowHeight), floorColor)
+
 		if !g.drawTextures {
 			ebitenutil.DrawRect(screen, xPos, yPos, width, height, col)
 		} else {
 			// Get texture
-			tex := texture
+			tex := getWallTexture(tileType)
 
 			// Calcule texture position
-			texturePositionX := (int(float64(tex.Width)*(rx+ry)/float64(g.Scale)) % tex.Width)
+			texturePositionX := (int(float64(tex.Width())*(rx+ry)/float64(g.Scale)) % tex.Width())
 
-			yIncrementer := (height * 2) / float64(tex.Height)
+			yIncrementer := (height * 2) / float64(tex.Height())
 			yD := float64(g.windowHeight)/2 - height
 
-			for i := 0; i < tex.Height; i++ {
-				col := tex.Colors[tex.Bitmap[i][texturePositionX]]
-				ebitenutil.DrawRect(screen, xPos, yD, width, yIncrementer, col)
+			for i := 0; i < tex.Height(); i++ {
+				ebitenutil.DrawRect(screen, xPos, yD, width, yIncrementer, tex.At(texturePositionX, i))
 				yD += yIncrementer
 			}
 		}
@@ -337,8 +340,8 @@ func (g *Game) rayCastingB(screen *ebiten.Image) {
 	fovStep := degToRad * float64(g.pFov) / float64(g.rayPrecision)
 	for r := 0; r < g.rayPrecision; r++ {
 		// Ray data
-		rX := g.px
-		rY := g.py
+		rx := g.px
+		ry := g.py
 
 		// Ray path incrementers
 		rayCos := math.Cos(ra) / float64(g.rayPrecision)
@@ -347,13 +350,13 @@ func (g *Game) rayCastingB(screen *ebiten.Image) {
 		// Wall finder
 		var wall int
 		for wall == 0 {
-			rX += rayCos
-			rY += raySin
-			wall = g.Array[int(rY/float64(g.Scale))*g.X+int(rX/float64(g.Scale))]
+			rx += rayCos
+			ry += raySin
+			wall = g.Array[int(ry/float64(g.Scale))*g.X+int(rx/float64(g.Scale))]
 		}
 
 		// Pythagoras theorem
-		disH := math.Sqrt(math.Pow(g.px-rX, 2) + math.Pow(g.py-rY, 2))
+		disH := math.Sqrt(math.Pow(g.px-rx, 2) + math.Pow(g.py-ry, 2))
 
 		// Fish eye correction
 		disH = disH * math.Cos(ra-g.pa)
@@ -374,21 +377,24 @@ func (g *Game) rayCastingB(screen *ebiten.Image) {
 		width := float64(g.windowWidth / g.rayPrecision)
 		height := lineH
 
+		// Draw the floor, which is a rectangle that goes from the bottom of the
+		// screen to the bottom of the wall.
+		ebitenutil.DrawRect(screen, xPos, yPos+height, width, float64(g.windowHeight), floorColor)
+
 		if !g.drawTextures {
 			ebitenutil.DrawRect(screen, xPos, yPos, width, height, col)
 		} else {
 			// Get texture
-			tex := texture
+			tex := getWallTexture(wall)
 
 			// Calcule texture position
-			texturePositionX := (int(float64(tex.Width)*(rX+rY)/float64(g.Scale)) % tex.Width)
+			texturePositionX := (int(float64(tex.Width())*(rx+ry)/float64(g.Scale)) % tex.Width())
 
-			yIncrementer := (height * 2) / float64(tex.Height)
+			yIncrementer := (height * 2) / float64(tex.Height())
 			yD := float64(g.windowHeight)/2 - height
 
-			for i := 0; i < tex.Height; i++ {
-				col := tex.Colors[tex.Bitmap[i][texturePositionX]]
-				ebitenutil.DrawRect(screen, xPos, yD, width, yIncrementer, col)
+			for i := 0; i < tex.Height(); i++ {
+				ebitenutil.DrawRect(screen, xPos, yD, width, yIncrementer, tex.At(texturePositionX, i))
 				yD += yIncrementer
 			}
 		}
@@ -400,54 +406,6 @@ func (g *Game) rayCastingB(screen *ebiten.Image) {
 		} else if ra > 2*math.Pi {
 			ra -= 2 * math.Pi
 		}
-	}
-}
-
-type Texture struct {
-	Width  int
-	Height int
-	Bitmap [][]byte
-	Colors []color.RGBA
-}
-
-var texture = Texture{
-	Width:  8,
-	Height: 8,
-	Bitmap: [][]byte{
-		{1, 1, 1, 1, 1, 1, 1, 1},
-		{0, 0, 0, 1, 0, 0, 0, 1},
-		{1, 1, 1, 1, 1, 1, 1, 1},
-		{0, 1, 0, 0, 0, 1, 0, 0},
-		{1, 1, 1, 1, 1, 1, 1, 1},
-		{0, 0, 0, 1, 0, 0, 0, 1},
-		{1, 1, 1, 1, 1, 1, 1, 1},
-		{0, 1, 0, 0, 0, 1, 0, 0},
-	},
-	Colors: []color.RGBA{
-		{255, 241, 232, 255},
-		{194, 195, 199, 255},
-	},
-}
-
-func getWallColor(t int) color.RGBA {
-	if t <= 0 && t >= len(wallTypeColors) {
-		return wallTypeColors[0]
-	}
-	return wallTypeColors[t]
-}
-
-var wallTypeColors = []color.RGBA{
-	{0, 0, 0, 255},
-	{255, 0, 0, 255},
-	{0, 255, 0, 255},
-}
-
-func darkenColor(c color.RGBA, amount float64) color.RGBA {
-	return color.RGBA{
-		uint8(float64(c.R) * amount),
-		uint8(float64(c.G) * amount),
-		uint8(float64(c.B) * amount),
-		c.A,
 	}
 }
 
