@@ -56,11 +56,21 @@ type Game struct {
 
 // NewGame creates a new Game
 func NewGame(m *Map) *Game {
+	// find a calid position for the player
+	var px, py float64
+	for i := 0; i < len(m.Array); i++ {
+		if m.Array[i] == 0 {
+			px = float64(i%m.X) * float64(m.Scale)
+			py = float64(i/m.X) * float64(m.Scale)
+			break
+		}
+	}
+
 	return &Game{
 		windowHeight: 500,
 		windowWidth:  720,
-		px:           300, // Player X Coordinate
-		py:           300, // Player Y Coordinate
+		px:           px,  // Player X Coordinate
+		py:           py,  // Player Y Coordinate
 		pdx:          1,   // Player delta X
 		pdy:          1,   // Player delta Y
 		pa:           0,   // Player Angle
@@ -69,7 +79,7 @@ func NewGame(m *Map) *Game {
 		rayPrecision: 120, // Number of rays to cast
 		drawRays:     false,
 		drawMap:      false,
-		useAltCast:   true,
+		useAltCast:   false,
 		Map:          m,
 	}
 }

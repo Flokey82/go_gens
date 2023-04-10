@@ -22,6 +22,7 @@ The ultimate goal is to create a basic dungeon crawler for the various dungeon a
 - [ ] Add minimap
 - [ ] Add custom maps
     - [X] Remove hardcoded map
-    - [ ] Add example dungeon map import
+    - [X] Add example dungeon map import
 - [ ] Add sprites
 - [ ] Add enemies
+- [ ] Add map marker for player start
