@@ -17,6 +17,7 @@ type World struct {
 	Width  int
 	Height int
 	Cells  []bool
+	Events *Events
 }
 
 // NewWorld creates a new world.
@@ -27,6 +28,7 @@ func NewWorld(w, h int, seed int64) *World {
 		Width:      w,
 		Height:     h,
 		Cells:      make([]bool, w*h),
+		Events:     newEvents(),
 	}
 	world.init(seed)
 	return world

@@ -11,7 +11,8 @@ type Being struct {
 	id            int64
 	*CompMoveable // Position and speed.
 	*CompStats    // Stats.
-	World         *World
+	*EventListener
+	World *World
 }
 
 func NewBeing(world *World) *Being {
@@ -20,10 +21,11 @@ func NewBeing(world *World) *Being {
 
 	// TODO: Return error if no location found.
 	return &Being{
-		id:           int64(len(world.Beings)),
-		CompMoveable: newCompMoveable(pos),
-		CompStats:    newCompStats(100),
-		World:        world,
+		id:            int64(len(world.Beings)),
+		CompMoveable:  newCompMoveable(pos),
+		CompStats:     newCompStats(100),
+		EventListener: newEventListener(),
+		World:         world,
 	}
 }
 
@@ -54,6 +56,9 @@ func (b *Being) Update(delta float64) {
 
 	// Execute steering behaviors.
 	b.CompMoveable.Update(delta)
+
+	// Clear events.
+	b.EventListener.Update(delta)
 }
 
 // Dead returns true if the being is dead.
@@ -65,6 +70,11 @@ func (b *Being) Dead() bool {
 // TODO: Find a better way to do this. Maybe via an event system?
 func (b *Being) TakeDamage(damage float64, attacker Entity) {
 	b.CompStats.Health -= damage
+}
+
+// InMeleeRange returns true if the being is in melee range of the target.
+func (b *Being) InMeleeRange(target Entity) bool {
+	return b.Pos().DistanceTo(target.Pos()) < 1.0
 }
 
 // randFloat returns a random float between 0 and max.

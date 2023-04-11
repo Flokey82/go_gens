@@ -63,6 +63,8 @@ Needs are a way to determine what an NPC should do. They are based on Maslow's h
     - [X] Basic mockup
     - [ ] Full implementation
 - [ ] Safety (e.g. shelter, protection)
+    - [ ] Attack other NPCs
+    - [ ] Run away from other NPCs
 - [ ] Belongingness (e.g. friends, family)
 - [ ] Esteem (e.g. respect, recognition)
 - [ ] Self-actualization (e.g. personal growth, fulfillment)
@@ -115,3 +117,9 @@ Tasks are a way to determine what an NPC should do. They should be able to do th
 - [ ] Be sorted by priority
 - [ ] Be sorted by feasibility
 - [ ] Be interrupted and resumed (or completely restarted?)
+
+### Insight
+
+Insight helps npcs to glean what an npc is doing. For example, if a npc is chasing another npc, the npc being chased will know that it is being chased. The higher the insight, the more information the npc can glean, like for example subsequent actions.
+
+For this, we should first implement the planning/task system including chained tasks. Then we can implement insight, which will reveal the current task of the npc (like the current state in the state machine or the current node in the behavior tree).

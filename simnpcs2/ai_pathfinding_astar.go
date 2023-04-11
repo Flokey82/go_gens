@@ -141,7 +141,6 @@ func (a *astar) GetNeighborNodes(node Node) []Node {
 // isAccessible checks if the node is reachable in the grid
 // and is not in the invalidNodes slice
 func (a *astar) isAccessible(node Node) bool {
-
 	// if node is out of bound
 	if node.X < 0 || node.Y < 0 || node.X > a.config.GridWidth-1 || node.Y > a.config.GridHeight-1 {
 		return false

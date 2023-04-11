@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"log"
 	"os"
 	"time"
 
@@ -11,6 +12,9 @@ import (
 
 func main() {
 	w := simnpcs2.NewWorld(100, 100, 1234)
+	w.AddBeing()
+	w.AddBeing()
+	w.AddBeing()
 	w.AddBeing()
 	w.AddBeing()
 	w.AddBeing()
@@ -29,9 +33,9 @@ func main() {
 	input.Scan()
 
 	if err := w.ExportWebp("test.webp"); err != nil {
-		panic(err)
+		log.Println(err)
 	}
 	if err := w.ExportGif("test.gif"); err != nil {
-		panic(err)
+		log.Println(err)
 	}
 }

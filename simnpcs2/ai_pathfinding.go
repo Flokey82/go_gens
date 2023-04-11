@@ -6,11 +6,22 @@ import (
 	"github.com/Flokey82/go_gens/vectors"
 )
 
+type PathfindingMode int
+
+const (
+	PathfindingModeNone PathfindingMode = iota
+	PathfindingModeMoveTo
+	PathfindingModeFollow
+	PathfindingModeChase
+	PathfindingModeFleeTo
+)
+
 // Pathfinding represents the pathfinding of an AI.
 type Pathfinding struct {
 	*AI
-	Waypoints   []int // Cell indices of the waypoints.
-	WaypointIdx int   // Current waypoint.
+	Waypoints   []int           // Cell indices of the waypoints.
+	WaypointIdx int             // Current waypoint.
+	Mode        PathfindingMode // Current mode.
 }
 
 // newPathfinding creates a new pathfinding for the given AI.
@@ -21,7 +32,7 @@ func newPathfinding(ai *AI) *Pathfinding {
 }
 
 // SetDestination sets the destination of the AI, and calculates the path.
-func (p *Pathfinding) SetDestination(dest *vectors.Vec2) error {
+func (p *Pathfinding) SetDestination(dest *vectors.Vec2, mode PathfindingMode) error {
 	p.Destination = dest
 	start := p.Being.Pos()
 	wp, err := p.World.Pathfind(&start, dest)
@@ -30,6 +41,7 @@ func (p *Pathfinding) SetDestination(dest *vectors.Vec2) error {
 	}
 	p.Waypoints = wp
 	p.WaypointIdx = 0
+	p.Mode = mode
 	return nil
 }
 
@@ -64,8 +76,17 @@ func (p *Pathfinding) Update(delta float64) {
 	// If not, change the velocity vector accordingly.
 
 	// Limit the velocity vector to the maximum speed.
-	if velVec.Len() > maxSpeed {
-		velVec.MulWithThis(maxSpeed / velVec.Len())
+	speed := maxSpeed
+
+	// tODO: Implement different modes.
+	if p.Mode == PathfindingModeChase {
+		speed = maxSpeed * 2
+	} else if p.Mode == PathfindingModeFleeTo {
+		speed = maxSpeed * 3
+	}
+
+	if velVec.Len() > speed {
+		velVec.MulWithThis(speed / velVec.Len())
 	}
 	p.Being.Speed.SetXY(velVec.X, velVec.Y)
 }

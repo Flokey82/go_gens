@@ -5,7 +5,7 @@ import (
 )
 
 const (
-	perceptionRadius = 1.0
+	perceptionRadius = 10.0
 	arrivalRadius    = 0.01
 	maxSpeed         = 0.1
 )
@@ -59,6 +59,11 @@ func (a *AI) Update(delta float64) {
 
 	// Update our being.
 	a.Being.Update(delta)
+}
+
+// Notify notifies the AI of an event.
+func (a *AI) Notify(event *Event) {
+	a.Being.Notify(event)
 }
 
 // Dead returns true if the being this AI is controlling is dead.
