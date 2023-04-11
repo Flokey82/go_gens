@@ -8,11 +8,11 @@ import (
 
 // Being represents a being in the world.
 type Being struct {
-	id            int64
-	*CompMoveable // Position and speed.
-	*CompStats    // Stats.
-	*EventListener
-	World *World
+	id             int64
+	*CompMoveable  // Position and speed.
+	*CompStats     // Stats.
+	*EventListener // Event listener.
+	World          *World
 }
 
 func NewBeing(world *World) *Being {
@@ -72,9 +72,11 @@ func (b *Being) TakeDamage(damage float64, attacker Entity) {
 	b.CompStats.Health -= damage
 }
 
+const meleeRange = 0.5
+
 // InMeleeRange returns true if the being is in melee range of the target.
 func (b *Being) InMeleeRange(target Entity) bool {
-	return b.Pos().DistanceTo(target.Pos()) < 1.0
+	return b.Pos().DistanceTo(target.Pos()) < meleeRange
 }
 
 // randFloat returns a random float between 0 and max.

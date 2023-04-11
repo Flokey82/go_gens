@@ -2,6 +2,7 @@ package simnpcs2
 
 import (
 	"fmt"
+	"log"
 	"math/rand"
 
 	"github.com/Flokey82/go_gens/vectors"
@@ -92,6 +93,11 @@ func (w *World) findValidPos() vectors.Vec2 {
 // Update updates the state of the world.
 func (w *World) Update(delta float64) {
 	for _, b := range w.Beings {
+		if b.Dead() {
+			log.Println("removing dead being", b.ID())
+
+			continue
+		}
 		b.Update(delta)
 	}
 	w.storeWebPFrame()
@@ -121,12 +127,12 @@ func (w *World) GetItemsInRadius(pos vectors.Vec2, radius float64) []*Item {
 }
 
 type Entity interface {
-	ID() int64
-	Type() EntityType
-	Pos() vectors.Vec2
-	Update(delta float64)
-	Dead() bool
-	TakeDamage(damage float64, attacker Entity)
+	ID() int64                                  // ID returns the ID of the entity.
+	Type() EntityType                           // Type returns the type of the entity.
+	Pos() vectors.Vec2                          // Pos returns the momentary position of the entity.
+	Update(delta float64)                       // Update updates the state of the entity.
+	Dead() bool                                 // Dead returns true if the entity is dead.
+	TakeDamage(damage float64, attacker Entity) // TakeDamage applies damage to the entity.
 }
 
 type EntityType int

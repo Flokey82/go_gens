@@ -14,7 +14,7 @@ const (
 	NeedHealth
 	NeedSatiation
 	NeedRest
-	NeedRevenge
+	NeedConflict
 	NeedMax
 )
 
@@ -36,7 +36,7 @@ func newNeeds(ai *AI) *Needs {
 			NeedHealth,
 			NeedSatiation,
 			NeedRest,
-			NeedRevenge,
+			NeedConflict,
 		},
 		Aggression: rand.Float64(),
 	}
@@ -93,19 +93,20 @@ func (n *Needs) EvalThreats() {
 	if evt := n.Being.FindType(EventAttack); evt != nil {
 		if evt.Source != nil {
 			n.Enemy = evt.Source
-			n.Needs[NeedRevenge] = true
+			n.Needs[NeedConflict] = true
 		}
 	} else if n.Enemy == nil && rand.Float64() < n.Aggression {
-		if len(n.Perception.Entities) > 0 {
-			n.Enemy = n.Perception.Entities[0].(*AI).Being
-			n.Needs[NeedRevenge] = true
+		// Someone new appeared... make a decision if we want to attack them.
+		if len(n.Perception.EntitiesNew) > 0 {
+			n.Enemy = n.Perception.EntitiesNew[0].(*AI).Being
+			n.Needs[NeedConflict] = true
 		}
 	}
 
 	// If we can't see the enemy anymore (or if the enemy is dead), stop fleeing (or attacking).
 	if n.Enemy != nil && (n.Enemy.Dead() || !n.Perception.CanSeeEntity(n.Enemy)) {
 		n.Enemy = nil
-		n.Needs[NeedRevenge] = false
+		n.Needs[NeedConflict] = false
 	}
 }
 
@@ -117,7 +118,6 @@ func (n *Needs) ActOnNeed(need Need) {
 	case NeedSurvival:
 		// a.Heal()
 		log.Println("I'm VERY hurt, heal!", n.Being.Health, n.Being.HealthMax)
-		n.Being.Health += 1
 		n.ActOnSurvival()
 	case NeedHealth:
 		// a.Heal()
@@ -131,16 +131,18 @@ func (n *Needs) ActOnNeed(need Need) {
 		// a.Sleep()
 		log.Println("Sleep!")
 		n.Being.Exhaustion = 0
-	case NeedRevenge:
+	case NeedConflict:
 		// TODO: Either pursue or flee the enemy.
 		// a.Damage(a.Enemy)
-		log.Println("Revenge!")
-		n.ActOnRevenge()
+		log.Println("Conflict!")
+		n.ActOnConflict()
 	}
 }
 
 func (n *Needs) ActOnSurvival() {
 	if n.Enemy == nil {
+		// Not in conflict, so we can heal.
+		n.Being.Health += 1
 		return
 	}
 
@@ -154,7 +156,7 @@ func (n *Needs) ActOnSurvival() {
 	}
 }
 
-func (n *Needs) ActOnRevenge() {
+func (n *Needs) ActOnConflict() {
 	if n.Being.InMeleeRange(n.Enemy) {
 		// Attack the enemy.
 		dmg := 1 + randFloat(2)

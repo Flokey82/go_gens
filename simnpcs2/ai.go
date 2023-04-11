@@ -79,6 +79,6 @@ func (a *AI) TakeDamage(damage float64, attacker Entity) {
 	// Depending on how perceptive we are, we might also be able to tell
 	// if the attacker is stronger than us, or has less health.
 	a.Needs.Enemy = attacker.(*Being)
-	a.Needs.Needs[NeedRevenge] = true
+	a.Needs.Needs[NeedConflict] = true
 	a.Being.TakeDamage(damage, attacker)
 }
