@@ -26,7 +26,7 @@ func (d *DungeonMultiLevel) CreateNLevels(cfg Config, n int, seed int64) {
 	for i := range d.Levels {
 		level := createEmptyDungeon(cfg.Width, cfg.Height, seed+int64(i))
 		// TODO: Ensure that we have rooms overlapping between levels.
-		level.createRooms(cfg.MinRoomSize, cfg.MaxRoomSize, cfg.RoomAttempts)
+		level.createRooms(cfg.MinRoomSize, cfg.MaxRoomSize, cfg.RoomAttempts, cfg.AllowOval)
 		level.createMaze()
 		level.identifyEdges()
 		level.connectRegions()

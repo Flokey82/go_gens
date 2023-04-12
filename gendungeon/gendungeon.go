@@ -6,6 +6,7 @@ package gendungeon
 
 import (
 	"fmt"
+	"math"
 	"math/rand"
 
 	"github.com/Flokey82/go_gens/utils"
@@ -25,6 +26,7 @@ type Config struct {
 	RoomAttempts int
 	MinRoomSize  int
 	MaxRoomSize  int
+	AllowOval    bool
 }
 
 // Material represents the material of a tile.
@@ -62,12 +64,22 @@ type Tile struct {
 	Material Material // The material of the tile.
 }
 
+// RoomStyle represents the style of a room.
+type RoomStyle int
+
+// The various valid room styles.
+const (
+	RoomStyleRect RoomStyle = iota
+	RoomStyleOval
+)
+
 // Room represents a room in the dungeon.
 type Room struct {
-	Width    int     // width of the room
-	Height   int     // height of the room
-	Location Point   // top left corner of the room
-	Edges    []Point // the edges of the room
+	Width    int       // width of the room
+	Height   int       // height of the room
+	Location Point     // top left corner of the room
+	Edges    []Point   // the edges of the room
+	Style    RoomStyle // style / shape of the room
 }
 
 // Overlap finds the rectangle representing the overlap between two rooms.
@@ -84,6 +96,11 @@ func (r *Room) Overlap(r2 Room) (Rect, bool) {
 	}
 
 	return Rect{}, false
+}
+
+// Center returns the center of the room.
+func (r *Room) Center() Point {
+	return Point{r.Location.X + r.Width/2, r.Location.Y + r.Height/2}
 }
 
 // Dungeon represents a generated dungeon.
@@ -113,7 +130,7 @@ func Generate(width, height, roomAttempts, minRoomSize, maxRoomSize int, seed in
 // GenerateFromConfig generates a new dungeon with the given configuration.
 func GenerateFromConfig(cfg Config, seed int64) *Dungeon {
 	dng := createEmptyDungeon(cfg.Width, cfg.Height, seed)
-	dng.createRooms(cfg.MinRoomSize, cfg.MaxRoomSize, cfg.RoomAttempts)
+	dng.createRooms(cfg.MinRoomSize, cfg.MaxRoomSize, cfg.RoomAttempts, cfg.AllowOval)
 	dng.createMaze()
 	dng.identifyEdges()
 	dng.connectRegions()
@@ -135,7 +152,7 @@ func createEmptyDungeon(width, height int, seed int64) *Dungeon {
 	return dng
 }
 
-func (dng *Dungeon) createRooms(minSize, maxSize, attempts int) {
+func (dng *Dungeon) createRooms(minSize, maxSize, attempts int, allowOval bool) {
 	fmt.Println("Creating rooms...")
 	var rooms []Room
 	for i := 0; i < attempts; i++ {
@@ -161,24 +178,52 @@ func (dng *Dungeon) createRooms(minSize, maxSize, attempts int) {
 		}
 
 		if shouldAppend {
-			rooms = append(rooms, Room{
+			r := Room{
 				Width:    width,
 				Height:   height,
 				Location: Point{X: x, Y: y},
-			})
+				Style:    RoomStyleRect,
+			}
+
+			// 20% chance of making the room oval (if allowed).
+			if allowOval && dng.rand.Intn(100) < 20 {
+				r.Style = RoomStyleOval
+			}
+			rooms = append(rooms, r)
 		}
 	}
 
+	// Draw the rooms.
+	ovalMargin := 0.5 // margin for oval rooms to make the ends less pointy.
 	for _, r := range rooms {
 		dng.numRegions++
-		for i := r.Location.X; i < r.Location.X+r.Width; i++ {
-			for j := r.Location.Y; j < r.Location.Y+r.Height; j++ {
-				dng.Tiles[j][i].Material = MatFloor
-				dng.Tiles[j][i].Region = dng.numRegions
+
+		switch r.Style {
+		case RoomStyleRect:
+			// Draw the room as a rectangle.
+			for i := r.Location.X; i < r.Location.X+r.Width; i++ {
+				for j := r.Location.Y; j < r.Location.Y+r.Height; j++ {
+					dng.Tiles[j][i].Material = MatFloor
+					dng.Tiles[j][i].Region = dng.numRegions
+				}
+			}
+		case RoomStyleOval:
+			// Get center of room.
+			center := r.Center()
+
+			// Draw the room as an oval / ellipse.
+			for i := r.Location.X; i < r.Location.X+r.Width; i++ {
+				for j := r.Location.Y; j < r.Location.Y+r.Height; j++ {
+					// Check if the tile is within the oval / ellipse.
+					if (math.Pow(float64(i-center.X), 2)/math.Pow(float64(r.Width/2)+ovalMargin, 2) +
+						math.Pow(float64(j-center.Y), 2)/math.Pow(float64(r.Height/2)+ovalMargin, 2)) <= 1 {
+						dng.Tiles[j][i].Material = MatFloor
+						dng.Tiles[j][i].Region = dng.numRegions
+					}
+				}
 			}
 		}
 	}
-
 	dng.Rooms = rooms
 }
 
@@ -306,71 +351,165 @@ func (dng *Dungeon) identifyEdges() {
 
 	// Iterate through all rooms and identify edges.
 	for i := range dng.Rooms {
-		x := dng.Rooms[i].Location.X
-		y := dng.Rooms[i].Location.Y
+		switch dng.Rooms[i].Style {
+		case RoomStyleRect:
+			x := dng.Rooms[i].Location.X
+			y := dng.Rooms[i].Location.Y
 
-		// Iterate along the width (top and bottom) of the room.
-		for j := x; j < x+dng.Rooms[i].Width; j++ {
-			// Check if we border on a tunnel or a floor.
-			if dng.Tiles[y-2][j].Material == MatTunnel ||
-				dng.Tiles[y-2][j].Material == MatFloor {
-				dng.Rooms[i].Edges = append(dng.Rooms[i].Edges, Point{X: j, Y: y - 1})
+			// Iterate along the width (top and bottom) of the room to identify edges.
+			//
+			//    ? ? ?
+			//  0 ^ ^ ^ 0
+			//  0 = = = 0
+			//  0 = = = 0 ^, v = Possible edges, if ? is a tunnel or floor
+			//  0 = = = 0
+			//  0 v v v 0
+			//    ? ? ?
+			//
+			for j := x; j < x+dng.Rooms[i].Width; j++ {
+				// Check if we border on a tunnel or a floor.
+				if dng.Tiles[y-2][j].Material == MatTunnel ||
+					dng.Tiles[y-2][j].Material == MatFloor {
+					//   ?
+					// 0 ^ 0 ^ = Edge (y-2), j = Tile (j, y), ? = y-2
+					// 0 j 0
+					dng.Rooms[i].Edges = append(dng.Rooms[i].Edges, Point{X: j, Y: y - 1})
+				}
+				if dng.Tiles[y+dng.Rooms[i].Height+1][j].Material == MatTunnel ||
+					dng.Tiles[y+dng.Rooms[i].Height+1][j].Material == MatFloor {
+					// 0 j 0
+					// 0 v 0 v = Edge (y+height), j = Tile (j, y), ? = y+height+1
+					//   ?
+					dng.Rooms[i].Edges = append(dng.Rooms[i].Edges, Point{X: j, Y: y + dng.Rooms[i].Height})
+				}
 			}
-			if dng.Tiles[y+dng.Rooms[i].Height+1][j].Material == MatTunnel ||
-				dng.Tiles[y+dng.Rooms[i].Height+1][j].Material == MatFloor {
-				dng.Rooms[i].Edges = append(dng.Rooms[i].Edges, Point{X: j, Y: y + dng.Rooms[i].Height})
-			}
-		}
 
-		// Iterate along the height (left and right) of the room.
-		for k := y; k < y+dng.Rooms[i].Height; k++ {
-			// Check if we border on a tunnel or a floor.
-			if dng.Tiles[k][x-2].Material == MatTunnel ||
-				dng.Tiles[k][x-2].Material == MatFloor {
-				dng.Rooms[i].Edges = append(dng.Rooms[i].Edges, Point{X: x - 1, Y: k})
+			// Iterate along the height (left and right) of the room to identify edges.
+			//
+			//   0 0 0 0 0
+			// ? < = = = > ?
+			// ? < = = = > ? <, > = Possible edges, if ? is a tunnel or floor
+			// ? < = = = > ?
+			//   0 0 0 0 0
+			//
+			for k := y; k < y+dng.Rooms[i].Height; k++ {
+				// Check if we border on a tunnel or a floor.
+				if dng.Tiles[k][x-2].Material == MatTunnel ||
+					dng.Tiles[k][x-2].Material == MatFloor {
+					//   0 0
+					// ? < k   < = Edge (x-1), k = Tile (x, k), ? = x-2
+					//   0 0
+					dng.Rooms[i].Edges = append(dng.Rooms[i].Edges, Point{X: x - 1, Y: k})
+				}
+				if dng.Tiles[k][x+dng.Rooms[i].Width+1].Material == MatTunnel ||
+					dng.Tiles[k][x+dng.Rooms[i].Width+1].Material == MatFloor {
+					//   0 0
+					//   k > ? > = Edge (x+width), k = Tile (x, k), ? = x+width+1
+					//   0 0
+					dng.Rooms[i].Edges = append(dng.Rooms[i].Edges, Point{X: x + dng.Rooms[i].Width, Y: k})
+				}
 			}
-			if dng.Tiles[k][x+dng.Rooms[i].Width+1].Material == MatTunnel ||
-				dng.Tiles[k][x+dng.Rooms[i].Width+1].Material == MatFloor {
-				dng.Rooms[i].Edges = append(dng.Rooms[i].Edges, Point{X: x + dng.Rooms[i].Width, Y: k})
+		case RoomStyleOval:
+			x := dng.Rooms[i].Location.X
+			y := dng.Rooms[i].Location.Y
+
+			// Iterate along the width (top and bottom) of the room.
+			for j := x; j < x+dng.Rooms[i].Width; j++ {
+				// Iterate along the height (left and right) of the room.
+				for k := y; k < y+dng.Rooms[i].Height; k++ {
+					// Skip tiles that are not floors.
+					if dng.Tiles[k][j].Material != MatFloor {
+						continue
+					}
+
+					var wallCount int
+					// Count how many walls we border on.
+					for nbX := j - 1; nbX <= j+1; nbX++ {
+						for nbY := k - 1; nbY <= k+1; nbY++ {
+							// Skip the current tile.
+							if nbX == j && nbY == k {
+								continue
+							}
+							if dng.Tiles[nbY][nbX].Material == MatWall {
+								wallCount++
+							}
+						}
+					}
+
+					// If we have at least 3 walls as direct neighbors, we are an edge.
+					if wallCount <= 2 {
+						continue
+					}
+					if ok, edge := dng.hasTunnelOrFloorNearby(j, k); ok {
+						dng.Rooms[i].Edges = append(dng.Rooms[i].Edges, edge)
+					}
+				}
 			}
 		}
 	}
 }
 
+// hasTunnelOrFloorNearby returns true if the tile at x, y has a tunnel or floor
+// tile within 2 tiles of it, and returns the tile that separates the two regions.
+func (dng *Dungeon) hasTunnelOrFloorNearby(x, y int) (bool, Point) {
+	region := dng.Tiles[y][x].Region
+	coords := [4]Point{
+		{X: x, Y: y - 2},
+		{X: x - 2, Y: y},
+		{X: x + 2, Y: y},
+		{X: x, Y: y + 2},
+	}
+
+	for _, coord := range coords {
+		nb := dng.Tiles[coord.Y][coord.X]
+		if (nb.Material == MatTunnel || nb.Material == MatFloor) && nb.Region != region {
+			return true, Point{X: (coord.X + x) / 2, Y: (coord.Y + y) / 2}
+		}
+	}
+
+	return false, Point{}
+}
+
 func (dng *Dungeon) connectRegions() {
-	fmt.Println("Conneting regions...")
+	fmt.Println("Connecting regions...")
+
+	// NOTE: This code is a bit... weird. I'll have to think this through a bit more since
+	// it seems kinda unnecessary to have a two-pass approach.
 
 	// Iterate through all rooms and connect them to the corridors or other rooms.
-	for i, room := range dng.Rooms {
-		// Pick a random edge to connect to.
-		edge := room.Edges[dng.rand.Intn(len(dng.Rooms[i].Edges))]
-		roomRegion := dng.Tiles[dng.Rooms[i].Location.Y][dng.Rooms[i].Location.X].Region
+	connectedTo := make(map[int]int)
+	for _, room := range dng.Rooms {
+		roomCenter := room.Center()
+	Loop:
+		for _, i := range dng.rand.Perm(len(room.Edges)) {
+			// Pick a random edge to connect to.
+			edge := room.Edges[i]
+			roomRegion := dng.Tiles[roomCenter.Y][roomCenter.X].Region
 
-		// The neighboring tiles.
-		nbs := [8]Tile{
-			dng.Tiles[edge.Y-1][edge.X-1],
-			dng.Tiles[edge.Y-1][edge.X],
-			dng.Tiles[edge.Y-1][edge.X+1],
-			dng.Tiles[edge.Y][edge.X-1],
-			dng.Tiles[edge.Y][edge.X+1],
-			dng.Tiles[edge.Y+1][edge.X-1],
-			dng.Tiles[edge.Y+1][edge.X],
-			dng.Tiles[edge.Y+1][edge.X+1],
-		}
+			// The neighboring tiles.
+			nbs := [8]Tile{
+				dng.Tiles[edge.Y-1][edge.X],
+				dng.Tiles[edge.Y][edge.X-1],
+				dng.Tiles[edge.Y][edge.X+1],
+				dng.Tiles[edge.Y+1][edge.X],
+				dng.Tiles[edge.Y-1][edge.X-1],
+				dng.Tiles[edge.Y-1][edge.X+1],
+				dng.Tiles[edge.Y+1][edge.X-1],
+				dng.Tiles[edge.Y+1][edge.X+1],
+			}
 
-		// Check if edge is unconnected.
-		for _, j := range dng.rand.Perm(len(nbs)) {
-			// A suitable tile is one that is a tunnel or floor and is not part of the room.
-			if (nbs[j].Material == MatFloor || nbs[j].Material == MatTunnel) &&
-				nbs[j].Region != roomRegion {
-				// We found a suitable unexpected edge, so set it to a door.
-				dng.Tiles[edge.Y][edge.X].Material = MatDoor
-				for x := room.Location.X; x < room.Location.X+room.Width; x++ {
-					for y := room.Location.Y; y < room.Location.Y+room.Height; y++ {
-						dng.Tiles[y][x].Region = nbs[j].Region
-					}
+			// Check if edge is unconnected.
+			for _, j := range dng.rand.Perm(len(nbs)) {
+				// A suitable tile is one that is a tunnel or floor and is not part of the room.
+				if (nbs[j].Material == MatFloor || nbs[j].Material == MatTunnel) &&
+					nbs[j].Region != roomRegion {
+					// We found a suitable unexpected edge, so set it to a door.
+					dng.Tiles[edge.Y][edge.X].Material = MatDoor
+
+					// Make sure we remember which region this room is connected to.
+					connectedTo[roomRegion] = nbs[j].Region
+					break Loop // We found a suitable edge, so stop looking.
 				}
-				break // We found a suitable edge, so stop looking.
 			}
 		}
 	}
@@ -380,8 +519,12 @@ func (dng *Dungeon) connectRegions() {
 	connectedRegions := make(map[int]bool)
 RoomsLoop:
 	for _, i := range dng.rand.Perm(len(dng.Rooms)) {
+		room := dng.Rooms[i]
+		roomCenter := room.Center()
+		roomRegion := dng.Tiles[roomCenter.Y][roomCenter.X].Region
+
+		// Find a suitable edge to connect to and make sure we only connect to a new region.
 		for _, j := range dng.rand.Perm(len(dng.Rooms[i].Edges)) {
-			room := dng.Rooms[i]
 			edge := room.Edges[j]
 			x := edge.X
 			y := edge.Y
@@ -400,11 +543,20 @@ RoomsLoop:
 			curRegion := -1
 			for _, sp := range nbs {
 				tile := dng.Tiles[sp.Y][sp.X]
-				if curRegion == -1 && tile.Region != 0 {
+
+				// Make sure we don't connect to the same region or a region that is not set.
+				if connectedTo[roomRegion] == tile.Region || tile.Region == 0 {
+					continue
+				}
+
+				// If we haven't found a region yet, set it.
+				if curRegion == -1 {
 					curRegion = tile.Region
-				} else if tile.Region != curRegion &&
-					tile.Region != 0 &&
-					!connectedRegions[tile.Region] {
+					continue
+				}
+
+				// Now check if we have found a new, different region.
+				if !connectedRegions[tile.Region] {
 					dng.Tiles[y][x].Material = MatDoor
 					connectedRegions[tile.Region] = true
 					connectedRegions[curRegion] = true
@@ -469,22 +621,28 @@ func (dng *Dungeon) createStairs(dngUp *Dungeon) {
 	// Find rooms that overlap with the previous dungeon,
 	// then add stairs in each matching pair.
 	var stairsUpDown Point
+	var foundPoint bool
+Loop:
 	for _, room := range dng.Rooms {
 		for _, roomUp := range dngUp.Rooms {
 			overlap, ok := room.Overlap(roomUp)
 			if ok {
 				// We found a matching pair, so add stairs.
 				stairsUpDown = overlap.Center()
-				break
+				// Make sure that the center is a floor tile for both levels.
+				if dng.Tiles[stairsUpDown.Y][stairsUpDown.X].Material == MatFloor &&
+					dngUp.Tiles[stairsUpDown.Y][stairsUpDown.X].Material == MatFloor {
+					foundPoint = true
+					break Loop // We found a suitable pair, so stop looking.
+				}
 			}
 		}
 	}
 
 	// If we didn't find any matching rooms, then complain.
-	if stairsUpDown.X == 0 && stairsUpDown.Y == 0 {
+	if !foundPoint {
 		fmt.Println("ERROR: No matching rooms found for stairs!")
 		return
-
 	}
 
 	// Add the stairs to the dungeon.

@@ -50,6 +50,7 @@ func main() {
 		RoomAttempts: gendungeon.RoomAttempts,
 		MinRoomSize:  5,
 		MaxRoomSize:  10,
+		AllowOval:    true,
 	}
 	dng = gendungeon.GenerateFromConfig(cfg, 1234)
 	dng3d.AddLevel(dng)
