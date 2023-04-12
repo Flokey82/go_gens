@@ -8,7 +8,7 @@ Please check out the original code as it has great features like a local web int
 
 - [X] Add 2D dungeon generation
     - [ ] Add new room shapes
-- [ ] Add 3D dungeon generation
+- [ ] Add multi-level dungeon generation
     - [X] Levels with identical dimensions
     - [ ] Levels with different dimensions
     - [ ] Add stairs

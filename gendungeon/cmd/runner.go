@@ -16,8 +16,8 @@ func main() {
 	dng := gendungeon.GenerateFromConfig(cfg, 1234)
 	dng.RenderToConsole()
 
-	// Generate 3D dungeon.
-	dng3d := gendungeon.Generate3DFromConfig(&gendungeon.Config3D{
+	// Generate multi level dungeon.
+	dng3d := gendungeon.GenerateMultiLevelFromConfig(&gendungeon.ConfigMultiLevel{
 		Depth:  3,
 		Config: cfg,
 	}, 1234)
