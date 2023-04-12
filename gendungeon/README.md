@@ -18,6 +18,6 @@ Please check out the original code as it has great features like a local web int
     - [ ] Add constraint solver to prevent non-overlapping levels
 
 
-![alt text](https://raw.githubusercontent.com/Flokey82/go_gens/master/gendungeon/images/lvl0 "Multilevel Dungeon!")
+![alt text](https://raw.githubusercontent.com/Flokey82/go_gens/master/gendungeon/images/lvl0.png "Multilevel Dungeon!")
 
-![alt text](https://raw.githubusercontent.com/Flokey82/go_gens/master/gendungeon/images/lvl1 "Multilevel Dungeon!")
+![alt text](https://raw.githubusercontent.com/Flokey82/go_gens/master/gendungeon/images/lvl1.png "Multilevel Dungeon!")
