@@ -15,9 +15,9 @@ type DungeonMultiLevel struct {
 	Seed int64
 }
 
-// GenerateMultiLevelFromConfig generates a 3D dungeon.
+// GenerateMultiLevelFromConfig generates a mult level dungeon.
 func GenerateMultiLevelFromConfig(cfg *ConfigMultiLevel, seed int64) *DungeonMultiLevel {
-	d := NewDungeon3D(cfg, seed)
+	d := NewDungeonMultiLevel(cfg, seed)
 	d.createLevels()
 	d.createRooms(cfg.MinRoomSize, cfg.MaxRoomSize, cfg.RoomAttempts)
 	d.createMaze()
@@ -28,8 +28,8 @@ func GenerateMultiLevelFromConfig(cfg *ConfigMultiLevel, seed int64) *DungeonMul
 	return d
 }
 
-// NewDungeon3D creates a new 3D dungeon.
-func NewDungeon3D(cfg *ConfigMultiLevel, seed int64) *DungeonMultiLevel {
+// NewDungeonMultiLevel creates a new multi level dungeon.
+func NewDungeonMultiLevel(cfg *ConfigMultiLevel, seed int64) *DungeonMultiLevel {
 	d := &DungeonMultiLevel{
 		ConfigMultiLevel: cfg,
 		Seed:             seed,
