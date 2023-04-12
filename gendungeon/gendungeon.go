@@ -7,23 +7,53 @@ package gendungeon
 import (
 	"fmt"
 	"math/rand"
+
+	"github.com/Flokey82/go_gens/utils"
 )
+
+// Suggested default values for the dungeon generation.
+var (
+	RoomAttempts = 200
+	MinRoomSize  = 5
+	MaxRoomSize  = 15
+)
+
+// Config is a configuration for dungeon generation.
+type Config struct {
+	Width        int
+	Height       int
+	RoomAttempts int
+	MinRoomSize  int
+	MaxRoomSize  int
+}
 
 // Material represents the material of a tile.
 type Material int
 
 // The various valid materials.
 const (
-	MatWall   Material = iota // stone wall
-	MatFloor                  // room floor
-	MatDoor                   // door
-	MatTunnel                 // tunnel / maze
+	MatWall       Material = iota // stone wall
+	MatFloor                      // room floor
+	MatDoor                       // door
+	MatTunnel                     // tunnel / maze
+	MatStairsUp                   // stairs up
+	MatStairsDown                 // stairs down
 )
 
 // Point is a point at a specific x,y coordinate.
 type Point struct {
 	X int
 	Y int
+}
+
+// Rect is a rectangle with a specific width and height.
+type Rect struct {
+	X, Y, Width, Height int
+}
+
+// Center returns the center of the rectangle.
+func (r *Rect) Center() Point {
+	return Point{r.X + r.Width/2, r.Y + r.Height/2}
 }
 
 // Tile represents a tile on the dungeon grid.
@@ -40,6 +70,22 @@ type Room struct {
 	Edges    []Point // the edges of the room
 }
 
+// Overlap finds the rectangle representing the overlap between two rooms.
+func (r *Room) Overlap(r2 Room) (Rect, bool) {
+	// Find the edges of the overlap.
+	left := utils.Max(r.Location.X, r2.Location.X)
+	right := utils.Min(r.Location.X+r.Width, r2.Location.X+r2.Width)
+	top := utils.Max(r.Location.Y, r2.Location.Y)
+	bottom := utils.Min(r.Location.Y+r.Height, r2.Location.Y+r2.Height)
+
+	// If the edges define a rectangle, then the rooms overlap.
+	if left < right && top < bottom {
+		return Rect{left, top, right - left, bottom - top}, true
+	}
+
+	return Rect{}, false
+}
+
 // Dungeon represents a generated dungeon.
 type Dungeon struct {
 	Tiles      [][]Tile   // dungeon grid
@@ -48,6 +94,31 @@ type Dungeon struct {
 	Height     int        // height of the dungeon
 	numRegions int        // number of regions in the dungeon
 	rand       *rand.Rand // rand initialized with the seed
+}
+
+// Generate generates a new dungeon with the given width and height.
+// Further parameters include the number of attempts to use to place rooms,
+// the minimum and maximum room size, and the seed to use.
+func Generate(width, height, roomAttempts, minRoomSize, maxRoomSize int, seed int64) *Dungeon {
+	cfg := Config{
+		Width:        width,
+		Height:       height,
+		RoomAttempts: roomAttempts,
+		MinRoomSize:  minRoomSize,
+		MaxRoomSize:  maxRoomSize,
+	}
+	return GenerateFromConfig(cfg, seed)
+}
+
+// GenerateFromConfig generates a new dungeon with the given configuration.
+func GenerateFromConfig(cfg Config, seed int64) *Dungeon {
+	dng := createEmptyDungeon(cfg.Width, cfg.Height, seed)
+	dng.createRooms(cfg.MinRoomSize, cfg.MaxRoomSize, cfg.RoomAttempts)
+	dng.createMaze()
+	dng.identifyEdges()
+	dng.connectRegions()
+	dng.trimTunnels()
+	return dng
 }
 
 func createEmptyDungeon(width, height int, seed int64) *Dungeon {
@@ -392,6 +463,35 @@ func (dng *Dungeon) continueTrimTunnels(x int, y int) {
 	}
 }
 
+func (dng *Dungeon) createStairs(dngUp *Dungeon) {
+	fmt.Println("Creating stairs...")
+
+	// Find rooms that overlap with the previous dungeon,
+	// then add stairs in each matching pair.
+	var stairsUpDown Point
+	for _, room := range dng.Rooms {
+		for _, roomUp := range dngUp.Rooms {
+			overlap, ok := room.Overlap(roomUp)
+			if ok {
+				// We found a matching pair, so add stairs.
+				stairsUpDown = overlap.Center()
+				break
+			}
+		}
+	}
+
+	// If we didn't find any matching rooms, then complain.
+	if stairsUpDown.X == 0 && stairsUpDown.Y == 0 {
+		fmt.Println("ERROR: No matching rooms found for stairs!")
+		return
+
+	}
+
+	// Add the stairs to the dungeon.
+	dng.Tiles[stairsUpDown.Y][stairsUpDown.X].Material = MatStairsUp
+	dngUp.Tiles[stairsUpDown.Y][stairsUpDown.X].Material = MatStairsDown
+}
+
 // RenderToConsole prints the dungeon layout to the console.
 func (dng *Dungeon) RenderToConsole() {
 	fmt.Println("Dungeon: (", dng.Width, ",", dng.Height, ") Regions: ", dng.numRegions)
@@ -407,30 +507,14 @@ func (dng *Dungeon) RenderToConsole() {
 				fmt.Print("| ")
 			case MatTunnel:
 				fmt.Print("- ")
+			case MatStairsUp:
+				fmt.Print("U ")
+			case MatStairsDown:
+				fmt.Print("D ")
 			default:
 				fmt.Print("ER")
 			}
 		}
 		fmt.Println()
 	}
-}
-
-// Suggested default values for the dungeon generation.
-var (
-	RoomAttempts = 200
-	MinRoomSize  = 5
-	MaxRoomSize  = 15
-)
-
-// Generate generates a new dungeon with the given width and height.
-// Further parameters include the number of attempts to use to place rooms,
-// the minimum and maximum room size, and the seed to use.
-func Generate(width, height, roomAttempts, minRoomSize, maxRoomSize int, seed int64) *Dungeon {
-	dng := createEmptyDungeon(width, height, seed)
-	dng.createRooms(minRoomSize, maxRoomSize, roomAttempts)
-	dng.createMaze()
-	dng.identifyEdges()
-	dng.connectRegions()
-	dng.trimTunnels()
-	return dng
 }
