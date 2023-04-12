@@ -12,6 +12,18 @@ DO NOT USE YET!
 
 This is a very basic simulation with agents using state machines and behavior trees.
 
+### gameraycast: Raycast implementation
+
+This is a very basic raycast implementation using a randomly generated dungeon for testing. This isn't very feature rich yet, but it's a start.
+
+### gamerogueish: Rogue-like game skeleton
+
+This is a very basic rogue-like game skeleton... Barely functional.
+
+### genarchitecture: Architecture generator
+
+This is a package for architectural style generation. It is still in the experimental phase and will probably change a lot in the future.
+
 ### genbiome: Biome helper functions
 
 This package provides functions for looking up the biome (e.g. forest, grassland, etc.) for the given precipitation and average temperature.
@@ -19,6 +31,10 @@ This package provides functions for looking up the biome (e.g. forest, grassland
 ### gencellular: Simple cellular automata in Golang
 
 This package currently only implements Conway's Game of Life.
+
+### gencitymap: City map generator
+
+This package is based on various implementations of city map generation. Currently supports simple random networks and tensor field based road network generation.
 
 ### gendemographics: Medieval demographics generator
 
@@ -29,9 +45,15 @@ The code is currently very messy and needs to be cleaned up.
 
 This package is a modified fork of https://github.com/brad811/go-dungeon/, which is an implementation of http://journal.stuffwithstuff.com/2014/12/21/rooms-and-mazes/.
 
+This does now support multi-level dungeon generation with stairs.
+
 ### genfloortxt: Simple 2D text floorplan renderer
 
 This package provides a little demo on how to 'render' walls as unicode characters, imitating the cp437 symbol set.
+
+### genfurnishing: Simple generator for furnishing of rooms
+
+This package will provide logic for generating clutter and furnishing for rooms of different types.
 
 ### genheightmap: Heightmap generator helper functions
 
@@ -115,6 +137,10 @@ This package is a crude port of https://github.com/alexcu/motive-simulator which
 ### simnpcs: NPCs with daily routines
 
 This is an early experiment in simulating NPCs with daily routines. Sadly it is quite messy and doesn't follow best practices. It also has plenty of leftover code that I don't want to delete. I might clean it up in the future.
+
+### simnpcs2: NPCs with daily routines (WIP)
+
+This is a rewrite of simnpcs and gamecs... still in early stages of development.
 
 ### simvillage: Village simulation
 
