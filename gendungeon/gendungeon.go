@@ -26,7 +26,7 @@ type Config struct {
 	RoomAttempts int
 	MinRoomSize  int
 	MaxRoomSize  int
-	AllowOval    bool
+	AllowNonRect bool // Allow non-rectangular rooms.
 }
 
 // Material represents the material of a tile.
@@ -69,8 +69,10 @@ type RoomStyle int
 
 // The various valid room styles.
 const (
-	RoomStyleRect RoomStyle = iota
-	RoomStyleOval
+	RoomStyleRect         RoomStyle = iota // [ ]
+	RoomStyleOval                          // ()
+	RoomStyleApseOneSided                  // [ )
+	// RoomStyleApseTwoSided               // ( )
 )
 
 // Room represents a room in the dungeon.
@@ -130,7 +132,7 @@ func Generate(width, height, roomAttempts, minRoomSize, maxRoomSize int, seed in
 // GenerateFromConfig generates a new dungeon with the given configuration.
 func GenerateFromConfig(cfg Config, seed int64) *Dungeon {
 	dng := createEmptyDungeon(cfg.Width, cfg.Height, seed)
-	dng.createRooms(cfg.MinRoomSize, cfg.MaxRoomSize, cfg.RoomAttempts, cfg.AllowOval)
+	dng.createRooms(cfg.MinRoomSize, cfg.MaxRoomSize, cfg.RoomAttempts, cfg.AllowNonRect)
 	dng.createMaze()
 	dng.identifyEdges()
 	dng.connectRegions()
@@ -152,7 +154,7 @@ func createEmptyDungeon(width, height int, seed int64) *Dungeon {
 	return dng
 }
 
-func (dng *Dungeon) createRooms(minSize, maxSize, attempts int, allowOval bool) {
+func (dng *Dungeon) createRooms(minSize, maxSize, attempts int, allowNonRect bool) {
 	fmt.Println("Creating rooms...")
 	var rooms []Room
 	for i := 0; i < attempts; i++ {
@@ -185,9 +187,14 @@ func (dng *Dungeon) createRooms(minSize, maxSize, attempts int, allowOval bool) 
 				Style:    RoomStyleRect,
 			}
 
-			// 20% chance of making the room oval (if allowed).
-			if allowOval && dng.rand.Intn(100) < 20 {
-				r.Style = RoomStyleOval
+			// 20% chance of making the room non-rectangular (if allowed).
+			if allowNonRect && dng.rand.Intn(100) < 20 {
+				// Coin flip to determine the shape.
+				if dng.rand.Intn(2) < 1 {
+					r.Style = RoomStyleOval
+				} else {
+					r.Style = RoomStyleApseOneSided
+				}
 			}
 			rooms = append(rooms, r)
 		}
@@ -217,6 +224,80 @@ func (dng *Dungeon) createRooms(minSize, maxSize, attempts int, allowOval bool) 
 					// Check if the tile is within the oval / ellipse.
 					if (math.Pow(float64(i-center.X), 2)/math.Pow(float64(r.Width/2)+ovalMargin, 2) +
 						math.Pow(float64(j-center.Y), 2)/math.Pow(float64(r.Height/2)+ovalMargin, 2)) <= 1 {
+						dng.Tiles[j][i].Material = MatFloor
+						dng.Tiles[j][i].Region = dng.numRegions
+					}
+				}
+			}
+		case RoomStyleApseOneSided:
+			// Draw the room as a rectangle with one rounded side.
+			// Churches have this shape.
+
+			// Pick the orientation of the rounded side.
+			// 0 = top, 1 = right, 2 = bottom, 3 = left.
+			var orientation int
+			var diameter int
+			if r.Width < r.Height {
+				// Horizontal orientation.
+				orientation = dng.rand.Intn(2) * 2
+				diameter = r.Height
+			} else {
+				// Vertical orientation.
+				orientation = dng.rand.Intn(2)*2 + 1
+				diameter = r.Width
+			}
+
+			// The remainder of the room is a rectangle.
+			var min, max Point
+			switch orientation {
+			case 0:
+				// Top.
+				min = Point{X: r.Location.X, Y: r.Location.Y + diameter/2}
+				max = Point{X: r.Location.X + r.Width, Y: r.Location.Y + r.Height}
+			case 1:
+				// Right.
+				min = Point{X: r.Location.X, Y: r.Location.Y}
+				max = Point{X: r.Location.X + r.Width - diameter/2, Y: r.Location.Y + r.Height}
+			case 2:
+				// Bottom.
+				min = Point{X: r.Location.X, Y: r.Location.Y}
+				max = Point{X: r.Location.X + r.Width, Y: r.Location.Y + r.Height - diameter/2}
+			case 3:
+				// Left.
+				min = Point{X: r.Location.X + diameter/2, Y: r.Location.Y}
+				max = Point{X: r.Location.X + r.Width, Y: r.Location.Y + r.Height}
+			}
+
+			// Draw the rectangle part of the room first.
+			for i := min.X; i < max.X; i++ {
+				for j := min.Y; j < max.Y; j++ {
+					dng.Tiles[j][i].Material = MatFloor
+					dng.Tiles[j][i].Region = dng.numRegions
+				}
+			}
+
+			// Draw the rounded part of the room.
+			center := r.Center()
+			if orientation == 0 || orientation == 2 {
+				// Horizontal orientation.
+				if orientation == 0 {
+					center.Y = r.Location.Y + diameter/2
+				} else {
+					center.Y = r.Location.Y + r.Height - diameter/2
+				}
+			} else {
+				// Vertical orientation.
+				if orientation == 1 {
+					center.X = r.Location.X + r.Width - diameter/2
+				} else {
+					center.X = r.Location.X + diameter/2
+				}
+			}
+			for i := r.Location.X; i < r.Location.X+r.Width; i++ {
+				for j := r.Location.Y; j < r.Location.Y+r.Height; j++ {
+					// Check if the tile is within the oval / ellipse.
+					if (math.Pow(float64(i-center.X), 2)/math.Pow(float64(r.Width)/2+ovalMargin, 2) +
+						math.Pow(float64(j-center.Y), 2)/math.Pow(float64(r.Height)/2+ovalMargin, 2)) <= 1 {
 						dng.Tiles[j][i].Material = MatFloor
 						dng.Tiles[j][i].Region = dng.numRegions
 					}
@@ -409,7 +490,7 @@ func (dng *Dungeon) identifyEdges() {
 					dng.Rooms[i].Edges = append(dng.Rooms[i].Edges, Point{X: x + dng.Rooms[i].Width, Y: k})
 				}
 			}
-		case RoomStyleOval:
+		case RoomStyleOval, RoomStyleApseOneSided:
 			x := dng.Rooms[i].Location.X
 			y := dng.Rooms[i].Location.Y
 
