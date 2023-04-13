@@ -97,7 +97,6 @@ func main() {
 	path := crossPath.GetPath()
 	mesh, err := gengeometry.ExtrudePath(path, 0.2)
 	if err != nil {
-		log.Println("here")
 		log.Fatal(err)
 	}
 	roofMesh, err := gengeometry.TaperPath(path, 0.2)
@@ -129,5 +128,17 @@ func main() {
 	// Add the wing to the house.
 	mesh.AddMesh(wingMesh, vectors.NewVec3(1, 0, 0.0))
 
+	// Save the mesh to a file.
 	mesh.ExportToObj("test.obj")
+
+	// Generate a squircle.
+	squirclePath := gengeometry.SquircleShape{
+		Radius: 0.25,
+		Steps:  12,
+		Width:  2,
+		Length: 2,
+	}
+
+	// Save the squircle to a file.
+	gengeometry.SavePathAsPNG(squirclePath.GetPath(), "testpath.png", 100)
 }

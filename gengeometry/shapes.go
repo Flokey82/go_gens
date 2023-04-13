@@ -1,9 +1,15 @@
 package gengeometry
 
 import (
+	"image"
+	"image/color"
+	"image/png"
+	"log"
 	"math"
+	"os"
 
 	"github.com/Flokey82/go_gens/vectors"
+	"github.com/llgcode/draw2d/draw2dimg"
 )
 
 // Shape is an interface for shapes.
@@ -62,6 +68,12 @@ type Shape interface {
 // /      \
 // \      /
 //   '--'
+//
+// Squircle:
+//  . -- .
+// |      |
+// |      |
+//  ' -- '
 */
 
 // HShape is a shape that looks like an H.
@@ -329,4 +341,114 @@ func (t TrapezoidShape) GetPath() []vectors.Vec2 {
 		{X: (t.Width - t.WidthTop) / 2, Y: t.Length},
 		{X: t.WidthTop + (t.Width-t.WidthTop)/2, Y: t.Length},
 	}
+}
+
+// SquircleShape is a shape that is a squircle.
+type SquircleShape struct {
+	Width, Length, Radius float64
+	Steps                 int
+}
+
+// ConnectionPoints returns the connection points of the squircle
+func (s SquircleShape) ConnectionPoints() []vectors.Vec2 {
+	// In the middle of each side.
+	return []vectors.Vec2{
+		{X: s.Width / 2, Y: 0},
+		{X: s.Width, Y: s.Length / 2},
+		{X: s.Width / 2, Y: s.Length},
+		{X: 0, Y: s.Length / 2},
+	}
+}
+
+// GetPath returns the path of the squircle
+// For a squircle, we just need to draw quarter circles at each corner, which
+// will give us a squricle.
+func (s SquircleShape) GetPath() []vectors.Vec2 {
+	fullSteps := s.Steps * 4
+	angleIncrement := 2 * math.Pi / float64(fullSteps)
+	var path []vectors.Vec2
+	var i int
+	// Start a quarter circle at the bottom right corner minus / minus the radius.
+	circleCenter := vectors.Vec2{X: s.Width - s.Radius, Y: s.Length - s.Radius}
+	for ; i < s.Steps; i++ {
+		angle := float64(fullSteps-i) * angleIncrement
+		path = append(path, vectors.Vec2{
+			X: circleCenter.X + s.Radius*math.Cos(angle),
+			Y: circleCenter.Y - s.Radius*math.Sin(angle),
+		})
+	}
+	// Start a quarter circle at the bottom left corner plus / minus the radius.
+	circleCenter = vectors.Vec2{X: s.Radius, Y: s.Length - s.Radius}
+	for ; i < 2*s.Steps; i++ {
+		angle := float64(fullSteps-i) * angleIncrement
+		path = append(path, vectors.Vec2{
+			X: circleCenter.X + s.Radius*math.Cos(angle),
+			Y: circleCenter.Y - s.Radius*math.Sin(angle),
+		})
+	}
+	// Start a quarter circle at the top left corner plus / plus the radius.
+	circleCenter = vectors.Vec2{X: s.Radius, Y: s.Radius}
+	for ; i < 3*s.Steps; i++ {
+		angle := float64(fullSteps-i) * angleIncrement
+		path = append(path, vectors.Vec2{
+			X: circleCenter.X + s.Radius*math.Cos(angle),
+			Y: circleCenter.Y - s.Radius*math.Sin(angle),
+		})
+	}
+	// Start a quarter circle at the top right corner minus / plus the radius.
+	circleCenter = vectors.Vec2{X: s.Width - s.Radius, Y: s.Radius}
+	for ; i < fullSteps; i++ {
+		angle := float64(fullSteps-i) * angleIncrement
+		path = append(path, vectors.Vec2{
+			X: circleCenter.X + s.Radius*math.Cos(angle),
+			Y: circleCenter.Y - s.Radius*math.Sin(angle),
+		})
+	}
+	return path
+}
+
+// SavePathAsPNG saves the path as a PNG image.
+func SavePathAsPNG(path []vectors.Vec2, filename string, scale float64) error {
+	// Create a new image
+	_, _, maxX, maxY := getPathExtent(path)
+	img := image.NewRGBA(image.Rect(0, 0, int(maxX*scale), int(maxY*scale)))
+	// Draw the path
+	dg := draw2dimg.NewGraphicContext(img)
+	for i := 0; i < len(path)-1; i++ {
+		dg.SetStrokeColor(color.RGBA{0, 0, 0, 255})
+		dg.MoveTo(path[i].X*100, path[i].Y*100)
+		dg.LineTo(path[i+1].X*100, path[i+1].Y*100)
+		dg.SetLineWidth(1)
+		dg.Stroke()
+	}
+	// Save the image
+	f, err := os.Create(filename)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	return png.Encode(f, img)
+}
+
+func getPathExtent(path []vectors.Vec2) (minX, minY, maxX, maxY float64) {
+	minX = math.MaxFloat64
+	minY = math.MaxFloat64
+	maxX = -math.MaxFloat64
+	maxY = -math.MaxFloat64
+	for _, p := range path {
+		if p.X < minX {
+			minX = p.X
+		}
+		if p.Y < minY {
+			minY = p.Y
+		}
+		if p.X > maxX {
+			maxX = p.X
+		}
+		if p.Y > maxY {
+			maxY = p.Y
+		}
+	}
+	log.Println(minX, minY, maxX, maxY)
+	return
 }
