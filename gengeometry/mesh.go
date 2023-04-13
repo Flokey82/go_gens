@@ -56,6 +56,14 @@ func (m *Mesh) AddMesh(mesh *Mesh, position vectors.Vec3) {
 	}
 }
 
+// Translate translates the mesh by a given vector in the 2d plane.
+func (m *Mesh) Translate(v vectors.Vec2) {
+	for i := range m.Vertices {
+		m.Vertices[i].X += v.X
+		m.Vertices[i].Y += v.Y
+	}
+}
+
 // ExtrudePath extrudes a path to a 3D shape.
 func ExtrudePath(path []vectors.Vec2, height float64) (*Mesh, error) {
 	// For every point in the path, create two vertices.
@@ -317,7 +325,7 @@ func isInsidePolygon(point vectors.Vec2, polygon []vectors.Vec2) bool {
 	// Create a ray from the point in any direction.
 	ray := vectors.Ray2{
 		Origin: point,
-		Dir:    vectors.Vec2{X: 0.1, Y: 0.1},
+		Dir:    vectors.Vec2{X: 0.01, Y: 0.01},
 	}
 
 	var intersections int

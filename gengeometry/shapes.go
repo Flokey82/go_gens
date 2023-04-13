@@ -452,3 +452,11 @@ func getPathExtent(path []vectors.Vec2) (minX, minY, maxX, maxY float64) {
 	log.Println(minX, minY, maxX, maxY)
 	return
 }
+
+func GetPathSides(path []vectors.Vec2) []vectors.Segment {
+	var sides []vectors.Segment
+	for i := 0; i < len(path); i++ {
+		sides = append(sides, vectors.Segment{Start: path[i], End: path[(i+1)%len(path)]})
+	}
+	return sides
+}
