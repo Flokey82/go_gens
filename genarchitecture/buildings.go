@@ -2,6 +2,7 @@ package genarchitecture
 
 import (
 	"log"
+	"math/rand"
 
 	"github.com/Flokey82/go_gens/gengeometry"
 	"github.com/Flokey82/go_gens/vectors"
@@ -89,4 +90,173 @@ func GenerateSampleCathedral() {
 
 	// Save the mesh to a file.
 	mesh.ExportToObj("test_2.obj")
+}
+
+const (
+	ShapeTypeRect = iota
+	ShapeTypePlus
+	ShapeTypeCircle
+)
+
+type Rule struct {
+	Name         string
+	Shape        int
+	Roof         bool
+	Width        float64
+	Length       float64
+	RulesSides   []string
+	RulesCorners []string
+}
+
+func (r *Rule) GetShape() gengeometry.Shape {
+	switch r.Shape {
+	case ShapeTypeRect:
+		return gengeometry.RectangleShape{
+			Width:  r.Width,
+			Length: r.Length,
+		}
+	case ShapeTypePlus:
+		return gengeometry.PlusShape{
+			Width:     r.Width,
+			Length:    r.Length,
+			WingWidth: 0.35,
+		}
+	case ShapeTypeCircle:
+		return gengeometry.CircleShape{
+			Radius: r.Width,
+		}
+	}
+	return nil
+}
+
+var SampleRules = []*Rule{
+	{
+		Name:         "base",
+		Shape:        ShapeTypePlus,
+		Width:        2,
+		Length:       2,
+		Roof:         true,
+		RulesSides:   []string{"wing"},
+		RulesCorners: []string{"corner"},
+	},
+	{
+		Name:         "wing",
+		Shape:        ShapeTypeRect,
+		Width:        0.35,
+		Length:       0.35,
+		Roof:         true,
+		RulesSides:   []string{"strut"},
+		RulesCorners: []string{"strut"},
+	},
+	{
+		Name:         "corner",
+		Shape:        ShapeTypeRect,
+		Width:        0.1,
+		Length:       0.1,
+		Roof:         true,
+		RulesSides:   []string{"strut"},
+		RulesCorners: []string{"strut"},
+	},
+	{
+		Name:         "strut",
+		Shape:        ShapeTypeRect,
+		Width:        0.025,
+		Length:       0.025,
+		RulesSides:   []string{},
+		RulesCorners: []string{},
+	},
+}
+
+type RuleCollection struct {
+	Rules map[string]*Rule
+	All   []*Rule
+	Root  *Rule
+}
+
+func NewRuleCollection() *RuleCollection {
+	return &RuleCollection{
+		Rules: make(map[string]*Rule),
+	}
+}
+
+func (rc *RuleCollection) AddRule(r *Rule) {
+	rc.Rules[r.Name] = r
+	rc.All = append(rc.All, r)
+}
+
+type stackEntry struct {
+	CurrentPos  vectors.Vec3
+	RuleToApply string
+}
+
+func (rc *RuleCollection) Run() *gengeometry.Mesh {
+	// Create a stack for all the entries we process.
+	stack := []stackEntry{}
+
+	// Create a mesh to store the result.
+	mesh := &gengeometry.Mesh{}
+
+	// Add the root rule to the stack.
+	stack = append(stack, stackEntry{
+		CurrentPos:  vectors.NewVec3(0, 0, 0),
+		RuleToApply: rc.Root.Name,
+	})
+
+	for i := 0; i < len(stack); i++ {
+		log.Println("Stack size:", len(stack))
+
+		// Get the entry, evaluate, and add new entries to the stack.
+		entry := stack[i]
+		rule := rc.Rules[entry.RuleToApply]
+		log.Println("Applying rule:", rule.Name)
+
+		path := rule.GetShape().GetPath()
+
+		entry.CurrentPos.X -= rule.Width / 2
+		entry.CurrentPos.Y -= rule.Length / 2
+
+		// Extrude the path.
+		extrudedMesh, err := gengeometry.ExtrudePath(path, 0.2)
+		if err != nil {
+			log.Println(err)
+		} else {
+			mesh.AddMesh(extrudedMesh, entry.CurrentPos)
+		}
+
+		if rule.Roof {
+			// Add a roof to the path.
+			roofMesh, err := gengeometry.TaperPath(path, 0.05)
+			if err != nil {
+				log.Println(err)
+			} else {
+				mesh.AddMesh(roofMesh, vectors.NewVec3(entry.CurrentPos.X, entry.CurrentPos.Y, 0.2))
+			}
+		}
+		// If there is a rule for the sides, add them to the stack.
+		if len(rule.RulesSides) > 0 {
+			sideRule := rule.RulesSides[rand.Intn(len(rule.RulesSides))]
+			for _, s := range gengeometry.GetPathSides(path) {
+				midPoint := s.Start.Add(s.End).Mul(0.5)
+				// Add the side to the stack.
+				stack = append(stack, stackEntry{
+					CurrentPos:  vectors.NewVec3(entry.CurrentPos.X+midPoint.X, entry.CurrentPos.Y+midPoint.Y, entry.CurrentPos.Z),
+					RuleToApply: sideRule,
+				})
+			}
+		}
+
+		// If there is a rule for the corners, add them to the stack.
+		if len(rule.RulesCorners) > 0 {
+			cornerRule := rule.RulesCorners[rand.Intn(len(rule.RulesCorners))]
+			for _, c := range path {
+				// Add the corner to the stack.
+				stack = append(stack, stackEntry{
+					CurrentPos:  vectors.NewVec3(entry.CurrentPos.X+c.X, entry.CurrentPos.Y+c.Y, entry.CurrentPos.Z),
+					RuleToApply: cornerRule,
+				})
+			}
+		}
+	}
+
+	return mesh
 }
