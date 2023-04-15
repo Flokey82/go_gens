@@ -116,6 +116,14 @@ func (v1 Vec2) Dot(v2 Vec2) float64 {
 	return v1.Y*v2.Y + v1.X*v2.X
 }
 
+// Perpendicular returns the perpendicular vector.
+func (v1 Vec2) Perpendicular() Vec2 {
+	return Vec2{
+		X: -v1.Y,
+		Y: v1.X,
+	}
+}
+
 // RotateAroundPoint rotates the vector around the given point.
 func (v Vec2) RotateAroundPoint(p Vec2, angle float64) Vec2 {
 	// https://stackoverflow.com/questions/2259476/rotating-a-point-about-another-point-2d

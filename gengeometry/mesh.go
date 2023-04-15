@@ -325,7 +325,7 @@ func isInsidePolygon(point vectors.Vec2, polygon []vectors.Vec2) bool {
 	// Create a ray from the point in any direction.
 	ray := vectors.Ray2{
 		Origin: point,
-		Dir:    vectors.Vec2{X: 0.01, Y: 0.01},
+		Dir:    vectors.Vec2{X: 0.0000001, Y: 0.000001},
 	}
 
 	var intersections int
