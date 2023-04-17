@@ -5,7 +5,8 @@ This will be a package for generating distinct architectural styles.
 ## TODO
 
 - [ ] Add weights for probabilities of variations
-- [ ] Add climate aspects, insulation of materials, etc.
+- [ ] Vernacular architecture
+    - [ ] Add climate aspects, insulation of materials, etc.
 - [ ] Mesh/building generation
     - [ ] Design a "recipe" concept for generating buildings
         - [X] Basic functionality
