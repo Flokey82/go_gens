@@ -18,7 +18,7 @@ func (w *World) genClimate() *Climate {
 	// the expected height values.
 	heightmap := make([]float64, len(w.heightmap))
 	for i := range heightmap {
-		heightmap[i] = w.heightmap[i]*4000 - 300
+		heightmap[i] = (w.heightmap[i]+w.sediment[i])*4000 - 300
 	}
 
 	// Initialize climate.
@@ -52,7 +52,7 @@ func (w *World) genClimate() *Climate {
 				if v {
 					rm[i] = 0.2
 				} else {
-					rm[i] = w.heightmap[i]
+					rm[i] = (w.heightmap[i] + w.sediment[i])
 				}
 			}
 			for i, v := range climate.RainMap {

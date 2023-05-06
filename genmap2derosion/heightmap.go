@@ -139,7 +139,7 @@ func (w *World) surfaceNormal(index int64) vectors.Vec3 {
 			// |_|_|_|
 			// |_|_|A|
 			// |_|B|_|
-			n.AddToThis(vectors.Cross3XYZ(0.0, scale*(w.heightmap[index+1]-hIdx), 1.0, 1.0, scale*(w.heightmap[index+dimY]-hIdx), 0.0))
+			n.AddToThis(vectors.Cross3XYZ(0.0, scale*(w.heightmap[index+1]+w.sediment[index+1]-hIdx), 1.0, 1.0, scale*(w.heightmap[index+dimY]+w.sediment[index+dimY]-hIdx), 0.0))
 			a = true
 		}
 		if x > 0 {
@@ -147,7 +147,7 @@ func (w *World) surfaceNormal(index int64) vectors.Vec3 {
 			// |_|A|_|
 			// |_|_|B|
 			// |_|_|_|
-			n.AddToThis(vectors.Cross3XYZ(-1.0, scale*(w.heightmap[index-dimY]-hIdx), 0.0, 0.0, scale*(w.heightmap[index+1]-hIdx), 1.0))
+			n.AddToThis(vectors.Cross3XYZ(-1.0, scale*(w.heightmap[index-dimY]+w.sediment[index-dimY]-hIdx), 0.0, 0.0, scale*(w.heightmap[index+1]+w.sediment[index+1]-hIdx), 1.0))
 			b = true
 		}
 		if enableCross && a && b {
@@ -155,7 +155,7 @@ func (w *World) surfaceNormal(index int64) vectors.Vec3 {
 			// |_|_|A|
 			// |_|_|_|
 			// |_|_|B|
-			n.AddToThis(vectors.Cross3XYZ(-1.0, scale*(w.heightmap[index-dimY+1]-hIdx), 1.0, 1.0, scale*(w.heightmap[index+dimY+1]-hIdx), 1.0))
+			n.AddToThis(vectors.Cross3XYZ(-1.0, scale*(w.heightmap[index-dimY+1]+w.sediment[index-dimY+1]-hIdx), 1.0, 1.0, scale*(w.heightmap[index+dimY+1]+w.sediment[index+dimY+1]-hIdx), 1.0))
 		}
 		a = false
 		b = false
@@ -166,7 +166,7 @@ func (w *World) surfaceNormal(index int64) vectors.Vec3 {
 			// |_|B|_|
 			// |A|_|_|
 			// |_|_|_|
-			n.AddToThis(vectors.Cross3XYZ(0.0, scale*(w.heightmap[index-1]-hIdx), -1.0, -1.0, scale*(w.heightmap[index-dimY]-hIdx), 0.0))
+			n.AddToThis(vectors.Cross3XYZ(0.0, scale*(w.heightmap[index-1]+w.sediment[index-1]-hIdx), -1.0, -1.0, scale*(w.heightmap[index-dimY]+w.sediment[index-dimY]-hIdx), 0.0))
 			a = true
 		}
 		if x < dimX-1 {
@@ -174,7 +174,7 @@ func (w *World) surfaceNormal(index int64) vectors.Vec3 {
 			// |_|_|_|
 			// |B|_|_|
 			// |_|A|_|
-			n.AddToThis(vectors.Cross3XYZ(1.0, scale*(w.heightmap[index+dimY]-hIdx), 0.0, 0.0, scale*(w.heightmap[index-1]-hIdx), -1.0))
+			n.AddToThis(vectors.Cross3XYZ(1.0, scale*(w.heightmap[index+dimY]+w.sediment[index+dimY]-hIdx), 0.0, 0.0, scale*(w.heightmap[index-1]+w.sediment[index-1]-hIdx), -1.0))
 			b = true
 		}
 		if enableCross && a && b {
@@ -182,7 +182,7 @@ func (w *World) surfaceNormal(index int64) vectors.Vec3 {
 			// |B|_|_|
 			// |_|_|_|
 			// |A|_|_|
-			n.AddToThis(vectors.Cross3XYZ(1.0, scale*(w.heightmap[index+dimY-1]-hIdx), -1.0, -1.0, scale*(w.heightmap[index-dimY-1]-hIdx), -1.0))
+			n.AddToThis(vectors.Cross3XYZ(1.0, scale*(w.heightmap[index+dimY-1]+w.sediment[index+dimY-1]-hIdx), -1.0, -1.0, scale*(w.heightmap[index-dimY-1]+w.sediment[index-dimY-1]-hIdx), -1.0))
 		}
 	}
 	return n.Normalize()
