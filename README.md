@@ -94,10 +94,6 @@ This package is an implementation of the marching cubes algorithm, which takes a
 
 This package provides a simple implementation of the marching squares algorithm for illustrative purposes for now.
 
-### genpotion: Potion generator / Alchemy
-
-This package implements a simple alchemy system similar to the potion crafting systems found in the Elder Scrolls games.
-
 ### genreligion: Religion generator
 
 This is based on Azgaars Fantasy Map Generator.
