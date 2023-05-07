@@ -126,10 +126,6 @@ Don't get your expectations up, it's really basic. : P
 
 Based on a few, way better implementations for economy simulation.
 
-### simmemory: Dwarven memory
-
-A pretty clumsy attempt to replicate the memory system from dwarf fortress.
-
 ### simmotive: Sims motive
 
 This package is a crude port of https://github.com/alexcu/motive-simulator which is adapted from Don Hopkins' article The Soul of The Sims which shows an prototype of the 'soul' of what became The Sims 1, written January 23, 1997.
