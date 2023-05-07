@@ -3,30 +3,30 @@ https://archive.org/details/illustratedhandb0000brun_b8f4
 
 This book describes vernacular architecture in the UK, but the concepts are applicable to other regions as well.
 
-I will expand on this in the future, but for now I will just transcribe the relevant parts from the book.
+I will expand on this in the future, but for now I will just transcribe the relevant parts from this and other books... maybe I'll also add some godawful drawings so that things actually make sense. :D
 
 # Classification of vernacular architecture
 
 Example list of architectural elements:
 
-a: walling material, shape, coursing, jointing, finish
-b: roofing shape
-c: detail at verge
-d: detail at eaves
-e: material, method of laying
-f: ridge
-g: chimney position
-h: water tabling, etc
-i: dormers, position, shape, roofing, walling material
-j: plan form
-k: sectional form
-l: staircase provision
-m: window shape
-n: window frames
-o: door shape
-p: door details
-q: relasionship between farm buildings and farm-house
-r: use of farm buildings
+* a: walling material, shape, coursing, jointing, finish
+* b: roofing shape
+* c: detail at verge
+* d: detail at eaves
+* e: material, method of laying
+* f: ridge
+* g: chimney position
+* h: water tabling, etc
+* i: dormers, position, shape, roofing, walling material
+* j: plan form
+* k: sectional form
+* l: staircase provision
+* m: window shape
+* n: window frames
+* o: door shape
+* p: door details
+* q: relasionship between farm buildings and farm-house
+* r: use of farm buildings
 
 ## Walling materials
 
