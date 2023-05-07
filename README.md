@@ -126,10 +126,6 @@ Don't get your expectations up, it's really basic. : P
 
 Based on a few, way better implementations for economy simulation.
 
-### simmotive: Sims motive
-
-This package is a crude port of https://github.com/alexcu/motive-simulator which is adapted from Don Hopkins' article The Soul of The Sims which shows an prototype of the 'soul' of what became The Sims 1, written January 23, 1997.
-
 ### simnpcs: NPCs with daily routines
 
 This is an early experiment in simulating NPCs with daily routines. Sadly it is quite messy and doesn't follow best practices. It also has plenty of leftover code that I don't want to delete. I might clean it up in the future.
