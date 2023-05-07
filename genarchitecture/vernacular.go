@@ -215,3 +215,9 @@ package genarchitecture
 // - Buildings in seismic areas should be designed to withstand earthquakes.
 // - Buildings should be compact and low to the ground and use flexible materials
 //   such as adobe, straw, or wood.
+
+// Appendix C: Floods
+//
+// Main strategies:
+// - Buildings in flood-prone areas should be designed to withstand flooding.
+// - Buildings might be raised on stilts or built on higher ground.
