@@ -156,10 +156,6 @@ A very basic village simulator which has settlers settle, procreate, live, love,
 
 Currently, this only provides a very basic tile based renderer with some basic collision detection, etc. In future, it will be a village simulation on a tile based map. (Uses https://ebiten.org/)
 
-### simwar: Lanchester's laws
-
-This package implements Lanchester's laws for simulating battles.
-
 ## Utility
 
 ### utils
