@@ -373,3 +373,30 @@ var (
 			RoomFurnishingTableSm},
 	)
 )
+
+var roomTypeToConfig = map[string]*RoomConfig{
+	RoomTypeArmory:     RoomArmory,
+	RoomTypeAtrium:     RoomAtrium,
+	RoomTypeBallroom:   RoomBallroom,
+	RoomTypeBathhouse:  RoomBathhouse,
+	RoomTypeBedroom:    RoomBedroom,
+	RoomTypeChamber:    RoomChamber,
+	RoomTypeDining:     RoomDining,
+	RoomTypeDormitory:  RoomDormitory,
+	RoomTypeGreatHall:  RoomGreatHall,
+	RoomTypeHallway:    RoomHallway,
+	RoomTypeKitchen:    RoomKitchen,
+	RoomTypeLaboratory: RoomLaboratory,
+	RoomTypeLibrary:    RoomLibrary,
+	RoomTypePantry:     RoomPantry,
+	RoomTypeParlour:    RoomParlour,
+	RoomTypePrison:     RoomPrison,
+	RoomTypeRoom:       RoomRoom,
+	RoomTypeShrine:     RoomShrine,
+	RoomTypeSmithy:     RoomSmithy,
+	RoomTypeStorage:    RoomStorage,
+	RoomTypeStudy:      RoomStudy,
+	RoomTypeThrone:     RoomThrone,
+	RoomTypeTorture:    RoomTorture,
+	RoomTypeTreasury:   RoomTreasury,
+}
