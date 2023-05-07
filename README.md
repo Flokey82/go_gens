@@ -162,10 +162,6 @@ This package implements Lanchester's laws for simulating battles.
 
 ## Utility
 
-### geoquad: Quadtree for geographic coordinates
-
-This package implements a quadtree for geographic coordinates (lat/lon) and nearest neighbor search.
-
 ### utils
 
 This package contains a number of useful and commonly used functions and structures.
