@@ -1,3 +1,4 @@
+// Package genweapons is an example application of genstory for generating weapon flavor text.
 package genweapons
 
 import (

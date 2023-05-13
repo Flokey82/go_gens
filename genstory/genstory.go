@@ -1,3 +1,4 @@
+// Package genstory provides means to generate text from templates and / or rules.
 package genstory
 
 import (
@@ -28,18 +29,18 @@ type TextConfig struct {
 
 // Generate generates a text from the provided tokens and the configuration.
 func (c *TextConfig) Generate(provided []TokenReplacement) (*Generated, error) {
-	return DefaultTextGenerator.generateFromConfig(provided, c, nil)
+	return DefaultTextGenerator.GenerateFromConfig(provided, c, nil)
 }
 
 // GenerateAndGiveMeTheTemplate generates a text from the provided tokens and the configuration.
 // It also returns the template that was used to generate the text.
 func (c *TextConfig) GenerateAndGiveMeTheTemplate(provided []TokenReplacement) (*Generated, error) {
-	return DefaultTextGenerator.generateFromConfig(provided, c, nil)
+	return DefaultTextGenerator.GenerateFromConfig(provided, c, nil)
 }
 
 // GenerateWithTemplate generates a text from the provided tokens and the provided template.
 func (c *TextConfig) GenerateWithTemplate(provided []TokenReplacement, template string) (*Generated, error) {
-	return DefaultTextGenerator.generateFromConfig(provided, c, []string{template})
+	return DefaultTextGenerator.GenerateFromConfig(provided, c, []string{template})
 }
 
 // TextGenerator is a generator for text using TextConfigs.
@@ -58,18 +59,18 @@ func NewTextGenerator(rng RandInterface) *TextGenerator {
 
 // Generate generates a text from the provided tokens and the configuration.
 func (g *TextGenerator) Generate(provided []TokenReplacement, config *TextConfig) (*Generated, error) {
-	return g.generateFromConfig(provided, config, nil)
+	return g.GenerateFromConfig(provided, config, nil)
 }
 
 // GenerateAndGiveMeTheTemplate generates a text from the provided tokens and the configuration.
 // It also returns the template that was used to generate the text.
 func (g *TextGenerator) GenerateAndGiveMeTheTemplate(provided []TokenReplacement, config *TextConfig) (*Generated, error) {
-	return g.generateFromConfig(provided, config, nil)
+	return g.GenerateFromConfig(provided, config, nil)
 }
 
 // GenerateButUseThisTemplate generates a text from the provided tokens and the provided template.
 func (g *TextGenerator) GenerateButUseThisTemplate(provided []TokenReplacement, config *TextConfig, template string) (*Generated, error) {
-	return g.generateFromConfig(provided, config, []string{template})
+	return g.GenerateFromConfig(provided, config, []string{template})
 }
 
 // Generated provides information about a generated text.
@@ -79,7 +80,7 @@ type Generated struct {
 	Tokens   []TokenReplacement
 }
 
-func (g *TextGenerator) generateFromConfig(provided []TokenReplacement, config *TextConfig, altTemplates []string) (*Generated, error) {
+func (g *TextGenerator) GenerateFromConfig(provided []TokenReplacement, config *TextConfig, altTemplates []string) (*Generated, error) {
 	templates := config.Templates
 	if altTemplates != nil {
 		templates = altTemplates

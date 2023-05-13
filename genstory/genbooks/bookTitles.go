@@ -1,3 +1,4 @@
+// Package genbooks is an example application of genstory for generating book titles.
 package genbooks
 
 import (
