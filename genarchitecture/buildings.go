@@ -418,7 +418,7 @@ func Eval() *Node {
 	stack = append(stack, root)
 
 	rulesByName := map[string]*NodeRule{
-		"root": &NodeRule{
+		"root": {
 			ID:          "root",
 			ReplaceNode: false,
 			F: func(node *Node) []*Node {
@@ -476,7 +476,7 @@ func Eval() *Node {
 				return res
 			},
 		},
-		"Wing": &NodeRule{
+		"Wing": {
 			ID:          "Wing",
 			ReplaceNode: false,
 			F: func(node *Node) []*Node {
