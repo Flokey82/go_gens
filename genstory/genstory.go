@@ -28,18 +28,18 @@ type TextConfig struct {
 
 // Generate generates a text from the provided tokens and the configuration.
 func (c *TextConfig) Generate(provided []TokenReplacement) (*Generated, error) {
-	return defaultTextGenerator.generateFromConfig(provided, c, nil)
+	return DefaultTextGenerator.generateFromConfig(provided, c, nil)
 }
 
 // GenerateAndGiveMeTheTemplate generates a text from the provided tokens and the configuration.
 // It also returns the template that was used to generate the text.
 func (c *TextConfig) GenerateAndGiveMeTheTemplate(provided []TokenReplacement) (*Generated, error) {
-	return defaultTextGenerator.generateFromConfig(provided, c, nil)
+	return DefaultTextGenerator.generateFromConfig(provided, c, nil)
 }
 
 // GenerateWithTemplate generates a text from the provided tokens and the provided template.
 func (c *TextConfig) GenerateWithTemplate(provided []TokenReplacement, template string) (*Generated, error) {
-	return defaultTextGenerator.generateFromConfig(provided, c, []string{template})
+	return DefaultTextGenerator.generateFromConfig(provided, c, []string{template})
 }
 
 // TextGenerator is a generator for text using TextConfigs.
@@ -284,4 +284,4 @@ func (r *randWrapper) Seed(seed int64) {
 
 var defaultRand = &randWrapper{}
 
-var defaultTextGenerator = NewTextGenerator(defaultRand)
+var DefaultTextGenerator = NewTextGenerator(defaultRand)

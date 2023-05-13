@@ -1,4 +1,4 @@
-package genstory
+package genbooks
 
 // NOTE: These categories are based on https://dwarffortresswiki.org/index.php/DF2014:Book
 const (

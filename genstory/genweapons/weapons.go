@@ -1,4 +1,8 @@
-package genstory
+package genweapons
+
+import (
+	"github.com/Flokey82/go_gens/genstory"
+)
 
 const (
 	WeaponTokenName            = "[WEAPON_NAME]"
@@ -7,6 +11,7 @@ const (
 	WeaponTokenCreationMethod  = "[WEAPON_CREATION_METHOD]"
 	WeaponTokenMaterial        = "[WEAPON_MATERIAL]"
 	WeaponTokenMaterialQuality = "[WEAPON_MATERIAL_QUALITY]"
+	WeaponTokenAnyAge          = "[ANY_AGE]"
 )
 
 var WeaponTokens = []string{
@@ -16,10 +21,10 @@ var WeaponTokens = []string{
 	WeaponTokenCreationMethod,
 	WeaponTokenMaterial,
 	WeaponTokenMaterialQuality,
-	TokenAnyAge,
+	WeaponTokenAnyAge,
 }
 
-var WeaponsTextConfig = &TextConfig{
+var WeaponsTextConfig = &genstory.TextConfig{
 	TokenPools: map[string][]string{
 		WeaponTokenName:            WeaponNames,
 		WeaponTokenType:            WeaponTypes,
@@ -27,7 +32,7 @@ var WeaponsTextConfig = &TextConfig{
 		WeaponTokenCreationMethod:  WeaponCreationMethods,
 		WeaponTokenMaterial:        WeaponMaterials,
 		WeaponTokenMaterialQuality: WeaponMaterialQualities,
-		TokenAnyAge:                BookTitleAge,
+		WeaponTokenAnyAge:          WeaponAge,
 	},
 	TokenIsMandatory: map[string]bool{
 		WeaponTokenName: true,
@@ -131,4 +136,11 @@ var WeaponNames = []string{
 	"Deathbringer",
 	"Executioner",
 	"Destroyer",
+}
+
+var WeaponAge = []string{
+	"the age of steam",
+	"the age of the forgotten",
+	"the age of the gods",
+	"the age of the machine",
 }

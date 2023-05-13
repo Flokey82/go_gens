@@ -1,12 +1,13 @@
-package genstory
+package genbooks
 
 import (
 	"github.com/Flokey82/go_gens/genlanguage"
+	"github.com/Flokey82/go_gens/genstory"
 )
 
 // NewSimpleTitleConfig returns a simple title configuration.
-func NewSimpleTitleConfig(templates []string) *TextConfig {
-	return &TextConfig{
+func NewSimpleTitleConfig(templates []string) *genstory.TextConfig {
+	return &genstory.TextConfig{
 		TokenPools:       DefaultTitleTokenPool,
 		TokenIsMandatory: DefaultTitleTokenIsMandatory,
 		Tokens:           DefaultTitleTokens,
@@ -25,8 +26,8 @@ func NewSimpleTitleConfig(templates []string) *TextConfig {
 //
 // TODO: Also return the selected template, and the individual replacements,
 // so that the caller can use them for the description or the generation of content.
-func GenerateTitle(provided []TokenReplacement, titles []string) (*Generated, error) {
-	return defaultTextGenerator.generateFromConfig(provided, NewSimpleTitleConfig(titles), nil)
+func GenerateTitle(provided []genstory.TokenReplacement, titles []string) (*genstory.Generated, error) {
+	return genstory.DefaultTextGenerator.GenerateFromConfig(provided, NewSimpleTitleConfig(titles), nil)
 }
 
 const (

@@ -5,6 +5,8 @@ import (
 	"time"
 
 	"github.com/Flokey82/go_gens/genstory"
+	"github.com/Flokey82/go_gens/genstory/genbooks"
+	"github.com/Flokey82/go_gens/genstory/genweapons"
 )
 
 func main() {
@@ -15,43 +17,43 @@ func main() {
 	}{{
 		desc: "one token, variant titles",
 		tokens: []genstory.TokenReplacement{{
-			Token:       genstory.TokenNoun,
+			Token:       genbooks.TokenNoun,
 			Replacement: "Battle Tactics",
 		}},
-		titles: genstory.BookVariantTitles,
+		titles: genbooks.BookVariantTitles,
 	}, {
 		desc: "one token, instruction titles",
 		tokens: []genstory.TokenReplacement{{
-			Token:       genstory.TokenName,
+			Token:       genbooks.TokenName,
 			Replacement: "Glorbnorb",
 		}},
-		titles: genstory.BookInstructionTitles,
+		titles: genbooks.BookInstructionTitles,
 	}, {
 		desc: "two tokens, variant titles",
 		tokens: []genstory.TokenReplacement{{
-			Token:       genstory.TokenName,
+			Token:       genbooks.TokenName,
 			Replacement: "Bleepblorp",
 		}, {
-			Token:       genstory.TokenNoun,
+			Token:       genbooks.TokenNoun,
 			Replacement: "Trickery",
 		}},
-		titles: genstory.BookVariantTitles,
+		titles: genbooks.BookVariantTitles,
 	}, {
 		desc: "three tokens, variant titles",
 		tokens: []genstory.TokenReplacement{{
-			Token:       genstory.TokenName,
+			Token:       genbooks.TokenName,
 			Replacement: "Herdle the Great",
 		}, {
-			Token:       genstory.TokenNoun,
+			Token:       genbooks.TokenNoun,
 			Replacement: "Goats",
 		}, {
-			Token:       genstory.TokenAdj,
+			Token:       genbooks.TokenAdj,
 			Replacement: "Boring",
 		}},
-		titles: genstory.BookVariantTitles,
+		titles: genbooks.BookVariantTitles,
 	}} {
 		log.Println(tc.desc)
-		cfg := genstory.NewSimpleTitleConfig(tc.titles)
+		cfg := genbooks.NewSimpleTitleConfig(tc.titles)
 		for i := 0; i < 10; i++ {
 			if title, err := cfg.Generate(tc.tokens); err != nil {
 				log.Println(i, err)
@@ -63,11 +65,11 @@ func main() {
 
 	log.Println("weapon flavor text")
 	for i := 0; i < 10; i++ {
-		if title, err := genstory.WeaponsTextConfig.Generate([]genstory.TokenReplacement{{
-			Token:       genstory.WeaponTokenName,
+		if title, err := genweapons.WeaponsTextConfig.Generate([]genstory.TokenReplacement{{
+			Token:       genweapons.WeaponTokenName,
 			Replacement: "Soul Cleaver",
 		}, {
-			Token:       genstory.WeaponTokenType,
+			Token:       genweapons.WeaponTokenType,
 			Replacement: "longsword",
 		}}); err != nil {
 			log.Println(i, err)
