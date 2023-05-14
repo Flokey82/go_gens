@@ -41,4 +41,7 @@ Some textures are from Wolfenstein 3D, which is a public domain game.
 - [ ] Add map marker for player start
 - [ ] Add doors
     - [X] Add door texture
-    - [ ] Add door interaction
+    - [X] Add door interaction
+    - [ ] Allow doors to close again instead of removing them
+    - [ ] Add door opening / closing animation
+- [ ] Add stairs

@@ -156,6 +156,9 @@ func (g *Game) rayCastingA(screen *ebiten.Image) {
 		ra -= 2 * math.Pi
 	}
 
+	// Check if we are looking at a door.
+	doorInSight := -1
+
 	for r = 0; r < g.rayPrecision; r++ {
 		// Check horizontal lines
 		dof = 0
@@ -311,12 +314,27 @@ func (g *Game) rayCastingA(screen *ebiten.Image) {
 			}
 		}
 
+		// TODO: Formalize opening doors and add an animation of the door opening.
+		if r == g.rayPrecision/2 && tileType == 2 {
+			doorInSight = int(ry/float64(g.Scale))*g.X + int(rx/float64(g.Scale))
+		}
+
 		// Keep angle between 0 and 2PI.
 		ra += fovStep // render angle += fovStep
 		if ra < 0 {
 			ra += 2 * math.Pi
 		} else if ra > 2*math.Pi {
 			ra -= 2 * math.Pi
+		}
+	}
+
+	// TODO: Move this to a separate function.
+	if doorInSight >= 0 {
+		if ebiten.IsKeyPressed(ebiten.KeyE) {
+			g.Array[doorInSight] = 0
+		} else {
+			// Print that we can open the door if we press E.
+			ebitenutil.DebugPrint(screen, "Press E to open the door")
 		}
 	}
 }
@@ -336,6 +354,9 @@ func (g *Game) rayCastingB(screen *ebiten.Image) {
 	} else if ra > 2*math.Pi {
 		ra -= 2 * math.Pi
 	}
+
+	// Check if we are looking at a door.
+	doorInSight := -1
 
 	fovStep := degToRad * float64(g.pFov) / float64(g.rayPrecision)
 	for r := 0; r < g.rayPrecision; r++ {
@@ -399,12 +420,27 @@ func (g *Game) rayCastingB(screen *ebiten.Image) {
 			}
 		}
 
+		// TODO: Formalize opening doors and add an animation of the door opening.
+		if r == g.rayPrecision/2 && wall == 2 {
+			doorInSight = int(ry/float64(g.Scale))*g.X + int(rx/float64(g.Scale))
+		}
+
 		// Keep angle between 0 and 2PI
 		ra += fovStep // render angle += fovStep
 		if ra < 0 {
 			ra += 2 * math.Pi
 		} else if ra > 2*math.Pi {
 			ra -= 2 * math.Pi
+		}
+	}
+
+	// TODO: Move this to a separate function.
+	if doorInSight >= 0 {
+		if ebiten.IsKeyPressed(ebiten.KeyE) {
+			g.Array[doorInSight] = 0
+		} else {
+			// Print that we can open the door if we press E.
+			ebitenutil.DebugPrint(screen, "Press E to open the door")
 		}
 	}
 }
