@@ -58,7 +58,7 @@ func main() {
 			if title, err := cfg.Generate(tc.tokens); err != nil {
 				log.Println(i, err)
 			} else {
-				log.Println(i, title)
+				log.Println(i, title.Text)
 			}
 		}
 	}
@@ -74,7 +74,7 @@ func main() {
 		}}); err != nil {
 			log.Println(i, err)
 		} else {
-			log.Println(i, title)
+			log.Println(i, title.Text)
 		}
 	}
 

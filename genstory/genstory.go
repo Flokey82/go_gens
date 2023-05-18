@@ -24,6 +24,7 @@ type TextConfig struct {
 	Templates        []string                       // A list of possible templates.
 	Title            bool                           // Capitalize the first letter of each word in the text.
 	UseAllProvided   bool                           // Use all provided tokens, even if they are not used in the template.
+	UseAlliteration  bool                           // Use alliteration in the text (from token to token)
 	Modifiers        map[string]func(string) string // A map of token names to a function that modifies the replacement text.
 }
 
@@ -191,6 +192,7 @@ func (g *TextGenerator) GenerateFromConfig(provided []TokenReplacement, config *
 
 	// Relplace each token one by one until we can't find any more.
 	replacementsUsed := make(map[string]int)
+	var lastToken string
 	for _, token := range chosen.extractedTokens {
 		// Replace all tokens with the provided replacements or a random value.
 		var replacement string
@@ -198,7 +200,21 @@ func (g *TextGenerator) GenerateFromConfig(provided []TokenReplacement, config *
 			replacement = tokenReplacements[token.Token][replacementsUsed[token.Token]]
 			replacementsUsed[token.Token]++
 		} else {
-			replacement = randArrayString(g, tokenRandom[token.Token])
+			// If we have alliteration enabled, we might want to try to find a
+			// replacement that starts with the same letter as the previous token.
+			if config.UseAlliteration && lastToken != "" {
+				for _, idx := range rand.Perm(len(tokenRandom[token.Token])) {
+					replacement = tokenRandom[token.Token][idx]
+					// NOTE: This will panic if the token is empty.
+					if strings.ToLower(replacement[:1]) == strings.ToLower(lastToken[:1]) {
+						break
+					}
+				}
+			}
+			// If we still don't have a matching replacement, just pick a random one.
+			if replacement == "" {
+				replacement = randArrayString(g, tokenRandom[token.Token])
+			}
 		}
 
 		// Remember the token and the replacement we used.
@@ -206,6 +222,9 @@ func (g *TextGenerator) GenerateFromConfig(provided []TokenReplacement, config *
 			Token:       token.Token,
 			Replacement: replacement,
 		})
+
+		// Remember the last token we used.
+		lastToken = replacement
 
 		// Apply modifiers.
 		replacement = applyModifiers(replacement, token.Modifiers)

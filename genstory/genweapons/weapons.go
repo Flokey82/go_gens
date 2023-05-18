@@ -92,9 +92,17 @@ var WeaponMaterials = []string{
 	"steel",
 	"stone",
 	"wood",
+	"pewter",
+	"platinum",
+	"obsidian",
+	"ruby",
+	"ringsteel",
+	"titanium",
+	"feathersteel",
 }
 
 var WeaponMaterialQualities = []string{
+	"exquisite",
 	"fine",
 	"pure",
 	"perfect",
@@ -107,6 +115,12 @@ var WeaponMaterialQualities = []string{
 	"impure",
 	"dirty",
 	"filthy",
+	"tainted",
+	"corrupted",
+	"scorched",
+	"burnt",
+	"salvaged",
+	"worn",
 }
 
 var WeaponSmiths = []string{
