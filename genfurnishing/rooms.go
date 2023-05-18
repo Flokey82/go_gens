@@ -23,24 +23,24 @@ func NewRoomConfig(name string, required, possible []string) *RoomConfig {
 
 // Generate a room from the config.
 func (rc *RoomConfig) Generate() *Room {
-	return &Room{
-		Name:  rc.Name,
-		Items: generateItems(rc.Required, rc.Possible),
-	}
-}
+	var items []*Item
 
-func generateItems(required, possible []string) []*Item {
-	items := []*Item{}
-	for _, item := range required {
+	// Generate all required items.
+	for _, item := range rc.Required {
 		items = append(items, furnishingIndex[item].Generate())
 	}
-	for _, item := range possible {
-		itemProto := furnishingIndex[item]
-		if itemProto.Rarity.Roll() {
+
+	// Generate random items.
+	for _, item := range rc.Possible {
+		if itemProto := furnishingIndex[item]; itemProto.Rarity.Roll() {
 			items = append(items, itemProto.Generate())
 		}
 	}
-	return items
+
+	return &Room{
+		Name:  rc.Name,
+		Items: items,
+	}
 }
 
 // Room is a generated room.
@@ -49,6 +49,7 @@ type Room struct {
 	Items []*Item
 }
 
+// Log the room.
 func (r *Room) Log() {
 	log.Printf("Room: %s", r.Name)
 	for _, item := range r.Items {

@@ -6,8 +6,8 @@ import "math/rand"
 type ItemBase struct {
 	Name     string
 	Rarity   *Rarity
-	Capacity int
 	Size     Size
+	Capacity int
 	Type     string
 	Variants []string
 	Set      *ItemSet // TODO: Allow multiple sets.
@@ -29,15 +29,18 @@ func NewItemBase(name, iType string, setFunc func(*ItemBase)) *ItemBase {
 
 // Generate returns a new item based on this item base.
 func (it *ItemBase) Generate() *Item {
+	// Pick variant (if any).
 	var variant string
 	if len(it.Variants) > 0 {
 		variant = it.Variants[rand.Intn(len(it.Variants))]
 	}
+
 	// Generate a number of items from the set up to the capacity.
 	var contains []*Item
 	if it.Capacity > 0 && it.Set != nil {
-		contains = append(contains, it.Set.Generate())
+		contains = it.Set.GenerateN(rand.Intn(it.Capacity))
 	}
+
 	return &Item{
 		ItemBase: it,
 		Variant:  variant,
@@ -72,9 +75,10 @@ const (
 
 // Storage capacities.
 const (
-	CapacitySmall  = 1
-	CapacityMedium = 2
-	CapacityLarge  = 3
+	CapacitySmall   = 1
+	CapacityMedium  = 3
+	CapacityLarge   = 9
+	CapacityMassive = 27
 )
 
 // Rarity represents the rarity of an item.
@@ -150,86 +154,3 @@ const (
 	ItemTypeTrinket       = "trinket"
 	ItemTypeWeapon        = "weapon"
 )
-
-type ItemSet struct {
-	Name  string
-	Items []*ItemBase
-}
-
-func (is *ItemSet) Generate() *Item {
-	if len(is.Items) == 0 {
-		return nil
-	}
-	for _, i := range rand.Perm(len(is.Items)) {
-		item := is.Items[i]
-		if item.Rarity.Roll() {
-			return item.Generate()
-		}
-	}
-	return is.Items[rand.Intn(len(is.Items))].Generate()
-}
-
-// Clothing
-const (
-	ClothingNameCloak  = "cloak"
-	ClothingNameCoat   = "coat"
-	ClothingNameGloves = "gloves"
-	ClothingNameHat    = "hat"
-	ClothingNamePants  = "pants"
-	ClothingNameShirt  = "shirt"
-)
-
-var ClothingSet = &ItemSet{
-	Name: ItemTypeClothing,
-	Items: []*ItemBase{
-		NewItemBase(ClothingNameCloak, ItemTypeClothing, func(i *ItemBase) {
-			i.Rarity = RarityUncommon
-			i.Size = SizeLarge
-		}),
-		NewItemBase(ClothingNameCoat, ItemTypeClothing, func(i *ItemBase) {
-			i.Rarity = RarityUncommon
-			i.Size = SizeLarge
-		}),
-		NewItemBase(ClothingNameGloves, ItemTypeClothing, func(i *ItemBase) {
-			i.Rarity = RarityCommon
-			i.Size = SizeSmall
-		}),
-		NewItemBase(ClothingNameHat, ItemTypeClothing, func(i *ItemBase) {
-			i.Rarity = RarityCommon
-			i.Size = SizeSmall
-		}),
-		NewItemBase(ClothingNamePants, ItemTypeClothing, func(i *ItemBase) {
-			i.Rarity = RarityCommon
-			i.Size = SizeMedium
-		}),
-		NewItemBase(ClothingNameShirt, ItemTypeClothing, func(i *ItemBase) {
-			i.Rarity = RarityCommon
-			i.Size = SizeMedium
-		}),
-	},
-}
-
-// Stationary
-const (
-	StationaryNameLedger = "ledger"
-	StationaryNameQuill  = "quill"
-	StationaryNameScroll = "scroll"
-)
-
-var StationarySet = &ItemSet{
-	Name: "stationary",
-	Items: []*ItemBase{
-		NewItemBase(StationaryNameLedger, ItemTypeStationary, func(i *ItemBase) {
-			i.Rarity = RarityCommon
-			i.Size = SizeMedium
-		}),
-		NewItemBase(StationaryNameQuill, ItemTypeStationary, func(i *ItemBase) {
-			i.Rarity = RarityCommon
-			i.Size = SizeTiny
-		}),
-		NewItemBase(StationaryNameScroll, ItemTypeStationary, func(i *ItemBase) {
-			i.Rarity = RarityCommon
-			i.Size = SizeTiny
-		}),
-	},
-}

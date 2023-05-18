@@ -13,33 +13,49 @@ type Building struct {
 	Size  int     // Size of the building.
 }
 
+// BuildingConfig represents a building prototype and all the possible
+// variations of rooms that can be found in it.
 type BuildingConfig struct {
-	Name             string   // Name of the building type.
-	MinSize          int      // Minimum size of the building.
-	MaxSize          int      // Maximum size of the building.
-	Required         []string // Required rooms
-	Possible         []string // Possible rooms
-	PossibleMultiple []string // Possible rooms that can be added multiple times.
+	Name     string   // Name of the building type.
+	Required []string // Required rooms
+	Possible []string // Possible rooms
+	Size     [2]int   // Minimum/Maximum size of the building.
 }
 
+// NewBuildingConfig returns a new building configuration for generating a specific type of building.
+func NewBuildingConfig(name string, required, possible []string, minSize, maxSize int) *BuildingConfig {
+	return &BuildingConfig{
+		Name:     name,
+		Required: required,
+		Possible: possible,
+		Size:     [2]int{minSize, maxSize},
+	}
+}
+
+// Generate a building from the config.
 func (bc *BuildingConfig) Generate() *Building {
 	building := &Building{
 		Name: bc.Name,
-		Size: bc.MinSize + rand.Intn(bc.MaxSize-bc.MinSize),
+		Size: bc.Size[0] + rand.Intn(bc.Size[1]-bc.Size[0]),
 	}
+
+	// Generate all required rooms.
 	for _, room := range bc.Required {
 		building.Rooms = append(building.Rooms, roomTypeToConfig[room].Generate())
 	}
+
+	// Generate random rooms.
 	for _, i := range rand.Perm(len(bc.Possible)) {
 		room := roomTypeToConfig[bc.Possible[i]].Generate()
+		building.Rooms = append(building.Rooms, room)
 		if len(building.Rooms) >= building.Size {
 			break
 		}
-		building.Rooms = append(building.Rooms, room)
 	}
 	return building
 }
 
+// Log the building.
 func (b *Building) Log() {
 	log.Printf("Building: %s", b.Name)
 	for _, room := range b.Rooms {
@@ -60,55 +76,43 @@ const (
 )
 
 var (
-	BuildingKeep = &BuildingConfig{
-		Name:    TypeKeep,
-		MinSize: 10,
-		MaxSize: 15,
-		Required: []string{
-			RoomTypeGreatHall,
-			RoomTypeKitchen,
-			RoomTypePantry,
-			RoomTypeBedroom,
-			RoomTypeArmory,
-			RoomTypePrison,
-		},
-		Possible: []string{
-			RoomTypeAtrium,
-			RoomTypeBallroom,
-			RoomTypeBathhouse,
-			RoomTypeChamber,
-			RoomTypeDining,
-			RoomTypeDormitory,
-			RoomTypeHallway,
-			RoomTypeLaboratory,
-			RoomTypeLibrary,
-			RoomTypeParlour,
-			RoomTypeThrone,
-			RoomTypeTorture,
-			RoomTypeTreasury,
-		},
-	}
-	BuildingGreatHouse = &BuildingConfig{
-		Name:    TypeGreatHouse,
-		MinSize: 6,
-		MaxSize: 12,
-		Required: []string{
-			RoomTypeGreatHall,
-			RoomTypeKitchen,
-			RoomTypePantry,
-			RoomTypeBedroom,
-		},
-		Possible: []string{
-			RoomTypeArmory,
-			RoomTypeAtrium,
-			RoomTypeBallroom,
-			RoomTypeBathhouse,
-			RoomTypeChamber,
-			RoomTypeDining,
-			RoomTypeDormitory,
-			RoomTypeHallway,
-			RoomTypeLaboratory,
-			RoomTypeLibrary,
-		},
-	}
+	BuildingKeep = NewBuildingConfig(TypeKeep, []string{
+		RoomTypeGreatHall,
+		RoomTypeKitchen,
+		RoomTypePantry,
+		RoomTypeBedroom,
+		RoomTypeArmory,
+		RoomTypePrison,
+	}, []string{
+		RoomTypeAtrium,
+		RoomTypeBallroom,
+		RoomTypeBathhouse,
+		RoomTypeChamber,
+		RoomTypeDining,
+		RoomTypeDormitory,
+		RoomTypeHallway,
+		RoomTypeLaboratory,
+		RoomTypeLibrary,
+		RoomTypeParlour,
+		RoomTypeThrone,
+		RoomTypeTorture,
+		RoomTypeTreasury,
+	}, 10, 15)
+	BuildingGreatHouse = NewBuildingConfig(TypeGreatHouse, []string{
+		RoomTypeGreatHall,
+		RoomTypeKitchen,
+		RoomTypePantry,
+		RoomTypeBedroom,
+	}, []string{
+		RoomTypeArmory,
+		RoomTypeAtrium,
+		RoomTypeBallroom,
+		RoomTypeBathhouse,
+		RoomTypeChamber,
+		RoomTypeDining,
+		RoomTypeDormitory,
+		RoomTypeHallway,
+		RoomTypeLaboratory,
+		RoomTypeLibrary,
+	}, 6, 12)
 )
