@@ -287,6 +287,14 @@ func (g *Game) Update(screen *ebiten.Image, timeDelta float64) error {
 		}
 		g.playerInfoView.PrintBounded(2, 8+idx, g.playerInfoView.Width-2, 2, fmt.Sprintf("%d: %s", i, entry), transformers...)
 		idx++
+
+		// List inventory items if the entity is dead. (Loot)
+		if e.IsDead() {
+			for _, it := range e.Items {
+				g.playerInfoView.PrintBounded(2+3, 8+idx, g.playerInfoView.Width-2, 2, it.Name, transformers...)
+				idx++
+			}
+		}
 	}
 
 	// List messages.

@@ -12,6 +12,7 @@ type EntityType struct {
 	BaseHealth  int
 	BaseAttack  int
 	BaseDefense int
+	Equipment   []*ItemType
 }
 
 var (
@@ -28,6 +29,7 @@ var (
 		BaseHealth:  5,
 		BaseAttack:  1,
 		BaseDefense: 5,
+		Equipment:   []*ItemType{ItemTypeWeaponAxe},
 	}
 	EntityOrc = &EntityType{
 		Tile:        'o',
@@ -35,6 +37,7 @@ var (
 		BaseHealth:  10,
 		BaseAttack:  5,
 		BaseDefense: 14,
+		Equipment:   []*ItemType{ItemTypeWeaponSword},
 	}
 	EntityTroll = &EntityType{
 		Tile:        't',
@@ -62,12 +65,17 @@ type Entity struct {
 
 // NewEntity returns a new entity with the given position and tile.
 func NewEntity(x, y int, e *EntityType) *Entity {
-	return &Entity{
+	entity := &Entity{
 		X:          x,
 		Y:          y,
 		EntityType: e,
 		Health:     e.BaseHealth,
 	}
+	// Add equipment.
+	for _, it := range e.Equipment {
+		entity.Inventory.Add(it.New())
+	}
+	return entity
 }
 
 // Equip equips the item at the given inventory index.

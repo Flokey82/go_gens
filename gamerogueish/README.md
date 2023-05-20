@@ -25,6 +25,9 @@ Right now, the code is a really basic re-factor of the roguelike example that co
   * [DONE] Item generation
   * [DONE] Consumable items
   * [DONE] Equippable items
+  * [DONE] Enemy inventory
+    * [DONE] Display items on dead enemies
+    * Looting of dead enemies
   * Item pickup / drop
   * Item effects
 * Combat
