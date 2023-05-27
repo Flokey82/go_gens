@@ -11,3 +11,19 @@ Part of (or All) the graphic tiles used in this program is the public domain rog
 You can find the original tileset at: http://rltiles.sf.net
 
 See: https://opengameart.org/content/dungeon-crawl-32x32-tiles
+
+## TODO
+
+- [X] Add basic isometric rendering
+- [X] Use gendungeon for level generation
+    - [X] Add multilevel dungeon generation
+    - [X] Add stairs
+    - [X] Add doors
+    - [ ] Tidy up level handling
+    - [ ] Add clutter generation
+- [ ] Add actual game
+    - [ ] Add player and player movement
+    - [ ] Add enemies
+    - [ ] Add combat
+    - [ ] Add items
+    - [ ] Make stairs and doors functional

@@ -136,6 +136,14 @@ func (g *Game) Update() error {
 
 		g.currentLevel = l
 	}
+
+	// Move level up or down.
+	if inpututil.IsKeyJustPressed(ebiten.KeyV) {
+		g.currentLevel.LevelDown()
+	} else if inpututil.IsKeyJustPressed(ebiten.KeyF) {
+		g.currentLevel.LevelUp()
+	}
+
 	return nil
 }
 
@@ -145,7 +153,7 @@ func (g *Game) Draw(screen *ebiten.Image) {
 	g.renderLevel(screen)
 
 	// Print game info.
-	ebitenutil.DebugPrint(screen, fmt.Sprintf("KEYS WASD EC R\nFPS  %0.0f\nTPS  %0.0f\nSCA  %0.2f\nPOS  %0.0f,%0.0f", ebiten.ActualFPS(), ebiten.ActualTPS(), g.camScale, g.camX, g.camY))
+	ebitenutil.DebugPrint(screen, fmt.Sprintf("KEYS WASD EC FV R\nFPS  %0.0f\nTPS  %0.0f\nSCA  %0.2f\nPOS  %0.0f,%0.0f\nLVL  %d", ebiten.ActualFPS(), ebiten.ActualTPS(), g.camScale, g.camX, g.camY, g.currentLevel.currentLevel))
 }
 
 // Layout is called when the Game's layout changes.
