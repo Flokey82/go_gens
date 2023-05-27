@@ -11,6 +11,8 @@ See: https://nickmcd.me/2020/11/23/particle-based-wind-erosion/
 
 This is not a complete port of the code mentioned above and includes some experimental alternatives for determining water flux information.
 
+![alt text](https://raw.githubusercontent.com/Flokey82/go_gens/master/genmap2derosion/images/screenshot.png "Eroded map")
+
 ## TODO
 * Fix up climate simulation
   * Use primary heightmap directly

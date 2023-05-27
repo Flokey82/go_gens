@@ -12,17 +12,29 @@ DO NOT USE YET!
 
 This is a very basic simulation with agents using state machines and behavior trees.
 
+### gameisometric
+
+This is a simple isometric 'game' experiment using the ebitengine and is written in Go.
+
+![alt text](https://raw.githubusercontent.com/Flokey82/go_gens/master/gameisometric/images/screenshot.png "Screenshot of isometric stuff!")
+
 ### gameraycast: Raycast implementation
 
 This is a very basic raycast implementation using a randomly generated dungeon for testing. This isn't very feature rich yet, but it's a start.
+
+![alt text](https://raw.githubusercontent.com/Flokey82/go_gens/master/gameraycast/images/textured.png "Screenshot of textured raycast!")
 
 ### gamerogueish: Rogue-like game skeleton
 
 This is a very basic rogue-like game skeleton... Barely functional.
 
+![alt text](https://raw.githubusercontent.com/Flokey82/go_gens/master/gamerogueish/images/rgb.png "rogue-ish")
+
 ### genarchitecture: Architecture generator
 
 This is a package for architectural style generation. It is still in the experimental phase and will probably change a lot in the future.
+
+![alt text](https://raw.githubusercontent.com/Flokey82/go_gens/master/genarchitecture/images/rules.png "Generated mesh!")
 
 ### genbiome: Biome helper functions
 
@@ -36,6 +48,10 @@ This package currently only implements Conway's Game of Life.
 
 This package is based on various implementations of city map generation. Currently supports simple random networks and tensor field based road network generation.
 
+![alt text](https://raw.githubusercontent.com/Flokey82/go_gens/master/gencitymap/images/basic.png "Screenshot of first map!")
+
+![alt text](https://raw.githubusercontent.com/Flokey82/go_gens/master/gencitymap/images/tensor.png "Screenshot of basic tensor field!")
+
 ### gendemographics: Medieval demographics generator
 
 This package is based on Medieval Demographics Made Easy by S. John Ross and generates demographics based on settlement density, population, etc.
@@ -44,6 +60,8 @@ The code is currently very messy and needs to be cleaned up.
 ### gendungeon: Dungeon generator
 
 This package is a modified fork of https://github.com/brad811/go-dungeon/, which is an implementation of http://journal.stuffwithstuff.com/2014/12/21/rooms-and-mazes/.
+
+![alt text](https://raw.githubusercontent.com/Flokey82/go_gens/master/gendungeon/images/lvl0.png "Multilevel Dungeon!")
 
 This does now support multi-level dungeon generation with stairs.
 
@@ -73,26 +91,39 @@ This package implements a 2d and 3d L-system generator with turtle graphics. Thi
 
 This package provides functionality to generate 2D maps using procedural methods. It has a rudimentary settlement placement logic and probably needs lots work.
 
+![alt text](https://raw.githubusercontent.com/Flokey82/go_gens/master/genmap2d/images/rgb.png "Map!")
+
 ### genmap2derosion: Heightmap generation and erosion
 
 This package is based on the fantastic work of Nick McDonald!
 See: https://github.com/weigert/SimpleHydrology
 
+![alt text](https://raw.githubusercontent.com/Flokey82/go_gens/master/genmap2derosion/images/screenshot.png "Eroded map")
+
 ### genmapvoronoi: Voronoi map generator
 
 This is based on https://mewo2.com/notes/terrain/ and partially a port of https://github.com/mewo2/terrain/ to Go.
+
+image: ![alt text](https://raw.githubusercontent.com/Flokey82/go_gens/master/genmapvoronoi/images/obj_export.png "Map!")
+
 
 ### genmapvoxel: Voxel map generator
 
 This package implements a simple voxel based terrain generator. Like... really simple. Don't get excited.
 
+![alt text](https://raw.githubusercontent.com/Flokey82/go_gens/master/genmapvoxel/images/smooth.png "Example of rendered voxel terrain (smooth)")
+
 ### genmarchingcubes: Marching cubes (WIP)
 
 This package is an implementation of the marching cubes algorithm, which takes a voxel field and generates a surface mesh. Right now it is an almost straight fork of https://github.com/soypat/sdf/blob/main/render/marchingcubes.go and https://github.com/fogleman/mc/blob/master/mc.go but will be heavily modified in future versions. (It might already be, depending how lazy I am updating the READMEs)
 
+![alt text](https://raw.githubusercontent.com/Flokey82/go_gens/master/genmarchingcubes/images/marched_float.png "Example of marched voxel terrain using float for fractional voxels")
+
 ### genmarchingsquares: Marching squares (WIP)
 
 This package provides a simple implementation of the marching squares algorithm for illustrative purposes for now.
+
+![alt text](https://raw.githubusercontent.com/Flokey82/go_gens/master/genmarchingsquares/images/squares.png "Example of rendered tiles")
 
 ### genreligion: Religion generator
 
@@ -111,6 +142,8 @@ A very basic word association index... Work in progress.
 It simulates (somewhat) global winds and attempts to calculate precipitation and temperature for more intricate simulations in the future.
 It features SVG, PNG, and Wavefront OBJ output.
 This is based on https://www.redblobgames.com/x/1843-planet-generation/ and a port of https://github.com/redblobgames/1843-planet-generation to Go. 
+
+![alt text](https://raw.githubusercontent.com/Flokey82/genworldvoronoi/master/images/relief_2.png "Relief Maps!")
 
 ### genvillage: Village economy generator
 
@@ -143,6 +176,8 @@ A very basic village simulator which has settlers settle, procreate, live, love,
 ### simvillage_tiles: Village simulation on a tile based map (WIP)
 
 Currently, this only provides a very basic tile based renderer with some basic collision detection, etc. In future, it will be a village simulation on a tile based map. (Uses https://ebiten.org/)
+
+![alt text](https://raw.githubusercontent.com/Flokey82/go_gens/master/simvillage_tiles/images/rgb.png "Screenshot!")
 
 ## Utility
 
