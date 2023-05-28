@@ -66,11 +66,34 @@ func (l *Level) LevelDown() {
 
 // LoadLevel loads the current level from the dungeon.
 func (l *Level) LoadLevel() {
+	// Seed the random number generator.
 	rng := rand.New(rand.NewSource(l.seed))
+
+	// Get the current level.
 	dung := l.dng.Levels[l.currentLevel]
 
+	// Update the level size.
+	l.width = dung.Width
+	l.height = dung.Height
+
+	isGetWallNeighbor := func(x, y int) Direction {
+		var dir Direction
+		if x > 0 && dung.Tiles[y][x-1].Material == gendungeon.MatWall {
+			dir |= DirectionWest
+		}
+		if x < l.width-1 && dung.Tiles[y][x+1].Material == gendungeon.MatWall {
+			dir |= DirectionEast
+		}
+		if y > 0 && dung.Tiles[y-1][x].Material == gendungeon.MatWall {
+			dir |= DirectionNorth
+		}
+		if y < l.height-1 && dung.Tiles[y+1][x].Material == gendungeon.MatWall {
+			dir |= DirectionSouth
+		}
+		return dir
+	}
+
 	// Generate a unique permutation each time.
-	// Fill each tile with one or more sprites randomly.
 	l.tiles = make([][]*Tile, l.height)
 	for y := 0; y < l.height; y++ {
 		l.tiles[y] = make([]*Tile, l.width)
@@ -104,11 +127,46 @@ func (l *Level) LoadLevel() {
 				}
 			default:
 				t.AddSprite(l.ss.Floor)
+				if rng.Intn(100) < 5 {
+					var sprite *Sprite
+					switch rng.Intn(3) {
+					case 0:
+						sprite = l.ss.Table
+					case 1:
+						sprite = l.ss.Bookcase
+					case 2:
+						sprite = l.ss.DisplayCase
+					}
+					// Check if any of the neighbors are walls.
+					switch isGetWallNeighbor(x, y) {
+					case DirectionNorth:
+						t.AddSprite(sprite.S)
+					case DirectionEast:
+						t.AddSprite(sprite.W)
+					case DirectionWest:
+						t.AddSprite(sprite.E)
+					case DirectionSouth:
+						t.AddSprite(sprite.N)
+					case DirectionNone:
+						t.AddSprite(l.ss.Table.E)
+					default:
+					}
+				}
 			}
 			l.tiles[y][x] = t
 		}
 	}
 }
+
+type Direction int
+
+const (
+	DirectionNone  Direction = 0
+	DirectionNorth Direction = 1 << iota
+	DirectionSouth
+	DirectionEast
+	DirectionWest
+)
 
 // NewLevel returns a new randomly generated Level.
 func NewLevel() (*Level, error) {

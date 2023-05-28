@@ -12,6 +12,10 @@ You can find the original tileset at: http://rltiles.sf.net
 
 See: https://opengameart.org/content/dungeon-crawl-32x32-tiles
 
+Further, I am using Kenney's fantastic isometric tile set.
+
+See: https://www.kenney.nl/assets/isometric-miniature-library
+
 ## TODO
 
 - [X] Add basic isometric rendering
@@ -19,6 +23,7 @@ See: https://opengameart.org/content/dungeon-crawl-32x32-tiles
     - [X] Add multilevel dungeon generation
     - [X] Add stairs
     - [X] Add doors
+    - [X] Add furniture
     - [ ] Tidy up level handling
     - [ ] Add clutter generation
 - [ ] Add actual game
