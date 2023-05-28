@@ -21,6 +21,7 @@ type Params struct {
 	Width          int64
 	Seed           int64
 	Size           vectors.IVec2
+	UseWindErosion bool
 }
 
 var DefaultParams = &Params{
@@ -31,23 +32,23 @@ var DefaultParams = &Params{
 		X: worldsize,
 		Y: worldsize,
 	},
+	UseWindErosion: false,
 }
 
 type World struct {
-	r       *rand.Rand
-	params  *Params
-	images  []*image.Paletted // Generated frame used to construct the GIF.
-	palette []color.Color     // Default color palette.
-	delays  []int             // Delay for each individual frame (0 for now).
-
-	drainage    float64   // Drainage factor from pools
-	scale       float64   // "Physical" Height scaling of the map
-	heightmap   []float64 // Flat Array containing height information
-	sediment    []float64 // Sediment storage (stores information on eroded / deposited sediment)
-	windpath    []float64 // Wind Path Storage
-	waterpath   []float64 // Water Path Storage (Rivers)
-	waterpool   []float64 // Water Pool Storage (Lakes / Ponds)
-	waterdrains []int     // Water Pool drainage points
+	r           *rand.Rand
+	params      *Params
+	images      []*image.Paletted // Generated frame used to construct the GIF.
+	palette     []color.Color     // Default color palette.
+	delays      []int             // Delay for each individual frame (0 for now).
+	drainage    float64           // Drainage factor from pools
+	scale       float64           // "Physical" Height scaling of the map
+	heightmap   []float64         // Flat Array containing height information
+	sediment    []float64         // Sediment storage (stores information on eroded / deposited sediment)
+	windpath    []float64         // Wind Path Storage
+	waterpath   []float64         // Water Path Storage (Rivers)
+	waterpool   []float64         // Water Pool Storage (Lakes / Ponds)
+	waterdrains []int             // Water Pool drainage points
 
 	// Flux related information (experimental)
 	fluxwaterpool []float64 // (TEMP Flux) Water Pool Storage (Lakes / Ponds)
@@ -95,9 +96,7 @@ func NewWorld(params *Params) *World {
 	// Generate basic heightmap.
 	w.genTerrain()
 
-	useWindErosion := false
-
-	if useWindErosion {
+	if w.params.UseWindErosion {
 		// Deposit some loose sediment on the heightmap to get us started.
 		for i, h := range w.heightmap {
 			w.sediment[i] = h / 5
