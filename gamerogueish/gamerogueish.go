@@ -1,8 +1,6 @@
 package gamerogueish
 
 import (
-	"fmt"
-
 	"github.com/BigJk/ramen/concolor"
 	"github.com/BigJk/ramen/console"
 	"github.com/BigJk/ramen/font"
@@ -20,16 +18,17 @@ const (
 )
 
 type Game struct {
-	*World                          // currently generated world
-	*FOV                            // currently generated FOV
-	generator      GenWorld         // world generator function
-	player         *Entity          // player entity
-	rootView       *console.Console // view for all sub views
-	worldView      *console.Console // contains map
-	playerInfoView *console.Console // contains player info
-	messageView    *console.Console // contains messages
-
-	Messages []string // messages to display
+	*World                       // currently generated world
+	*FOV                         // currently generated FOV
+	generator   GenWorld         // world generator function
+	player      *Entity          // player entity
+	rootView    *console.Console // view for all sub views
+	worldView   *console.Console // contains map
+	sideView    *console.Console
+	sideViews   []UIif           // contains all side views
+	selectedUI  int              // currently selected UI
+	messageView *console.Console // contains messages
+	Messages    []string         // messages to display
 }
 
 func NewGame(gw GenWorld, width, height int, seed int64) (*Game, error) {
@@ -43,6 +42,8 @@ func NewGame(gw GenWorld, width, height int, seed int64) (*Game, error) {
 	// NOTE: This is just for testing purposes.
 	g.player.Inventory.Items = append(g.player.Inventory.Items, ItemTypeWeaponSword.New())
 	g.player.Inventory.Items = append(g.player.Inventory.Items, ItemTypeWeaponAxe.New())
+	g.player.Inventory.Items = append(g.player.Inventory.Items, ItemTypePotion.New())
+	g.player.Inventory.Items = append(g.player.Inventory.Items, ItemTypePotion.New())
 	g.player.Inventory.Items = append(g.player.Inventory.Items, ItemTypePotion.New())
 	g.player.Inventory.Items = append(g.player.Inventory.Items, ItemTypeArmorLeather.New())
 	g.player.Inventory.Items = append(g.player.Inventory.Items, ItemTypeArmorPlate.New())
@@ -64,11 +65,32 @@ func NewGame(gw GenWorld, width, height int, seed int64) (*Game, error) {
 	}
 	g.worldView = worldView
 
-	playerInfoView, err := rootView.CreateSubConsole(worldView.Width, 1, 20, rootView.Height-4)
+	sideView, err := rootView.CreateSubConsole(worldView.Width, 1, 20, rootView.Height-4)
 	if err != nil {
 		return nil, err
 	}
-	g.playerInfoView = playerInfoView
+	g.sideView = sideView
+
+	// Draw player info.
+	uiInfo, err := g.newPlayerInfo()
+	if err != nil {
+		return nil, err
+	}
+	g.sideViews = append(g.sideViews, uiInfo)
+
+	// Draw inventory.
+	uiInventory, err := g.newPlayerInventory()
+	if err != nil {
+		return nil, err
+	}
+	g.sideViews = append(g.sideViews, uiInventory)
+
+	// Draw enemies.
+	uiEnemy, err := g.newPlayerEnemies()
+	if err != nil {
+		return nil, err
+	}
+	g.sideViews = append(g.sideViews, uiEnemy)
 
 	messageView, err := rootView.CreateSubConsole(0, rootView.Height-3, rootView.Width, 3)
 	if err != nil {
@@ -139,20 +161,22 @@ func (g *Game) HandleInput(timeElapsed float64) error {
 	}
 
 	// Inventory stuff.
+	// TODO: On TAB, cycle through the UI elements.
+	if inpututil.IsKeyJustPressed(ebiten.KeyTab) {
+		g.selectedUI++
+		g.selectedUI %= len(g.sideViews)
+	}
+
 	// TODO: Move this to a UI component.
-	if inpututil.IsKeyJustPressed(ebiten.KeyUp) {
-		g.player.Inventory.SelectItem(g.player.Inventory.selectedItem - 1)
-	}
-	if inpututil.IsKeyJustPressed(ebiten.KeyDown) {
-		g.player.Inventory.SelectItem(g.player.Inventory.selectedItem + 1)
-	}
-	if inpututil.IsKeyJustPressed(ebiten.KeyEnter) {
-		if sel := g.player.Selected(); sel != nil {
-			if sel.Equippable() {
-				g.player.Equip(g.player.Inventory.selectedItem)
-			} else if sel.Consumable() {
-				g.player.Consume(g.player.Inventory.selectedItem)
-			}
+	if ui := g.getCurrentActiveUI(); ui != nil {
+		if inpututil.IsKeyJustPressed(ebiten.KeyUp) {
+			ui.Prev()
+		}
+		if inpututil.IsKeyJustPressed(ebiten.KeyDown) {
+			ui.Next()
+		}
+		if inpututil.IsKeyJustPressed(ebiten.KeyEnter) {
+			ui.Select()
 		}
 	}
 
@@ -187,12 +211,21 @@ func (g *Game) Update(screen *ebiten.Image, timeDelta float64) error {
 	g.rootView.ClearAll()
 	g.rootView.TransformAll(t.Background(concolor.RGB(50, 50, 50)))
 
+	// Draw world.
+	g.drawMap()
+
+	// Draw side menu.
+	g.drawSideMenu()
+
+	// List messages.
+	g.drawMessages()
+
+	return nil
+}
+
+func (g *Game) drawMap() {
 	g.worldView.ClearAll()
 	g.worldView.TransformAll(t.Background(concolor.RGB(55, 55, 55)), t.Char(0))
-
-	g.playerInfoView.ClearAll()
-
-	g.messageView.ClearAll()
 
 	// Draw header.
 	g.rootView.TransformArea(0, 0, g.rootView.Width, 1, t.Background(concolor.RGB(80, 80, 80)))
@@ -239,70 +272,30 @@ func (g *Game) Update(screen *ebiten.Image, timeDelta float64) error {
 		}
 		g.worldView.Transform(midX-pX+e.X, midY-pY+e.Y, t.CharByte(e.Tile), transformer)
 	}
+}
 
-	// Draw player info.
-	g.playerInfoView.PrintBounded(1, 1, g.playerInfoView.Width-2, 2, fmt.Sprintf("Health: %d/%d", g.player.Health, g.player.BaseHealth))
-	g.playerInfoView.PrintBounded(1, 2, g.playerInfoView.Width-2, 2, fmt.Sprintf("Def: %d Att: %d", g.player.DefenseValue(), g.player.AttackDamage()))
-	g.playerInfoView.PrintBounded(1, 3, g.playerInfoView.Width-2, 2, fmt.Sprintf("X=%d Y=%d", pX, pY), t.Foreground(colGrey))
+func (g *Game) isUIActive(ui UIif) bool {
+	return g.getCurrentActiveUI() == ui
+}
 
-	// Draw inventory.
-	//
-	// TODO:
-	// - Move this to a UI component.
-	// - Render equipped armor and weapon.
-	g.playerInfoView.PrintBounded(1, 4, g.playerInfoView.Width-2, 2, fmt.Sprintf("Inventory (%d)", g.player.Inventory.Count()))
-	var idx int
-	for i, item := range g.player.Items {
-		var entry string
-		if item.Equipped {
-			entry = fmt.Sprintf("%d:*%s", i, item.Name)
-		} else {
-			entry = fmt.Sprintf("%d: %s", i, item.Name)
-		}
-		var transformers []t.Transformer
-		if i == g.player.selectedItem {
-			transformers = append(transformers, t.Foreground(concolor.Green))
-		}
-		g.playerInfoView.PrintBounded(2, 6+idx, g.playerInfoView.Width-2, 2, entry, transformers...)
-		idx++
+func (g *Game) getCurrentActiveUI() UIif {
+	if g.selectedUI < 0 || g.selectedUI >= len(g.sideViews) {
+		return nil
 	}
+	return g.sideViews[g.selectedUI]
+}
 
-	// Draw what can be found at the current position.
-	// List entities first.
-	// TODO: Factor this out into a function.
-	var entities []*Entity
-	for _, e := range g.Entities {
-		if e.X == pX && e.Y == pY {
-			entities = append(entities, e)
-		}
+func (g *Game) drawSideMenu() {
+	for _, ui := range g.sideViews {
+		ui.Draw()
 	}
+}
 
-	g.playerInfoView.PrintBounded(1, 7+idx, g.playerInfoView.Width-2, 2, fmt.Sprintf("In Range (%d)", len(entities)))
-	for i, e := range entities {
-		entry := e.Name
-		var transformers []t.Transformer
-		if e.IsDead() {
-			entry += " (dead)"
-			transformers = append(transformers, t.Foreground(concolor.Red))
-		}
-		g.playerInfoView.PrintBounded(2, 8+idx, g.playerInfoView.Width-2, 2, fmt.Sprintf("%d: %s", i, entry), transformers...)
-		idx++
-
-		// List inventory items if the entity is dead. (Loot)
-		if e.IsDead() {
-			for _, it := range e.Items {
-				g.playerInfoView.PrintBounded(2+3, 8+idx, g.playerInfoView.Width-2, 2, it.Name, transformers...)
-				idx++
-			}
-		}
-	}
-
-	// List messages.
+func (g *Game) drawMessages() {
+	g.messageView.ClearAll()
 	for i, m := range g.Messages {
 		g.messageView.PrintBounded(1, i, g.messageView.Width-2, 2, m)
 	}
-
-	return nil
 }
 
 func (g *Game) AddMessage(msg string) {

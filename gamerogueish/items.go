@@ -31,28 +31,6 @@ func (i Item) Consumable() bool {
 // Inventory represents a collection of items.
 type Inventory struct {
 	Items []*Item
-
-	// This should be part of a UI component.
-	selectedItem int
-}
-
-// SelectItem selects the given item index while clamping
-// it to the inventory.
-func (i *Inventory) SelectItem(index int) {
-	if index < 0 {
-		index = 0
-	} else if index >= len(i.Items) {
-		index = len(i.Items) - 1
-	}
-	i.selectedItem = index
-}
-
-// Selected returns the currently selected item.
-func (i *Inventory) Selected() *Item {
-	if len(i.Items) == 0 {
-		return nil
-	}
-	return i.Items[i.selectedItem]
 }
 
 // Add the given item to the inventory.
@@ -77,7 +55,6 @@ func (i *Inventory) RemoveItem(index int) {
 		return
 	}
 	i.Items = append(i.Items[:index], i.Items[index+1:]...)
-	i.SelectItem(i.selectedItem) // Update the selected item.
 }
 
 // GetItem returns the item with the given index.
@@ -137,5 +114,10 @@ var (
 		Name:        "Plate Armor",
 		Description: "A plate armor.",
 		Type:        ItemArmor,
+	}
+	ItemTypeTrollPoop = &ItemType{
+		Name:        "Troll Poop",
+		Description: "A troll poop.",
+		Type:        ItemPotion,
 	}
 )

@@ -7,6 +7,15 @@ Right now, the code is a really basic re-factor of the roguelike example that co
 
 ![alt text](https://raw.githubusercontent.com/Flokey82/go_gens/master/gamerogueish/images/rgb.png "rogue-ish")
 
+## Keybindings
+
+* ASDW - Move
+* Space - Attack
+* TAB - Toggle UI selection
+* Arrow Up / Down - Select UI element
+* Enter - Consume / Equip / Loot selected UI element
+* P - Add potion to inventory (for testing)
+
 ## TODO
 
 * FOV / 'Fog of war'
@@ -27,7 +36,8 @@ Right now, the code is a really basic re-factor of the roguelike example that co
   * [DONE] Equippable items
   * [DONE] Enemy inventory
     * [DONE] Display items on dead enemies
-    * Looting of dead enemies
+    * [DONE] Looting of dead enemies
+      * SELECTIVE looting of dead enemies
   * Item pickup / drop
   * Item effects
 * Combat

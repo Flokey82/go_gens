@@ -45,6 +45,7 @@ var (
 		BaseHealth:  15,
 		BaseAttack:  7,
 		BaseDefense: 15,
+		Equipment:   []*ItemType{ItemTypeTrollPoop},
 	}
 )
 
