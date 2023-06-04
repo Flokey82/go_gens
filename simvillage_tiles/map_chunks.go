@@ -9,6 +9,7 @@ type MapChunk struct {
 	Structures    *Layer  // Structures like walls, gates, fences, etc.
 	Roof          *Layer  // Roof or ceiling.
 	Items         []*Item // Items in the current chunk.
+	TriggerPos    [2]int  // Position of the trigger in the current chunk.
 }
 
 // newMapChunk returns a new map chunk with the given width and height.

@@ -260,8 +260,17 @@ func (g *Game) drawDebugInfo(screen *ebiten.Image) {
 	fx, fy := g.player.facingTile()                // The tile the player is facing at
 	cx, cy := g.player.chunk[0], g.player.chunk[1] // Current chunk
 
+	var triggerStr string
+	// Get current chunk and compare trigger x, y to player x, y.
+	// If it is a match, draw the trigger text.
+	// TODO: Find a better way to determine if a trigger is set.
+	if tp := g.getChunk(cx, cy).TriggerPos; tp != [2]int{0, 0} && tp == [2]int{px, py} {
+		// Draw the trigger text.
+		triggerStr = "\nTRIGGER (door) found!"
+	}
+
 	// Draw ticks per second (TPS), current tile (T), viewport center tile (V), and current chunk (C).
-	ebitenutil.DebugPrint(screen, fmt.Sprintf("TPS: %0.2f (T %d, %d C %d, %d F %d, %d)", ebiten.ActualTPS(), px, py, cx, cy, fx, fy))
+	ebitenutil.DebugPrint(screen, fmt.Sprintf("TPS: %0.2f (T %d, %d C %d, %d F %d, %d)%s", ebiten.ActualTPS(), px, py, cx, cy, fx, fy, triggerStr))
 }
 
 func (g *Game) Layout(outsideWidth, outsideHeight int) (int, int) {

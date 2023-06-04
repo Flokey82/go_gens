@@ -30,7 +30,7 @@ This package contains a very simple tile based renderer and will hopefully be a 
   * Allow enabling per-layer collision detection via layer property
 * [WIP] Indoor maps
   * [DONE] Map (world) switching
-  * Doors with destination maps / worlds
+  * [WIP] Doors with destination maps / worlds
   * Set player position when transitioning to new map
 * Creatures
   * Stats

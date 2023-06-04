@@ -41,12 +41,24 @@ func genChunk(x, y, width, height int) *MapChunk {
 	switch r.Intn(10) {
 	case 0:
 		chunk.drawObject(house1, 1, 1)
+		chunk.TriggerPos = house1.trigger
+		chunk.TriggerPos[0] += 1
+		chunk.TriggerPos[1] += 1
 	case 1:
 		chunk.drawObject(house2, 1, 1)
+		chunk.TriggerPos = house2.trigger
+		chunk.TriggerPos[0] += 1
+		chunk.TriggerPos[1] += 1
 	case 2:
 		chunk.drawObject(house3, 1, 1)
+		chunk.TriggerPos = house3.trigger
+		chunk.TriggerPos[0] += 1
+		chunk.TriggerPos[1] += 1
 	case 3:
 		chunk.drawObject(hedge, 1, 1)
+		chunk.TriggerPos = hedge.trigger
+		chunk.TriggerPos[0] += 1
+		chunk.TriggerPos[1] += 1
 	}
 	return chunk
 }
