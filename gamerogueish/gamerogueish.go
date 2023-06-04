@@ -92,6 +92,14 @@ func NewGame(gw GenWorld, width, height int, seed int64) (*Game, error) {
 	}
 	g.sideViews = append(g.sideViews, uiEnemy)
 
+	// Draw items.
+	uiItems, err := g.newPlayerItems()
+	if err != nil {
+		return nil, err
+	}
+	g.sideViews = append(g.sideViews, uiItems)
+
+	// Draw messages.
 	messageView, err := rootView.CreateSubConsole(0, rootView.Height-3, rootView.Width, 3)
 	if err != nil {
 		return nil, err
@@ -169,15 +177,7 @@ func (g *Game) HandleInput(timeElapsed float64) error {
 
 	// TODO: Move this to a UI component.
 	if ui := g.getCurrentActiveUI(); ui != nil {
-		if inpututil.IsKeyJustPressed(ebiten.KeyUp) {
-			ui.Prev()
-		}
-		if inpututil.IsKeyJustPressed(ebiten.KeyDown) {
-			ui.Next()
-		}
-		if inpututil.IsKeyJustPressed(ebiten.KeyEnter) {
-			ui.Select()
-		}
+		ui.HandleInput()
 	}
 
 	// For dev purposes we add a key to add potions.
@@ -257,9 +257,6 @@ func (g *Game) drawMap() {
 		}
 	}
 
-	// draw player in the middle
-	g.worldView.Transform(midX, midY, t.CharByte(g.player.Tile), t.Foreground(concolor.Green))
-
 	// Draw entities.
 	for _, e := range g.Entities {
 		// Draw only if we can see the creatures.
@@ -272,6 +269,18 @@ func (g *Game) drawMap() {
 		}
 		g.worldView.Transform(midX-pX+e.X, midY-pY+e.Y, t.CharByte(e.Tile), transformer)
 	}
+
+	// Draw items.
+	for _, it := range g.Items {
+		// Draw only if we can see the items.
+		if !g.IsInRadius(pX, pY, it.X, it.Y) {
+			continue
+		}
+		g.worldView.Transform(midX-pX+it.X, midY-pY+it.Y, t.CharByte(it.Tile), t.Foreground(concolor.Green))
+	}
+
+	// draw player in the middle
+	g.worldView.Transform(midX, midY, t.CharByte(g.player.Tile), t.Foreground(concolor.Green))
 }
 
 func (g *Game) isUIActive(ui UIif) bool {

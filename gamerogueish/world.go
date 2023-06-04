@@ -10,6 +10,7 @@ type World struct {
 	Width    int       // width of the world in cells
 	Height   int       // height of the world in cells
 	Entities []*Entity // entities in the world (creatures)
+	Items    []*Item   // items in the world
 }
 
 // NewWorld returns a new world with the given width and height.

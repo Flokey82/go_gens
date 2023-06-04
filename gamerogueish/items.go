@@ -1,5 +1,7 @@
 package gamerogueish
 
+import "fmt"
+
 const (
 	ItemWeapon = iota
 	ItemPotion
@@ -11,11 +13,24 @@ const (
 type Item struct {
 	*ItemType
 	Equipped bool // indicates if the item is equipped
+	X        int  // x position in the world (if dropped)
+	Y        int  // y position in the world (if dropped)
 }
 
 // String returns the name of the item.
 func (i Item) String() string {
 	return i.Name
+}
+
+// FullName returns the full name of the item including the modifier.
+func (i Item) FullName() string {
+	if i.Modifier == 0 {
+		return i.Name
+	}
+	if i.Modifier > 0 {
+		return fmt.Sprintf("%s (%+d)", i.Name, i.Modifier)
+	}
+	return fmt.Sprintf("%s (%d)", i.Name, i.Modifier)
 }
 
 // Equippable returns true if the item can be equipped.
@@ -38,23 +53,25 @@ func (i *Inventory) Add(item *Item) {
 	i.Items = append(i.Items, item)
 }
 
-// Remove the given item from the inventory.
-func (i *Inventory) Remove(item *Item) {
+// Remove the given item from the inventory and return it.
+func (i *Inventory) Remove(item *Item) *Item {
 	for j, v := range i.Items {
 		if v == item {
-			i.RemoveItem(j)
-			break
+			return i.RemoveItem(j)
 		}
 	}
+	return nil
 }
 
 // RemoveItem removes the item with the given index from the
-// inventory.
-func (i *Inventory) RemoveItem(index int) {
+// inventory and returns it.
+func (i *Inventory) RemoveItem(index int) *Item {
 	if index < 0 || index >= len(i.Items) {
-		return
+		return nil
 	}
+	item := i.Items[index]
 	i.Items = append(i.Items[:index], i.Items[index+1:]...)
+	return item
 }
 
 // GetItem returns the item with the given index.
@@ -72,9 +89,11 @@ func (i *Inventory) Count() int {
 
 // ItemType represents a type of item.
 type ItemType struct {
+	Tile        byte
 	Name        string
 	Description string
 	Type        int
+	Modifier    int
 }
 
 // New returns a new item of the given type.
@@ -86,38 +105,49 @@ func (i ItemType) New() *Item {
 
 var (
 	ItemTypeWeaponSword = &ItemType{
+		Tile:        '/',
 		Name:        "Sword",
 		Description: "A sharp sword.",
 		Type:        ItemWeapon,
 	}
 	ItemTypeWeaponAxe = &ItemType{
+		Tile:        'P',
 		Name:        "Axe",
 		Description: "A sharp axe.",
 		Type:        ItemWeapon,
+		Modifier:    1,
 	}
 	ItemTypePotion = &ItemType{
+		Tile:        'Ö',
 		Name:        "Potion",
 		Description: "A healing potion.",
 		Type:        ItemPotion,
 	}
+	ItemTypeTrollPoop = &ItemType{
+		Tile:        '8',
+		Name:        "Troll Poop",
+		Description: "A troll poop.",
+		Type:        ItemPotion,
+		Modifier:    10,
+	}
 	ItemTypeArmorLeather = &ItemType{
+		Tile:        'L',
 		Name:        "Leather Armor",
 		Description: "A leather armor.",
 		Type:        ItemArmor,
 	}
 	ItemTypeArmorChain = &ItemType{
+		Tile:        'C',
 		Name:        "Chain Armor",
 		Description: "A chain armor.",
 		Type:        ItemArmor,
+		Modifier:    2,
 	}
 	ItemTypeArmorPlate = &ItemType{
+		Tile:        'P',
 		Name:        "Plate Armor",
 		Description: "A plate armor.",
 		Type:        ItemArmor,
-	}
-	ItemTypeTrollPoop = &ItemType{
-		Name:        "Troll Poop",
-		Description: "A troll poop.",
-		Type:        ItemPotion,
+		Modifier:    4,
 	}
 )

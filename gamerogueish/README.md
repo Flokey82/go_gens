@@ -14,6 +14,7 @@ Right now, the code is a really basic re-factor of the roguelike example that co
 * TAB - Toggle UI selection
 * Arrow Up / Down - Select UI element
 * Enter - Consume / Equip / Loot selected UI element
+* Backspace - Drop selected UI element
 * P - Add potion to inventory (for testing)
 
 ## TODO
@@ -39,6 +40,9 @@ Right now, the code is a really basic re-factor of the roguelike example that co
     * [DONE] Looting of dead enemies
       * SELECTIVE looting of dead enemies
   * Item pickup / drop
+    * [DONE] Item drop
+      * Confirmation before dropping
+    * Item pickup
   * Item effects
 * Combat
   * Player death
@@ -50,6 +54,10 @@ Right now, the code is a really basic re-factor of the roguelike example that co
   * Caves
   * Custom seed
   * Item placement
+* Items / Entities rendering
+  * Interface for items / entities in the world
+* UI
+  * Deduplicate UI code (items, enemies, etc)
 
 ## Interesting stuff
 

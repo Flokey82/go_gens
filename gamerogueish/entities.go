@@ -117,7 +117,7 @@ func (e *Entity) AttackDamage() int {
 	// Check if we have a weapon equipped.
 	// TODO: Allow weapon specific damage.
 	if e.Slots[ItemWeapon] != nil {
-		damage = 5
+		damage = 5 + e.Slots[ItemWeapon].Modifier
 	}
 	return damage
 }
@@ -127,7 +127,7 @@ func (e *Entity) DefenseValue() int {
 	// Check if we have armor equipped.
 	// TODO: Allow armor specific defense.
 	if e.Slots[ItemArmor] != nil {
-		defense += 2
+		defense += 2 + e.Slots[ItemArmor].Modifier
 	}
 	return defense
 }
@@ -152,7 +152,7 @@ func (e *Entity) Consume(index int) {
 		return
 	}
 	// TODO: Add more potion types.
-	e.Health += 5
+	e.Health += 5 + e.Items[index].Modifier
 	if e.Health > e.BaseHealth {
 		e.Health = e.BaseHealth
 	}
