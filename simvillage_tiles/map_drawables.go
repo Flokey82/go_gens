@@ -11,7 +11,7 @@ type drawable struct {
 	ground        []int
 	groundOverlay []int
 	structures    []int
-	trigger       [2]int // This should be done a bit better with multiple triggers and maybe data for what to do when triggered.
+	triggers      []Trigger // This should be done a bit better with multiple triggers and maybe data for what to do when triggered.
 }
 
 // Ground returns the Ground tiles as *Layer.
@@ -27,6 +27,19 @@ func (d *drawable) GroundOverlay() *Layer {
 // Structures returns the Structures tiles as *Layer.
 func (d *drawable) Structures() *Layer {
 	return &Layer{d.Dimensions, d.structures}
+}
+
+// Trigger represents an interaction trigger.
+type Trigger struct {
+	Position    [2]int // Position of the trigger in the chunk.
+	Destination        // Teleport the user to this destination.
+}
+
+// Destination is a destination for a trigger.
+// TODO: Add also destination map.
+type Destination struct {
+	X, Y  int
+	Chunk [2]int
 }
 
 var house1 = drawable{
@@ -49,7 +62,10 @@ var house1 = drawable{
 		108, 109, 110, 111,
 		133, 134, 135, 136,
 	},
-	trigger: [2]int{2, 4},
+	triggers: []Trigger{
+		{Position: [2]int{1, 4}, Destination: Destination{X: 2, Y: 4, Chunk: [2]int{10, 0}}},
+		{Position: [2]int{2, 4}, Destination: Destination{X: 2, Y: 4, Chunk: [2]int{10, 0}}},
+	},
 }
 
 var house2 = drawable{
@@ -72,7 +88,10 @@ var house2 = drawable{
 		113, 114, 115, 116, 117, 118,
 		138, 139, 140, 141, 142, 143,
 	},
-	trigger: [2]int{2, 4},
+	triggers: []Trigger{
+		{Position: [2]int{2, 4}, Destination: Destination{X: 3, Y: 5, Chunk: [2]int{20, 0}}},
+		{Position: [2]int{3, 4}, Destination: Destination{X: 3, Y: 5, Chunk: [2]int{20, 0}}},
+	},
 }
 
 var house3 = drawable{
@@ -98,7 +117,10 @@ var house3 = drawable{
 		101, 102, 103, 104, 105, 106,
 		126, 127, 128, 129, 130, 131,
 	},
-	trigger: [2]int{2, 5},
+	triggers: []Trigger{
+		{Position: [2]int{2, 5}, Destination: Destination{X: 3, Y: 5, Chunk: [2]int{5, 0}}},
+		{Position: [2]int{3, 5}, Destination: Destination{X: 3, Y: 5, Chunk: [2]int{5, 0}}},
+	},
 }
 
 var hedge = drawable{
@@ -124,5 +146,4 @@ var hedge = drawable{
 		251, 252, 253, 254, 0, 256, 257, 258, 259,
 		276, 277, 278, 279, 0, 281, 282, 283, 284,
 	},
-	trigger: [2]int{2, 5},
 }

@@ -3,13 +3,13 @@ package simvillage_tiles
 // MapChunk represents a chunk of the map.
 type MapChunk struct {
 	Dimensions
-	Ground        *Layer  // Ground or terrain.
-	GroundOverlay *Layer  // Overlays like carpets, scratchmarks, etc.
-	Objects       *Layer  // Objects like stones, flowers, etc.
-	Structures    *Layer  // Structures like walls, gates, fences, etc.
-	Roof          *Layer  // Roof or ceiling.
-	Items         []*Item // Items in the current chunk.
-	TriggerPos    [2]int  // Position of the trigger in the current chunk.
+	Ground        *Layer    // Ground or terrain.
+	GroundOverlay *Layer    // Overlays like carpets, scratchmarks, etc.
+	Objects       *Layer    // Objects like stones, flowers, etc.
+	Structures    *Layer    // Structures like walls, gates, fences, etc.
+	Roof          *Layer    // Roof or ceiling.
+	Items         []*Item   // Items in the current chunk.
+	Triggers      []Trigger // Position of the trigger in the current chunk.
 }
 
 // newMapChunk returns a new map chunk with the given width and height.
@@ -43,4 +43,13 @@ func (m *MapChunk) drawObject(h drawable, dx, dy int) {
 	drawOnLayer(m.Ground, h.Ground(), dx, dy)
 	drawOnLayer(m.GroundOverlay, h.GroundOverlay(), dx, dy)
 	drawOnLayer(m.Structures, h.Structures(), dx, dy)
+
+	// Add the triggers to the map chunk.
+	// TODO: Find a better way to do this.
+	for _, tps := range h.triggers {
+		m.Triggers = append(m.Triggers, Trigger{
+			Position:    [2]int{tps.Position[0] + dx, tps.Position[1] + dy},
+			Destination: tps.Destination,
+		})
+	}
 }

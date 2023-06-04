@@ -139,6 +139,11 @@ func (g *Game) Update() error {
 		g.refreshCache(g.player.chunk)
 	}
 
+	if inpututil.IsKeyJustPressed(ebiten.KeyT) && g.isPlayerOnTrigger() {
+		trg := g.getPlayerTrigger()
+		g.teleportPlayer(trg.Destination.X, trg.Destination.Y, trg.Destination.Chunk)
+	}
+
 	// Handle "AI".
 	for _, c := range g.creatures {
 		// Skip the player, they move on their own.
@@ -264,13 +269,47 @@ func (g *Game) drawDebugInfo(screen *ebiten.Image) {
 	// Get current chunk and compare trigger x, y to player x, y.
 	// If it is a match, draw the trigger text.
 	// TODO: Find a better way to determine if a trigger is set.
-	if tp := g.getChunk(cx, cy).TriggerPos; tp != [2]int{0, 0} && tp == [2]int{px, py} {
+	if g.isPlayerOnTrigger() {
 		// Draw the trigger text.
 		triggerStr = "\nTRIGGER (door) found!"
 	}
 
 	// Draw ticks per second (TPS), current tile (T), viewport center tile (V), and current chunk (C).
 	ebitenutil.DebugPrint(screen, fmt.Sprintf("TPS: %0.2f (T %d, %d C %d, %d F %d, %d)%s", ebiten.ActualTPS(), px, py, cx, cy, fx, fy, triggerStr))
+}
+
+func (g *Game) isPlayerOnTrigger() bool {
+	// Get current chunk and compare trigger x, y to player x, y.
+	// If it is a match, draw the trigger text.
+	px, py := g.player.getTileXY()                 // Current player tile
+	cx, cy := g.player.chunk[0], g.player.chunk[1] // Current chunk
+
+	for _, tp := range g.getChunk(cx, cy).Triggers {
+		if tp.Position == [2]int{px, py} {
+			return true
+		}
+	}
+	return false
+}
+
+func (g *Game) getPlayerTrigger() Trigger {
+	// Get current chunk and compare trigger x, y to player x, y.
+	// If it is a match, draw the trigger text.
+	px, py := g.player.getTileXY()                 // Current player tile
+	cx, cy := g.player.chunk[0], g.player.chunk[1] // Current chunk
+
+	for _, tp := range g.getChunk(cx, cy).Triggers {
+		if tp.Position == [2]int{px, py} {
+			return tp
+		}
+	}
+	return Trigger{}
+}
+
+func (g *Game) teleportPlayer(x, y int, chunk [2]int) {
+	g.player.pos = [2]int{x, y}
+	g.player.chunk = chunk
+	g.refreshCache(g.player.chunk)
 }
 
 func (g *Game) Layout(outsideWidth, outsideHeight int) (int, int) {
