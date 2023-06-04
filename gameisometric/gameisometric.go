@@ -144,6 +144,13 @@ func (g *Game) Update() error {
 		g.currentLevel.LevelUp()
 	}
 
+	// If we click, print the tile we clicked on.
+	if inpututil.IsMouseButtonJustPressed(ebiten.MouseButtonLeft) {
+		x, y := getTileXY(g)
+		fmt.Printf("Clicked on tile %d,%d\n", x, y)
+		// TODO: Add pathfinding from player to tile.
+	}
+
 	return nil
 }
 
@@ -170,8 +177,7 @@ func (g *Game) cartesianToIso(x, y float64) (float64, float64) {
 	return ix, iy
 }
 
-/*
-This function might be useful for those who want to modify this example.
+// This function might be useful for those who want to modify this example.
 
 // isoToCartesian transforms isometric coordinates into cartesian coordinates.
 func (g *Game) isoToCartesian(x, y float64) (float64, float64) {
@@ -180,7 +186,6 @@ func (g *Game) isoToCartesian(x, y float64) (float64, float64) {
 	cy := (y/float64(tileSize/4) - (x / float64(tileSize/2))) / 2
 	return cx, cy
 }
-*/
 
 // renderLevel draws the current Level on the screen.
 func (g *Game) renderLevel(screen *ebiten.Image) {
@@ -247,4 +252,25 @@ func (g *Game) renderLevel(screen *ebiten.Image) {
 		op.GeoM.Translate(cx, cy)
 		screen.DrawImage(target, op)
 	}
+}
+
+func getTileXY(g *Game) (int, int) {
+	//Get the cursor position
+	mx, my := ebiten.CursorPosition()
+	winWidth, winHeight := ebiten.WindowSize()
+	//Offset for center
+	fmx := float64(mx) - float64(winWidth)/2.0
+	fmy := float64(my) - float64(winHeight)/2.0
+
+	x, y := fmx+g.camX, fmy-g.camY
+
+	tileSize := g.currentLevel.tileSize
+
+	//Do a half tile mouse shift because of our perspective
+	x -= .5 * float64(tileSize)
+	y -= .5 * float64(tileSize)
+	//Convert isometric
+	imx, imy := g.isoToCartesian(x, y)
+
+	return int(math.Ceil(float64(imx))), int(math.Ceil(float64(imy)))
 }
