@@ -40,12 +40,8 @@ func NewGame(gw GenWorld, width, height int, seed int64) (*Game, error) {
 
 	// Seed the player inventory with some items.
 	// NOTE: This is just for testing purposes.
-	g.player.Inventory.Items = append(g.player.Inventory.Items, ItemTypeWeaponSword.New())
-	g.player.Inventory.Items = append(g.player.Inventory.Items, ItemTypeWeaponAxe.New())
 	g.player.Inventory.Items = append(g.player.Inventory.Items, ItemTypePotion.New())
-	g.player.Inventory.Items = append(g.player.Inventory.Items, ItemTypePotion.New())
-	g.player.Inventory.Items = append(g.player.Inventory.Items, ItemTypePotion.New())
-	g.player.Inventory.Items = append(g.player.Inventory.Items, ItemTypeArmorLeather.New())
+	g.player.Inventory.Items = append(g.player.Inventory.Items, ItemTypeWeaponFishingRod.New())
 	g.player.Inventory.Items = append(g.player.Inventory.Items, ItemTypeArmorPlate.New())
 
 	// Set up the FOV.
@@ -98,6 +94,9 @@ func NewGame(gw GenWorld, width, height int, seed int64) (*Game, error) {
 		return nil, err
 	}
 	g.sideViews = append(g.sideViews, uiItems)
+
+	// Select inventory as default.
+	g.selectedUI = 1
 
 	// Draw messages.
 	messageView, err := rootView.CreateSubConsole(0, rootView.Height-3, rootView.Width, 3)

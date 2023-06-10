@@ -76,3 +76,4 @@ genarchitecture/cmd/test3.obj
 genarchitecture/cmd/test_2.obj
 genfurnishing/cmd/runner
 gameisometric/cmd/runner
+genfurnishing/cmd/runner

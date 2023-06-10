@@ -24,8 +24,11 @@ Right now, the code is a really basic re-factor of the roguelike example that co
   * Raycasting based FOV
 * Creatures
   * [DONE] Basic movement (random)
+    * Custom movement speed
   * [DONE] AI (basic)
-  * Pathfinding
+    * Custom perception radius
+  * [DONE] Pathfinding
+    * Optimize
 * Documentation
 * Inventory
   * [DONE] Basic inventory
@@ -58,6 +61,8 @@ Right now, the code is a really basic re-factor of the roguelike example that co
   * Interface for items / entities in the world
 * UI
   * Deduplicate UI code (items, enemies, etc)
+  * Highlight active UI components
+  * Move player info out of selectable UI
 
 ## Interesting stuff
 

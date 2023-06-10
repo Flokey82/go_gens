@@ -104,6 +104,13 @@ func (i ItemType) New() *Item {
 }
 
 var (
+	ItemTypeWeaponFishingRod = &ItemType{
+		Tile:        'f',
+		Name:        "Fishing Rod",
+		Description: "Baelin's fishing rod.",
+		Type:        ItemWeapon,
+		Modifier:    20,
+	}
 	ItemTypeWeaponSword = &ItemType{
 		Tile:        '/',
 		Name:        "Sword",

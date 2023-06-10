@@ -29,7 +29,7 @@ var (
 		BaseHealth:  5,
 		BaseAttack:  1,
 		BaseDefense: 5,
-		Equipment:   []*ItemType{ItemTypeWeaponAxe},
+		Equipment:   []*ItemType{ItemTypeWeaponAxe, ItemTypeArmorChain},
 	}
 	EntityOrc = &EntityType{
 		Tile:        'o',
@@ -37,7 +37,7 @@ var (
 		BaseHealth:  10,
 		BaseAttack:  5,
 		BaseDefense: 14,
-		Equipment:   []*ItemType{ItemTypeWeaponSword},
+		Equipment:   []*ItemType{ItemTypeWeaponSword, ItemTypeArmorLeather},
 	}
 	EntityTroll = &EntityType{
 		Tile:        't',
