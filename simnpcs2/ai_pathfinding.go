@@ -67,7 +67,7 @@ func (p *Pathfinding) Update(delta float64) {
 		}
 		curWP = p.World.CellIdxToPos(p.Waypoints[p.WaypointIdx])
 	}
-	log.Println("Waypoint", p.WaypointIdx, "is at", curWP, "and I'm at", p.Being.Pos(), "my destination is", p.Destination)
+	// log.Println("Waypoint", p.WaypointIdx, "is at", curWP, "and I'm at", p.Being.Pos(), "my destination is", p.Destination)
 
 	// Calculate the velocity vector.
 	velVec := curWP.Sub(p.Being.Pos())

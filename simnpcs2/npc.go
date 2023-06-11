@@ -1,6 +1,7 @@
 package simnpcs2
 
 import (
+	"fmt"
 	"math/rand"
 
 	"github.com/Flokey82/go_gens/vectors"
@@ -27,6 +28,11 @@ func NewBeing(world *World) *Being {
 		EventListener: newEventListener(),
 		World:         world,
 	}
+}
+
+// String returns a string representation of the being.
+func (b *Being) String() string {
+	return fmt.Sprintf("Being %d [%s]", b.id, b.CompStats.String())
 }
 
 // AddBeing adds a random being to the world.

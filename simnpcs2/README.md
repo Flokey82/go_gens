@@ -22,6 +22,7 @@ This package is a skeleton for a rebuilt version of the simnpcs and gamecs packa
     - [ ] Add quadtree for event detection
 - [ ] Exports
     - [X] Unify rendering
+    - [ ] Draw list of agents and their needs
     - [X] Add GIF export
         - [ ] Make it optional
     - [X] Add WEBP export
@@ -63,8 +64,8 @@ Needs are a way to determine what an NPC should do. They are based on Maslow's h
     - [X] Basic mockup
     - [ ] Full implementation
 - [ ] Safety (e.g. shelter, protection)
-    - [ ] Attack other NPCs
-    - [ ] Run away from other NPCs
+    - [X] Attack other NPCs
+    - [X] Run away from other NPCs
 - [ ] Belongingness (e.g. friends, family)
 - [ ] Esteem (e.g. respect, recognition)
 - [ ] Self-actualization (e.g. personal growth, fulfillment)

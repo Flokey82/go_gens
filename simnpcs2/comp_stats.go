@@ -1,20 +1,23 @@
 package simnpcs2
 
-import "math/rand"
+import (
+	"fmt"
+	"math/rand"
+)
 
 const (
 	HungerPeckish   = 20
 	HungerHungry    = 40
 	HungerStarving  = 60
 	HungerStarved   = 100
-	HungerPerSecond = 0.1
+	HungerPerSecond = 1.0
 )
 
 const (
-	ExhaustionTired     = 20
+	ExhaustionTired     = 10
 	ExhaustionExhausted = 40
 	ExhaustionDead      = 60
-	ExhaustionPerSecond = 0.1
+	ExhaustionPerSecond = 1.0
 )
 
 // CompStats is a stats component.
@@ -37,6 +40,11 @@ func newCompStats(maxHealth float64) *CompStats {
 	}
 }
 
+// String returns a string representation of the stats.
+func (c *CompStats) String() string {
+	return fmt.Sprintf("HLT: %.0f/%.0f, STV: %.0f, EXH: %.0f", c.Health, c.HealthMax, c.Starvation, c.Exhaustion)
+}
+
 // Update updates the state of the stats.
 func (c *CompStats) Update(delta float64) {
 	// Sometimes we are clumsy and hurt ourselves.
@@ -45,13 +53,13 @@ func (c *CompStats) Update(delta float64) {
 	}
 
 	// If we are lucky we find some food.
-	if rand.Float64() < 0.01 {
-		c.Starvation -= 10
+	if rand.Float64() < 0.01 && c.Starvation > 20 {
+		c.Starvation -= 1.0
 	}
 
 	// If we are lucky we find some rest.
-	if rand.Float64() < 0.01 {
-		c.Exhaustion -= 10
+	if rand.Float64() < 0.01 && c.Exhaustion > 20 {
+		c.Exhaustion -= 1.0
 	}
 
 	// If we are dead we are dead.
@@ -63,7 +71,7 @@ func (c *CompStats) Update(delta float64) {
 	if c.StarvationRate > 0 {
 		c.Starvation += c.StarvationRate * delta
 		if c.Starvation > HungerStarved {
-			c.Health -= 10
+			c.Health -= 10 * delta
 		}
 	}
 
@@ -71,7 +79,7 @@ func (c *CompStats) Update(delta float64) {
 	if c.ExhaustionRate > 0 {
 		c.Exhaustion += c.ExhaustionRate * delta
 		if c.Exhaustion > ExhaustionDead {
-			c.Health -= 10
+			c.Health -= 10 * delta
 		}
 	}
 }

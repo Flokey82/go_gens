@@ -1,6 +1,8 @@
 package simnpcs2
 
 import (
+	"fmt"
+
 	"github.com/Flokey82/go_gens/vectors"
 )
 
@@ -17,6 +19,7 @@ type AI struct {
 	Pathfinding *Pathfinding  // steering behaviors
 	Needs       *Needs        // basic needs
 	Destination *vectors.Vec2 // current destination
+	Home        vectors.Vec2  // home position
 }
 
 // NewAI returns a new AI.
@@ -24,11 +27,17 @@ func NewAI(being *Being) *AI {
 	ai := &AI{
 		World: being.World,
 		Being: being,
+		Home:  being.Pos(), // Set home position.
 	}
 	ai.Perception = newPerception(ai)
 	ai.Pathfinding = newPathfinding(ai)
 	ai.Needs = newNeeds(ai)
 	return ai
+}
+
+// String returns a string representation of the AI.
+func (a *AI) String() string {
+	return fmt.Sprintf("%s (%s)", a.Being.String(), a.Needs.String())
 }
 
 // ID returns the ID of the being this AI is controlling.

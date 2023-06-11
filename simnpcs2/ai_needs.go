@@ -42,6 +42,37 @@ func newNeeds(ai *AI) *Needs {
 	}
 }
 
+// String returns a string representation of the needs.
+func (n *Needs) String() string {
+	// Print the top need.
+	switch n.topNeed() {
+	case NeedSurvival:
+		return "Survival"
+	case NeedHealth:
+		return "Health"
+	case NeedSatiation:
+		return "Satiation"
+	case NeedRest:
+		return "Rest"
+	case NeedConflict:
+		return "Conflict"
+	}
+	// NOTE: This isn't great, but it'll do for now.
+	if n.Dead() {
+		return "Dead"
+	}
+	return "Idle"
+}
+
+func (n *Needs) topNeed() Need {
+	for _, need := range n.Prioities {
+		if n.Needs[need] {
+			return need
+		}
+	}
+	return NeedMax
+}
+
 // Update updates the state of the needs.
 func (n *Needs) Update(delta float64) {
 	// Evaluate basic needs.
@@ -129,13 +160,25 @@ func (n *Needs) ActOnNeed(need Need) {
 		n.Being.Starvation = 0
 	case NeedRest:
 		// a.Sleep()
-		log.Println("Sleep!")
-		n.Being.Exhaustion = 0
+		log.Println("Heading home to sleep!")
+		n.ActOnExhaustion()
 	case NeedConflict:
 		// TODO: Either pursue or flee the enemy.
 		// a.Damage(a.Enemy)
 		log.Println("Conflict!")
 		n.ActOnConflict()
+	}
+}
+
+func (n *Needs) ActOnExhaustion() {
+	// Check if we are home.
+	if n.AI.Pos().Equalish(n.AI.Home) {
+		// We have arrived home, so we can rest.
+		log.Println("I'm home! Sleep!")
+		n.Being.Exhaustion = 0
+	} else if n.AI.Pathfinding.Destination == nil || !n.AI.Pathfinding.Destination.Equal(n.AI.Home) {
+		// Set home as destination.
+		n.AI.Pathfinding.SetDestination(&n.AI.Home, PathfindingModeMoveTo)
 	}
 }
 
@@ -169,9 +212,16 @@ func (n *Needs) ActOnConflict() {
 
 		// Damage the enemy.
 		n.Enemy.TakeDamage(dmg, n.Being)
-	} else {
+	} else if n.AI.Perception.CanSeeEntity(n.Enemy) && !n.Enemy.Dead() {
+		log.Println("Chase!")
 		// Chase the enemy.
 		pos := n.Enemy.Pos()
 		n.AI.Pathfinding.SetDestination(&pos, PathfindingModeChase)
+	} else {
+		// Give up chase if we can't see the enemy anymore...
+		// TODO: Only give up after a certain amount of time.
+		log.Println("Give up chase!")
+		n.Enemy = nil
+		n.Needs[NeedConflict] = false
 	}
 }

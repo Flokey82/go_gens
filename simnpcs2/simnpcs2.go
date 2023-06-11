@@ -93,9 +93,9 @@ func (w *World) findValidPos() vectors.Vec2 {
 // Update updates the state of the world.
 func (w *World) Update(delta float64) {
 	for _, b := range w.Beings {
+		log.Println(b.String())
 		if b.Dead() {
-			log.Println("removing dead being", b.ID())
-
+			// log.Println("removing dead being", b.ID())
 			continue
 		}
 		b.Update(delta)
@@ -128,6 +128,7 @@ func (w *World) GetItemsInRadius(pos vectors.Vec2, radius float64) []*Item {
 
 type Entity interface {
 	ID() int64                                  // ID returns the ID of the entity.
+	String() string                             // String returns a string representation of the entity.
 	Type() EntityType                           // Type returns the type of the entity.
 	Pos() vectors.Vec2                          // Pos returns the momentary position of the entity.
 	Update(delta float64)                       // Update updates the state of the entity.
