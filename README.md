@@ -12,6 +12,12 @@ DO NOT USE YET!
 
 This is a very basic simulation with agents using state machines and behavior trees.
 
+## gamehex
+
+Sample project to demonstrate how to use the Ebiten game engine to create a hexagonal game. This is still a work in progress.
+
+![alt text](/gamehex/images/rgb.png "Hexagonal Game Demo")
+
 ### gameisometric
 
 This is a simple isometric 'game' experiment using the ebitengine and is written in Go.

@@ -78,3 +78,4 @@ genfurnishing/cmd/runner
 gameisometric/cmd/runner
 genfurnishing/cmd/runner
 simnpcs2/cmd/test.gif
+gamehex/cmd/runner
