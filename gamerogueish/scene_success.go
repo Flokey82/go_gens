@@ -23,7 +23,8 @@ func NewSceneSuccess(rootView *console.Console, world *Game) *SceneSuccess {
 		con:           rootView,
 	}
 	g.displayText(
-		"You finally realize that the person you love most in the world is yourself! Congrats, you win!", g.con)
+		"You finally realize that the person you love most in the world is yourself! Congrats, you win! "+
+			"Still a better love story than Twilight.", g.con)
 	return g
 }
 
