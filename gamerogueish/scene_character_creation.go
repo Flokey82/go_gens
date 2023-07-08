@@ -12,16 +12,15 @@ import (
 )
 
 type SceneCharacterCreation struct {
-	*console.ComponentBase
-
-	tb *components.TextBox
 	*Game
+	*console.ComponentBase
+	tb *components.TextBox
 }
 
 func NewSceneCharacterCreation(rootView *console.Console, world *Game) *SceneCharacterCreation {
 	return &SceneCharacterCreation{
-		ComponentBase: console.NewComponentBase(10, 10, 10, 10),
 		Game:          world,
+		ComponentBase: console.NewComponentBase(10, 10, 10, 10),
 	}
 }
 

@@ -80,7 +80,7 @@ Right now, the code is a really basic re-factor of the roguelike example that co
   * Deduplicate UI code (items, enemies, etc)
   * Highlight active UI components
   * Move player info out of selectable UI
-  * De-dupe scene textbox code
+  * [DONE] De-dupe scene textbox code
 * Gameplay
   * [DONE] Add win condition
   * Cutscenes / events / triggers
