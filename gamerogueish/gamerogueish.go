@@ -1,6 +1,8 @@
 package gamerogueish
 
 import (
+	"log"
+
 	"github.com/BigJk/ramen/concolor"
 	"github.com/BigJk/ramen/console"
 	"github.com/BigJk/ramen/font"
@@ -17,36 +19,65 @@ const (
 	labelPlayerInfo = "Player Info"
 )
 
+type ViewMode int
+
+const (
+	ViewModeMap ViewMode = iota
+	ViewModeCharacterCreation
+	ViewModeDeath
+	ViewModeMax
+)
+
 type Game struct {
-	*World                       // currently generated world
-	*FOV                         // currently generated FOV
-	generator   GenWorld         // world generator function
-	player      *Entity          // player entity
-	rootView    *console.Console // view for all sub views
-	worldView   *console.Console // contains map
-	sideView    *console.Console
-	sideViews   []UIif           // contains all side views
-	selectedUI  int              // currently selected UI
-	messageView *console.Console // contains messages
-	Messages    []string         // messages to display
+	Seed         int64 // seed for the world
+	Width        int
+	Height       int
+	*World                        // currently generated world
+	*FOV                          // currently generated FOV
+	generator    GenWorld         // world generator function
+	player       *Entity          // player entity
+	rootView     *console.Console // view for all sub views
+	worldView    *console.Console // contains map
+	sideView     *console.Console
+	sideViews    []UIif           // contains all side views
+	selectedUI   int              // currently selected UI
+	messageView  *console.Console // contains messages
+	Messages     []string         // messages to display
+	view         ViewMode
+	currentScene console.Component
 }
 
-func NewGame(gw GenWorld, width, height int, seed int64) (*Game, error) {
-	g := &Game{
-		generator: gw,
-		World:     gw(width, height, seed),
-		player:    NewEntity(width/2, height/2, EntityPlayer), // Place the player in the middle.
-	}
+func (g *Game) reset() {
+	// Generate a new world.
+	g.World = g.generator(g.Width, g.Height, g.Seed)
+
+	// Create player.
+	g.player = NewEntity(g.World.Width/2, g.World.Height/2, EntityPlayer) // Place the player in the middle.
+	g.player.Name = "Glorbnorb"
 
 	// Seed the player inventory with some items.
 	// NOTE: This is just for testing purposes.
-	g.player.Inventory.Items = append(g.player.Inventory.Items, ItemTypePotion.New())
 	g.player.Inventory.Items = append(g.player.Inventory.Items, ItemTypeWeaponFishingRod.New())
 	g.player.Inventory.Items = append(g.player.Inventory.Items, ItemTypeArmorPlate.New())
+	g.player.Inventory.Items = append(g.player.Inventory.Items, ItemTypePotion.New())
+	g.player.Equip(0)
+	g.player.Equip(1)
 
 	// Set up the FOV.
 	g.FOV = NewFOV(g.World, 10)
 	g.FOV.Update(g.player.X, g.player.Y) // Update FOV
+}
+
+func NewGame(gw GenWorld, width, height int, seed int64) (*Game, error) {
+	g := &Game{
+		Seed:      seed,
+		Width:     width,
+		Height:    height,
+		generator: gw,
+	}
+
+	// Reset the game.
+	g.reset()
 
 	// Init views / UI.
 	rootView, err := console.New(60, 35, font.DefaultFont, labelWindow)
@@ -105,6 +136,9 @@ func NewGame(gw GenWorld, width, height int, seed int64) (*Game, error) {
 	}
 	g.messageView = messageView
 
+	// set default view mode.
+	g.setViewMode(ViewModeMap)
+
 	return g, nil
 }
 
@@ -119,54 +153,30 @@ func (g *Game) Start() {
 	g.rootView.Start(2)
 }
 
+func (g *Game) setViewMode(vm ViewMode) {
+	g.view = vm
+	// Unload current scene.
+	if g.currentScene != nil {
+		g.worldView.RemoveComponent(g.currentScene)
+		//g.currentScene.Close()
+		g.currentScene = nil
+	}
+	var newScene console.Component
+	switch vm {
+	case ViewModeMap:
+		newScene = NewSceneMap(g.worldView, g)
+	case ViewModeCharacterCreation:
+		newScene = NewSceneCharacterCreation(g.worldView, g)
+	case ViewModeDeath:
+		newScene = NewSceneDeath(g.worldView, g)
+	}
+	g.worldView.AddComponent(newScene)
+	g.currentScene = newScene
+}
+
 func (g *Game) HandleInput(timeElapsed float64) error {
-	// TODO: Implement a proper turn based gameloop
-	// See: http://journal.stuffwithstuff.com/2014/07/15/a-turn-based-game-loop/
-
-	// Player movement.
-	var turnTaken bool
-	if inpututil.IsKeyJustPressed(ebiten.KeyW) && g.CanMoveTo(g.player.X, g.player.Y-1) {
-		g.player.Y -= 1
-		turnTaken = true
-	}
-
-	if inpututil.IsKeyJustPressed(ebiten.KeyS) && g.CanMoveTo(g.player.X, g.player.Y+1) {
-		g.player.Y += 1
-		turnTaken = true
-	}
-
-	if inpututil.IsKeyJustPressed(ebiten.KeyA) && g.CanMoveTo(g.player.X-1, g.player.Y) {
-		g.player.X -= 1
-		turnTaken = true
-	}
-
-	if inpututil.IsKeyJustPressed(ebiten.KeyD) && g.CanMoveTo(g.player.X+1, g.player.Y) {
-		g.player.X += 1
-		turnTaken = true
-	}
-
-	// Attack entities if space is pressed.
-	if inpututil.IsKeyJustPressed(ebiten.KeySpace) {
-		pX := g.player.X
-		pY := g.player.Y
-
-		// TODO: Factor this out into a function.
-		var entities []*Entity
-		for _, e := range g.Entities {
-			if e.X == pX && e.Y == pY {
-				entities = append(entities, e)
-			}
-		}
-
-		// Select Random enemy.
-		for _, en := range entities {
-			if !en.IsDead() {
-				g.player.Attack(g, en)
-			}
-		}
-		turnTaken = true
-	}
-
+	// TODO: Figure out a better way to handle side view focus.
+	// MOVE THIS OUT OF HERE!
 	// Inventory stuff.
 	// TODO: On TAB, cycle through the UI elements.
 	if inpututil.IsKeyJustPressed(ebiten.KeyTab) {
@@ -183,18 +193,16 @@ func (g *Game) HandleInput(timeElapsed float64) error {
 	if inpututil.IsKeyJustPressed(ebiten.KeyP) {
 		g.player.Inventory.Items = append(g.player.Inventory.Items, ItemTypePotion.New())
 	}
+	// END: MOVE THIS OUT OF HERE!
 
-	// If we have taken an actual turn, refresh the FOV
-	// and allow the creatures to take their turn.
-	if turnTaken {
-		// If we move, update seen tiles.
-		g.Compute(g.player.X, g.player.Y)
+	if inpututil.IsKeyJustPressed(ebiten.KeyI) {
+		// Cycle through view modes.
+		log.Println("Cycle view mode", int(g.view), int(ViewModeMax))
+		g.setViewMode(ViewMode((int(g.view) + 1) % int(ViewModeMax)))
+	}
 
-		// Handle entity AI.
-		// TODO: Make this energy based or something.
-		for _, e := range g.Entities {
-			g.decideAction(e)
-		}
+	if g.player.IsDead() {
+		g.setViewMode(ViewModeDeath)
 	}
 
 	return nil
@@ -210,8 +218,15 @@ func (g *Game) Update(screen *ebiten.Image, timeDelta float64) error {
 	g.rootView.ClearAll()
 	g.rootView.TransformAll(t.Background(concolor.RGB(50, 50, 50)))
 
+	// Draw header.
+	g.rootView.TransformArea(0, 0, g.rootView.Width, 1, t.Background(concolor.RGB(80, 80, 80)))
+	g.rootView.Print(2, 0, labelWorldView, t.Foreground(concolor.White))
+	g.rootView.Print(g.worldView.Width+2, 0, labelPlayerInfo, t.Foreground(concolor.White))
+
 	// Draw world.
-	g.drawMap()
+	//if g.currentScene == nil {
+	//	g.drawMap()
+	//}
 
 	// Draw side menu.
 	g.drawSideMenu()
@@ -220,66 +235,6 @@ func (g *Game) Update(screen *ebiten.Image, timeDelta float64) error {
 	g.drawMessages()
 
 	return nil
-}
-
-func (g *Game) drawMap() {
-	g.worldView.ClearAll()
-	g.worldView.TransformAll(t.Background(concolor.RGB(55, 55, 55)), t.Char(0))
-
-	// Draw header.
-	g.rootView.TransformArea(0, 0, g.rootView.Width, 1, t.Background(concolor.RGB(80, 80, 80)))
-	g.rootView.Print(2, 0, labelWorldView, t.Foreground(concolor.White))
-	g.rootView.Print(g.worldView.Width+2, 0, labelPlayerInfo, t.Foreground(concolor.White))
-
-	// Draw world centered around the player.
-	midX := g.worldView.Width / 2
-	midY := g.worldView.Height / 2
-
-	// Player position.
-	pX := g.player.X
-	pY := g.player.Y
-
-	// TODO: Skip drawing everything outside of the view.
-	for y := range g.Cells {
-		for x, cv := range g.Cells[y] {
-			// Skip empty cells and cells we haven't seen.
-			if cv == ' ' || !g.Seen[y][x] {
-				continue
-			}
-
-			// Previously seen tiles that we can't see right now are greyed out.
-			if !g.IsInRadius(pX, pY, x, y) {
-				g.worldView.Transform(midX-pX+x, midY-pY+y, t.CharByte(cv), t.Foreground(colGrey))
-			} else {
-				g.worldView.Transform(midX-pX+x, midY-pY+y, t.CharByte(cv))
-			}
-		}
-	}
-
-	// Draw entities.
-	for _, e := range g.Entities {
-		// Draw only if we can see the creatures.
-		if !g.IsInRadius(pX, pY, e.X, e.Y) {
-			continue
-		}
-		transformer := t.Foreground(concolor.Red)
-		if e.IsDead() {
-			transformer = t.Foreground(colDarkRed)
-		}
-		g.worldView.Transform(midX-pX+e.X, midY-pY+e.Y, t.CharByte(e.Tile), transformer)
-	}
-
-	// Draw items.
-	for _, it := range g.Items {
-		// Draw only if we can see the items.
-		if !g.IsInRadius(pX, pY, it.X, it.Y) {
-			continue
-		}
-		g.worldView.Transform(midX-pX+it.X, midY-pY+it.Y, t.CharByte(it.Tile), t.Foreground(concolor.Green))
-	}
-
-	// draw player in the middle
-	g.worldView.Transform(midX, midY, t.CharByte(g.player.Tile), t.Foreground(concolor.Green))
 }
 
 func (g *Game) isUIActive(ui UIif) bool {

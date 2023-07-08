@@ -19,9 +19,6 @@ Right now, the code is a really basic re-factor of the roguelike example that co
 
 ## TODO
 
-* FOV / 'Fog of war'
-  * [DONE] Basic radius based FOV
-  * Raycasting based FOV
 * Creatures
   * [DONE] Basic movement (random)
     * Custom movement speed
@@ -45,24 +42,38 @@ Right now, the code is a really basic re-factor of the roguelike example that co
   * Item pickup / drop
     * [DONE] Item drop
       * Confirmation before dropping
-    * Item pickup
+    * [DONE] Item pickup
   * Item effects
 * Combat
-  * Player death
+  * [DONE] Player death
 * Map generation
   * [DONE] Custom world generator functions
   * [DONE] Creature placement
   * Neighbor rooms not centered (optionally)
   * Connections / doors not centered (optionally)
   * Caves
-  * Custom seed
+  * [DONE] Custom seed
   * Item placement
+* FOV / 'Fog of war'
+  * [DONE] Basic radius based FOV
+  * Raycasting based FOV
+  * Merge map and FOV?
 * Items / Entities rendering
   * Interface for items / entities in the world
 * UI
+  * Add scenes / screens
+    * Scene interface
+      * Input handling
+      * Rendering
+    * Scenes
+      * Character creation
+      * Main menu
+      * [DONE] Main game
+      * [DONE] Game over
   * Deduplicate UI code (items, enemies, etc)
   * Highlight active UI components
   * Move player info out of selectable UI
+  * Add win condition
 
 ## Interesting stuff
 

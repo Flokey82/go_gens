@@ -23,7 +23,7 @@ type uiInventory struct {
 }
 
 func (g *Game) newPlayerInventory() (*uiInventory, error) {
-	playerInventoryView, err := g.sideView.CreateSubConsole(0, 5, 20, 10)
+	playerInventoryView, err := g.sideView.CreateSubConsole(0, 6, 20, 10)
 	if err != nil {
 		return nil, err
 	}
@@ -115,7 +115,7 @@ type uiEnemies struct {
 }
 
 func (g *Game) newPlayerEnemies() (*uiEnemies, error) {
-	playerEnemiesView, err := g.sideView.CreateSubConsole(0, 15, 20, 6)
+	playerEnemiesView, err := g.sideView.CreateSubConsole(0, 16, 20, 6)
 	if err != nil {
 		return nil, err
 	}
@@ -336,7 +336,7 @@ type uiPlayerInfo struct {
 }
 
 func (g *Game) newPlayerInfo() (*uiPlayerInfo, error) {
-	playerInfoView, err := g.sideView.CreateSubConsole(0, 0, 20, 4)
+	playerInfoView, err := g.sideView.CreateSubConsole(0, 0, 20, 5)
 	if err != nil {
 		return nil, err
 	}
@@ -355,9 +355,10 @@ func (ui *uiPlayerInfo) Draw() {
 	pY := ui.player.Y
 
 	// Draw player info.
-	ui.view.PrintBounded(1, 1, ui.view.Width-2, 2, fmt.Sprintf("Health: %d/%d", ui.player.Health, ui.player.BaseHealth))
-	ui.view.PrintBounded(1, 2, ui.view.Width-2, 2, fmt.Sprintf("Def: %d Att: %d", ui.player.DefenseValue(), ui.player.AttackDamage()))
-	ui.view.PrintBounded(1, 3, ui.view.Width-2, 2, fmt.Sprintf("X=%d Y=%d", pX, pY), t.Foreground(colGrey))
+	ui.view.PrintBounded(1, 1, ui.view.Width, 1, "Player: "+ui.player.Name, t.Background(colGrey))
+	ui.view.PrintBounded(1, 2, ui.view.Width-2, 2, fmt.Sprintf("Health: %d/%d", ui.player.Health, ui.player.BaseHealth))
+	ui.view.PrintBounded(1, 3, ui.view.Width-2, 2, fmt.Sprintf("Def: %d Att: %d", ui.player.DefenseValue(), ui.player.AttackDamage()))
+	ui.view.PrintBounded(1, 4, ui.view.Width-2, 2, fmt.Sprintf("X=%d Y=%d", pX, pY), t.Foreground(colGrey))
 }
 
 func (ui *uiPlayerInfo) HandleInput() {

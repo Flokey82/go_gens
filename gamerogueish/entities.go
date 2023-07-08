@@ -56,6 +56,7 @@ var MonsterEntities = []*EntityType{
 }
 
 type Entity struct {
+	Name        string             // name of entity (might be different from EntityType.Name)
 	*EntityType                    // type of entity
 	Inventory                      // inventory component
 	X           int                // x position in the world
@@ -67,6 +68,7 @@ type Entity struct {
 // NewEntity returns a new entity with the given position and tile.
 func NewEntity(x, y int, e *EntityType) *Entity {
 	entity := &Entity{
+		Name:       e.Name,
 		X:          x,
 		Y:          y,
 		EntityType: e,
@@ -135,6 +137,10 @@ func (e *Entity) DefenseValue() int {
 func (e *Entity) TakeDamage(g *Game, damage int) {
 	g.AddMessage(fmt.Sprintf("%s took %d damage", e.Name, damage))
 	e.Health -= damage
+	if e.Health <= 0 {
+		g.AddMessage(fmt.Sprintf("%s died", e.Name))
+		e.Health = 0
+	}
 }
 
 func (e *Entity) IsDead() bool {
