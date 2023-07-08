@@ -1,8 +1,6 @@
 package gamerogueish
 
 import (
-	"log"
-
 	"github.com/BigJk/ramen/concolor"
 	"github.com/BigJk/ramen/console"
 	"github.com/BigJk/ramen/t"
@@ -13,6 +11,7 @@ import (
 type SceneMap struct {
 	*Game
 	*console.ComponentBase
+	turnTaken bool
 }
 
 func NewSceneMap(rootView *console.Console, world *Game) *SceneMap {
@@ -23,11 +22,31 @@ func NewSceneMap(rootView *console.Console, world *Game) *SceneMap {
 }
 
 func (g *SceneMap) Update(con *console.Console, timeElapsed float64) bool {
+
 	// TODO: Implement a proper turn based gameloop
 	// See: http://journal.stuffwithstuff.com/2014/07/15/a-turn-based-game-loop/
-	if g.IsFocused() {
-		log.Println("SceneMap is focused")
+	// Check if a turn has been taken.
+	if g.turnTaken {
+		g.turnTaken = false
+		// Check for all items in range that might trigger something.
+		for _, item := range g.World.Items {
+			if item.X == g.player.X && item.Y == g.player.Y {
+				if item.OnTouch != nil {
+					item.OnTouch(g.Game, g.player, item)
+				}
+			}
+		}
+
+		// TODO: Find a better place to do this.
+		// ... or rename / split this function.
+		if g.player.IsDead() {
+			g.setViewMode(ViewModeDeath)
+		}
 	}
+
+	//if g.IsFocused() {
+	//	log.Println("SceneMap is focused")
+	//}
 
 	// Player movement.
 	var turnTaken bool
@@ -84,6 +103,9 @@ func (g *SceneMap) Update(con *console.Console, timeElapsed float64) bool {
 		for _, e := range g.Entities {
 			g.decideAction(e)
 		}
+
+		// Make sure that next turn we know that a turn has been taken.
+		g.turnTaken = true
 	}
 	return true
 }
@@ -140,13 +162,8 @@ func (g *SceneMap) Draw(con *console.Console, timeElapsed float64) {
 		g.worldView.Transform(midX-pX+it.X, midY-pY+it.Y, t.CharByte(it.Tile), t.Foreground(concolor.Green))
 	}
 
-	// draw player in the middle
+	// Draw player in the middle.
 	g.worldView.Transform(midX, midY, t.CharByte(g.player.Tile), t.Foreground(concolor.Green))
-
-	// Draw exit if in view.
-	if g.IsInRadius(pX, pY, g.World.ExitX, g.World.ExitY) {
-		g.worldView.Transform(midX-pX+g.World.ExitX, midY-pY+g.World.ExitY, t.CharByte('X'), t.Foreground(concolor.Green))
-	}
 }
 
 func (g *SceneMap) FocusOnClick() bool { return true }

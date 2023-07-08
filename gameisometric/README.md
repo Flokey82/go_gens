@@ -5,6 +5,9 @@ The code is heavily inspired by the [ebiten isometric example](https://ebitengin
 
 ![alt text](https://raw.githubusercontent.com/Flokey82/go_gens/master/gameisometric/images/screenshot.png "Screenshot of isometric stuff!")
 
+Some interesting info on the math behind isometric maths can be found here:
+https://clintbellanger.net/articles/isometric_math/
+
 ## NOTE
 
 Part of (or All) the graphic tiles used in this program is the public domain roguelike tileset 'RLTiles'.

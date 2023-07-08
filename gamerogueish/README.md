@@ -44,6 +44,7 @@ Right now, the code is a really basic re-factor of the roguelike example that co
       * Confirmation before dropping
     * [DONE] Item pickup
   * Item effects
+  * [DONE] Item triggers
 * Combat
   * [DONE] Player death
   * Enemies should attack on each turn
@@ -77,7 +78,10 @@ Right now, the code is a really basic re-factor of the roguelike example that co
   * Move player info out of selectable UI
 * Gameplay
   * [DONE] Add win condition
-  * Trigger scenes through items (e.g. stairs, level exit)
+  * Cutscenes / events / triggers
+    * Trigger scenes through items (e.g. stairs, level exit)
+      * [DONE] Level exit
+      * [DONE] Trap
   * Collects stats or score to show on win/lose
 
 ## Interesting stuff

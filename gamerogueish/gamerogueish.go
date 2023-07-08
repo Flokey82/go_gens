@@ -73,6 +73,9 @@ func (g *Game) reset() {
 	// Set up the FOV.
 	g.FOV = NewFOV(g.World, 10)
 	g.FOV.Update(g.player.X, g.player.Y) // Update FOV
+
+	// Reset messages.
+	g.Messages = nil
 }
 
 // Initializes a new game.
@@ -211,17 +214,6 @@ func (g *Game) HandleInput(timeElapsed float64) error {
 		log.Println("Cycle view mode", int(g.view), int(ViewModeMax))
 		g.setViewMode(ViewMode((int(g.view) + 1) % int(ViewModeMax)))
 	}
-
-	// TODO: Find a better place to do this.
-	// ... or rename / split this function.
-	if g.player.IsDead() {
-		g.setViewMode(ViewModeDeath)
-	}
-
-	if g.player.X == g.World.ExitX && g.player.Y == g.World.ExitY {
-		g.setViewMode(ViewModeSuccess)
-	}
-
 	return nil
 }
 

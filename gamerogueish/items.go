@@ -6,6 +6,7 @@ const (
 	ItemWeapon = iota
 	ItemPotion
 	ItemArmor
+	ItemTrigger
 	ItemTypeMax
 )
 
@@ -94,6 +95,9 @@ type ItemType struct {
 	Description string
 	Type        int
 	Modifier    int
+	OnTouch     func(*Game, *Entity, *Item) // Trigger function called when item is used.
+	// OnEquip    func(*Game, *Entity, *Item) // Trigger function called when item is equipped.
+	// OnUnequip  func(*Game, *Entity, *Item) // Trigger function called when item is unequipped.
 }
 
 // New returns a new item of the given type.
@@ -156,5 +160,28 @@ var (
 		Description: "A plate armor.",
 		Type:        ItemArmor,
 		Modifier:    4,
+	}
+	ItemTypeExit = &ItemType{
+		Tile:        '>',
+		Name:        "Exit",
+		Description: "An exit.",
+		Type:        ItemTrigger,
+		OnTouch: func(g *Game, e *Entity, i *Item) {
+			g.setViewMode(ViewModeSuccess)
+		},
+	}
+	ItemTypeTrap = &ItemType{
+		Tile:        ' ',
+		Name:        "Trap",
+		Description: "A trap.",
+		Type:        ItemTrigger,
+		OnTouch: func(g *Game, e *Entity, i *Item) {
+			// TODO: Mark this trap as sprung.
+			g.AddMessage("You stepped on a trap!")
+			e.Health -= 5
+			if e.Health <= 0 {
+				g.setViewMode(ViewModeDeath)
+			}
+		},
 	}
 )
