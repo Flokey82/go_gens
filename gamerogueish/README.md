@@ -7,6 +7,10 @@ Right now, the code is a really basic re-factor of the roguelike example that co
 
 ![alt text](https://raw.githubusercontent.com/Flokey82/go_gens/master/gamerogueish/images/rgb.png "rogue-ish")
 
+![alt text](https://raw.githubusercontent.com/Flokey82/go_gens/master/gamerogueish/images/rgb2.png "next to the exit")
+
+![alt text](https://raw.githubusercontent.com/Flokey82/go_gens/master/gamerogueish/images/rgb3.png "story panel")
+
 ## Keybindings
 
 * ASDW - Move
@@ -76,12 +80,14 @@ Right now, the code is a really basic re-factor of the roguelike example that co
   * Deduplicate UI code (items, enemies, etc)
   * Highlight active UI components
   * Move player info out of selectable UI
+  * De-dupe scene textbox code
 * Gameplay
   * [DONE] Add win condition
   * Cutscenes / events / triggers
     * Trigger scenes through items (e.g. stairs, level exit)
       * [DONE] Level exit
       * [DONE] Trap
+      * Text / message
   * Collects stats or score to show on win/lose
 
 ## Interesting stuff

@@ -66,9 +66,11 @@ func (g *Game) reset() {
 	// NOTE: This is just for testing purposes.
 	g.player.Inventory.Items = append(g.player.Inventory.Items, ItemTypeWeaponFishingRod.New())
 	g.player.Inventory.Items = append(g.player.Inventory.Items, ItemTypeArmorPlate.New())
+	g.player.Inventory.Items = append(g.player.Inventory.Items, ItemTypeHelmetSweatband.New())
 	g.player.Inventory.Items = append(g.player.Inventory.Items, ItemTypePotion.New())
 	g.player.Equip(0)
 	g.player.Equip(1)
+	g.player.Equip(2)
 
 	// Set up the FOV.
 	g.FOV = NewFOV(g.World, 10)

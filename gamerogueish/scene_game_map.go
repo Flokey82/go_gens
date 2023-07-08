@@ -12,16 +12,33 @@ type SceneMap struct {
 	*Game
 	*console.ComponentBase
 	turnTaken bool
+
+	con *console.Console
+	tb  *console.Console
 }
 
 func NewSceneMap(rootView *console.Console, world *Game) *SceneMap {
-	return &SceneMap{
+	g := &SceneMap{
 		Game:          world,
 		ComponentBase: console.NewComponentBase(0, 0, rootView.Height, rootView.Width),
+		con:           rootView,
 	}
+	g.displayText(
+		"This is the story of "+g.player.Name+", a warrior with a small brain but a big heart. "+
+			"Years of intense aerobics had left him with cardiomegaly and a passion for sweatbands. "+
+			"Now he is looking for love in the most unlikely of places... underground!", g.con)
+	return g
 }
 
 func (g *SceneMap) Update(con *console.Console, timeElapsed float64) bool {
+	// If we have an open textbox, don't do anything else.
+	if g.tb != nil {
+		// TODO: This doesn't prevent interactions with the inventory.
+		if inpututil.IsKeyJustPressed(ebiten.KeySpace) {
+			g.removeText(con)
+		}
+		return true
+	}
 
 	// TODO: Implement a proper turn based gameloop
 	// See: http://journal.stuffwithstuff.com/2014/07/15/a-turn-based-game-loop/
@@ -108,6 +125,70 @@ func (g *SceneMap) Update(con *console.Console, timeElapsed float64) bool {
 		g.turnTaken = true
 	}
 	return true
+}
+
+func (g *SceneMap) removeText(con *console.Console) {
+	if g.tb != nil {
+		con.RemoveSubConsole(g.tb)
+		g.tb = nil
+	}
+}
+
+func (g *SceneMap) displayText(txt string, con *console.Console) {
+	// If we have an open textbox, close it.
+	g.removeText(con)
+
+	// Create a new textbox.
+	// Center the console within parent.
+	conWidth := con.Width
+	conHeight := con.Height
+	boxWidth := 30
+	boxHeight := 20
+	boxX := conWidth/2 - boxWidth/2
+	boxY := conHeight/2 - boxHeight/2
+	textBox, err := con.CreateSubConsole(boxX, boxY, boxWidth, boxHeight)
+	if err != nil {
+		panic(err)
+	}
+	textBox.TransformAll(t.Background(concolor.RGB(50, 50, 50)), t.Char(0))
+	textBox.PrintBounded(1, 1, boxWidth-2, boxHeight-2, insertLineBreaks(txt, boxWidth-2), t.Foreground(concolor.White))
+
+	// Print the close message.
+	textBox.PrintBounded(1, boxHeight-2, boxWidth-2, boxHeight-2, "Press SPACE to close", t.Foreground(concolor.White))
+	g.tb = textBox
+}
+
+// insertLineBreaks takes a string and a max width and inserts line breaks so that words don't get cut off.
+func insertLineBreaks(txt string, maxWidth int) string {
+	var result string
+	var line string
+	for _, word := range splitWords(txt) {
+		if len(line)+len(word) >= maxWidth {
+			result += line + "\n"
+			line = ""
+		}
+		if line != "" {
+			line += " "
+		}
+		line += word
+	}
+	result += line
+	return result
+}
+
+func splitWords(txt string) []string {
+	var result []string
+	var word string
+	for _, char := range txt {
+		if char == ' ' {
+			result = append(result, word)
+			word = ""
+		} else {
+			word += string(char)
+		}
+	}
+	result = append(result, word)
+	return result
 }
 
 func (g *SceneMap) Draw(con *console.Console, timeElapsed float64) {

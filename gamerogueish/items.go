@@ -6,6 +6,7 @@ const (
 	ItemWeapon = iota
 	ItemPotion
 	ItemArmor
+	ItemHelmet
 	ItemTrigger
 	ItemTypeMax
 )
@@ -36,7 +37,7 @@ func (i Item) FullName() string {
 
 // Equippable returns true if the item can be equipped.
 func (i Item) Equippable() bool {
-	return i.Type == ItemWeapon || i.Type == ItemArmor
+	return i.Type == ItemWeapon || i.Type == ItemArmor || i.Type == ItemHelmet
 }
 
 // Consumable returns true if the item can be consumed.
@@ -160,6 +161,13 @@ var (
 		Description: "A plate armor.",
 		Type:        ItemArmor,
 		Modifier:    4,
+	}
+	ItemTypeHelmetSweatband = &ItemType{
+		Tile:        'S',
+		Name:        "Sweatband",
+		Description: "A stylish sweatband.",
+		Type:        ItemHelmet,
+		Modifier:    1,
 	}
 	ItemTypeExit = &ItemType{
 		Tile:        '>',
