@@ -11,6 +11,8 @@ type World struct {
 	Height   int       // height of the world in cells
 	Entities []*Entity // entities in the world (creatures)
 	Items    []*Item   // items in the world
+	ExitX    int       // x position of the exit
+	ExitY    int       // y position of the exit
 }
 
 // NewWorld returns a new world with the given width and height.
@@ -173,6 +175,12 @@ func GenWorldSimpleDungeon(width, height int, seed int64) *World {
 			break
 		}
 	}
+
+	// Pick the last room as the exit.
+	// TODO: Improve this.
+	w.ExitX = rooms[len(rooms)-1].X + rooms[len(rooms)-1].W/2
+	w.ExitY = rooms[len(rooms)-1].Y + rooms[len(rooms)-1].H/2
+
 	return w
 }
 

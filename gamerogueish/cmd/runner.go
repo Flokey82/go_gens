@@ -5,7 +5,7 @@ import (
 )
 
 func main() {
-	g, err := gamerogueish.NewGame(gamerogueish.GenWorldSimpleDungeon, 100, 100, 1234)
+	g, err := gamerogueish.NewGame(gamerogueish.GenWorldSimpleDungeon, 100, 100, -1)
 	if err != nil {
 		panic(err)
 	}

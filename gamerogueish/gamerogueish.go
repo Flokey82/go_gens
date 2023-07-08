@@ -2,6 +2,7 @@ package gamerogueish
 
 import (
 	"log"
+	"math/rand"
 
 	"github.com/BigJk/ramen/concolor"
 	"github.com/BigJk/ramen/console"
@@ -25,6 +26,7 @@ const (
 	ViewModeMap ViewMode = iota
 	ViewModeCharacterCreation
 	ViewModeDeath
+	ViewModeSuccess
 	ViewModeMax
 )
 
@@ -49,7 +51,12 @@ type Game struct {
 
 func (g *Game) reset() {
 	// Generate a new world.
-	g.World = g.generator(g.Width, g.Height, g.Seed)
+	seed := g.Seed
+	if seed == -1 {
+		seed = rand.Int63()
+	}
+
+	g.World = g.generator(g.Width, g.Height, seed)
 
 	// Create player.
 	g.player = NewEntity(g.World.Width/2, g.World.Height/2, EntityPlayer) // Place the player in the middle.
@@ -68,6 +75,8 @@ func (g *Game) reset() {
 	g.FOV.Update(g.player.X, g.player.Y) // Update FOV
 }
 
+// Initializes a new game.
+// NOTE: A seed of -1 will generate a random seed each time.
 func NewGame(gw GenWorld, width, height int, seed int64) (*Game, error) {
 	g := &Game{
 		Seed:      seed,
@@ -169,6 +178,8 @@ func (g *Game) setViewMode(vm ViewMode) {
 		newScene = NewSceneCharacterCreation(g.worldView, g)
 	case ViewModeDeath:
 		newScene = NewSceneDeath(g.worldView, g)
+	case ViewModeSuccess:
+		newScene = NewSceneSuccess(g.worldView, g)
 	}
 	g.worldView.AddComponent(newScene)
 	g.currentScene = newScene
@@ -201,8 +212,14 @@ func (g *Game) HandleInput(timeElapsed float64) error {
 		g.setViewMode(ViewMode((int(g.view) + 1) % int(ViewModeMax)))
 	}
 
+	// TODO: Find a better place to do this.
+	// ... or rename / split this function.
 	if g.player.IsDead() {
 		g.setViewMode(ViewModeDeath)
+	}
+
+	if g.player.X == g.World.ExitX && g.player.Y == g.World.ExitY {
+		g.setViewMode(ViewModeSuccess)
 	}
 
 	return nil

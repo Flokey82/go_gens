@@ -142,6 +142,11 @@ func (g *SceneMap) Draw(con *console.Console, timeElapsed float64) {
 
 	// draw player in the middle
 	g.worldView.Transform(midX, midY, t.CharByte(g.player.Tile), t.Foreground(concolor.Green))
+
+	// Draw exit if in view.
+	if g.IsInRadius(pX, pY, g.World.ExitX, g.World.ExitY) {
+		g.worldView.Transform(midX-pX+g.World.ExitX, midY-pY+g.World.ExitY, t.CharByte('X'), t.Foreground(concolor.Green))
+	}
 }
 
 func (g *SceneMap) FocusOnClick() bool { return true }

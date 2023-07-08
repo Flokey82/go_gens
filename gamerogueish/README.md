@@ -46,6 +46,7 @@ Right now, the code is a really basic re-factor of the roguelike example that co
   * Item effects
 * Combat
   * [DONE] Player death
+  * Enemies should attack on each turn
 * Map generation
   * [DONE] Custom world generator functions
   * [DONE] Creature placement
@@ -70,10 +71,14 @@ Right now, the code is a really basic re-factor of the roguelike example that co
       * Main menu
       * [DONE] Main game
       * [DONE] Game over
+      * [DONE] Win (located exit)
   * Deduplicate UI code (items, enemies, etc)
   * Highlight active UI components
   * Move player info out of selectable UI
-  * Add win condition
+* Gameplay
+  * [DONE] Add win condition
+  * Trigger scenes through items (e.g. stairs, level exit)
+  * Collects stats or score to show on win/lose
 
 ## Interesting stuff
 
