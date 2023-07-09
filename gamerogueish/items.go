@@ -14,6 +14,7 @@ const (
 // Item represents an item in the game.
 type Item struct {
 	*ItemType
+	Hidden   bool // indicates if the item is hidden
 	Equipped bool // indicates if the item is equipped
 	X        int  // x position in the world (if dropped)
 	Y        int  // y position in the world (if dropped)
@@ -96,6 +97,7 @@ type ItemType struct {
 	Description string
 	Type        int
 	Modifier    int
+	Hidden      bool                        // indicates if the item is hidden by default
 	OnTouch     func(*Game, *Entity, *Item) // Trigger function called when item is used.
 	// OnEquip    func(*Game, *Entity, *Item) // Trigger function called when item is equipped.
 	// OnUnequip  func(*Game, *Entity, *Item) // Trigger function called when item is unequipped.
@@ -105,6 +107,7 @@ type ItemType struct {
 func (i ItemType) New() *Item {
 	return &Item{
 		ItemType: &i,
+		Hidden:   i.Hidden,
 	}
 }
 
@@ -175,21 +178,25 @@ var (
 		Description: "An exit.",
 		Type:        ItemTrigger,
 		OnTouch: func(g *Game, e *Entity, i *Item) {
-			g.setViewMode(ViewModeSuccess)
+			// TODO: Improve the way we check who triggered OnTouch.
+			if e.EntityType == EntityPlayer {
+				g.setViewMode(ViewModeSuccess)
+			}
 		},
 	}
 	ItemTypeTrap = &ItemType{
-		Tile:        ' ',
+		Tile:        '^',
 		Name:        "Trap",
 		Description: "A trap.",
+		Hidden:      true,
 		Type:        ItemTrigger,
 		OnTouch: func(g *Game, e *Entity, i *Item) {
-			// TODO: Mark this trap as sprung.
-			g.AddMessage("You stepped on a trap!")
+			// TODO: Improve the way we check who triggered OnTouch.
+			g.AddMessage(e.Name + " stepped on a trap!")
 			e.Health -= 5
-			if e.Health <= 0 {
-				g.setViewMode(ViewModeDeath)
-			}
+			// Mark this trap as revealed.
+			i.Hidden = false
+			// TODO: Mark this trap as sprung?
 		},
 	}
 )

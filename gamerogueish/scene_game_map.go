@@ -45,9 +45,24 @@ func (g *SceneMap) Update(con *console.Console, timeElapsed float64) bool {
 		g.turnTaken = false
 		// Check for all items in range that might trigger something.
 		for _, item := range g.World.Items {
+			// TODO: Deduplicate this code and make it generic.
 			if item.X == g.player.X && item.Y == g.player.Y {
 				if item.OnTouch != nil {
 					item.OnTouch(g.Game, g.player, item)
+				}
+			}
+			// Do the same for all entities that are in range.
+			for _, e := range g.Entities {
+				// This might a bit cheaty, but we don't want to have all entities
+				// kill themselves while wandering around.
+				// TODO: Make this more robust and less hacky.
+				if e.IsDead() || !g.IsInRadius(g.player.X, g.player.Y, e.X, e.Y) {
+					continue
+				}
+				if e.X == item.X && e.Y == item.Y {
+					if item.OnTouch != nil {
+						item.OnTouch(g.Game, e, item)
+					}
 				}
 			}
 		}
@@ -233,7 +248,8 @@ func (g *SceneMap) Draw(con *console.Console, timeElapsed float64) {
 	// Draw items.
 	for _, it := range g.Items {
 		// Draw only if we can see the items.
-		if !g.IsInRadius(pX, pY, it.X, it.Y) {
+		// TODO: Reveal hidden items if we have the ability to see them.
+		if !g.IsInRadius(pX, pY, it.X, it.Y) || it.Hidden {
 			continue
 		}
 		g.worldView.Transform(midX-pX+it.X, midY-pY+it.Y, t.CharByte(it.Tile), t.Foreground(concolor.Green))

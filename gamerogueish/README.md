@@ -28,8 +28,11 @@ Right now, the code is a really basic re-factor of the roguelike example that co
     * Custom movement speed
   * [DONE] AI (basic)
     * Custom perception radius
+    * Should recognize traps and see items
   * [DONE] Pathfinding
     * Optimize
+  * [DONE] Traps should affect enemies (hacky)
+    * Only enemies that are within player view are affected
 * Documentation
 * Inventory
   * [DONE] Basic inventory
@@ -49,6 +52,11 @@ Right now, the code is a really basic re-factor of the roguelike example that co
     * [DONE] Item pickup
   * Item effects
   * [DONE] Item triggers
+  * Hidden items
+    * [DONE] Hidden traps
+    * [DONE] Reveal hidden items on touch
+    * Reveal hiddem items if we have high enough perception or a potion of perception
+    * Hidden status should be per entity (player, enemy) so that enemies can also run into traps and avoid them when they know where they are
 * Combat
   * [DONE] Player death
   * Enemies should attack on each turn
@@ -58,6 +66,7 @@ Right now, the code is a really basic re-factor of the roguelike example that co
   * Neighbor rooms not centered (optionally)
   * Connections / doors not centered (optionally)
   * Caves
+  * [DONE] Water puddles
   * [DONE] Custom seed
   * Item placement
 * FOV / 'Fog of war'
@@ -88,6 +97,7 @@ Right now, the code is a really basic re-factor of the roguelike example that co
       * [DONE] Level exit
       * [DONE] Trap
       * Text / message
+    * Limit triggers to entity types (e.g. only player can trigger stairs)
   * Collects stats or score to show on win/lose
 
 ## Interesting stuff

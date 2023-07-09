@@ -209,6 +209,12 @@ func (g *Game) HandleInput(timeElapsed float64) error {
 	if inpututil.IsKeyJustPressed(ebiten.KeyP) {
 		g.player.Inventory.Items = append(g.player.Inventory.Items, ItemTypePotion.New())
 	}
+	// For dev purposes we add a key to add traps.
+	if inpututil.IsKeyJustPressed(ebiten.KeyT) {
+		t := ItemTypeTrap.New()
+		t.Hidden = false // We know where the trap is.
+		g.player.Inventory.Items = append(g.player.Inventory.Items, t)
+	}
 	// END: MOVE THIS OUT OF HERE!
 
 	if inpututil.IsKeyJustPressed(ebiten.KeyI) {
