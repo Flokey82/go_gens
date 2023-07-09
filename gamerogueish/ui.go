@@ -210,6 +210,7 @@ func (ui *uiEnemies) Select() {
 	if e.IsDead() {
 		// Loot
 		for _, it := range e.Items {
+			it.Equipped = false // Mark all items as unequipped.
 			ui.player.Inventory.Add(it)
 		}
 		// Find the actual index and remove the entity.

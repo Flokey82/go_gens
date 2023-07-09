@@ -2,17 +2,19 @@ package gamerogueish
 
 import (
 	"fmt"
+	"math/rand"
 
 	"github.com/Flokey82/gamedice"
 )
 
 type EntityType struct {
-	Tile        byte
-	Name        string
-	BaseHealth  int
-	BaseAttack  int
-	BaseDefense int
-	Equipment   []*ItemType
+	Tile              byte
+	Name              string
+	BaseHealth        int
+	BaseAttack        int
+	BaseDefense       int
+	Equipment         []*ItemType
+	OptionalEquipment []*ItemType // TODO: Change to item collections.
 }
 
 var (
@@ -22,6 +24,12 @@ var (
 		BaseHealth:  10,
 		BaseAttack:  2,
 		BaseDefense: 10,
+		Equipment: []*ItemType{
+			ItemTypeWeaponFishingRod,
+			ItemTypeArmorPlate,
+			ItemTypeHelmetSweatband,
+			ItemTypePotion,
+		},
 	}
 	EntityGoblin = &EntityType{
 		Tile:        'g',
@@ -30,6 +38,9 @@ var (
 		BaseAttack:  1,
 		BaseDefense: 5,
 		Equipment:   []*ItemType{ItemTypeWeaponAxe, ItemTypeArmorChain},
+		OptionalEquipment: []*ItemType{
+			ItemTypePotion,
+		},
 	}
 	EntityOrc = &EntityType{
 		Tile:        'o',
@@ -38,6 +49,9 @@ var (
 		BaseAttack:  5,
 		BaseDefense: 14,
 		Equipment:   []*ItemType{ItemTypeWeaponSword, ItemTypeArmorLeather},
+		OptionalEquipment: []*ItemType{
+			ItemTypePotion,
+		},
 	}
 	EntityTroll = &EntityType{
 		Tile:        't',
@@ -77,6 +91,20 @@ func NewEntity(x, y int, e *EntityType) *Entity {
 	// Add equipment.
 	for _, it := range e.Equipment {
 		entity.Inventory.Add(it.New())
+	}
+
+	// Equip all items that can be equipped.
+	for i, it := range entity.Items {
+		if it.Equippable() {
+			entity.Equip(i)
+		}
+	}
+
+	// Add optional equipment.
+	for _, it := range e.OptionalEquipment {
+		if rand.Intn(2) == 0 {
+			entity.Inventory.Add(it.New())
+		}
 	}
 	return entity
 }

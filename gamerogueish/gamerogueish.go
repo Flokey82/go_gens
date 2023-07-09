@@ -62,16 +62,6 @@ func (g *Game) reset() {
 	g.player = NewEntity(g.World.Width/2, g.World.Height/2, EntityPlayer) // Place the player in the middle.
 	g.player.Name = "Glorbnorb"
 
-	// Seed the player inventory with some items.
-	// NOTE: This is just for testing purposes.
-	g.player.Inventory.Items = append(g.player.Inventory.Items, ItemTypeWeaponFishingRod.New())
-	g.player.Inventory.Items = append(g.player.Inventory.Items, ItemTypeArmorPlate.New())
-	g.player.Inventory.Items = append(g.player.Inventory.Items, ItemTypeHelmetSweatband.New())
-	g.player.Inventory.Items = append(g.player.Inventory.Items, ItemTypePotion.New())
-	g.player.Equip(0)
-	g.player.Equip(1)
-	g.player.Equip(2)
-
 	// Set up the FOV.
 	g.FOV = NewFOV(g.World, 10)
 	g.FOV.Update(g.player.X, g.player.Y) // Update FOV

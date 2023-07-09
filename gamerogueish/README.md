@@ -20,6 +20,7 @@ Right now, the code is a really basic re-factor of the roguelike example that co
 * Enter - Consume / Equip / Loot selected UI element
 * Backspace - Drop selected UI element
 * P - Add potion to inventory (for testing)
+* T - Add trap to inventory (for testing)
 
 ## TODO
 
@@ -33,6 +34,8 @@ Right now, the code is a really basic re-factor of the roguelike example that co
     * Optimize
   * [DONE] Traps should affect enemies (hacky)
     * Only enemies that are within player view are affected
+  * [DONE] Randomized loot
+  * Generate names
 * Documentation
 * Inventory
   * [DONE] Basic inventory
