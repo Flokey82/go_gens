@@ -10,6 +10,7 @@ import (
 type EntityType struct {
 	Tile              byte
 	Name              string
+	Description       string // TODO: Generate description to create variety.
 	BaseHealth        int
 	BaseAttack        int
 	BaseDefense       int
@@ -34,17 +35,20 @@ var (
 	EntityGoblin = &EntityType{
 		Tile:        'g',
 		Name:        "goblin",
+		Description: "A small goblin.",
 		BaseHealth:  5,
 		BaseAttack:  1,
 		BaseDefense: 5,
 		Equipment:   []*ItemType{ItemTypeWeaponAxe, ItemTypeArmorChain},
 		OptionalEquipment: []*ItemType{
 			ItemTypePotion,
+			ItemTypeGoblinToe,
 		},
 	}
 	EntityOrc = &EntityType{
 		Tile:        'o',
 		Name:        "orc",
+		Description: "A big orc.",
 		BaseHealth:  10,
 		BaseAttack:  5,
 		BaseDefense: 14,
@@ -56,6 +60,7 @@ var (
 	EntityTroll = &EntityType{
 		Tile:        't',
 		Name:        "troll",
+		Description: "A huge troll.",
 		BaseHealth:  15,
 		BaseAttack:  7,
 		BaseDefense: 15,

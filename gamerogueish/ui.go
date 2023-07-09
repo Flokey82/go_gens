@@ -39,7 +39,9 @@ func (ui *uiInventory) Draw() {
 	ui.view.ClearAll()
 	ui.view.PrintBounded(1, 0, ui.view.Width-1, 2, fmt.Sprintf("Inventory (%d)", ui.player.Inventory.Count()), t.Background(colGrey))
 	var idx int
-	for i, item := range ui.player.Items {
+	start, end := calcVisibleRange(ui.view.Height-2, len(ui.player.Inventory.Items), ui.selectedItem)
+	for i := start; i < end; i++ {
+		item := ui.player.Inventory.Items[i]
 		var entry string
 		if item.Equipped {
 			entry = fmt.Sprintf("%d:*%s", i, item.FullName())
@@ -60,7 +62,36 @@ func (ui *uiInventory) Selected() *Item {
 	if len(ui.player.Inventory.Items) == 0 {
 		return nil
 	}
+	// TODO: Verify selectedItem is in range.
 	return ui.player.Inventory.Items[ui.selectedItem]
+}
+
+// NOTE; This doesn't work well if an item takes more than one line.
+func calcVisibleRange(numVisible, numItems, selectedIdx int) (int, int) {
+	if numItems < numVisible {
+		return 0, numItems
+	}
+	// Get the selected item index and make sure it is visible.
+	sel := selectedIdx
+	if sel < 0 {
+		sel = 0
+	}
+	if sel >= numItems {
+		sel = numItems - 1
+	}
+
+	// Calculate the start and end index.
+	start := sel - numVisible/2
+	end := start + numVisible
+	if start < 0 {
+		start = 0
+		end = numVisible
+	}
+	if end > numItems {
+		end = numItems
+		start = end - numVisible
+	}
+	return start, end
 }
 
 func (ui *uiInventory) HandleInput() {
@@ -83,6 +114,15 @@ func (ui *uiInventory) HandleInput() {
 			ui.World.Items = append(ui.World.Items, item)
 		}
 		ui.SelectItem(ui.selectedItem)
+	}
+
+	// Show information about the selected item (if any).
+	if inpututil.IsKeyJustPressed(ebiten.KeyI) {
+		// Display information about the item.
+		// TODO: Display in a text box.
+		if sel := ui.Selected(); sel != nil {
+			ui.AddMessage(sel.Name + ": " + sel.Description)
+		}
 	}
 }
 
@@ -138,17 +178,20 @@ func (ui *uiEnemies) Draw() {
 		ui.selectedItem = 0
 	}
 
-	idx := 0
 	ui.view.ClearAll()
 	ui.view.PrintBounded(1, 0, ui.view.Width-2, 2, fmt.Sprintf("Enemies (%d)", len(entities)), t.Background(colGrey))
-	for i, e := range entities {
+
+	// TODO: Fix the scrolling and unify with other UIs.
+	var idx int
+	for i := ui.selectedItem; i < len(entities); i++ {
+		e := entities[i]
 		entry := e.Name
 		var transformers []t.Transformer
+		if ui.isUIActive(ui) && i == ui.selectedItem {
+			transformers = append(transformers, t.Foreground(concolor.Green))
+		}
 		if e.IsDead() {
 			entry += " (dead)"
-			if ui.isUIActive(ui) && i == ui.selectedItem {
-				transformers = append(transformers, t.Foreground(concolor.Green))
-			}
 		}
 		ui.view.PrintBounded(1, 1+idx, ui.view.Width-2, 2, fmt.Sprintf("%d: %s", i, entry), transformers...)
 		idx++
@@ -173,6 +216,23 @@ func (ui *uiEnemies) HandleInput() {
 	if inpututil.IsKeyJustPressed(ebiten.KeyEnter) {
 		ui.Select()
 	}
+	// Show information about the selected enemy (if any).
+	if inpututil.IsKeyJustPressed(ebiten.KeyI) {
+		// Display information about the enemy.
+		// TODO: Display in a text box.
+		if sel := ui.Selected(); sel != nil {
+			ui.AddMessage(sel.Name + ": " + sel.Description)
+		}
+	}
+}
+
+// Selected returns the currently selected entity.
+func (ui *uiEnemies) Selected() *Entity {
+	if len(ui.Entities) == 0 {
+		return nil
+	}
+	// TODO: Verify selectedItem is in range.
+	return ui.Entities[ui.selectedItem]
 }
 
 // SelectItem selects the given item index while clamping
@@ -261,11 +321,13 @@ func (ui *uiItems) Draw() {
 		ui.selectedItem = 0
 	}
 
-	idx := 0
 	ui.view.ClearAll()
 
 	ui.view.PrintBounded(1, 0, ui.view.Width-2, 2, fmt.Sprintf("Items (%d)", len(items)), t.Background(colGrey))
-	for i, it := range items {
+	var idx int
+	start, end := calcVisibleRange(ui.view.Height-2, len(ui.inRange()), ui.selectedItem)
+	for i := start; i < end; i++ {
+		it := items[i]
 		var transformers []t.Transformer
 		if ui.isUIActive(ui) && i == ui.selectedItem {
 			transformers = append(transformers, t.Foreground(concolor.Green))
@@ -285,6 +347,24 @@ func (ui *uiItems) HandleInput() {
 	if inpututil.IsKeyJustPressed(ebiten.KeyEnter) {
 		ui.Select()
 	}
+
+	// Show information about the selected item (if any).
+	if inpututil.IsKeyJustPressed(ebiten.KeyI) {
+		// Display information about the item.
+		// TODO: Display in a text box.
+		if sel := ui.Selected(); sel != nil {
+			ui.AddMessage(sel.Name + ": " + sel.Description)
+		}
+	}
+}
+
+// Selected returns the currently selected item.
+func (ui *uiItems) Selected() *Item {
+	if len(ui.Items) == 0 {
+		return nil
+	}
+	// TODO: Verify selectedItem is in range.
+	return ui.Items[ui.selectedItem]
 }
 
 // SelectItem selects the given item index while clamping

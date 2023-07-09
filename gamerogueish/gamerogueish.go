@@ -1,7 +1,6 @@
 package gamerogueish
 
 import (
-	"log"
 	"math/rand"
 
 	"github.com/BigJk/ramen/concolor"
@@ -207,11 +206,11 @@ func (g *Game) HandleInput(timeElapsed float64) error {
 	}
 	// END: MOVE THIS OUT OF HERE!
 
-	if inpututil.IsKeyJustPressed(ebiten.KeyI) {
-		// Cycle through view modes.
-		log.Println("Cycle view mode", int(g.view), int(ViewModeMax))
-		g.setViewMode(ViewMode((int(g.view) + 1) % int(ViewModeMax)))
-	}
+	//if inpututil.IsKeyJustPressed(ebiten.KeyI) {
+	//	// Cycle through view modes.
+	//	log.Println("Cycle view mode", int(g.view), int(ViewModeMax))
+	//	g.setViewMode(ViewMode((int(g.view) + 1) % int(ViewModeMax)))
+	//}
 	return nil
 }
 

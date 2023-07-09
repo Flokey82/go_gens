@@ -193,7 +193,7 @@ func (g *SceneMap) Draw(con *console.Console, timeElapsed float64) {
 	}
 	maxX := pX + midX
 	if maxX >= g.World.Width {
-		maxX = g.World.Width - 1
+		maxX = g.World.Width
 	}
 	minY := pY - midY
 	if minY < 0 {
@@ -201,7 +201,7 @@ func (g *SceneMap) Draw(con *console.Console, timeElapsed float64) {
 	}
 	maxY := pY + midY
 	if maxY >= g.World.Height {
-		maxY = g.World.Height - 1
+		maxY = g.World.Height
 	}
 
 	// Draw everything in the view.

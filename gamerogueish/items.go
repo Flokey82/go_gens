@@ -141,9 +141,16 @@ var (
 	ItemTypeTrollPoop = &ItemType{
 		Tile:        '8',
 		Name:        "Troll Poop",
-		Description: "A troll poop.",
+		Description: "... with sprinkles!",
 		Type:        ItemPotion,
 		Modifier:    10,
+	}
+	ItemTypeGoblinToe = &ItemType{
+		Tile:        't',
+		Name:        "Goblin Toe",
+		Description: "It's a bit smelly. A popular snack on TikTok.",
+		Type:        ItemPotion,
+		Modifier:    -1,
 	}
 	ItemTypeArmorLeather = &ItemType{
 		Tile:        'L',
