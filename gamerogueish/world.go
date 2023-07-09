@@ -6,7 +6,7 @@ import (
 
 // World represents a game world.
 type World struct {
-	Cells    [][]byte  // 2D array of world cells
+	Cells    [][]rune  // 2D array of world cells
 	Width    int       // width of the world in cells
 	Height   int       // height of the world in cells
 	Entities []*Entity // entities in the world (creatures)
@@ -19,26 +19,26 @@ func NewWorld(width, height int) *World {
 		Width:  width,
 		Height: height,
 	}
-	w.Cells = make([][]byte, height)
+	w.Cells = make([][]rune, height)
 	for y := range w.Cells {
-		w.Cells[y] = make([]byte, width)
+		w.Cells[y] = make([]rune, width)
 	}
 	return w
 }
 
 // IsSolid checks if a tile is solid (tile content is not a space ' ' character).
 func (w *World) IsSolid(x int, y int) bool {
-	return w.Cells[y][x] != ' '
+	return w.Cells[y][x] != CharFloor
 }
 
 // CanMoveTo checks if a tile is solid and if it is not occupied by an entity.
 func (w *World) CanMoveTo(x, y int) bool {
 	// TODO: Bounds check.
-	return w.Cells[y][x] == ' '
+	return w.Cells[y][x] == CharFloor
 }
 
 // Fill all cells with the given tile.
-func (w *World) Fill(c byte) {
+func (w *World) Fill(c rune) {
 	for y := range w.Cells {
 		for x := range w.Cells[y] {
 			w.Cells[y][x] = c
@@ -55,8 +55,49 @@ func (w *World) InBounds(x, y int) bool {
 func (w *World) CarveRoom(room *Room) {
 	for y := room.Y; y < room.Y+room.H; y++ {
 		for x := room.X; x < room.X+room.W; x++ {
-			w.Cells[y][x] = ' '
+			w.Cells[y][x] = CharFloor
 		}
+	}
+}
+
+// AddRoomPuddle adds a puddle of water to the given room.
+func (w *World) AddRoomPuddle(room *Room) {
+	// Place a small puddle of water in the room.
+	// We pick a random location which is not too close to the entrance to the room (center of each wall).
+	// Then we random walk a random number of steps for each poddle cell.
+	var puddleCells [][2]int
+	// Random position in the room.
+	px := rand.Intn(room.W-2) + room.X + 1
+	py := rand.Intn(room.H-2) + room.Y + 1
+
+	puddleCells = append(puddleCells, [2]int{px, py})
+	// Random number of steps (max 10% of the room size)
+	numSteps := rand.Intn(room.W*room.H/10) + 1
+	for i := 0; i < numSteps; i++ {
+		// Pick a random cell.
+		idx := rand.Intn(len(puddleCells))
+		px, py = puddleCells[idx][0], puddleCells[idx][1]
+		// Pick a random direction.
+		dir := rand.Intn(4)
+		switch dir {
+		case DirNorth:
+			py--
+		case DirEast:
+			px++
+		case DirSouth:
+			py++
+		case DirWest:
+			px--
+		}
+		// Check if the position is valid.
+		if w.InBounds(px, py) && w.Cells[py][px] == CharFloor {
+			puddleCells = append(puddleCells, [2]int{px, py})
+		}
+	}
+
+	// Place the puddle cells.
+	for _, cell := range puddleCells {
+		w.Cells[cell[1]][cell[0]] = CharWater
 	}
 }
 
@@ -80,7 +121,7 @@ func GenWorldSimpleDungeon(width, height int, seed int64) *World {
 		maxRoomSize = 20
 	)
 	w := NewWorld(width, height)
-	w.Fill('#')
+	w.Fill(CharWall)
 
 	ssrc := rand.NewSource(seed)
 	rng := rand.New(ssrc)
@@ -148,6 +189,12 @@ func GenWorldSimpleDungeon(width, height int, seed int64) *World {
 		// Draw room.
 		w.CarveRoom(newRoom)
 
+		// There is a chance that a puddle of water is placed randomly
+		// in the room.
+		if rng.Intn(100) < 20 {
+			w.AddRoomPuddle(newRoom)
+		}
+
 		// There is a chance that a creature entity is placed randomly
 		// in the room.
 
@@ -160,13 +207,13 @@ func GenWorldSimpleDungeon(width, height int, seed int64) *World {
 		// NOTE: Right now, we just place the door in the middle.
 		switch dir {
 		case DirNorth:
-			w.Cells[room.Y-1][room.X+room.W/2] = ' '
+			w.Cells[room.Y-1][room.X+room.W/2] = CharFloor
 		case DirEast:
-			w.Cells[room.Y+room.H/2][room.X+room.W] = ' '
+			w.Cells[room.Y+room.H/2][room.X+room.W] = CharFloor
 		case DirSouth:
-			w.Cells[room.Y+room.H][room.X+room.W/2] = ' '
+			w.Cells[room.Y+room.H][room.X+room.W/2] = CharFloor
 		case DirWest:
-			w.Cells[room.Y+room.H/2][room.X-1] = ' '
+			w.Cells[room.Y+room.H/2][room.X-1] = CharFloor
 		}
 		// Stop if we have enough rooms.
 		if len(rooms) > maxRooms {
@@ -226,7 +273,7 @@ func randInt(rng *rand.Rand, min, max int) int {
 // GenWorldBigBox generates a big box world.
 func GenWorldBigBox(width, height int, seed int64) *World {
 	w := NewWorld(width, height)
-	w.Fill('#')
+	w.Fill(CharWall)
 	w.CarveRoom(&Room{
 		X: 1,
 		Y: 1,
@@ -235,3 +282,9 @@ func GenWorldBigBox(width, height int, seed int64) *World {
 	})
 	return w
 }
+
+const (
+	CharWall  = '#'
+	CharWater = '~'
+	CharFloor = ' '
+)

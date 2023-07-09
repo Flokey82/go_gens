@@ -171,20 +171,49 @@ func (g *SceneMap) Draw(con *console.Console, timeElapsed float64) {
 	pX := g.player.X
 	pY := g.player.Y
 
-	// TODO: Skip drawing everything outside of the view.
-	for y := range g.Cells {
-		for x, cv := range g.Cells[y] {
+	// Calculate the bounds of the view.
+	minX := pX - midX
+	if minX < 0 {
+		minX = 0
+	}
+	maxX := pX + midX
+	if maxX >= g.World.Width {
+		maxX = g.World.Width - 1
+	}
+	minY := pY - midY
+	if minY < 0 {
+		minY = 0
+	}
+	maxY := pY + midY
+	if maxY >= g.World.Height {
+		maxY = g.World.Height - 1
+	}
+
+	// Draw everything in the view.
+	for y := minY; y < maxY; y++ {
+		for x := minX; x < maxX; x++ {
+			cv := g.World.Cells[y][x]
 			// Skip empty cells and cells we haven't seen.
-			if cv == ' ' || !g.Seen[y][x] {
+			if cv == CharFloor || !g.Seen[y][x] {
 				continue
 			}
 
 			// Previously seen tiles that we can't see right now are greyed out.
-			if !g.IsInRadius(pX, pY, x, y) {
-				g.worldView.Transform(midX-pX+x, midY-pY+y, t.CharByte(cv), t.Foreground(colGrey))
+			// TODO: Move this somewhere else.
+			var col concolor.Color
+			inRadius := g.IsInRadius(pX, pY, x, y)
+			if !inRadius {
+				col = colGrey
 			} else {
-				g.worldView.Transform(midX-pX+x, midY-pY+y, t.CharByte(cv))
+				switch cv {
+				case CharWall: // Wall
+					col = concolor.White
+				case CharWater: // Water
+					col = concolor.Blue
+				}
 			}
+
+			g.worldView.Transform(midX-pX+x, midY-pY+y, t.CharRune(cv), t.Foreground(col))
 		}
 	}
 
