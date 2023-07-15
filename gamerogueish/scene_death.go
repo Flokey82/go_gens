@@ -18,7 +18,7 @@ func NewSceneDeath(rootView *console.Console, world *Game) *SceneDeath {
 	g := &SceneDeath{
 		Game:          world,
 		ComponentBase: console.NewComponentBase(10, 10, 10, 10),
-		textBox:       NewTextbox(rootView, 30, 20),
+		textBox:       NewTextbox(rootView, 32, 20),
 	}
 	g.displayText("You died.", "Press ESC to restart game")
 	return g
@@ -26,6 +26,7 @@ func NewSceneDeath(rootView *console.Console, world *Game) *SceneDeath {
 
 func (s *SceneDeath) Update(con *console.Console, timeElapsed float64) bool {
 	// Logic for updating the scene.
+	// TODO: Move this to the textbox.
 	if inpututil.IsKeyJustPressed(ebiten.KeyEscape) {
 		s.removeText()
 		s.reset()

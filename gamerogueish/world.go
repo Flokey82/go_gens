@@ -287,4 +287,6 @@ const (
 	CharWall  = '#'
 	CharWater = '~'
 	CharFloor = ' '
+	CharTree  = 'T'
+	CharShelf = 'S'
 )

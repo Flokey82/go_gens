@@ -64,14 +64,17 @@ Right now, the code is a really basic re-factor of the roguelike example that co
   * [DONE] Player death
   * Enemies should attack on each turn
 * Map generation
+  * [DONE] Custom seed
   * [DONE] Custom world generator functions
   * [DONE] Creature placement
-  * Neighbor rooms not centered (optionally)
-  * Connections / doors not centered (optionally)
-  * Caves
-  * [DONE] Water puddles
-  * [DONE] Custom seed
   * Item placement
+  * [DONE] Dungeons
+    * Neighbor rooms not centered (optionally)
+    * Connections / doors not centered (optionally)
+    * [DONE] Water puddles
+      * Prevent water from blocking doors
+  * Caves
+  * Overworld / outdoor
 * FOV / 'Fog of war'
   * [DONE] Basic radius based FOV
   * Raycasting based FOV
@@ -93,6 +96,11 @@ Right now, the code is a really basic re-factor of the roguelike example that co
   * Highlight active UI components
   * Move player info out of selectable UI
   * [DONE] De-dupe scene textbox code
+  * [DONE] Add scene textbox
+    * [DONE] Pagination
+    * [DONE] Line break / paragraph support
+    * Move to top level (so that it can be used in all scenes)
+    * Make closing key configurable (and customize bottom text accordingly)
 * Gameplay
   * [DONE] Add win condition
   * Cutscenes / events / triggers

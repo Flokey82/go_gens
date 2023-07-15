@@ -1,6 +1,8 @@
 package gamerogueish
 
 import (
+	"strings"
+
 	"github.com/BigJk/ramen/concolor"
 	"github.com/BigJk/ramen/console"
 	"github.com/BigJk/ramen/t"
@@ -19,7 +21,7 @@ func NewSceneSuccess(rootView *console.Console, world *Game) *SceneSuccess {
 	g := &SceneSuccess{
 		ComponentBase: console.NewComponentBase(10, 10, 10, 10),
 		Game:          world,
-		textBox:       NewTextbox(rootView, 30, 20),
+		textBox:       NewTextbox(rootView, 32, 20),
 	}
 	g.displayText(
 		"You finally realize that the person you love most in the world is yourself! Congrats, you win! "+
@@ -29,6 +31,7 @@ func NewSceneSuccess(rootView *console.Console, world *Game) *SceneSuccess {
 
 func (g *SceneSuccess) Update(con *console.Console, timeElapsed float64) bool {
 	// Logic for updating the scene.
+	// TODO: Move this to the textbox.
 	if inpututil.IsKeyJustPressed(ebiten.KeySpace) {
 		// If we have an open textbox, close it.
 		g.removeText()
@@ -52,6 +55,9 @@ type textBox struct {
 	width      int
 	height     int
 	background concolor.Color
+	text       string // text to display
+	textLine   int    // line offset
+	textBottom string // text to display at the bottom
 }
 
 func NewTextbox(con *console.Console, width, height int) *textBox {
@@ -67,6 +73,90 @@ func (g *textBox) removeText() {
 	if g.tb != nil {
 		g.con.RemoveSubConsole(g.tb)
 		g.tb = nil
+		g.text = ""
+		g.textBottom = ""
+		g.textLine = 0
+	}
+}
+
+func (g *textBox) handleInput() bool {
+	// TODO: Handle closing the textbox.
+	if inpututil.IsKeyJustPressed(ebiten.KeyRight) {
+		g.nextPage()
+	}
+	if inpututil.IsKeyJustPressed(ebiten.KeyLeft) {
+		g.prevPage()
+	}
+	return true
+}
+
+func (g *textBox) nextPage() {
+	// Get number of lines per page.
+	numLines := g.numLinesInBox()
+
+	// Advance the text by one page.
+	// Prevent jumping to the last line if we are already on the last page.
+	// NOTE: This is a bit hacky.
+	if g.textLine+numLines < strings.Count(g.text, "\n") {
+		g.jumpToLine(g.textLine + numLines)
+	}
+}
+
+func (g *textBox) prevPage() {
+	// Get number of lines per page.
+	numLines := g.numLinesInBox()
+
+	// Rewind the text by one page.
+	g.jumpToLine(g.textLine - numLines)
+}
+
+func (g *textBox) jumpToLine(lineNr int) {
+	g.textLine = lineNr
+	if numLines := strings.Count(g.text, "\n"); g.textLine > numLines {
+		g.textLine = numLines
+	} else if g.textLine < 0 {
+		g.textLine = 0
+	}
+	g.drawText()
+}
+
+func (g *textBox) numLinesInBox() int {
+	if g.tb == nil {
+		return 0
+	}
+	return g.tb.Height - 4
+}
+
+func (g *textBox) drawText() {
+	numLines := g.numLinesInBox()
+	var curLines int
+	var moreText bool
+	var newText string
+	for i, line := range strings.Split(g.text, "\n") {
+		// If we have reached the end of the box,
+		// stop and indicate that there is more text.
+		if curLines >= numLines {
+			moreText = true
+			break
+		}
+		if i < g.textLine {
+			continue
+		}
+		newText += line + "\n"
+		curLines++
+	}
+
+	boxWidth := g.width
+	boxHeight := g.height
+	g.tb.TransformAll(t.Background(g.background), t.Char(0))
+	g.tb.PrintBounded(1, 1, boxWidth-2, boxHeight-2, newText, t.Foreground(concolor.White))
+
+	// Print the close message.
+	g.tb.PrintBounded(1, boxHeight-2, boxWidth-2, boxHeight-2, g.textBottom, t.Foreground(concolor.White))
+
+	// Print the "more text" indicator.
+	if moreText {
+		g.tb.PrintBounded(boxWidth-2, boxHeight-2, boxWidth-2, boxHeight-2, ">", t.Foreground(concolor.Green))
 	}
 }
 
@@ -86,10 +176,47 @@ func (g *textBox) displayText(txt, bottomStr string) {
 	if err != nil {
 		panic(err)
 	}
-	textBox.TransformAll(t.Background(g.background), t.Char(0))
-	textBox.PrintBounded(1, 1, boxWidth-2, boxHeight-2, insertLineBreaks(txt, boxWidth-2), t.Foreground(concolor.White))
-
-	// Print the close message.
-	textBox.PrintBounded(1, boxHeight-2, boxWidth-2, boxHeight-2, bottomStr, t.Foreground(concolor.White))
+	// TODO: Add pagination (maybe per line?)
+	g.text = insertLineBreaks(txt, boxWidth-2)
+	g.textBottom = bottomStr
 	g.tb = textBox
+	g.jumpToLine(0)
+}
+
+// insertLineBreaks takes a string and a max width and inserts line breaks so that words don't get cut off.
+func insertLineBreaks(txt string, maxWidth int) string {
+	var result string
+	var line string
+	// TODO: First, split by line breaks and then by words.
+	// This will preserve paragraphs.
+	for _, paragraph := range strings.Split(txt, "\n") {
+		for _, word := range splitWords(paragraph) {
+			if len(line)+len(word) >= maxWidth {
+				result += line + "\n"
+				line = ""
+			}
+			if line != "" {
+				line += " "
+			}
+			line += word
+		}
+		result += line + "\n"
+		line = ""
+	}
+	return result
+}
+
+func splitWords(txt string) []string {
+	var result []string
+	var word string
+	for _, char := range txt {
+		if char == ' ' {
+			result = append(result, word)
+			word = ""
+		} else {
+			word += string(char)
+		}
+	}
+	result = append(result, word)
+	return result
 }

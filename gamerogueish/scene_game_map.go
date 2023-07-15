@@ -19,22 +19,25 @@ func NewSceneMap(rootView *console.Console, world *Game) *SceneMap {
 	g := &SceneMap{
 		Game:          world,
 		ComponentBase: console.NewComponentBase(0, 0, rootView.Height, rootView.Width),
-		textBox:       NewTextbox(rootView, 30, 20),
+		textBox:       NewTextbox(rootView, 32, 20),
 	}
 	g.displayText(
 		"This is the story of "+g.player.Name+", a warrior with a small brain but a big heart. "+
 			"Years of intense aerobics had left him with cardiomegaly and a passion for sweatbands. "+
-			"Now he is looking for love in the most unlikely of places... underground!", "Press SPACE to close")
+			"Now he is looking for love in the most unlikely of places... \n \n"+
+			"... underground!", "Press SPACE to close")
 	return g
 }
 
 func (g *SceneMap) Update(con *console.Console, timeElapsed float64) bool {
 	// If we have an open textbox, don't do anything else.
 	if g.tb != nil {
-		// TODO: This doesn't prevent interactions with the inventory.
+		// TODO: Move this to the textbox.
 		if inpututil.IsKeyJustPressed(ebiten.KeySpace) {
 			g.removeText()
 		}
+		// TODO: This doesn't prevent interactions with the inventory.
+		g.textBox.handleInput()
 		return true
 	}
 
@@ -140,39 +143,6 @@ func (g *SceneMap) Update(con *console.Console, timeElapsed float64) bool {
 	return true
 }
 
-// insertLineBreaks takes a string and a max width and inserts line breaks so that words don't get cut off.
-func insertLineBreaks(txt string, maxWidth int) string {
-	var result string
-	var line string
-	for _, word := range splitWords(txt) {
-		if len(line)+len(word) >= maxWidth {
-			result += line + "\n"
-			line = ""
-		}
-		if line != "" {
-			line += " "
-		}
-		line += word
-	}
-	result += line
-	return result
-}
-
-func splitWords(txt string) []string {
-	var result []string
-	var word string
-	for _, char := range txt {
-		if char == ' ' {
-			result = append(result, word)
-			word = ""
-		} else {
-			word += string(char)
-		}
-	}
-	result = append(result, word)
-	return result
-}
-
 func (g *SceneMap) Draw(con *console.Console, timeElapsed float64) {
 	// Clear world view.
 	g.worldView.ClearAll()
@@ -225,6 +195,8 @@ func (g *SceneMap) Draw(con *console.Console, timeElapsed float64) {
 					col = concolor.White
 				case CharWater: // Water
 					col = concolor.Blue
+				case CharTree: // Tree
+					col = concolor.Green
 				}
 			}
 
