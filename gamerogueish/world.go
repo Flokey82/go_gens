@@ -101,6 +101,38 @@ func (w *World) AddRoomPuddle(room *Room) {
 	}
 }
 
+// AddRoomColumns adds columns to the given room.
+func (w *World) AddRoomColumns(room *Room) {
+	// We evenly space the columns in the room, leaving at least one cell between each column
+	// and the room walls.
+
+	minX := room.X + 1
+	maxX := room.X + room.W - 1
+	minY := room.Y + 1
+	maxY := room.Y + room.H - 1
+
+	// Determine the x interval between each column.
+	xInterval := (maxX - minX) / 3
+	if xInterval < 2 {
+		xInterval = 2
+	}
+
+	// Determine the y interval between each column.
+	yInterval := (maxY - minY) / 3
+	if yInterval < 2 {
+		yInterval = 2
+	}
+
+	// TODO: Pick a number of columns that won't have a remainder when placed in the room.
+
+	// Place the columns.
+	for y := minY; y < maxY; y += yInterval {
+		for x := minX; x < maxX; x += xInterval {
+			w.Cells[y][x] = CharColumn
+		}
+	}
+}
+
 // Cardinal directions.
 const (
 	DirNorth = 0
@@ -195,6 +227,12 @@ func GenWorldSimpleDungeon(width, height int, seed int64) *World {
 			w.AddRoomPuddle(newRoom)
 		}
 
+		// There is a chance that columns are placed randomly
+		// in the room.
+		if rng.Intn(100) < 5 {
+			w.AddRoomColumns(newRoom)
+		}
+
 		// There is a chance that a creature entity is placed randomly
 		// in the room.
 
@@ -284,9 +322,10 @@ func GenWorldBigBox(width, height int, seed int64) *World {
 }
 
 const (
-	CharWall  = '#'
-	CharWater = '~'
-	CharFloor = ' '
-	CharTree  = 'T'
-	CharShelf = 'S'
+	CharWall   = '#'
+	CharWater  = '~'
+	CharFloor  = ' '
+	CharTree   = 'T'
+	CharShelf  = 'S'
+	CharColumn = 'o'
 )

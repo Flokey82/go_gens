@@ -31,7 +31,7 @@ func NewSceneMap(rootView *console.Console, world *Game) *SceneMap {
 
 func (g *SceneMap) Update(con *console.Console, timeElapsed float64) bool {
 	// If we have an open textbox, don't do anything else.
-	if g.tb != nil {
+	if g.textBox.isOpen() {
 		// TODO: Move this to the textbox.
 		if inpututil.IsKeyJustPressed(ebiten.KeySpace) {
 			g.removeText()
@@ -191,7 +191,7 @@ func (g *SceneMap) Draw(con *console.Console, timeElapsed float64) {
 				col = colGrey
 			} else {
 				switch cv {
-				case CharWall: // Wall
+				case CharWall, CharColumn: // Wall or column
 					col = concolor.White
 				case CharWater: // Water
 					col = concolor.Blue

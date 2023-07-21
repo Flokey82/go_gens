@@ -58,6 +58,7 @@ type textBox struct {
 	text       string // text to display
 	textLine   int    // line offset
 	textBottom string // text to display at the bottom
+	margin     int    // margin between text and border
 }
 
 func NewTextbox(con *console.Console, width, height int) *textBox {
@@ -66,11 +67,16 @@ func NewTextbox(con *console.Console, width, height int) *textBox {
 		width:      width,
 		height:     height,
 		background: concolor.RGB(50, 50, 50),
+		margin:     1,
 	}
 }
 
+func (g *textBox) isOpen() bool {
+	return g.tb != nil
+}
+
 func (g *textBox) removeText() {
-	if g.tb != nil {
+	if g.isOpen() {
 		g.con.RemoveSubConsole(g.tb)
 		g.tb = nil
 		g.text = ""
@@ -121,10 +127,10 @@ func (g *textBox) jumpToLine(lineNr int) {
 }
 
 func (g *textBox) numLinesInBox() int {
-	if g.tb == nil {
+	if !g.isOpen() {
 		return 0
 	}
-	return g.tb.Height - 4
+	return g.tb.Height - 2*g.margin
 }
 
 func (g *textBox) drawText() {
@@ -135,7 +141,7 @@ func (g *textBox) drawText() {
 	for i, line := range strings.Split(g.text, "\n") {
 		// If we have reached the end of the box,
 		// stop and indicate that there is more text.
-		if curLines >= numLines {
+		if curLines >= numLines-2 { // We skip the last line to make room for the "more text" indicator.
 			moreText = true
 			break
 		}
@@ -148,15 +154,17 @@ func (g *textBox) drawText() {
 
 	boxWidth := g.width
 	boxHeight := g.height
+	textWidth := boxWidth - 2*g.margin
+	textHeight := boxHeight - 2*g.margin
 	g.tb.TransformAll(t.Background(g.background), t.Char(0))
-	g.tb.PrintBounded(1, 1, boxWidth-2, boxHeight-2, newText, t.Foreground(concolor.White))
+	g.tb.PrintBounded(g.margin, g.margin, textWidth, textHeight, newText, t.Foreground(concolor.White))
 
 	// Print the close message.
-	g.tb.PrintBounded(1, boxHeight-2, boxWidth-2, boxHeight-2, g.textBottom, t.Foreground(concolor.White))
+	g.tb.PrintBounded(g.margin, textHeight, textWidth, textHeight, g.textBottom, t.Foreground(concolor.White))
 
 	// Print the "more text" indicator.
 	if moreText {
-		g.tb.PrintBounded(boxWidth-2, boxHeight-2, boxWidth-2, boxHeight-2, ">", t.Foreground(concolor.Green))
+		g.tb.PrintBounded(textWidth, textHeight, textWidth, textHeight, ">", t.Foreground(concolor.Green))
 	}
 }
 

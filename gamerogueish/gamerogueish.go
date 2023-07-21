@@ -46,6 +46,7 @@ type Game struct {
 	Messages     []string         // messages to display
 	view         ViewMode
 	currentScene console.Component
+	// *textBox
 }
 
 func (g *Game) reset() {
@@ -67,6 +68,11 @@ func (g *Game) reset() {
 
 	// Reset messages.
 	g.Messages = nil
+
+	// Reset textbox.
+	//if g.textBox != nil {
+	//	g.textBox.removeText()
+	//}
 }
 
 // Initializes a new game.
@@ -88,6 +94,9 @@ func NewGame(gw GenWorld, width, height int, seed int64) (*Game, error) {
 		return nil, err
 	}
 	g.rootView = rootView
+
+	// Initialize textbox.
+	// g.textBox = NewTextbox(g.rootView, 32, 20)
 
 	worldView, err := rootView.CreateSubConsole(0, 1, rootView.Width-20, rootView.Height-4)
 	if err != nil {
@@ -180,6 +189,33 @@ func (g *Game) setViewMode(vm ViewMode) {
 }
 
 func (g *Game) HandleInput(timeElapsed float64) error {
+	// If we have an open textbox, don't do anything else.
+	/*
+		if g.textBox.isOpen() {
+			// TODO: Move this to the textbox.
+			if inpututil.IsKeyJustPressed(ebiten.KeyY) {
+				log.Println("Starting new game")
+				g.textBox.removeText()
+				g.reset()
+				g.setViewMode(ViewModeMap)
+			}
+			if inpututil.IsKeyJustPressed(ebiten.KeyN) {
+				log.Println("Quitting game")
+				g.textBox.removeText()
+			}
+			if inpututil.IsKeyJustPressed(ebiten.KeySpace) {
+				g.removeText()
+			}
+			// TODO: This doesn't prevent interactions with the inventory.
+			g.textBox.handleInput()
+			return nil
+		}
+		if inpututil.IsKeyJustPressed(ebiten.KeyL) {
+			log.Println("showing intro text")
+			g.textBox.displayText("You are a brave adventurer. You have been tasked with finding the legendary treasure of the ancient temple of doom. You have been warned that the temple is filled with traps and monsters. Do you want to continue?", "Press Y to continue, N to quit")
+		}
+	*/
+
 	// TODO: Figure out a better way to handle side view focus.
 	// MOVE THIS OUT OF HERE!
 	// Inventory stuff.

@@ -55,6 +55,7 @@ Right now, the code is a really basic re-factor of the roguelike example that co
     * [DONE] Item pickup
   * Item effects
   * [DONE] Item triggers
+  * Notes / books
   * Hidden items
     * [DONE] Hidden traps
     * [DONE] Reveal hidden items on touch
@@ -73,6 +74,9 @@ Right now, the code is a really basic re-factor of the roguelike example that co
     * Connections / doors not centered (optionally)
     * [DONE] Water puddles
       * Prevent water from blocking doors
+    * [DONE] Columns
+      * Improve symmetric distribution
+    * [DONE] Traps
   * Caves
   * Overworld / outdoor
 * FOV / 'Fog of war'
@@ -95,6 +99,7 @@ Right now, the code is a really basic re-factor of the roguelike example that co
   * Deduplicate UI code (items, enemies, etc)
   * Highlight active UI components
   * Move player info out of selectable UI
+  * Dialog / conversation
   * [DONE] De-dupe scene textbox code
   * [DONE] Add scene textbox
     * [DONE] Pagination
