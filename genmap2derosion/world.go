@@ -73,7 +73,7 @@ func NewWorld(params *Params) *World {
 		params:        params,
 		r:             rand.New(rand.NewSource(params.Seed)),
 		drainage:      0.01,
-		scale:         40.0,
+		scale:         20.0,
 		heightmap:     make([]float64, idxSize),
 		sediment:      make([]float64, idxSize),
 		windpath:      make([]float64, idxSize),
@@ -159,7 +159,7 @@ func NewWorld(params *Params) *World {
 		w.ExportPng("b_image_comb.png", w.heightmap)
 	} else {
 		// Generate climate.
-		//w.genClimate()
+		// w.genClimate()
 
 		fmt.Println("generated")
 

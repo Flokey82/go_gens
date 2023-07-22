@@ -36,7 +36,7 @@ const (
 	dt             = 1.2   // Delta T / time factor
 	density        = 1.0   // This gives varying amounts of inertia and stuff...
 	evapRate       = 0.001 // The rate of evaporation
-	depositionRate = 0.1   // The rate of sediment deposition
+	depositionRate = 0.01  // The rate of sediment deposition
 	minVol         = 0.01  // Minimum water volume
 	friction       = 0.1   // Friction coefficient influencing the speed of the drop
 	volumeFactor   = 100.0 // Factor of water volume to height. A volume of 100 equals a height of 1.
@@ -111,7 +111,7 @@ func (d *Drop) descend(w *World, track []int) {
 
 		// Mass-Transfer (in MASS)
 		// Calculate the equilibrium concentration at the current speed.
-		c_eq := math.Max(0.0, d.speed.Len()*((w.heightmap[ind]+w.sediment[ind])-(w.heightmap[nind]+w.sediment[nind]))) // ind?
+		c_eq := math.Max(0.0, d.speed.Len()*((w.height(ind))-(w.height(nind)))) // ind?
 
 		// Calculate the difference between what is and what can be suspended in the drop.
 		//
@@ -172,7 +172,7 @@ func (d *Drop) flood(w *World) {
 	d.index = int64(d.pos.X)*dim.Y + int64(d.pos.Y)
 
 	// We use 'plane' as the initial height to identify potential drains.
-	plane := w.heightmap[d.index] + w.sediment[d.index] + w.waterpool[d.index]
+	plane := w.height(d.index) + w.waterpool[d.index]
 	initialplane := plane
 
 	// Floodset will keep track of the flooded cells.
@@ -206,7 +206,7 @@ func (d *Drop) flood(w *World) {
 		// Wall / Boundary
 		//
 		// Calculate current height of this cell / index / location
-		currHeight := w.heightmap[i] + w.sediment[i] + w.waterpool[i]
+		currHeight := w.height(i) + w.waterpool[i]
 		if plane < currHeight {
 			// If this cell / index / location has a surface height
 			// above the target flood plane, it is considered a wall or
@@ -226,7 +226,7 @@ func (d *Drop) flood(w *World) {
 		if initialplane > currHeight {
 			// Only set the drainage point if no drain has been found yet or if the
 			// new drainage point is below the surface height of the previous drain.
-			if !drainfound || currHeight < w.heightmap[drain]+w.sediment[drain]+w.waterpool[drain] {
+			if !drainfound || currHeight < w.height(int64(drain))+w.waterpool[drain] {
 				drain = int(i) // No Drain yet or lower drain.
 			}
 			drainfound = true
@@ -273,7 +273,7 @@ func (d *Drop) flood(w *World) {
 			// Set the new waterlevel / surface plane (slowly, using the drainage factor).
 			// NOTE: I am not sure why we do this istead of just setting the waterlevel to the
 			// surface plane at the drainage point directly.
-			plane = (1.0-drainage)*initialplane + drainage*(w.heightmap[drain]+w.sediment[drain]+w.waterpool[drain])
+			plane = (1.0-drainage)*initialplane + drainage*(w.height(int64(drain))+w.waterpool[drain])
 
 			// Compute the new height for all flooded cells / indices / locations
 			// that we stored in the floodset.
@@ -282,7 +282,7 @@ func (d *Drop) flood(w *World) {
 					// If the current plane is heigher than the current heightmap value,
 					// we make up the difference by adding the difference to the waterpool
 					// height.
-					w.waterpool[s] = plane - (w.heightmap[s] + w.sediment[s])
+					w.waterpool[s] = plane - w.height(s)
 					w.waterdrains[s] = drain
 				} else {
 					// If the current flood plane is below the heightmap,
@@ -301,14 +301,14 @@ func (d *Drop) flood(w *World) {
 		// gives up the total missing volume required for a full flood.
 		var totalVol float64
 		for _, s := range set {
-			totalVol += volumeFactor * (plane - (w.heightmap[s] + w.sediment[s] + w.waterpool[s]))
+			totalVol += volumeFactor * (plane - (w.height(s) + w.waterpool[s]))
 		}
 
 		// Check if we can fill the volume of the sink.
 		if totalVol <= d.volume && initialplane < plane {
 			// If we can, raise water level to plane height.
 			for _, s := range set {
-				w.waterpool[s] = plane - (w.heightmap[s] + w.sediment[s])
+				w.waterpool[s] = plane - w.height(s)
 			}
 
 			// Adjust the drop volume by removing the volume

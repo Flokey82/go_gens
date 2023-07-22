@@ -8,10 +8,10 @@ import (
 // Generate initial heightmap.
 func (w *World) genTerrain() {
 	w.addSlope(vectors.RandomVec2(4))
+	// w.addNoise(0.05)
 	w.addVolCone(-1.0)
-	// w.addNoise(0.5)
-	w.addMountains(50, 0.05)
-	for i := 0; i < 10; i++ {
+	w.addMountains(40, 0.05)
+	for i := 0; i < 2; i++ {
 		w.heightRelax()
 	}
 	w.heightPeaky()
@@ -120,6 +120,14 @@ func getNeighbors(i, maxIdx int, dimY int) []int {
 	return nbs
 }
 
+func (w *World) height(index int64) float64 {
+	return (w.heightmap[index] + w.sediment[index])
+}
+
+func (w *World) oobIdx(index int64) bool {
+	return index < 0 || index >= int64(len(w.heightmap))
+}
+
 func (w *World) surfaceNormal(index int64) vectors.Vec3 {
 	var n vectors.Vec3
 	dimY := w.params.Size.Y
@@ -139,7 +147,7 @@ func (w *World) surfaceNormal(index int64) vectors.Vec3 {
 			// |_|_|_|
 			// |_|_|A|
 			// |_|B|_|
-			n.AddToThis(vectors.Cross3XYZ(0.0, scale*(w.heightmap[index+1]+w.sediment[index+1]-hIdx), 1.0, 1.0, scale*(w.heightmap[index+dimY]+w.sediment[index+dimY]-hIdx), 0.0))
+			n.AddToThis(vectors.Cross3XYZ(0.0, scale*(w.height(index+1)-hIdx), 1.0, 1.0, scale*(w.height(index+dimY)-hIdx), 0.0))
 			a = true
 		}
 		if x > 0 {
@@ -147,7 +155,7 @@ func (w *World) surfaceNormal(index int64) vectors.Vec3 {
 			// |_|A|_|
 			// |_|_|B|
 			// |_|_|_|
-			n.AddToThis(vectors.Cross3XYZ(-1.0, scale*(w.heightmap[index-dimY]+w.sediment[index-dimY]-hIdx), 0.0, 0.0, scale*(w.heightmap[index+1]+w.sediment[index+1]-hIdx), 1.0))
+			n.AddToThis(vectors.Cross3XYZ(-1.0, scale*(w.height(index-dimY)-hIdx), 0.0, 0.0, scale*(w.height(index+1)-hIdx), 1.0))
 			b = true
 		}
 		if enableCross && a && b {
@@ -155,7 +163,7 @@ func (w *World) surfaceNormal(index int64) vectors.Vec3 {
 			// |_|_|A|
 			// |_|_|_|
 			// |_|_|B|
-			n.AddToThis(vectors.Cross3XYZ(-1.0, scale*(w.heightmap[index-dimY+1]+w.sediment[index-dimY+1]-hIdx), 1.0, 1.0, scale*(w.heightmap[index+dimY+1]+w.sediment[index+dimY+1]-hIdx), 1.0))
+			n.AddToThis(vectors.Cross3XYZ(-1.0, scale*(w.height(index-dimY+1)-hIdx), 1.0, 1.0, scale*(w.height(index+dimY+1)-hIdx), 1.0))
 		}
 		a = false
 		b = false
@@ -166,7 +174,7 @@ func (w *World) surfaceNormal(index int64) vectors.Vec3 {
 			// |_|B|_|
 			// |A|_|_|
 			// |_|_|_|
-			n.AddToThis(vectors.Cross3XYZ(0.0, scale*(w.heightmap[index-1]+w.sediment[index-1]-hIdx), -1.0, -1.0, scale*(w.heightmap[index-dimY]+w.sediment[index-dimY]-hIdx), 0.0))
+			n.AddToThis(vectors.Cross3XYZ(0.0, scale*(w.height(index-1)-hIdx), -1.0, -1.0, scale*(w.height(index-dimY)-hIdx), 0.0))
 			a = true
 		}
 		if x < dimX-1 {
@@ -174,7 +182,7 @@ func (w *World) surfaceNormal(index int64) vectors.Vec3 {
 			// |_|_|_|
 			// |B|_|_|
 			// |_|A|_|
-			n.AddToThis(vectors.Cross3XYZ(1.0, scale*(w.heightmap[index+dimY]+w.sediment[index+dimY]-hIdx), 0.0, 0.0, scale*(w.heightmap[index-1]+w.sediment[index-1]-hIdx), -1.0))
+			n.AddToThis(vectors.Cross3XYZ(1.0, scale*(w.height(index+dimY)-hIdx), 0.0, 0.0, scale*(w.height(index-1)-hIdx), -1.0))
 			b = true
 		}
 		if enableCross && a && b {
@@ -182,8 +190,76 @@ func (w *World) surfaceNormal(index int64) vectors.Vec3 {
 			// |B|_|_|
 			// |_|_|_|
 			// |A|_|_|
-			n.AddToThis(vectors.Cross3XYZ(1.0, scale*(w.heightmap[index+dimY-1]+w.sediment[index+dimY-1]-hIdx), -1.0, -1.0, scale*(w.heightmap[index-dimY-1]+w.sediment[index-dimY-1]-hIdx), -1.0))
+			n.AddToThis(vectors.Cross3XYZ(1.0, scale*(w.height(index+dimY-1)-hIdx), -1.0, -1.0, scale*(w.height(index-dimY-1)-hIdx), -1.0))
 		}
 	}
 	return n.Normalize()
+}
+
+func (w *World) surfaceNormalAlternative(index int64) vectors.Vec3 {
+	/*
+
+	  glm::vec3 n = glm::vec3(0, 0, 0);
+
+	  glm::vec2 pxa = p;
+	  if(!map.oob(p - glm::ivec2(1, 0)))
+	    pxa -= glm::ivec2(1, 0);
+
+	  glm::vec2 pxb = p;
+	  if(!map.oob(p + glm::ivec2(1, 0)))
+	    pxb += glm::ivec2(1, 0);
+
+	  glm::vec2 pya = p;
+	  if(!map.oob(p - glm::ivec2(0, 1)))
+	    pya -= glm::ivec2(0, 1);
+
+	  glm::vec2 pyb = p;
+	  if(!map.oob(p + glm::ivec2(0, 1)))
+	    pyb += glm::ivec2(0, 1);
+
+	  // Compute Gradient
+
+	  n.x = -(map.height(pxb) - map.height(pxa))/length(pxb-pxa);
+	  n.y = 1.0f;
+	  n.z = -(map.height(pyb) - map.height(pya))/length(pyb-pya);
+	  n = n;
+
+	  if(length(n) > 0)
+	    n = normalize(n);
+	  return n;
+	*/
+	var n vectors.Vec3
+	scale := w.scale
+	pxa := index
+	if !w.oobIdx(pxa - 1) {
+		pxa -= 1
+	}
+
+	pxb := index
+	if !w.oobIdx(pxb + 1) {
+		pxb += 1
+	}
+
+	pya := index
+	if !w.oobIdx(pya - int64(w.params.Size.Y)) {
+		pya -= int64(w.params.Size.Y)
+	}
+
+	pyb := index
+	if !w.oobIdx(pyb + int64(w.params.Size.Y)) {
+		pyb += int64(w.params.Size.Y)
+	}
+
+	// Compute Gradient
+	n.X = -(w.height(pxb) - w.height(pxa)) * scale / w.idxToCoordVec2(pxb).Sub(w.idxToCoordVec2(pxa)).Len()
+	n.Y = 1.0
+	n.Z = -(w.height(pyb) - w.height(pya)) * scale / w.idxToCoordVec2(pyb).Sub(w.idxToCoordVec2(pya)).Len()
+	if n.Len() > 0 {
+		n = n.Normalize()
+	}
+	return n
+}
+
+func (w *World) idxToCoordVec2(index int64) vectors.Vec2 {
+	return vectors.Vec2{X: float64(index / int64(w.params.Size.Y)), Y: float64(index % int64(w.params.Size.Y))}
 }
