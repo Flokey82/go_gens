@@ -79,6 +79,14 @@ Right now, the code is a really basic re-factor of the roguelike example that co
     * [DONE] Traps
   * Caves
   * Overworld / outdoor
+    * Allow for elevation in tiles
+      * [DONE] Shade tiles based on elevation difference to player
+        * [DONE] Player is always the baseline for shading
+        * [DONE] Everything below player is shaded darker (to black)
+        * [DONE] Everything above player is shaded lighter (to white)
+        * [DONE] If a player changes elevation, the shading should change accordingly
+    * Player / entity can only enter tiles with a max elevation difference of n
+    * Multi dimensional map? (e.g. 3d)
 * FOV / 'Fog of war'
   * [DONE] Basic radius based FOV
   * Raycasting based FOV
@@ -90,6 +98,9 @@ Right now, the code is a really basic re-factor of the roguelike example that co
     * Scene interface
       * Input handling
       * Rendering
+      * [DONE] Add Close() method to scenes
+        * [DONE] Clean up components when switching scenes
+        * [DONE-ish]Remove all textboxes
     * Scenes
       * Character creation
       * Main menu
@@ -100,12 +111,15 @@ Right now, the code is a really basic re-factor of the roguelike example that co
   * Highlight active UI components
   * Move player info out of selectable UI
   * Dialog / conversation
-  * [DONE] De-dupe scene textbox code
-  * [DONE] Add scene textbox
-    * [DONE] Pagination
-    * [DONE] Line break / paragraph support
-    * Move to top level (so that it can be used in all scenes)
-    * Make closing key configurable (and customize bottom text accordingly)
+    * Extend textbox
+    * Add multiple choice dialog (actions)
+  * Textbox
+    * [DONE] De-dupe scene textbox code
+    * [DONE] Add scene textbox
+      * [DONE] Pagination
+      * [DONE] Line break / paragraph support
+      * Move to top level (so that it can be used in all scenes)
+      * Make closing key configurable (and customize bottom text accordingly)
 * Gameplay
   * [DONE] Add win condition
   * Cutscenes / events / triggers

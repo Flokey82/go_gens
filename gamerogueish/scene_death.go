@@ -41,4 +41,9 @@ func (s *SceneDeath) Draw(con *console.Console, timeElapsed float64) {
 	con.TransformAll(t.Background(concolor.RGB(55, 55, 55)), t.Char(0))
 }
 
+func (g *SceneDeath) Close() error {
+	g.textBox.removeText()
+	return nil
+}
+
 func (s *SceneDeath) FocusOnClick() bool { return false }

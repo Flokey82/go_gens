@@ -47,6 +47,11 @@ func (g *SceneSuccess) Draw(con *console.Console, timeElapsed float64) {
 	con.TransformAll(t.Background(concolor.RGB(55, 55, 55)), t.Char(0))
 }
 
+func (g *SceneSuccess) Close() error {
+	g.textBox.removeText()
+	return nil
+}
+
 func (s *SceneSuccess) FocusOnClick() bool { return false }
 
 type textBox struct {
@@ -171,7 +176,6 @@ func (g *textBox) drawText() {
 func (g *textBox) displayText(txt, bottomStr string) {
 	// If we have an open textbox, close it.
 	g.removeText()
-
 	// Create a new textbox.
 	// Center the console within parent.
 	conWidth := g.con.Width

@@ -434,12 +434,13 @@ func (ui *uiPlayerInfo) Draw() {
 	// Player position.
 	pX := ui.player.X
 	pY := ui.player.Y
+	pE := ui.World.Elevation[pY][pX]
 
 	// Draw player info.
 	ui.view.PrintBounded(1, 1, ui.view.Width, 1, "Player: "+ui.player.Name, t.Background(colGrey))
 	ui.view.PrintBounded(1, 2, ui.view.Width-2, 2, fmt.Sprintf("Health: %d/%d", ui.player.Health, ui.player.BaseHealth))
 	ui.view.PrintBounded(1, 3, ui.view.Width-2, 2, fmt.Sprintf("Def: %d Att: %d", ui.player.DefenseValue(), ui.player.AttackDamage()))
-	ui.view.PrintBounded(1, 4, ui.view.Width-2, 2, fmt.Sprintf("X=%d Y=%d", pX, pY), t.Foreground(colGrey))
+	ui.view.PrintBounded(1, 4, ui.view.Width-2, 2, fmt.Sprintf("X=%d Y=%d E=%d", pX, pY, pE), t.Foreground(colGrey))
 }
 
 func (ui *uiPlayerInfo) HandleInput() {

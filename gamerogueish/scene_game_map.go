@@ -145,8 +145,9 @@ func (g *SceneMap) Update(con *console.Console, timeElapsed float64) bool {
 
 func (g *SceneMap) Draw(con *console.Console, timeElapsed float64) {
 	// Clear world view.
+	bgColor := concolor.RGB(55, 55, 55)
 	g.worldView.ClearAll()
-	g.worldView.TransformAll(t.Background(concolor.RGB(55, 55, 55)), t.Char(0))
+	g.worldView.TransformAll(t.Background(bgColor), t.Char(0))
 
 	// Draw world centered around the player.
 	midX := g.worldView.Width / 2
@@ -174,12 +175,17 @@ func (g *SceneMap) Draw(con *console.Console, timeElapsed float64) {
 		maxY = g.World.Height
 	}
 
+	// Get player elevation.
+	elevation := g.World.Elevation[pY][pX]
+
+	enableElevationShading := true
+
 	// Draw everything in the view.
 	for y := minY; y < maxY; y++ {
 		for x := minX; x < maxX; x++ {
 			cv := g.World.Cells[y][x]
 			// Skip empty cells and cells we haven't seen.
-			if cv == CharFloor || !g.Seen[y][x] {
+			if !g.Seen[y][x] { //  cv == CharFloor ||
 				continue
 			}
 
@@ -200,7 +206,23 @@ func (g *SceneMap) Draw(con *console.Console, timeElapsed float64) {
 				}
 			}
 
-			g.worldView.Transform(midX-pX+x, midY-pY+y, t.CharRune(cv), t.Foreground(col))
+			bgCol := bgColor
+			if enableElevationShading {
+				// Adjust color brightness based on elevation.
+				elevDiff := elevation - g.World.Elevation[y][x]
+				if elevDiff > 0 {
+					col = darkenColor(col, 1-float64(elevDiff)/float64(con.Height/2))
+					if cv != CharWall {
+						bgCol = darkenColor(bgCol, 1-float64(elevDiff)/float64(con.Height/2))
+					}
+				} else if elevDiff < 0 {
+					col = brightenColor(col, float64(-elevDiff)/float64(con.Height/2))
+					if cv != CharWall {
+						bgCol = brightenColor(bgCol, float64(-elevDiff)/float64(con.Height/2))
+					}
+				}
+			}
+			g.worldView.Transform(midX-pX+x, midY-pY+y, t.CharRune(cv), t.Foreground(col), t.Background(bgCol))
 		}
 	}
 
@@ -229,6 +251,39 @@ func (g *SceneMap) Draw(con *console.Console, timeElapsed float64) {
 
 	// Draw player in the middle.
 	g.worldView.Transform(midX, midY, t.CharByte(g.player.Tile), t.Foreground(concolor.Green))
+}
+
+func darkenColor(col concolor.Color, amount float64) concolor.Color {
+	if amount > 1 {
+		amount = 1
+	}
+	if amount < 0 {
+		amount = 0
+	}
+	return concolor.RGB(
+		uint8(float64(col.R)*amount),
+		uint8(float64(col.G)*amount),
+		uint8(float64(col.B)*amount),
+	)
+}
+
+func brightenColor(col concolor.Color, amount float64) concolor.Color {
+	if amount > 1 {
+		amount = 1
+	}
+	if amount < 0 {
+		amount = 0
+	}
+	return concolor.RGB(
+		uint8(float64(col.R)+(float64(255-col.R)*amount)),
+		uint8(float64(col.G)+(float64(255-col.G)*amount)),
+		uint8(float64(col.B)+(float64(255-col.B)*amount)),
+	)
+}
+
+func (g *SceneMap) Close() error {
+	g.textBox.removeText()
+	return nil
 }
 
 func (g *SceneMap) FocusOnClick() bool { return true }

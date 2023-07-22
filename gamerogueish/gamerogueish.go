@@ -45,7 +45,7 @@ type Game struct {
 	messageView  *console.Console // contains messages
 	Messages     []string         // messages to display
 	view         ViewMode
-	currentScene console.Component
+	currentScene Scene
 	// *textBox
 }
 
@@ -70,9 +70,9 @@ func (g *Game) reset() {
 	g.Messages = nil
 
 	// Reset textbox.
-	//if g.textBox != nil {
+	// if g.textBox != nil {
 	//	g.textBox.removeText()
-	//}
+	// }
 }
 
 // Initializes a new game.
@@ -170,10 +170,10 @@ func (g *Game) setViewMode(vm ViewMode) {
 	// Unload current scene.
 	if g.currentScene != nil {
 		g.worldView.RemoveComponent(g.currentScene)
-		//g.currentScene.Close()
+		g.currentScene.Close()
 		g.currentScene = nil
 	}
-	var newScene console.Component
+	var newScene Scene
 	switch vm {
 	case ViewModeMap:
 		newScene = NewSceneMap(g.worldView, g)
@@ -192,6 +192,7 @@ func (g *Game) HandleInput(timeElapsed float64) error {
 	// If we have an open textbox, don't do anything else.
 	/*
 		if g.textBox.isOpen() {
+			log.Println("textbox is open")
 			// TODO: Move this to the textbox.
 			if inpututil.IsKeyJustPressed(ebiten.KeyY) {
 				log.Println("Starting new game")

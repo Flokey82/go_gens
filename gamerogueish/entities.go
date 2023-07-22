@@ -30,6 +30,7 @@ var (
 			ItemTypeArmorPlate,
 			ItemTypeHelmetSweatband,
 			ItemTypePotion,
+			ItemTypeNote,
 		},
 	}
 	EntityGoblin = &EntityType{

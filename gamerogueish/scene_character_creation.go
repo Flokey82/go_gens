@@ -69,4 +69,11 @@ func (s *SceneCharacterCreation) Draw(con *console.Console, timeElapsed float64)
 	con.Print(1, 5, "Press ENTER to start game", t.Foreground(concolor.White))
 }
 
+func (g *SceneCharacterCreation) Close() error {
+	if g.tb != nil {
+		g.tb.Close()
+	}
+	return nil
+}
+
 func (s *SceneCharacterCreation) FocusOnClick() bool { return false }

@@ -6,11 +6,12 @@ import (
 
 // World represents a game world.
 type World struct {
-	Cells    [][]rune  // 2D array of world cells
-	Width    int       // width of the world in cells
-	Height   int       // height of the world in cells
-	Entities []*Entity // entities in the world (creatures)
-	Items    []*Item   // items in the world
+	Cells     [][]rune  // 2D array of world cells
+	Elevation [][]int   // 2D array of elevation values
+	Width     int       // width of the world in cells
+	Height    int       // height of the world in cells
+	Entities  []*Entity // entities in the world (creatures)
+	Items     []*Item   // items in the world
 }
 
 // NewWorld returns a new world with the given width and height.
@@ -20,8 +21,10 @@ func NewWorld(width, height int) *World {
 		Height: height,
 	}
 	w.Cells = make([][]rune, height)
+	w.Elevation = make([][]int, height)
 	for y := range w.Cells {
 		w.Cells[y] = make([]rune, width)
+		w.Elevation[y] = make([]int, width)
 	}
 	return w
 }
@@ -56,6 +59,7 @@ func (w *World) CarveRoom(room *Room) {
 	for y := room.Y; y < room.Y+room.H; y++ {
 		for x := room.X; x < room.X+room.W; x++ {
 			w.Cells[y][x] = CharFloor
+			w.Elevation[y][x] = room.E
 		}
 	}
 }
@@ -180,6 +184,8 @@ func GenWorldSimpleDungeon(width, height int, seed int64) *World {
 		// Pick a random length and width.
 		rl := randInt(rng, minRoomSize, maxRoomSize)
 		rw := randInt(rng, minRoomSize, maxRoomSize)
+		// Pick a randome elevation based on the room elevation (up to 2 higher or lower).
+		re := room.E + rng.Intn(5) - 3
 
 		// Calculate position based on direction.
 		// NOTE: Right now we center the neighboring room.
@@ -208,6 +214,7 @@ func GenWorldSimpleDungeon(width, height int, seed int64) *World {
 			Y: y,
 			W: rw,
 			H: rl,
+			E: re,
 		}
 
 		// Check if the new room overlaps with any existing rooms.
@@ -253,6 +260,18 @@ func GenWorldSimpleDungeon(width, height int, seed int64) *World {
 		case DirWest:
 			w.Cells[room.Y+room.H/2][room.X-1] = CharFloor
 		}
+
+		// Connect the two rooms' elevations.
+		switch dir {
+		case DirNorth:
+			w.Elevation[room.Y-1][room.X+room.W/2] = (room.E + re) / 2
+		case DirEast:
+			w.Elevation[room.Y+room.H/2][room.X+room.W] = (room.E + re) / 2
+		case DirSouth:
+			w.Elevation[room.Y+room.H][room.X+room.W/2] = (room.E + re) / 2
+		case DirWest:
+			w.Elevation[room.Y+room.H/2][room.X-1] = (room.E + re) / 2
+		}
 		// Stop if we have enough rooms.
 		if len(rooms) > maxRooms {
 			break
@@ -279,6 +298,39 @@ func GenWorldSimpleDungeon(width, height int, seed int64) *World {
 		w.Items = append(w.Items, trap)
 	}
 
+	// Place some random stairs in rooms.
+	//
+	// TODO: Instead, assign different room heights and add stairs to the
+	// connecting rooms accounting for 50% of the height difference in
+	// each room.
+	//
+	// Example:
+	// 		  Room 1
+	//        ___
+	//     __/
+	// ___/
+	// Room 2
+	/*
+		numStairs := randInt(rng, 15, 20)
+		for i := 0; i < numStairs; i++ {
+			// Get a random room with sufficient space.
+			var room *Room
+			for {
+				room = rooms[rng.Intn(len(rooms))]
+				if room.W > 4 && room.H > 4 {
+					break
+				}
+			}
+			// Place the stairs in the room.
+			// For this we increase the elevation of the cells by one each.
+			var stepHeight int
+			for y := room.Y; y < room.Y+room.H; y++ {
+				stepHeight++
+				for x := room.X; x < room.X+room.W; x++ {
+					w.Elevation[y][x] += stepHeight
+				}
+			}
+		}*/
 	return w
 }
 
@@ -287,6 +339,7 @@ func GenWorldSimpleDungeon(width, height int, seed int64) *World {
 type Room struct {
 	X, Y int // top left corner
 	W, H int // width and height
+	E    int // elevation
 }
 
 // Overlaps returns true if the given room overlaps with any of the rooms in the list.

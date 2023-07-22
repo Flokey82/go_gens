@@ -1,6 +1,8 @@
 package gamerogueish
 
-import "fmt"
+import (
+	"fmt"
+)
 
 const (
 	ItemWeapon = iota
@@ -99,7 +101,7 @@ type ItemType struct {
 	Modifier    int
 	Hidden      bool                        // indicates if the item is hidden by default
 	OnTouch     func(*Game, *Entity, *Item) // Trigger function called when item is used.
-	// OnEquip    func(*Game, *Entity, *Item) // Trigger function called when item is equipped.
+	// OnEquip     func(*Game, *Entity, *Item) // Trigger function called when item is equipped.
 	// OnUnequip  func(*Game, *Entity, *Item) // Trigger function called when item is unequipped.
 }
 
@@ -205,5 +207,11 @@ var (
 			i.Hidden = false
 			// TODO: Mark this trap as sprung?
 		},
+	}
+	ItemTypeNote = &ItemType{
+		Tile:        'N',
+		Name:        "Note",
+		Description: "A note.",
+		Type:        ItemTrigger,
 	}
 )
