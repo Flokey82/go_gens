@@ -6,12 +6,13 @@ import (
 
 // World represents a game world.
 type World struct {
-	Cells     [][]rune  // 2D array of world cells
-	Elevation [][]int   // 2D array of elevation values
-	Width     int       // width of the world in cells
-	Height    int       // height of the world in cells
-	Entities  []*Entity // entities in the world (creatures)
-	Items     []*Item   // items in the world
+	Cells     [][]rune    // 2D array of world cells
+	Elevation [][]int     // 2D array of elevation values
+	Objects   [][]*Object // 2D array of objects like furniture, chests, doors (TODO: Move this to cells)
+	Width     int         // width of the world in cells
+	Height    int         // height of the world in cells
+	Entities  []*Entity   // entities in the world (creatures)
+	Items     []*Item     // items in the world
 }
 
 // NewWorld returns a new world with the given width and height.
@@ -22,9 +23,11 @@ func NewWorld(width, height int) *World {
 	}
 	w.Cells = make([][]rune, height)
 	w.Elevation = make([][]int, height)
+	w.Objects = make([][]*Object, height)
 	for y := range w.Cells {
 		w.Cells[y] = make([]rune, width)
 		w.Elevation[y] = make([]int, width)
+		w.Objects[y] = make([]*Object, width)
 	}
 	return w
 }
@@ -37,7 +40,7 @@ func (w *World) IsSolid(x int, y int) bool {
 // CanMoveTo checks if a tile is solid and if it is not occupied by an entity.
 func (w *World) CanMoveTo(x, y int) bool {
 	// TODO: Bounds check.
-	return w.Cells[y][x] == CharFloor
+	return w.Cells[y][x] == CharFloor && w.Objects[y][x] == nil
 }
 
 // Fill all cells with the given tile.
@@ -272,6 +275,19 @@ func GenWorldSimpleDungeon(width, height int, seed int64) *World {
 		case DirWest:
 			w.Elevation[room.Y+room.H/2][room.X-1] = (room.E + re) / 2
 		}
+
+		// Place randomly an object in the room.
+		/*
+			switch rng.Intn(2) {
+			case 0:
+				// Place a chest
+				chest := ObjectTypeChest.New()
+				x := randInt(rng, newRoom.X, newRoom.X+newRoom.W)
+				y := randInt(rng, newRoom.Y, newRoom.Y+newRoom.H)
+				w.Objects[y][x] = chest
+			}
+		*/
+
 		// Stop if we have enough rooms.
 		if len(rooms) > maxRooms {
 			break

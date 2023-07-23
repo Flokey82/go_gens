@@ -223,6 +223,11 @@ func (g *SceneMap) Draw(con *console.Console, timeElapsed float64) {
 				}
 			}
 			g.worldView.Transform(midX-pX+x, midY-pY+y, t.CharRune(cv), t.Foreground(col), t.Background(bgCol))
+
+			// If there is an object on the tile, draw it.
+			if g.World.Objects[y][x] != nil {
+				g.worldView.Transform(midX-pX+x, midY-pY+y, t.CharByte(g.World.Objects[y][x].Tile), t.Foreground(concolor.Green))
+			}
 		}
 	}
 

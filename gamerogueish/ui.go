@@ -18,8 +18,8 @@ type UIif interface {
 
 type uiInventory struct {
 	*Game
-	view         *console.Console
-	selectedItem int
+	view *console.Console
+	selectableList[Item]
 }
 
 func (g *Game) newPlayerInventory() (*uiInventory, error) {
@@ -36,8 +36,12 @@ func (g *Game) newPlayerInventory() (*uiInventory, error) {
 }
 
 func (ui *uiInventory) Draw() {
+	// Update the selectable list.
+	ui.selectableList.setItems(ui.player.Inventory.Items)
+
 	ui.view.ClearAll()
 	ui.view.PrintBounded(1, 0, ui.view.Width-1, 2, fmt.Sprintf("Inventory (%d)", ui.player.Inventory.Count()), t.Background(colGrey))
+
 	var idx int
 	start, end := calcVisibleRange(ui.view.Height-2, len(ui.player.Inventory.Items), ui.selectedItem)
 	for i := start; i < end; i++ {
@@ -57,50 +61,10 @@ func (ui *uiInventory) Draw() {
 	}
 }
 
-// Selected returns the currently selected item.
-func (ui *uiInventory) Selected() *Item {
-	if len(ui.player.Inventory.Items) == 0 {
-		return nil
-	}
-	// TODO: Verify selectedItem is in range.
-	return ui.player.Inventory.Items[ui.selectedItem]
-}
-
-// NOTE; This doesn't work well if an item takes more than one line.
-func calcVisibleRange(numVisible, numItems, selectedIdx int) (int, int) {
-	if numItems < numVisible {
-		return 0, numItems
-	}
-	// Get the selected item index and make sure it is visible.
-	sel := selectedIdx
-	if sel < 0 {
-		sel = 0
-	}
-	if sel >= numItems {
-		sel = numItems - 1
-	}
-
-	// Calculate the start and end index.
-	start := sel - numVisible/2
-	end := start + numVisible
-	if start < 0 {
-		start = 0
-		end = numVisible
-	}
-	if end > numItems {
-		end = numItems
-		start = end - numVisible
-	}
-	return start, end
-}
-
 func (ui *uiInventory) HandleInput() {
-	if inpututil.IsKeyJustPressed(ebiten.KeyUp) {
-		ui.SelectItem(ui.selectedItem - 1)
-	}
-	if inpututil.IsKeyJustPressed(ebiten.KeyDown) {
-		ui.SelectItem(ui.selectedItem + 1)
-	}
+	// Update the selectable list.
+	ui.selectableList.handleInput()
+
 	if inpututil.IsKeyJustPressed(ebiten.KeyEnter) {
 		ui.Select()
 	}
@@ -126,23 +90,14 @@ func (ui *uiInventory) HandleInput() {
 	}
 }
 
-// SelectItem selects the given item index while clamping
-// it to the inventory.
-func (ui *uiInventory) SelectItem(index int) {
-	if index < 0 {
-		index = 0
-	} else if index >= len(ui.player.Inventory.Items) {
-		index = len(ui.player.Inventory.Items) - 1
-	}
-	ui.selectedItem = index
-}
-
 func (ui *uiInventory) Select() {
 	if sel := ui.Selected(); sel != nil {
 		if sel.Equippable() {
 			ui.player.Equip(ui.selectedItem)
 		} else if sel.Consumable() {
 			ui.player.Consume(ui.selectedItem)
+		} else if sel.OnUse != nil {
+			sel.OnUse(ui.Game, ui.player, sel)
 		}
 		ui.SelectItem(ui.selectedItem) // Update the selected item.
 	}
@@ -150,8 +105,8 @@ func (ui *uiInventory) Select() {
 
 type uiEnemies struct {
 	*Game
-	view         *console.Console
-	selectedItem int
+	view *console.Console
+	selectableList[Entity]
 }
 
 func (g *Game) newPlayerEnemies() (*uiEnemies, error) {
@@ -168,15 +123,12 @@ func (g *Game) newPlayerEnemies() (*uiEnemies, error) {
 }
 
 func (ui *uiEnemies) Draw() {
-	ui.view.ClearAll()
+	// Update the selectable list.
+	ui.selectableList.setItems(ui.inRange())
 
 	// Draw what can be found at the current position.
 	// List entities first.
-	entities := ui.inRange()
-
-	if ui.selectedItem < 0 || ui.selectedItem >= len(entities) {
-		ui.selectedItem = 0
-	}
+	entities := ui.items
 
 	ui.view.ClearAll()
 	ui.view.PrintBounded(1, 0, ui.view.Width-2, 2, fmt.Sprintf("Enemies (%d)", len(entities)), t.Background(colGrey))
@@ -207,12 +159,9 @@ func (ui *uiEnemies) Draw() {
 }
 
 func (ui *uiEnemies) HandleInput() {
-	if inpututil.IsKeyJustPressed(ebiten.KeyUp) {
-		ui.SelectItem(ui.selectedItem - 1)
-	}
-	if inpututil.IsKeyJustPressed(ebiten.KeyDown) {
-		ui.SelectItem(ui.selectedItem + 1)
-	}
+	// Update the selectable list.
+	ui.selectableList.handleInput()
+
 	if inpututil.IsKeyJustPressed(ebiten.KeyEnter) {
 		ui.Select()
 	}
@@ -224,27 +173,6 @@ func (ui *uiEnemies) HandleInput() {
 			ui.AddMessage(sel.Name + ": " + sel.Description)
 		}
 	}
-}
-
-// Selected returns the currently selected entity.
-func (ui *uiEnemies) Selected() *Entity {
-	if len(ui.Entities) == 0 {
-		return nil
-	}
-	// TODO: Verify selectedItem is in range.
-	return ui.Entities[ui.selectedItem]
-}
-
-// SelectItem selects the given item index while clamping
-// it to the entities in range.
-func (ui *uiEnemies) SelectItem(index int) {
-	entities := ui.inRange()
-	if index < 0 {
-		index = 0
-	} else if index >= len(entities) {
-		index = len(entities) - 1
-	}
-	ui.selectedItem = index
 }
 
 func (ui *uiEnemies) inRange() []*Entity {
@@ -261,12 +189,10 @@ func (ui *uiEnemies) inRange() []*Entity {
 }
 
 func (ui *uiEnemies) Select() {
-	entities := ui.inRange()
-	if ui.selectedItem < 0 || ui.selectedItem >= len(entities) {
-		ui.selectedItem = 0
+	e := ui.Selected()
+	if e == nil {
 		return
 	}
-	e := entities[ui.selectedItem]
 	if e.IsDead() {
 		// Loot
 		for _, it := range e.Items {
@@ -293,12 +219,12 @@ func (ui *uiEnemies) Select() {
 
 type uiItems struct {
 	*Game
-	view         *console.Console
-	selectedItem int
+	view *console.Console
+	selectableList[Item]
 }
 
 func (g *Game) newPlayerItems() (*uiItems, error) {
-	playerItemsView, err := g.sideView.CreateSubConsole(0, 22, 20, 6)
+	playerItemsView, err := g.sideView.CreateSubConsole(0, 23, 20, 8)
 	if err != nil {
 		return nil, err
 	}
@@ -311,19 +237,16 @@ func (g *Game) newPlayerItems() (*uiItems, error) {
 }
 
 func (ui *uiItems) Draw() {
-	ui.view.ClearAll()
+	// Update the selectable list.
+	ui.selectableList.setItems(ui.inRange())
 
 	// Draw what can be found at the current position.
 	// List items first.
-	items := ui.inRange()
-
-	if ui.selectedItem < 0 || ui.selectedItem >= len(items) {
-		ui.selectedItem = 0
-	}
+	items := ui.items
 
 	ui.view.ClearAll()
-
 	ui.view.PrintBounded(1, 0, ui.view.Width-2, 2, fmt.Sprintf("Items (%d)", len(items)), t.Background(colGrey))
+
 	var idx int
 	start, end := calcVisibleRange(ui.view.Height-2, len(ui.inRange()), ui.selectedItem)
 	for i := start; i < end; i++ {
@@ -338,12 +261,9 @@ func (ui *uiItems) Draw() {
 }
 
 func (ui *uiItems) HandleInput() {
-	if inpututil.IsKeyJustPressed(ebiten.KeyUp) {
-		ui.SelectItem(ui.selectedItem - 1)
-	}
-	if inpututil.IsKeyJustPressed(ebiten.KeyDown) {
-		ui.SelectItem(ui.selectedItem + 1)
-	}
+	// Update the selectable list.
+	ui.selectableList.handleInput()
+
 	if inpututil.IsKeyJustPressed(ebiten.KeyEnter) {
 		ui.Select()
 	}
@@ -356,27 +276,6 @@ func (ui *uiItems) HandleInput() {
 			ui.AddMessage(sel.Name + ": " + sel.Description)
 		}
 	}
-}
-
-// Selected returns the currently selected item.
-func (ui *uiItems) Selected() *Item {
-	if len(ui.Items) == 0 {
-		return nil
-	}
-	// TODO: Verify selectedItem is in range.
-	return ui.Items[ui.selectedItem]
-}
-
-// SelectItem selects the given item index while clamping
-// it to the items in range.
-func (ui *uiItems) SelectItem(index int) {
-	items := ui.inRange()
-	if index < 0 {
-		index = 0
-	} else if index >= len(items) {
-		index = len(items) - 1
-	}
-	ui.selectedItem = index
 }
 
 func (ui *uiItems) inRange() []*Item {
@@ -393,12 +292,10 @@ func (ui *uiItems) inRange() []*Item {
 }
 
 func (ui *uiItems) Select() {
-	items := ui.inRange()
-	if ui.selectedItem < 0 || ui.selectedItem >= len(items) {
-		ui.selectedItem = 0
+	it := ui.Selected()
+	if it == nil {
 		return
 	}
-	it := items[ui.selectedItem]
 	ui.player.Inventory.Add(it)
 	// Find the actual index and remove the item.
 	var idx int
@@ -447,4 +344,75 @@ func (ui *uiPlayerInfo) HandleInput() {
 }
 
 func (ui *uiPlayerInfo) Select() {
+}
+
+type selectableList[T any] struct {
+	selectedItem int
+	items        []*T
+}
+
+func (ui *selectableList[T]) setItems(items []*T) {
+	ui.items = items
+	ui.SelectItem(ui.selectedItem)
+}
+
+// SelectItem selects the given item index while clamping
+// it to the items in range.
+func (ui *selectableList[T]) SelectItem(index int) {
+	items := len(ui.items)
+	if items == 0 {
+		index = 0
+	} else if index < 0 {
+		index = 0
+	} else if index >= items {
+		index = items - 1
+	}
+	ui.selectedItem = index
+}
+
+func (ui *selectableList[T]) handleInput() {
+	if inpututil.IsKeyJustPressed(ebiten.KeyUp) {
+		ui.SelectItem(ui.selectedItem - 1)
+	}
+	if inpututil.IsKeyJustPressed(ebiten.KeyDown) {
+		ui.SelectItem(ui.selectedItem + 1)
+	}
+}
+
+// Selected returns the currently selected item.
+func (ui *selectableList[T]) Selected() *T {
+	items := ui.items
+	// Verify selectedItem is in range.
+	if len(items) == 0 || ui.selectedItem < 0 || ui.selectedItem >= len(items) {
+		return nil
+	}
+	return items[ui.selectedItem]
+}
+
+// NOTE; This doesn't work well if an item takes more than one line.
+func calcVisibleRange(numVisible, numItems, selectedIdx int) (int, int) {
+	if numItems < numVisible {
+		return 0, numItems
+	}
+	// Get the selected item index and make sure it is visible.
+	sel := selectedIdx
+	if sel < 0 {
+		sel = 0
+	}
+	if sel >= numItems {
+		sel = numItems - 1
+	}
+
+	// Calculate the start and end index.
+	start := sel - numVisible/2
+	end := start + numVisible
+	if start < 0 {
+		start = 0
+		end = numVisible
+	}
+	if end > numItems {
+		end = numItems
+		start = end - numVisible
+	}
+	return start, end
 }

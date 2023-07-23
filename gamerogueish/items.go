@@ -99,10 +99,15 @@ type ItemType struct {
 	Description string
 	Type        int
 	Modifier    int
-	Hidden      bool                        // indicates if the item is hidden by default
-	OnTouch     func(*Game, *Entity, *Item) // Trigger function called when item is used.
-	// OnEquip     func(*Game, *Entity, *Item) // Trigger function called when item is equipped.
-	// OnUnequip  func(*Game, *Entity, *Item) // Trigger function called when item is unequipped.
+	Hidden      bool // indicates if the item is hidden by default
+	// TODO: Make this a map of event types to functions.
+	OnTouch func(*Game, *Entity, *Item) // Trigger function called when item is used.
+	OnUse   func(*Game, *Entity, *Item) // Trigger function called when item is used.
+	// OnEquip   func(*Game, *Entity, *Item) // Trigger function called when item is equipped.
+	// OnUnequip func(*Game, *Entity, *Item) // Trigger function called when item is unequipped.
+	// OnConsume   func(*Game, *Entity, *Item) // Trigger function called when item is consumed.
+	// OnDrop      func(*Game, *Entity, *Item) // Trigger function called when item is dropped.
+	// OnPickup    func(*Game, *Entity, *Item) // Trigger function called when item is picked up.
 }
 
 // New returns a new item of the given type.
@@ -213,5 +218,9 @@ var (
 		Name:        "Note",
 		Description: "A note.",
 		Type:        ItemTrigger,
+		OnUse: func(g *Game, e *Entity, i *Item) {
+			// TODO: Use text box and load text from item data.
+			g.AddMessage("You read the note: \"You are a wizard, Harry!\"")
+		},
 	}
 )

@@ -11,6 +11,8 @@ Right now, the code is a really basic re-factor of the roguelike example that co
 
 ![alt text](https://raw.githubusercontent.com/Flokey82/go_gens/master/gamerogueish/images/rgb3.png "story panel")
 
+![alt text](https://raw.githubusercontent.com/Flokey82/go_gens/master/gamerogueish/images/rgb4.png "elevation")
+
 ## Keybindings
 
 * ASDW - Move
