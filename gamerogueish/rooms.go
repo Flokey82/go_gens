@@ -47,12 +47,19 @@ func (w *World) AddRoomFurnishings(room *Room) {
 // AddRoomPuddle adds a puddle of water to the given room.
 func (w *World) AddRoomPuddle(room *Room) {
 	// Place a small puddle of water in the room.
-	// We pick a random location which is not too close to the entrance to the room (center of each wall).
+	// We pick a random location which is not blocking any entrance to the room.
 	// Then we random walk a random number of steps for each poddle cell.
 	var puddleCells [][2]int
-	// Random position in the room.
-	px := rand.Intn(room.W-2) + room.X + 1
-	py := rand.Intn(room.H-2) + room.Y + 1
+
+	// Random position in the room that is not blocking the entrance.
+	var px, py int
+	for i := 0; i < 10; i++ {
+		px = rand.Intn(room.W-2) + room.X + 1
+		py = rand.Intn(room.H-2) + room.Y + 1
+		if !room.NextToDoor(px, py) {
+			break
+		}
+	}
 
 	puddleCells = append(puddleCells, [2]int{px, py})
 	// Random number of steps (max 10% of the room size)
@@ -74,7 +81,7 @@ func (w *World) AddRoomPuddle(room *Room) {
 			px--
 		}
 		// Check if the position is valid.
-		if w.InBounds(px, py) && w.Cells[py][px] == CharFloor {
+		if w.InBounds(px, py) && w.IsEmpty(px, py) && !room.NextToDoor(px, py) {
 			puddleCells = append(puddleCells, [2]int{px, py})
 		}
 	}
@@ -87,21 +94,50 @@ func (w *World) AddRoomPuddle(room *Room) {
 
 // AddRoomFountain adds a fountain to the given room.
 func (w *World) AddRoomFountain(room *Room) {
-	fountainSideLen := room.W - 2
-	if fountainSideLen > room.H-2 {
-		fountainSideLen = room.H - 2
+	// TODO: Randomize fountain shape.
+	fountainSideLenX := room.W - 2
+	fountainSideLenY := room.H - 2
+	if fountainSideLenX < 3 || fountainSideLenY < 3 {
+		return
 	}
-	minX := room.X + (room.W-fountainSideLen)/2
-	minY := room.Y + (room.H-fountainSideLen)/2
-	for dx := 0; dx < fountainSideLen; dx++ {
-		for dy := 0; dy < fountainSideLen; dy++ {
+	minX := room.X + (room.W-fountainSideLenX)/2
+	minY := room.Y + (room.H-fountainSideLenY)/2
+
+	// TODO: Make this configurable.
+	hasWalls := true
+	hasColumns := false
+	hasArcades := true
+	hasBrickWalls := false
+
+	// isCorner returns true if the given position is a corner.
+	isCorner := func(dx, dy int) bool {
+		return dx == 0 && dy == 0 || dx == 0 && dy == fountainSideLenY-1 || dx == fountainSideLenX-1 && dy == 0 || dx == fountainSideLenX-1 && dy == fountainSideLenY-1
+	}
+
+	// calculate the interval for evenly spaced columns.
+	ivalX := calcInterval(fountainSideLenX)
+	ivalY := calcInterval(fountainSideLenY)
+
+	// isArcade returns true if the given position is an arcade column.
+	isArcade := func(dx, dy int) bool {
+		return dx%ivalX == 0 && dy%ivalY == 0
+	}
+
+	// isOuterWall returns true if the given position is an outer wall.
+	isOuterWall := func(dx, dy int) bool {
+		return dx == 0 || dy == 0 || dx == fountainSideLenX-1 || dy == fountainSideLenY-1
+	}
+
+	for dx := 0; dx < fountainSideLenX; dx++ {
+		for dy := 0; dy < fountainSideLenY; dy++ {
 			x := minX + dx
 			y := minY + dy
-			if dx == 0 || dy == 0 || dx == fountainSideLen-1 || dy == fountainSideLen-1 {
-				if dx == 0 && dy == 0 || dx == 0 && dy == fountainSideLen-1 || dx == fountainSideLen-1 && dy == 0 || dx == fountainSideLen-1 && dy == fountainSideLen-1 {
+			if hasWalls && isOuterWall(dx, dy) {
+				if hasColumns && isCorner(dx, dy) || hasArcades && isArcade(dx, dy) {
 					w.Cells[y][x] = CharColumn
-				} else {
-					//w.Cells[y][x] = CharWall
+				} else if hasBrickWalls { // Brick wall (can't be crossed)
+					w.Cells[y][x] = CharWall
+				} else { // Raised floor (can be crossed)
 					w.Elevation[y][x] += 1
 				}
 			} else {
@@ -111,8 +147,61 @@ func (w *World) AddRoomFountain(room *Room) {
 	}
 }
 
+// calcInterval calculates the interval for evenly spaced columns.
+func calcInterval(l int) int {
+	if l < 3 {
+		return 1
+	}
+	// We're looking for the smallest interval that is greater than 1 and divides the length evenly.
+	// Essentially we're looking for prime numbers (numbers that are only divisible by 1 and themselves).
+	ival := 2
+	for l%ival != 1 {
+		ival++
+	}
+	return ival
+}
+
 // AddRoomColumns adds columns to the given room.
 func (w *World) AddRoomColumns(room *Room) {
+	// Outer arcades
+	//
+	// ###########
+	// #o o o o o#
+	// #         #
+	// #o       o#
+	// #         #
+	// #o       o#
+	// #         #
+	// #o o o o o#
+	// ###########
+	if rand.Intn(2) == 0 {
+		// Calculate ideal interval for evenly spaced columns given the room dimensions.
+		ivalX := calcInterval(room.W)
+		ivalY := calcInterval(room.H)
+		for dx := 0; dx < room.W; dx++ {
+			for dy := 0; dy < room.H; dy++ {
+				if dx == 0 || dy == 0 || dx == room.W-1 || dy == room.H-1 {
+					if dx%ivalX == 0 && dy%ivalY == 0 && !room.NextToDoor(room.X+dx, room.Y+dy) {
+						w.Cells[room.Y+dy][room.X+dx] = CharColumn
+					}
+				}
+			}
+		}
+		return
+	}
+
+	// Inner arcades
+	//
+	// ###########
+	// #         #
+	// # o o o o #
+	// #         #
+	// # o o o o #
+	// #         #
+	// # o o o o #
+	// #         #
+	// ###########
+
 	// We evenly space the columns in the room, leaving at least one cell between each column
 	// and the room walls.
 	minX := room.X + 1
@@ -120,19 +209,13 @@ func (w *World) AddRoomColumns(room *Room) {
 	minY := room.Y + 1
 	maxY := room.Y + room.H - 1
 
-	// Determine the x interval between each column.
-	xInterval := (maxX - minX) / 3
-	if xInterval < 2 {
-		xInterval = 2
+	// Determine the x and y interval between each column.
+	xInterval := calcInterval(maxX - minX)
+	yInterval := calcInterval(maxY - minY)
+	if xInterval == 1 || yInterval == 1 {
+		// No space for columns.
+		return
 	}
-
-	// Determine the y interval between each column.
-	yInterval := (maxY - minY) / 3
-	if yInterval < 2 {
-		yInterval = 2
-	}
-
-	// TODO: Pick a number of columns that won't have a remainder when placed in the room.
 
 	// Place the columns.
 	for y := minY; y < maxY; y += yInterval {

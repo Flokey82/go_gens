@@ -243,6 +243,11 @@ func (g *Game) HandleInput(timeElapsed float64) error {
 	}
 	// END: MOVE THIS OUT OF HERE!
 
+	if inpututil.IsKeyJustPressed(ebiten.KeyR) {
+		g.reset()
+		g.setViewMode(ViewModeMap)
+	}
+
 	//if inpututil.IsKeyJustPressed(ebiten.KeyI) {
 	//	// Cycle through view modes.
 	//	log.Println("Cycle view mode", int(g.view), int(ViewModeMax))
