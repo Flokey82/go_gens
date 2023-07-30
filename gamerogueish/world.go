@@ -347,24 +347,25 @@ func GenWorldSimpleDungeon(width, height int, seed int64) *World {
 
 	// Place furnishings, columns and puddles in rooms.
 	// TODO: Avoid placing items in the same position.
-	for _, room := range rooms {
+	for i, room := range rooms {
 		// Small rooms have furnishings (which is currently a bedroom)
 		if room.Size() <= 20 {
 			w.AddRoomFurnishings(room)
 		}
-
 		// Larger rooms may have puddles and columns.
 		if room.W >= 4 && room.H >= 4 {
-			// There is a chance that a puddle of water is placed randomly
-			// in the room.
 			if rng.Intn(100) < 20 {
+				// There is a chance that a puddle of water is placed randomly
+				// in the room.
 				w.AddRoomPuddle(room)
-			}
-
-			// There is a chance that columns are placed randomly
-			// in the room.
-			if rng.Intn(100) < 5 {
+			} else if rng.Intn(100) < 5 {
+				// There is a chance that columns are placed randomly
+				// in the room.
 				w.AddRoomColumns(room)
+			} else if rng.Intn(100) < 10 && i != 0 && i != len(rooms)-1 {
+				// There is a chance that a fountain is placed randomly
+				// in the room.
+				w.AddRoomFountain(room)
 			}
 		}
 

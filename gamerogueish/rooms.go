@@ -85,6 +85,32 @@ func (w *World) AddRoomPuddle(room *Room) {
 	}
 }
 
+// AddRoomFountain adds a fountain to the given room.
+func (w *World) AddRoomFountain(room *Room) {
+	fountainSideLen := room.W - 2
+	if fountainSideLen > room.H-2 {
+		fountainSideLen = room.H - 2
+	}
+	minX := room.X + (room.W-fountainSideLen)/2
+	minY := room.Y + (room.H-fountainSideLen)/2
+	for dx := 0; dx < fountainSideLen; dx++ {
+		for dy := 0; dy < fountainSideLen; dy++ {
+			x := minX + dx
+			y := minY + dy
+			if dx == 0 || dy == 0 || dx == fountainSideLen-1 || dy == fountainSideLen-1 {
+				if dx == 0 && dy == 0 || dx == 0 && dy == fountainSideLen-1 || dx == fountainSideLen-1 && dy == 0 || dx == fountainSideLen-1 && dy == fountainSideLen-1 {
+					w.Cells[y][x] = CharColumn
+				} else {
+					//w.Cells[y][x] = CharWall
+					w.Elevation[y][x] += 1
+				}
+			} else {
+				w.Cells[y][x] = CharWater
+			}
+		}
+	}
+}
+
 // AddRoomColumns adds columns to the given room.
 func (w *World) AddRoomColumns(room *Room) {
 	// We evenly space the columns in the room, leaving at least one cell between each column

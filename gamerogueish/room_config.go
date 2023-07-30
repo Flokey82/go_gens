@@ -21,6 +21,7 @@ func (rc *RoomConfig) Apply(room *Room, w *World) {
 	if rc.HasColumns {
 		w.AddRoomColumns(room)
 	}
+
 	if rc.HasPuddle {
 		w.AddRoomPuddle(room)
 	}
@@ -109,19 +110,20 @@ var placerBed = &Placer{
 			connX := room.Connections[0].X
 			connY := room.Connections[0].Y
 			var x, y int
-			if connX < room.X {
+			switch {
+			case connX < room.X:
 				// West
 				x = room.X + room.W - 1
 				y = rand.Intn(room.H) + room.Y
-			} else if connX > room.X+room.W {
+			case connX > room.X+room.W:
 				// East
 				x = room.X
 				y = rand.Intn(room.H) + room.Y
-			} else if connY < room.Y {
+			case connY < room.Y:
 				// North
 				x = rand.Intn(room.W) + room.X
 				y = room.Y + room.H - 1
-			} else if connY > room.Y+room.H {
+			case connY > room.Y+room.H:
 				// South
 				x = rand.Intn(room.W) + room.X
 				y = room.Y
@@ -142,10 +144,8 @@ var placerBed = &Placer{
 
 		// Place a bed in the room near a wall.
 		for i := 0; i < 20; i++ {
-			// Pick a wall direction to align the bed with (vertical or horizontal).
-			x, y := room.RandAlongWall()
-
 			// Check if the cell is empty and make sure that at least one neighbor is a wall.
+			x, y := room.RandAlongWall()
 			if !w.IsEmpty(x, y) || !w.NextToWall(x, y) {
 				continue
 			}
