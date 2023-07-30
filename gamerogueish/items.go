@@ -2,6 +2,7 @@ package gamerogueish
 
 import (
 	"fmt"
+	"math/rand"
 )
 
 const (
@@ -10,6 +11,9 @@ const (
 	ItemArmor
 	ItemHelmet
 	ItemTrigger
+	ItemTypeContainer
+	ItemTypeDocument
+	ItemTypeDecorative
 	ItemTypeMax
 )
 
@@ -20,6 +24,7 @@ type Item struct {
 	Equipped bool // indicates if the item is equipped
 	X        int  // x position in the world (if dropped)
 	Y        int  // y position in the world (if dropped)
+	Contains []*Item
 }
 
 // String returns the name of the item.
@@ -94,12 +99,18 @@ func (i *Inventory) Count() int {
 
 // ItemType represents a type of item.
 type ItemType struct {
-	Tile        byte
-	Name        string
-	Description string
-	Type        int
-	Modifier    int
-	Hidden      bool // indicates if the item is hidden by default
+	Tile         byte
+	Name         string
+	Description  string
+	Type         int
+	Modifier     int
+	Hidden       bool // indicates if the item is hidden by default
+	Movable      bool // indicates if the item can be moved / picked up
+	Rarity       *Rarity
+	Capacity     int      // indicates the maximum number of items this item can contain
+	PossibleLoot *ItemSet // TODO: Allow multiple sets.
+	// TODO: Add variants with different rarity.
+	// Variants     []*ItemType
 	// TODO: Make this a map of event types to functions.
 	OnTouch func(*Game, *Entity, *Item) // Trigger function called when item is used.
 	OnUse   func(*Game, *Entity, *Item) // Trigger function called when item is used.
@@ -108,14 +119,33 @@ type ItemType struct {
 	// OnConsume   func(*Game, *Entity, *Item) // Trigger function called when item is consumed.
 	// OnDrop      func(*Game, *Entity, *Item) // Trigger function called when item is dropped.
 	// OnPickup    func(*Game, *Entity, *Item) // Trigger function called when item is picked up.
+	// OnOpen	  func(*Game, *Entity, *Item) // Trigger function called when item is opened.
 }
 
 // New returns a new item of the given type.
 func (i ItemType) New() *Item {
+	var contains []*Item
+	if i.PossibleLoot != nil {
+		numItems := rand.Intn(1 + i.Capacity) // TODO: improve picking of number of items based on capacity.
+		for _, idx := range rand.Perm(len(i.PossibleLoot.Items)) {
+			if len(contains) >= numItems {
+				break
+			}
+			if it := i.PossibleLoot.Items[idx]; it.Rarity != nil && it.Rarity.Roll() {
+				contains = append(contains, it.New())
+			}
+		}
+	}
 	return &Item{
 		ItemType: &i,
 		Hidden:   i.Hidden,
+		Contains: contains,
 	}
+}
+
+// Generate returns a new item of the given type.
+func (i ItemType) Generate() *Item {
+	return i.New()
 }
 
 var (
@@ -125,12 +155,14 @@ var (
 		Description: "Baelin's fishing rod.",
 		Type:        ItemWeapon,
 		Modifier:    20,
+		Rarity:      RarityLegendary,
 	}
 	ItemTypeWeaponSword = &ItemType{
 		Tile:        '/',
 		Name:        "Sword",
 		Description: "A sharp sword.",
 		Type:        ItemWeapon,
+		Rarity:      RarityUncommon,
 	}
 	ItemTypeWeaponAxe = &ItemType{
 		Tile:        'P',
@@ -138,12 +170,14 @@ var (
 		Description: "A sharp axe.",
 		Type:        ItemWeapon,
 		Modifier:    1,
+		Rarity:      RarityUncommon,
 	}
 	ItemTypePotion = &ItemType{
 		Tile:        'Ö',
 		Name:        "Potion",
 		Description: "A healing potion.",
 		Type:        ItemPotion,
+		Rarity:      RarityUncommon,
 	}
 	ItemTypeTrollPoop = &ItemType{
 		Tile:        '8',
@@ -151,6 +185,7 @@ var (
 		Description: "... with sprinkles!",
 		Type:        ItemPotion,
 		Modifier:    10,
+		Rarity:      RarityLegendary,
 	}
 	ItemTypeGoblinToe = &ItemType{
 		Tile:        't',
@@ -158,12 +193,14 @@ var (
 		Description: "It's a bit smelly. A popular snack on TikTok.",
 		Type:        ItemPotion,
 		Modifier:    -1,
+		Rarity:      RarityRare,
 	}
 	ItemTypeArmorLeather = &ItemType{
 		Tile:        'L',
 		Name:        "Leather Armor",
 		Description: "A leather armor.",
 		Type:        ItemArmor,
+		Rarity:      RarityUncommon,
 	}
 	ItemTypeArmorChain = &ItemType{
 		Tile:        'C',
@@ -171,6 +208,7 @@ var (
 		Description: "A chain armor.",
 		Type:        ItemArmor,
 		Modifier:    2,
+		Rarity:      RarityRare,
 	}
 	ItemTypeArmorPlate = &ItemType{
 		Tile:        'P',
@@ -178,6 +216,7 @@ var (
 		Description: "A plate armor.",
 		Type:        ItemArmor,
 		Modifier:    4,
+		Rarity:      RarityExotic,
 	}
 	ItemTypeHelmetSweatband = &ItemType{
 		Tile:        'S',
@@ -185,6 +224,7 @@ var (
 		Description: "A stylish sweatband.",
 		Type:        ItemHelmet,
 		Modifier:    1,
+		Rarity:      RarityUncommon,
 	}
 	ItemTypeExit = &ItemType{
 		Tile:        '>',
@@ -217,10 +257,157 @@ var (
 		Tile:        'N',
 		Name:        "Note",
 		Description: "A note.",
-		Type:        ItemTrigger,
+		Type:        ItemTypeDocument,
+		Rarity:      RarityRare,
 		OnUse: func(g *Game, e *Entity, i *Item) {
 			// TODO: Use text box and load text from item data.
 			g.AddMessage("You read the note: \"You are a wizard, Harry!\"")
 		},
+	}
+	ItemTypeLetter = &ItemType{
+		Tile:        'L',
+		Name:        "Letter",
+		Description: "A letter.",
+		Type:        ItemTypeDocument,
+		Rarity:      RarityLegendary,
+		OnUse: func(g *Game, e *Entity, i *Item) {
+			// TODO: Use text box and load text from item data.
+			g.AddMessage("You read the letter: \"Dear Mr. Bigglesworth!\"")
+		},
+	}
+	ItemTypeBook = &ItemType{
+		Tile:         'b',
+		Name:         "Book",
+		Description:  "A book.",
+		Type:         ItemTypeDocument,
+		Capacity:     1,
+		Rarity:       RarityCommon,
+		PossibleLoot: ItemSetBookLoot,
+	}
+	ItemTypeChest = &ItemType{
+		Tile:         'c',
+		Name:         "Chest",
+		Description:  "A chest.",
+		Type:         ItemTypeContainer,
+		Capacity:     4,
+		Movable:      false,
+		PossibleLoot: ItemSetChestLoot,
+	}
+	ItemTypeBed = &ItemType{
+		Tile:         'b',
+		Name:         "Bed",
+		Description:  "A bed.",
+		Type:         ItemTypeContainer,
+		Capacity:     2,
+		Movable:      false,
+		PossibleLoot: ItemSetBedLoot,
+	}
+	ItemTypeSideTable = &ItemType{
+		Tile:        't',
+		Name:        "Side Table",
+		Description: "A side table.",
+		Type:        ItemTypeContainer,
+		Capacity:    1,
+		Movable:     false,
+	}
+	ItemTypeAltar = &ItemType{
+		Tile:        'a',
+		Name:        "Altar",
+		Description: "An altar.",
+		Type:        ItemTypeContainer,
+		Capacity:    1,
+		Movable:     false,
+	}
+	ItemTypeDesk = &ItemType{
+		Tile:         'd',
+		Name:         "Desk",
+		Description:  "A desk.",
+		Type:         ItemTypeContainer,
+		Capacity:     2,
+		Movable:      false,
+		PossibleLoot: ItemSetStationary,
+	}
+	ItemTypeBookshelf = &ItemType{
+		Tile:         'b',
+		Name:         "Book Shelf",
+		Description:  "A book shelf.",
+		Type:         ItemTypeContainer,
+		Capacity:     4,
+		Movable:      false,
+		Rarity:       RarityCommon,
+		PossibleLoot: ItemSetBookshelfLoot,
+	}
+	ItemTypeCandle = &ItemType{
+		Tile:        'c',
+		Name:        "Candle",
+		Description: "A candle.",
+		Type:        ItemTypeDecorative,
+		Movable:     true,
+	}
+	ItemTypeQuill = &ItemType{
+		Tile:        'q',
+		Name:        "Quill",
+		Description: "A quill.",
+		Type:        ItemTypeDecorative,
+		Rarity:      RarityUncommon,
+		Movable:     true,
+	}
+	ItemTypeInk = &ItemType{
+		Tile:        'i',
+		Name:        "Ink",
+		Description: "An ink.",
+		Type:        ItemTypeDecorative,
+		Rarity:      RarityUncommon,
+		Movable:     true,
+	}
+	ItemTypeParchment = &ItemType{
+		Tile:        'p',
+		Name:        "Parchment",
+		Description: "A parchment.",
+		Type:        ItemTypeDecorative,
+		Rarity:      RarityUncommon,
+		Movable:     true,
+	}
+	ItemTypeSealingWax = &ItemType{
+		Tile:        'w',
+		Name:        "Sealing Wax",
+		Description: "A sealing wax.",
+		Type:        ItemTypeDecorative,
+		Rarity:      RarityUncommon,
+		Movable:     true,
+	}
+	ItemTypeEnvelope = &ItemType{
+		Tile:         'e',
+		Name:         "Envelope",
+		Description:  "An envelope.",
+		Type:         ItemTypeDecorative,
+		Rarity:       RarityUncommon,
+		Capacity:     1,
+		Movable:      true,
+		PossibleLoot: ItemSetBookLoot,
+	}
+	ItemTypeBedSheet = &ItemType{
+		Tile:        's',
+		Name:        "Bed Sheet",
+		Description: "A bed sheet.",
+		Type:        ItemTypeDecorative,
+		Rarity:      RarityCommon,
+		Movable:     true,
+	}
+	ItemTypePillow = &ItemType{
+		Tile:        'p',
+		Name:        "Pillow",
+		Description: "A pillow.",
+		Type:        ItemTypeDecorative,
+		Rarity:      RarityUncommon,
+		Movable:     true,
+	}
+	ItemTypeBlanket = &ItemType{
+		Tile:        'b',
+		Name:        "Blanket",
+		Description: "A blanket.",
+		Type:        ItemTypeDecorative,
+		Rarity:      RarityCommon,
+		Movable:     true,
 	}
 )

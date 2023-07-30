@@ -32,6 +32,16 @@ func NewWorld(width, height int) *World {
 	return w
 }
 
+// NextToWall returns true if the given position is next to a wall.
+func (w *World) NextToWall(x, y int) bool {
+	return w.IsSolid(x-1, y) || w.IsSolid(x+1, y) || w.IsSolid(x, y-1) || w.IsSolid(x, y+1)
+}
+
+// IsEmtpy checks if a tile is empty (tile content is a space ' ' character and there is no object there).
+func (w *World) IsEmpty(x int, y int) bool {
+	return w.Cells[y][x] == CharFloor && w.Objects[y][x] == nil
+}
+
 // IsSolid checks if a tile is solid (tile content is not a space ' ' character).
 func (w *World) IsSolid(x int, y int) bool {
 	return w.Cells[y][x] != CharFloor
@@ -57,89 +67,6 @@ func (w *World) InBounds(x, y int) bool {
 	return x >= 0 && x < w.Width && y >= 0 && y < w.Height
 }
 
-// CarveRoom sets all tiles occupied by the room to ' '.
-func (w *World) CarveRoom(room *Room) {
-	for y := room.Y; y < room.Y+room.H; y++ {
-		for x := room.X; x < room.X+room.W; x++ {
-			w.Cells[y][x] = CharFloor
-			w.Elevation[y][x] = room.E
-		}
-	}
-}
-
-// AddRoomPuddle adds a puddle of water to the given room.
-func (w *World) AddRoomPuddle(room *Room) {
-	// Place a small puddle of water in the room.
-	// We pick a random location which is not too close to the entrance to the room (center of each wall).
-	// Then we random walk a random number of steps for each poddle cell.
-	var puddleCells [][2]int
-	// Random position in the room.
-	px := rand.Intn(room.W-2) + room.X + 1
-	py := rand.Intn(room.H-2) + room.Y + 1
-
-	puddleCells = append(puddleCells, [2]int{px, py})
-	// Random number of steps (max 10% of the room size)
-	numSteps := rand.Intn(room.W*room.H/10) + 1
-	for i := 0; i < numSteps; i++ {
-		// Pick a random cell.
-		idx := rand.Intn(len(puddleCells))
-		px, py = puddleCells[idx][0], puddleCells[idx][1]
-		// Pick a random direction.
-		dir := rand.Intn(4)
-		switch dir {
-		case DirNorth:
-			py--
-		case DirEast:
-			px++
-		case DirSouth:
-			py++
-		case DirWest:
-			px--
-		}
-		// Check if the position is valid.
-		if w.InBounds(px, py) && w.Cells[py][px] == CharFloor {
-			puddleCells = append(puddleCells, [2]int{px, py})
-		}
-	}
-
-	// Place the puddle cells.
-	for _, cell := range puddleCells {
-		w.Cells[cell[1]][cell[0]] = CharWater
-	}
-}
-
-// AddRoomColumns adds columns to the given room.
-func (w *World) AddRoomColumns(room *Room) {
-	// We evenly space the columns in the room, leaving at least one cell between each column
-	// and the room walls.
-
-	minX := room.X + 1
-	maxX := room.X + room.W - 1
-	minY := room.Y + 1
-	maxY := room.Y + room.H - 1
-
-	// Determine the x interval between each column.
-	xInterval := (maxX - minX) / 3
-	if xInterval < 2 {
-		xInterval = 2
-	}
-
-	// Determine the y interval between each column.
-	yInterval := (maxY - minY) / 3
-	if yInterval < 2 {
-		yInterval = 2
-	}
-
-	// TODO: Pick a number of columns that won't have a remainder when placed in the room.
-
-	// Place the columns.
-	for y := minY; y < maxY; y += yInterval {
-		for x := minX; x < maxX; x += xInterval {
-			w.Cells[y][x] = CharColumn
-		}
-	}
-}
-
 // Cardinal directions.
 const (
 	DirNorth = 0
@@ -155,8 +82,8 @@ const (
 func GenWorldSimpleDungeon(width, height int, seed int64) *World {
 	const (
 		attempts    = 200
-		maxRooms    = 100
-		minRoomSize = 4
+		maxRooms    = 200
+		minRoomSize = 2
 		maxRoomSize = 20
 	)
 	w := NewWorld(width, height)
@@ -178,15 +105,55 @@ func GenWorldSimpleDungeon(width, height int, seed int64) *World {
 	// Carve out the starting room.
 	w.CarveRoom(rooms[0])
 
+	doesOverlap := func(newRoom *Room) bool {
+		return newRoom.X < 1 || newRoom.Y < 1 || newRoom.X+newRoom.W > width-1 || newRoom.Y+newRoom.H > height-1 || newRoom.Overlaps(rooms)
+	}
+
+	placeRoom := func(room, newRoom *Room, dir int) {
+		// Append the room to the dungeon.
+		rooms = append(rooms, newRoom)
+
+		// Draw room.
+		w.CarveRoom(newRoom)
+
+		// Draw a tunnel between the rooms and connect them.
+		// TODO: Allow alignment of the corridor to be specified (e.g. center, left, right).
+		var corridorX, corridorY int
+		switch dir {
+		case DirNorth:
+			corridorX = newRoom.X + newRoom.W/2
+			corridorY = newRoom.Y + newRoom.H
+		case DirEast:
+			corridorX = newRoom.X - 1
+			corridorY = newRoom.Y + newRoom.H/2
+		case DirSouth:
+			corridorX = newRoom.X + newRoom.W/2
+			corridorY = newRoom.Y - 1
+		case DirWest:
+			corridorX = newRoom.X + newRoom.W
+			corridorY = newRoom.Y + newRoom.H/2
+		}
+
+		newRoom.Connect(room, corridorX, corridorY)
+		room.Connect(newRoom, corridorX, corridorY)
+
+		// Set the cell to a floor tile and set the elevation to the average of the two rooms.
+		w.Cells[corridorY][corridorX] = CharFloor
+		w.Elevation[corridorY][corridorX] = (room.E + newRoom.E) / 2
+	}
+
 	// Place rooms until we run out of attempts or reach the max room count.
 	for i := 0; i < attempts; i++ {
 		// Pick a room and place a neighboring room.
 		room := rooms[rng.Intn(len(rooms))]
-		// Pick a random direction.
+
+		// Pick a random direction in which to place the room (north, east, south, west).
 		dir := rng.Intn(4)
+
 		// Pick a random length and width.
 		rl := randInt(rng, minRoomSize, maxRoomSize)
 		rw := randInt(rng, minRoomSize, maxRoomSize)
+
 		// Pick a randome elevation based on the room elevation (up to 2 higher or lower).
 		re := room.E + rng.Intn(5) - 3
 
@@ -196,22 +163,77 @@ func GenWorldSimpleDungeon(width, height int, seed int64) *World {
 		// This could be changed to use a random offset to
 		// make the rooms more varied.
 		var x, y int
-		switch dir {
-		case DirNorth:
-			x = room.X + room.W/2 - rw/2
-			y = room.Y - rl - 1
-		case DirEast:
-			x = room.X + room.W + 1
-			y = room.Y + room.H/2 - rl/2
-		case DirSouth:
-			x = room.X + room.W/2 - rw/2
-			y = room.Y + room.H + 1
-		case DirWest:
-			x = room.X - rw - 1
-			y = room.Y + room.H/2 - rl/2
+		var misaligned bool
+		if randInt(rng, 0, 100) < 50 {
+			// Randomly we do not center the room, but place it randomly along the edge.
+			//
+			// ###############
+			// #####         #
+			// #####         #
+			// #####         #
+			// ####### #######
+			// #             #
+			// #             #
+			// #             #
+			// ###############
+			//
+			// TODO: Prevent edge misalignment on split rooms.
+			//
+			// ##############
+			// #####  #  #  #
+			// #####  #  #  #
+			// #####  #  #  #
+			// ###### ## ## # <- misaligned
+			// #        #####
+			// #        #####
+			// #        #####
+			// ##############
+			switch dir {
+			case DirNorth:
+				x = room.X + randInt(rng, 0, room.W) - rw/2
+				y = room.Y - rl - 1
+			case DirEast:
+				x = room.X + room.W + 1
+				y = room.Y + randInt(rng, 0, room.H) - rl/2
+			case DirSouth:
+				x = room.X + randInt(rng, 0, room.W) - rw/2
+				y = room.Y + room.H + 1
+			case DirWest:
+				x = room.X - rw - 1
+				y = room.Y + randInt(rng, 0, room.H) - rl/2
+			}
+
+			// Remark that the room is misaligned.
+			misaligned = true
+		} else {
+			// This will center the new room next to the room.
+			//
+			// ###############
+			// ###         ###
+			// ###         ###
+			// ###         ###
+			// ####### #######
+			// #             #
+			// #             #
+			// #             #
+			// ###############
+			switch dir {
+			case DirNorth:
+				x = room.X + room.W/2 - rw/2
+				y = room.Y - rl - 1
+			case DirEast:
+				x = room.X + room.W + 1
+				y = room.Y + room.H/2 - rl/2
+			case DirSouth:
+				x = room.X + room.W/2 - rw/2
+				y = room.Y + room.H + 1
+			case DirWest:
+				x = room.X - rw - 1
+				y = room.Y + room.H/2 - rl/2
+			}
 		}
 
-		// Create a new room.
+		// Create a new room with the calculated position and size.
 		newRoom := &Room{
 			X: x,
 			Y: y,
@@ -221,72 +243,94 @@ func GenWorldSimpleDungeon(width, height int, seed int64) *World {
 		}
 
 		// Check if the new room overlaps with any existing rooms.
-		if newRoom.X < 1 || newRoom.Y < 1 || newRoom.X+newRoom.W > width-1 || newRoom.Y+newRoom.H > height-1 || newRoom.Overlaps(rooms) {
+		if doesOverlap(newRoom) {
 			continue
 		}
 
-		// Append the room to the dungeon.
-		rooms = append(rooms, newRoom)
+		// TODO: Take note of child-parent relationships which will allow us to
+		// determine which rooms are connected to each other and what type of
+		// room they are (e.g. kitchen, bedroom, corridor, etc.).
 
-		// Draw room.
-		w.CarveRoom(newRoom)
+		// Place the room or randomly create smaller rooms within the bounds of the new room.
+		if rng.Intn(100) < 90 || misaligned {
+			placeRoom(room, newRoom, dir)
+		} else {
+			// MULTI ROOM SPLIT
+			//
+			// Create smaller rooms within the bounds of the new room.
+			// Depending on the orientation, we either create a horizontal or vertical split.
 
-		// There is a chance that a puddle of water is placed randomly
-		// in the room.
-		if rng.Intn(100) < 20 {
-			w.AddRoomPuddle(newRoom)
-		}
-
-		// There is a chance that columns are placed randomly
-		// in the room.
-		if rng.Intn(100) < 5 {
-			w.AddRoomColumns(newRoom)
-		}
-
-		// There is a chance that a creature entity is placed randomly
-		// in the room.
-
-		// Pick a random location in the room.
-		cx := randInt(rng, newRoom.X, newRoom.X+newRoom.W)
-		cy := randInt(rng, newRoom.Y, newRoom.Y+newRoom.H)
-		w.Entities = append(w.Entities, NewEntity(cx, cy, MonsterEntities[rng.Intn(len(MonsterEntities))]))
-
-		// Draw a tunnel between the rooms.
-		// NOTE: Right now, we just place the door in the middle.
-		switch dir {
-		case DirNorth:
-			w.Cells[room.Y-1][room.X+room.W/2] = CharFloor
-		case DirEast:
-			w.Cells[room.Y+room.H/2][room.X+room.W] = CharFloor
-		case DirSouth:
-			w.Cells[room.Y+room.H][room.X+room.W/2] = CharFloor
-		case DirWest:
-			w.Cells[room.Y+room.H/2][room.X-1] = CharFloor
-		}
-
-		// Connect the two rooms' elevations.
-		switch dir {
-		case DirNorth:
-			w.Elevation[room.Y-1][room.X+room.W/2] = (room.E + re) / 2
-		case DirEast:
-			w.Elevation[room.Y+room.H/2][room.X+room.W] = (room.E + re) / 2
-		case DirSouth:
-			w.Elevation[room.Y+room.H][room.X+room.W/2] = (room.E + re) / 2
-		case DirWest:
-			w.Elevation[room.Y+room.H/2][room.X-1] = (room.E + re) / 2
-		}
-
-		// Place randomly an object in the room.
-		/*
-			switch rng.Intn(2) {
-			case 0:
-				// Place a chest
-				chest := ObjectTypeChest.New()
-				x := randInt(rng, newRoom.X, newRoom.X+newRoom.W)
-				y := randInt(rng, newRoom.Y, newRoom.Y+newRoom.H)
-				w.Objects[y][x] = chest
+			// Pick the shortest side shared between old and new room that we can split,
+			// so we are guaranteed to connect the rooms.
+			var splitLength int
+			if dir == DirNorth || dir == DirSouth {
+				splitLength = newRoom.W
+				if splitLength > room.W {
+					splitLength = room.W
+				}
+			} else {
+				splitLength = newRoom.H
+				if splitLength > room.H {
+					splitLength = room.H
+				}
 			}
-		*/
+
+			// Calculate the maximum number of rooms we can place.
+			maxNumRooms := (splitLength + 1) / (minRoomSize + 1)
+			roomSize := minRoomSize
+
+			// If we can place more than 2 rooms, we can decrease the number of rooms
+			// and increase the room size.
+			if maxNumRooms > 3 {
+				// Calculate the room size based on the number of rooms we want to place.
+				maxNumRooms = randInt(rng, 3, maxNumRooms)
+				roomSize = ((splitLength + 1) / maxNumRooms) - 1
+			}
+
+			// Calculate the starting position of the rooms.
+			startX := newRoom.X
+			startY := newRoom.Y
+			if dir == DirNorth || dir == DirSouth {
+				startX += (newRoom.W - splitLength - 1) / 2 // Floor division.
+			} else {
+				startY += (newRoom.H - splitLength - 1) / 2 // Floor division.
+			}
+
+			// Place the rooms.
+			for j := 0; j < maxNumRooms; j++ {
+				// Use minRoomSize as the room size depending on the orientation.
+				var roomW, roomH int
+				var roomX, roomY int
+				if dir == DirNorth || dir == DirSouth {
+					roomH = newRoom.H
+					roomW = roomSize
+					roomX = startX + j*(roomSize+1)
+					roomY = startY
+				} else {
+					roomW = newRoom.W
+					roomH = roomSize
+					roomX = startX
+					roomY = startY + j*(roomSize+1)
+				}
+
+				// Create a new room.
+				newRoom := &Room{
+					X: roomX,
+					Y: roomY,
+					W: roomW,
+					H: roomH,
+					E: re,
+				}
+
+				// Check if the new room overlaps with any existing rooms.
+				if doesOverlap(newRoom) {
+					continue
+				}
+
+				// Place the room.
+				placeRoom(room, newRoom, dir)
+			}
+		}
 
 		// Stop if we have enough rooms.
 		if len(rooms) > maxRooms {
@@ -295,23 +339,65 @@ func GenWorldSimpleDungeon(width, height int, seed int64) *World {
 	}
 
 	// Pick the last room as the exit.
-	// TODO: Improve this.
+	// TODO: Improve this and make sure that this is reachable.
 	exit := ItemTypeExit.New()
 	exit.X = rooms[len(rooms)-1].X + rooms[len(rooms)-1].W/2
 	exit.Y = rooms[len(rooms)-1].Y + rooms[len(rooms)-1].H/2
 	w.Items = append(w.Items, exit)
 
-	// Place some traps.
-	numTraps := randInt(rng, 5, 10)
-	for i := 0; i < numTraps; i++ {
-		trap := ItemTypeTrap.New()
+	// Place furnishings, columns and puddles in rooms.
+	// TODO: Avoid placing items in the same position.
+	for _, room := range rooms {
+		// Small rooms have furnishings (which is currently a bedroom)
+		if room.Size() <= 20 {
+			w.AddRoomFurnishings(room)
+		}
 
-		// Pick a random room.
-		room := rooms[rng.Intn(len(rooms))]
-		trap.X = randInt(rng, room.X, room.X+room.W)
-		trap.Y = randInt(rng, room.Y, room.Y+room.H)
+		// Larger rooms may have puddles and columns.
+		if room.W >= 4 && room.H >= 4 {
+			// There is a chance that a puddle of water is placed randomly
+			// in the room.
+			if rng.Intn(100) < 20 {
+				w.AddRoomPuddle(room)
+			}
 
-		w.Items = append(w.Items, trap)
+			// There is a chance that columns are placed randomly
+			// in the room.
+			if rng.Intn(100) < 5 {
+				w.AddRoomColumns(room)
+			}
+		}
+
+		// Place a chest randomly in the room.
+		if rng.Intn(100) < 20 {
+			chest := ItemTypeChest.New()
+			chest.X, chest.Y = room.RandAlongWall()
+			w.Items = append(w.Items, chest)
+		}
+
+		// Place a bookshelf randomly in the room.
+		if rng.Intn(100) < 20 {
+			book := ItemTypeBookshelf.New()
+			book.X, book.Y = room.RandAlongWall()
+			w.Items = append(w.Items, book)
+		}
+
+		// Place a trap randomly in the room.
+		if rng.Intn(100) < 20 {
+			trap := ItemTypeTrap.New()
+			trap.X = randInt(rng, room.X, room.X+room.W)
+			trap.Y = randInt(rng, room.Y, room.Y+room.H)
+			w.Items = append(w.Items, trap)
+		}
+
+		// There is a chance that a creature entity is placed randomly
+		// in the room.
+		if rng.Intn(100) < 20 {
+			// Pick a random location in the room.
+			cx := randInt(rng, room.X, room.X+room.W)
+			cy := randInt(rng, room.Y, room.Y+room.H)
+			w.Entities = append(w.Entities, NewEntity(cx, cy, MonsterEntities[rng.Intn(len(MonsterEntities))]))
+		}
 	}
 
 	// Place some random stairs in rooms.
@@ -326,50 +412,8 @@ func GenWorldSimpleDungeon(width, height int, seed int64) *World {
 	//     __/
 	// ___/
 	// Room 2
-	/*
-		numStairs := randInt(rng, 15, 20)
-		for i := 0; i < numStairs; i++ {
-			// Get a random room with sufficient space.
-			var room *Room
-			for {
-				room = rooms[rng.Intn(len(rooms))]
-				if room.W > 4 && room.H > 4 {
-					break
-				}
-			}
-			// Place the stairs in the room.
-			// For this we increase the elevation of the cells by one each.
-			var stepHeight int
-			for y := room.Y; y < room.Y+room.H; y++ {
-				stepHeight++
-				for x := room.X; x < room.X+room.W; x++ {
-					w.Elevation[y][x] += stepHeight
-				}
-			}
-		}*/
+	//
 	return w
-}
-
-// Room represents a room in the world.
-// TODO: Store connecting rooms
-type Room struct {
-	X, Y int // top left corner
-	W, H int // width and height
-	E    int // elevation
-}
-
-// Overlaps returns true if the given room overlaps with any of the rooms in the list.
-func (r *Room) Overlaps(rooms []*Room) bool {
-	for _, room := range rooms {
-		if r.X+r.W < room.X || r.X > room.X+room.W {
-			continue
-		}
-		if r.Y+r.H < room.Y || r.Y > room.Y+room.H {
-			continue
-		}
-		return true
-	}
-	return false
 }
 
 // randInt returns a random integer between min and max using the given rng.

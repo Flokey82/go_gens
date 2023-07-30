@@ -40,7 +40,12 @@ func (ui *uiInventory) Draw() {
 	ui.selectableList.setItems(ui.player.Inventory.Items)
 
 	ui.view.ClearAll()
-	ui.view.PrintBounded(1, 0, ui.view.Width-1, 2, fmt.Sprintf("Inventory (%d)", ui.player.Inventory.Count()), t.Background(colGrey))
+	// Make sure the active UI is highlighted.
+	ts := []t.Transformer{t.Background(colGrey)}
+	if ui.isUIActive(ui) {
+		ts = append(ts, t.Foreground(concolor.Green))
+	}
+	ui.view.PrintBounded(1, 0, ui.view.Width-1, 2, fmt.Sprintf("Inventory (%d)", ui.player.Inventory.Count()), ts...)
 
 	var idx int
 	start, end := calcVisibleRange(ui.view.Height-2, len(ui.player.Inventory.Items), ui.selectedItem)
@@ -131,7 +136,13 @@ func (ui *uiEnemies) Draw() {
 	entities := ui.items
 
 	ui.view.ClearAll()
-	ui.view.PrintBounded(1, 0, ui.view.Width-2, 2, fmt.Sprintf("Enemies (%d)", len(entities)), t.Background(colGrey))
+
+	// Make sure the active UI is highlighted.
+	ts := []t.Transformer{t.Background(colGrey)}
+	if ui.isUIActive(ui) {
+		ts = append(ts, t.Foreground(concolor.Green))
+	}
+	ui.view.PrintBounded(1, 0, ui.view.Width-2, 2, fmt.Sprintf("Enemies (%d)", len(entities)), ts...)
 
 	// TODO: Fix the scrolling and unify with other UIs.
 	var idx int
@@ -221,6 +232,7 @@ type uiItems struct {
 	*Game
 	view *console.Console
 	selectableList[Item]
+	ItemOpen *Item // The item that is currently open.
 }
 
 func (g *Game) newPlayerItems() (*uiItems, error) {
@@ -245,7 +257,16 @@ func (ui *uiItems) Draw() {
 	items := ui.items
 
 	ui.view.ClearAll()
-	ui.view.PrintBounded(1, 0, ui.view.Width-2, 2, fmt.Sprintf("Items (%d)", len(items)), t.Background(colGrey))
+	headline := fmt.Sprintf("Items (%d)", len(items))
+	if ui.ItemOpen != nil {
+		headline = fmt.Sprintf("Items %s (%d)", ui.ItemOpen.Name, len(items))
+	}
+	// Make sure the active UI is highlighted.
+	ts := []t.Transformer{t.Background(colGrey)}
+	if ui.isUIActive(ui) {
+		ts = append(ts, t.Foreground(concolor.Green))
+	}
+	ui.view.PrintBounded(1, 0, ui.view.Width-2, 2, headline, ts...)
 
 	var idx int
 	start, end := calcVisibleRange(ui.view.Height-2, len(ui.inRange()), ui.selectedItem)
@@ -267,6 +288,12 @@ func (ui *uiItems) HandleInput() {
 	if inpututil.IsKeyJustPressed(ebiten.KeyEnter) {
 		ui.Select()
 	}
+	if inpututil.IsKeyJustPressed(ebiten.KeyBackspace) {
+		// Close the item if it is open.
+		if ui.ItemOpen != nil {
+			ui.ItemOpen = nil
+		}
+	}
 
 	// Show information about the selected item (if any).
 	if inpututil.IsKeyJustPressed(ebiten.KeyI) {
@@ -279,6 +306,16 @@ func (ui *uiItems) HandleInput() {
 }
 
 func (ui *uiItems) inRange() []*Item {
+	if ui.ItemOpen != nil {
+		// If the open item is in range, return its contents.
+		if ui.ItemOpen.X == ui.player.X && ui.ItemOpen.Y == ui.player.Y {
+			return ui.ItemOpen.Contains
+		}
+
+		// If the item is not in range, close it.
+		ui.ItemOpen = nil
+	}
+
 	// Player position.
 	pX := ui.player.X
 	pY := ui.player.Y
@@ -296,16 +333,36 @@ func (ui *uiItems) Select() {
 	if it == nil {
 		return
 	}
+
+	// If the item is a container, open it.
+	// TODO: Store parent for nested containers.
+	if it.Type == ItemTypeContainer || len(it.Contains) > 0 {
+		// Open container.
+		ui.ItemOpen = it
+		return
+	}
+
+	// Add the item to the inventory.
 	ui.player.Inventory.Add(it)
+
+	// TODO: Remove the item from the container if one is open.
+	if ui.ItemOpen != nil {
+		// Remove the item from the container.
+		ui.ItemOpen.Contains = removeItemFromSlice(ui.ItemOpen.Contains, it)
+	} else {
+		// Remove the item from the world.
+		ui.Items = removeItemFromSlice(ui.Items, it)
+	}
+}
+
+func removeItemFromSlice(items []*Item, item *Item) []*Item {
 	// Find the actual index and remove the item.
-	var idx int
-	for i, it2 := range ui.Items {
-		if it == it2 {
-			idx = i
-			break
+	for i, it := range items {
+		if it == item {
+			return append(items[:i], items[i+1:]...)
 		}
 	}
-	ui.Items = append(ui.Items[:idx], ui.Items[idx+1:]...)
+	return items
 }
 
 type uiPlayerInfo struct {
@@ -334,7 +391,12 @@ func (ui *uiPlayerInfo) Draw() {
 	pE := ui.World.Elevation[pY][pX]
 
 	// Draw player info.
-	ui.view.PrintBounded(1, 1, ui.view.Width, 1, "Player: "+ui.player.Name, t.Background(colGrey))
+	// Make sure the active UI is highlighted.
+	ts := []t.Transformer{t.Background(colGrey)}
+	if ui.isUIActive(ui) {
+		ts = append(ts, t.Foreground(concolor.Green))
+	}
+	ui.view.PrintBounded(1, 1, ui.view.Width, 1, "Player: "+ui.player.Name, ts...)
 	ui.view.PrintBounded(1, 2, ui.view.Width-2, 2, fmt.Sprintf("Health: %d/%d", ui.player.Health, ui.player.BaseHealth))
 	ui.view.PrintBounded(1, 3, ui.view.Width-2, 2, fmt.Sprintf("Def: %d Att: %d", ui.player.DefenseValue(), ui.player.AttackDamage()))
 	ui.view.PrintBounded(1, 4, ui.view.Width-2, 2, fmt.Sprintf("X=%d Y=%d E=%d", pX, pY, pE), t.Foreground(colGrey))
