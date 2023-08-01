@@ -26,6 +26,107 @@ func GenSlope(direction vectors.Vec2) GenFunc {
 	}
 }
 
+// GenFissure returns a generator function that produces a fissure between
+// two points on the heightmap, with the given increase in height at the lips
+// and the drop in elevation at the base of the fissure.
+//
+// NOTE: We use a biased random walk to generate the fissure path using the
+// given points as the starting and ending points of the walk, and the given
+// number of steps as the number of steps in the walk, as well as the amplitude
+// of the walk and the width of the fissure.
+func GenFissure(p1, p2 vectors.Vec2, steps int, lip, drop, amplitude, width float64) GenFunc {
+	// Generate the path of the fissure between the two points.
+	// NOTE: We use a biased random walk to generate the fissure turning points using the
+	// given points as the starting and ending points of the walk, and the given
+	// number of steps as the number of steps in the walk, as well as the amplitude
+	// of the walk.
+	var path []vectors.Vec2
+	for i := 0; i < steps; i++ {
+		if i == 0 {
+			path = append(path, p1)
+			continue
+		}
+		if i == steps-1 {
+			path = append(path, p2)
+			continue
+		}
+
+		vec12 := p2.Sub(p1)
+
+		// Get the expected point along the path at this step.
+		exp := p1.Add(vec12.Mul(float64(i) / float64(steps)))
+
+		// Add a random normal vector with a random fraction of the amplitude (ranging from -0.5 to 0.5 of the amplitude).
+		path = append(path, exp.Add(vectors.RandomVec2(1).Mul(amplitude*(rand.Float64()-0.5))))
+	}
+
+	// Calculate the total distance between the two points.
+	totalDist := p2.Sub(p1).Len()
+
+	// Generate the heightmap.
+	return func(x, y float64) float64 {
+		var distToEnd float64
+		distToEnd = p1.Sub(vectors.Vec2{x, y}).Len()
+		if d2 := p2.Sub(vectors.Vec2{x, y}).Len(); d2 < distToEnd {
+			distToEnd = d2
+		}
+
+		// Calculate fissure decay at this point.
+		dec := (2 * distToEnd / totalDist)
+		// Calculate fissure width at this point.
+		w := width * dec
+		// Calculate the lip height at this point.
+		l := lip * dec
+		// Calculate the drop height at this point.
+		d := drop * dec
+
+		// Get the shortest distance from the point to the path segment.
+		var minDist float64
+		for i := 0; i < len(path)-1; i++ {
+			// Get the distance from the point to the path segment.
+			dist := vectors.Segment{
+				Start: path[i],
+				End:   path[i+1],
+			}.DistanceToPoint(vectors.Vec2{x, y})
+
+			// Update the shortest distance.
+			if i == 0 || dist < minDist {
+				minDist = dist
+			}
+		}
+
+		// If we are within the width of the fissure, we interpolate the height
+		// between the lip and the drop.
+		if minDist < w {
+			return l - (w-minDist)*(l-d)/w
+		}
+
+		// Otherwise, we have an smooth decay of the height.
+		return l / (minDist / w)
+	}
+}
+
+// GenCrater modifies the height values in a circular region to create a crater with a lip.
+func GenCrater(center vectors.Vec2, diameter, lip, depth float64) GenFunc {
+	radius := diameter / 2
+
+	return func(x, y float64) float64 {
+		// Calculate the distance from the center of the crater
+		distance := math.Sqrt((x-center.X)*(x-center.X) + (y-center.Y)*(y-center.Y))
+
+		// If the distance is less than the radius of the crater, we are inside the crater.
+		if distance < radius {
+			// Lower the height value based on distance from the crater center
+			// forming a nice bowl shape.
+			return lip - depth*(1-(distance/radius)*(distance/radius))
+		}
+		// Decays the lip height based on distance from the crater lip (the edge of the crater)
+		// The farther from the lip, the shallower the lip height
+		// The lip height determines the maximum height the crater can have.
+		return lip / (distance / float64(radius))
+	}
+}
+
 // GenCone returns a generator function for a cone at the center of the heightmap.
 // TODO: Allow the user to specify the center of the cone.
 func GenCone(slope float64) GenFunc {

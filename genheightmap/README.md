@@ -8,12 +8,18 @@ Generation of landscape features:
 * Slope
 * Cone
 * Volcano cone
+* Crater
+* Fissure
 * Mountains/Hills
 
 Operations on heightmaps:
 * Normalization
 * Relaxing
 * Peakify (agitation / roughness)
+
+![alt text](/genheightmap/images/crater.png "crater")
+
+![alt text](/genheightmap/images/fissure.png "fissure")
 
 ## TODO
 
