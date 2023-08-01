@@ -9,12 +9,15 @@ import (
 func (w *World) genTerrain() {
 	w.addSlope(vectors.RandomVec2(4))
 	// w.addNoise(0.05)
-	w.addVolCone(-1.0)
+	w.addVolCone(1.0)
 	w.addMountains(40, 0.05)
 	for i := 0; i < 2; i++ {
 		w.heightRelax()
 	}
 	w.heightPeaky()
+	w.heightNormalize()
+	// w.addFissure(vectors.Vec2{X: -0.4, Y: -0.4}, vectors.Vec2{X: 0.4, Y: 0.4}, 10, 0.1, -0.1, 0.3, 0.1)
+	// w.addCrater(vectors.Vec2{X: 0.0, Y: 0.0}, 0.3, 0.5, 0.5)
 	w.heightNormalize()
 }
 
@@ -36,6 +39,14 @@ func (w *World) addMountains(n int, r float64) {
 
 func (w *World) addNoise(amount float64) {
 	w.ApplyGen(genheightmap.GenNoise(w.params.Seed, amount))
+}
+
+func (w *World) addFissure(p1, p2 vectors.Vec2, steps int, lip, drop, amplitude, width float64) {
+	w.ApplyGen(genheightmap.GenFissure(p1, p2, steps, lip, drop, amplitude, width))
+}
+
+func (w *World) addCrater(p vectors.Vec2, diameter, lip, depth float64) {
+	w.ApplyGen(genheightmap.GenCrater(p, diameter, lip, depth))
 }
 
 func (w *World) ApplyGen(f genheightmap.GenFunc) {

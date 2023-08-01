@@ -21,6 +21,10 @@ Operations on heightmaps:
 
 ![alt text](/genheightmap/images/fissure.png "fissure")
 
+![alt text](/genheightmap/images/volcone.png "volcone")
+
+![alt text](/genheightmap/images/hills.png "hills")
+
 ## TODO
 
 * Tidy up the code

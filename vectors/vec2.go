@@ -280,6 +280,27 @@ func (s1 Segment) IntersectPoint(s2 Segment) *Vec2 {
 	return nil
 }
 
+// DistanceToPoint returns the distance to the given point.
+func (s1 Segment) DistanceToPoint(p Vec2) float64 {
+	var v, w, pb Vec2
+	v.X = s1.End.X - s1.Start.X
+	v.Y = s1.End.Y - s1.Start.Y
+	w.X = p.X - s1.Start.X
+	w.Y = p.Y - s1.Start.Y
+	c1 := w.Dot(v)
+	if c1 <= 0 {
+		return p.DistanceTo(s1.Start)
+	}
+	c2 := v.Dot(v)
+	if c2 <= c1 {
+		return p.DistanceTo(s1.End)
+	}
+	b := c1 / c2
+	pb.X = s1.Start.X + b*v.X
+	pb.Y = s1.Start.Y + b*v.Y
+	return p.DistanceTo(pb)
+}
+
 // IsPointOnLine returns true if the point is on the line.
 func (s1 Segment) IsPointOnLine(p Vec2) bool {
 	if s1.Start.X == s1.End.X {

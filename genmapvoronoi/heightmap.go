@@ -19,7 +19,7 @@ func (r *Terrain) genTerrain() {
 	r.h = vmesh.NewHeightmap(r.mesh)
 	r.h.Add(
 		//MeshSlope(r.mesh, vectors.RandomVec2(4)),
-		//MeshVolCone(r.mesh, -1),
+		//MeshVolCone(r.mesh, 1),
 		//MeshCone(r.mesh, runif(-1, -1)),
 		//MeshMountains(r.mesh, 50, 0.09),
 		MeshRidges(r.mesh, vectors.RandomVec2(4)),

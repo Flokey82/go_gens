@@ -18,10 +18,10 @@ func main() {
 	defer pprof.StopCPUProfile()
 
 	w := genmap2derosion.NewWorld(genmap2derosion.DefaultParams)
-	if err := w.ExportGif("anim.gif"); err != nil {
-		log.Fatal(err)
-	}
-
+	/*	if err := w.ExportGif("anim.gif"); err != nil {
+			log.Fatal(err)
+		}
+	*/
 	if err := w.ExportOBJ("tmp.obj"); err != nil {
 		log.Fatal(err)
 	}

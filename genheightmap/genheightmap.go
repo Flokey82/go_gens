@@ -131,7 +131,7 @@ func GenCrater(center vectors.Vec2, diameter, lip, depth float64) GenFunc {
 // TODO: Allow the user to specify the center of the cone.
 func GenCone(slope float64) GenFunc {
 	return func(x, y float64) float64 {
-		return math.Pow(x*x+y*y, 0.5) * slope
+		return math.Sqrt(x*x+y*y) * slope
 	}
 }
 
@@ -140,11 +140,12 @@ func GenCone(slope float64) GenFunc {
 // TODO: Allow the user to specify the center of the cone.
 func GenVolCone(slope float64) GenFunc {
 	return func(x, y float64) float64 {
-		dist := math.Pow(x*x+y*y, 0.5)
-		if dist < 0.1 {
-			return -4 * dist * slope
+		dist := math.Sqrt(x*x + y*y)
+		if dist < slope/4 {
+			return math.Pow(dist/(slope/4), 2) * slope / 2
 		}
-		return dist * slope
+		// Let the cone decay to the edge of the heightmap.
+		return slope / math.Pow(dist/(slope/4), 2)
 	}
 }
 
