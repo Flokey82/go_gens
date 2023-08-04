@@ -65,9 +65,12 @@ func GenFissure(p1, p2 vectors.Vec2, steps int, lip, drop, amplitude, width floa
 
 	// Generate the heightmap.
 	return func(x, y float64) float64 {
+		p := vectors.Vec2{X: x, Y: y}
+
+		// Calculate the distance to the closest end point on the path.
 		var distToEnd float64
-		distToEnd = p1.Sub(vectors.Vec2{x, y}).Len()
-		if d2 := p2.Sub(vectors.Vec2{x, y}).Len(); d2 < distToEnd {
+		distToEnd = p1.Sub(p).Len()
+		if d2 := p2.Sub(p).Len(); d2 < distToEnd {
 			distToEnd = d2
 		}
 
@@ -87,7 +90,7 @@ func GenFissure(p1, p2 vectors.Vec2, steps int, lip, drop, amplitude, width floa
 			dist := vectors.Segment{
 				Start: path[i],
 				End:   path[i+1],
-			}.DistanceToPoint(vectors.Vec2{x, y})
+			}.DistanceToPoint(p)
 
 			// Update the shortest distance.
 			if i == 0 || dist < minDist {
@@ -103,6 +106,112 @@ func GenFissure(p1, p2 vectors.Vec2, steps int, lip, drop, amplitude, width floa
 
 		// Otherwise, we have an smooth decay of the height.
 		return l / (minDist / w)
+	}
+}
+
+// GenMountainRange returns a generator function that produces a mountain range
+// between the two given points, with the given number of peaks (or steps), the
+// given radius of the mountains, and the given amplitude of the variation in the
+// mountain range and a maximum height of the mountains
+//
+// NOTE: We use a biased random walk to generate the mountain range using the
+// given points as the starting and ending points of the walk, and the given
+// number of steps as the number of steps in the walk, as well as the amplitude
+// of the walk and the radius of the mountains.
+func GenMountainRange(p1, p2 vectors.Vec2, steps int, radius, amplitude, maxHeight float64) GenFunc {
+	// Generate the path of the mountain range between the two points.
+	// NOTE: We use a biased random walk to generate the mountain range turning points using the
+	// given points as the starting and ending points of the walk, and the given
+	// number of steps as the number of steps in the walk, as well as the amplitude
+	// of the walk.
+	var path []vectors.Vec2
+	for i := 0; i < steps; i++ {
+		if i == 0 {
+			path = append(path, p1)
+			continue
+		}
+		if i == steps-1 {
+			path = append(path, p2)
+			continue
+		}
+
+		vec12 := p2.Sub(p1)
+
+		// Get the expected point along the path at this step.
+		exp := p1.Add(vec12.Mul(float64(i) / float64(steps)))
+
+		// Add a random normal vector with a random fraction of the amplitude (ranging from -0.5 to 0.5 of the amplitude).
+		path = append(path, exp.Add(vectors.RandomVec2(1).Mul(amplitude*(rand.Float64()-0.5))))
+	}
+
+	// Calculate the total distance between the two points.
+	totalDist := p2.Sub(p1).Len()
+
+	// Generate the heightmap.
+	return func(x, y float64) float64 {
+		p := vectors.Vec2{X: x, Y: y}
+
+		// Calculate the distance to the closest end point on the path.
+		distToEnd := p1.Sub(p).Len()
+		if d2 := p2.Sub(p).Len(); d2 < distToEnd {
+			distToEnd = d2
+		}
+
+		// Get the shortest distance from the point to the closest path segment.
+		var (
+			closestSegDist float64         // Distance from the point to the closest path segment.
+			closestSeg     vectors.Segment // Closest path segment.
+		)
+		for i := 0; i < len(path)-1; i++ {
+			// Get the distance from the point to the path segment.
+			seg := vectors.Segment{
+				Start: path[i],
+				End:   path[i+1],
+			}
+			dist := seg.DistanceToPoint(p)
+
+			// Update the shortest distance.
+			if i == 0 || dist < closestSegDist {
+				closestSegDist = dist
+				closestSeg = seg
+			}
+		}
+		// Length of the closest path segment.
+		closestSegLen := closestSeg.Len()
+
+		// Distance from the closest point on the segment to the center of the segment.
+		poinOnLine := closestSeg.ClosestPoint(p)
+		distToSegCenter := closestSeg.Midpoint().Sub(poinOnLine).Len()
+
+		// Calculate the height of the mountain at this point, with some additional
+		// decay based on the distance to the center of the segment.
+		//
+		// Depending on the distance to the peak, we sag a bit in the middle of the mountain
+		// range to make it look more like a mountain range.
+		//   _   __  _
+		//  / \_/  \ _  <- 0.4 * sag
+		// /        \_  <- 0.6
+		sag := 1 - math.Pow(distToSegCenter/(closestSegLen/2), 2)
+
+		// Calculate the height of the mountain at this point.
+		h := radius * (1.0 - 0.4*sag)
+
+		// Calculate mountain range decay at this point.
+		// The closer a point is to the end of the mountain range, the lower the height.
+		dec := (2 * distToEnd / totalDist)
+
+		// Calculate the width of the mountain at this point.
+		rDec := radius * dec
+
+		// Calculate the height of the mountain at this point.
+		hDec := h * dec
+
+		// If we are within the radius of the mountain, we interpolate the height
+		// given the expected height of the mountain at this point.
+		if closestSegDist < rDec {
+			return hDec * math.Pow((rDec-closestSegDist)/rDec, 2)
+		}
+		return 0
 	}
 }
 

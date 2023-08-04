@@ -301,6 +301,27 @@ func (s1 Segment) DistanceToPoint(p Vec2) float64 {
 	return p.DistanceTo(pb)
 }
 
+// ClosestPoint returns the closest point on the segment to the given point.
+func (s1 Segment) ClosestPoint(p Vec2) Vec2 {
+	// https://stackoverflow.com/questions/849211/shortest-distance-between-a-point-and-a-line-segment
+	line := s1.End.Sub(s1.Start)
+	len2 := line.LengthSquared()
+	if len2 == 0 {
+		return s1.Start
+	}
+	dot := (p.Sub(s1.Start)).Dot(line)
+	t := math.Max(0, math.Min(1, dot/len2))
+	return s1.Start.Add(line.Mul(t))
+}
+
+// Midpoint returns the midpoint of the segment.
+func (s1 Segment) Midpoint() Vec2 {
+	return Vec2{
+		X: (s1.Start.X + s1.End.X) / 2,
+		Y: (s1.Start.Y + s1.End.Y) / 2,
+	}
+}
+
 // IsPointOnLine returns true if the point is on the line.
 func (s1 Segment) IsPointOnLine(p Vec2) bool {
 	if s1.Start.X == s1.End.X {
