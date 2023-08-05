@@ -16,9 +16,9 @@ func (w *World) genTerrain() {
 	}
 	w.heightPeaky()
 	w.heightNormalize()
-	// w.addFissure(vectors.Vec2{X: -0.4, Y: -0.4}, vectors.Vec2{X: 0.4, Y: 0.4}, 10, 0.1, -0.1, 0.3, 0.1)
+	// w.addFissure(vectors.Vec2{X: -0.4, Y: -0.4}, vectors.Vec2{X: 0.4, Y: 0.4}, 10, 0.1, -0.1, 0.1, 0.1, true)
 	// w.addCrater(vectors.Vec2{X: 0.0, Y: 0.0}, 0.3, 0.5, 0.5)
-	// w.addMountainRange(vectors.Vec2{X: -0.4, Y: -0.4}, vectors.Vec2{X: 0.4, Y: 0.4}, 10, 0.1, 0.3, 0.1)
+	// w.addMountainRange(vectors.Vec2{X: -0.4, Y: -0.4}, vectors.Vec2{X: 0.4, Y: 0.4}, 10, 0.3, 0.3, 0.1)
 	w.heightNormalize()
 }
 
@@ -42,16 +42,16 @@ func (w *World) addNoise(amount float64) {
 	w.ApplyGen(genheightmap.GenNoise(w.params.Seed, amount))
 }
 
-func (w *World) addFissure(p1, p2 vectors.Vec2, steps int, lip, drop, amplitude, width float64) {
-	w.ApplyGen(genheightmap.GenFissure(p1, p2, steps, lip, drop, amplitude, width))
+func (w *World) addFissure(p1, p2 vectors.Vec2, steps int, lip, drop, amplitude, width float64, useNormalVecs bool) {
+	w.ApplyGen(genheightmap.GenFissure(p1, p2, steps, lip, drop, amplitude, width, useNormalVecs))
 }
 
 func (w *World) addCrater(p vectors.Vec2, diameter, lip, depth float64) {
 	w.ApplyGen(genheightmap.GenCrater(p, diameter, lip, depth))
 }
 
-func (w *World) addMountainRange(p1, p2 vectors.Vec2, steps int, radius, amplitude, height float64) {
-	w.ApplyGen(genheightmap.GenMountainRange(p1, p2, steps, radius, amplitude, height))
+func (w *World) addMountainRange(p1, p2 vectors.Vec2, steps int, radius, amplitude, height float64, useNormalVecs bool) {
+	w.ApplyGen(genheightmap.GenMountainRange(p1, p2, steps, radius, amplitude, height, useNormalVecs))
 }
 
 func (w *World) ApplyGen(f genheightmap.GenFunc) {

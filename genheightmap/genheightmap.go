@@ -26,20 +26,19 @@ func GenSlope(direction vectors.Vec2) GenFunc {
 	}
 }
 
-// GenFissure returns a generator function that produces a fissure between
-// two points on the heightmap, with the given increase in height at the lips
-// and the drop in elevation at the base of the fissure.
-//
-// NOTE: We use a biased random walk to generate the fissure path using the
-// given points as the starting and ending points of the walk, and the given
-// number of steps as the number of steps in the walk, as well as the amplitude
-// of the walk and the width of the fissure.
-func GenFissure(p1, p2 vectors.Vec2, steps int, lip, drop, amplitude, width float64) GenFunc {
-	// Generate the path of the fissure between the two points.
-	// NOTE: We use a biased random walk to generate the fissure turning points using the
+func genRandomWalk(p1, p2 vectors.Vec2, steps int, amplitude float64, useNormalVecs bool) []vectors.Vec2 {
+	// Generate the path of the mountain range or fissure between the two points.
+	// NOTE: We use a biased random walk to generate the mountain range turning points using the
 	// given points as the starting and ending points of the walk, and the given
 	// number of steps as the number of steps in the walk, as well as the amplitude
 	// of the walk.
+	//            _________
+	// p1 /\_   _/\_p2    | amplitude
+	//  \/   \_/__________|
+
+	// First we get the vector between the two points.
+	vec12 := p2.Sub(p1)
+
 	var path []vectors.Vec2
 	for i := 0; i < steps; i++ {
 		if i == 0 {
@@ -51,14 +50,38 @@ func GenFissure(p1, p2 vectors.Vec2, steps int, lip, drop, amplitude, width floa
 			continue
 		}
 
-		vec12 := p2.Sub(p1)
-
 		// Get the expected point along the path at this step.
 		exp := p1.Add(vec12.Mul(float64(i) / float64(steps)))
 
-		// Add a random normal vector with a random fraction of the amplitude (ranging from -0.5 to 0.5 of the amplitude).
-		path = append(path, exp.Add(vectors.RandomVec2(1).Mul(amplitude*(rand.Float64()-0.5))))
+		if useNormalVecs {
+			// Get a normal vector to the path.
+			normal := vec12.Normal().Mul(amplitude * (rand.Float64() - 0.5))
+
+			// Add the normal vector to the expected point.
+			path = append(path, exp.Add(normal))
+		} else {
+			// Add a random vector with the length of a random fraction of the amplitude
+			// (ranging from -0.5 to 0.5 of the amplitude).
+			path = append(path, exp.Add(vectors.RandomVec2(1).Mul(amplitude*(rand.Float64()-0.5))))
+		}
 	}
+	return path
+}
+
+// GenFissure returns a generator function that produces a fissure between
+// two points on the heightmap, with the given increase in height at the lips
+// and the drop in elevation at the base of the fissure.
+//
+// NOTE: We use a biased random walk to generate the fissure path using the
+// given points as the starting and ending points of the walk, and the given
+// number of steps as the number of steps in the walk, as well as the amplitude
+// of the walk and the width of the fissure.
+//
+// UseNormalVecs determines whether we use the normal vector of the path to
+// generate the path of the fissure, or if we use a random vector.
+func GenFissure(p1, p2 vectors.Vec2, steps int, lip, drop, amplitude, width float64, useNormalVecs bool) GenFunc {
+	// Generate the path of the fissure between the two points.
+	path := genRandomWalk(p1, p2, steps, amplitude, useNormalVecs)
 
 	// Calculate the total distance between the two points.
 	totalDist := p2.Sub(p1).Len()
@@ -118,31 +141,12 @@ func GenFissure(p1, p2 vectors.Vec2, steps int, lip, drop, amplitude, width floa
 // given points as the starting and ending points of the walk, and the given
 // number of steps as the number of steps in the walk, as well as the amplitude
 // of the walk and the radius of the mountains.
-func GenMountainRange(p1, p2 vectors.Vec2, steps int, radius, amplitude, maxHeight float64) GenFunc {
+//
+// UseNormalVecs determines whether we use the normal vector of the path to
+// generate the path of the mountain range, or if we use a random vector.
+func GenMountainRange(p1, p2 vectors.Vec2, steps int, radius, amplitude, maxHeight float64, useNormalVecs bool) GenFunc {
 	// Generate the path of the mountain range between the two points.
-	// NOTE: We use a biased random walk to generate the mountain range turning points using the
-	// given points as the starting and ending points of the walk, and the given
-	// number of steps as the number of steps in the walk, as well as the amplitude
-	// of the walk.
-	var path []vectors.Vec2
-	for i := 0; i < steps; i++ {
-		if i == 0 {
-			path = append(path, p1)
-			continue
-		}
-		if i == steps-1 {
-			path = append(path, p2)
-			continue
-		}
-
-		vec12 := p2.Sub(p1)
-
-		// Get the expected point along the path at this step.
-		exp := p1.Add(vec12.Mul(float64(i) / float64(steps)))
-
-		// Add a random normal vector with a random fraction of the amplitude (ranging from -0.5 to 0.5 of the amplitude).
-		path = append(path, exp.Add(vectors.RandomVec2(1).Mul(amplitude*(rand.Float64()-0.5))))
-	}
+	path := genRandomWalk(p1, p2, steps, amplitude, useNormalVecs)
 
 	// Calculate the total distance between the two points.
 	totalDist := p2.Sub(p1).Len()
@@ -198,6 +202,21 @@ func GenMountainRange(p1, p2 vectors.Vec2, steps int, radius, amplitude, maxHeig
 
 		// Calculate mountain range decay at this point.
 		// The closer a point is to the end of the mountain range, the lower the height.
+		//          _   __ ______________
+		//     _   / \_/  \   _         |
+		//   _/ \_/        \_/ \_       | hDec
+		// _/____________________\_ ____|
+		// start				 end
+		//
+		// Top view:
+		//  	   _______
+		//  ___----       ----___
+		// /......................\ ____
+		// \___ 				__/    | rDec
+		//     ----_______-----________|
+		//
+		// Of course, this should be linear and more like a diamond shape,
+		// but I suck at ASCII art.
 		dec := (2 * distToEnd / totalDist)
 
 		// Calculate the width of the mountain at this point.
@@ -209,6 +228,9 @@ func GenMountainRange(p1, p2 vectors.Vec2, steps int, radius, amplitude, maxHeig
 		// If we are within the radius of the mountain, we interpolate the height
 		// given the expected height of the mountain at this point.
 		if closestSegDist < rDec {
+			// Using the decayed (maximum) height of the mountain, we interpolate the height
+			// depending on the distance to the closest segment and the maximum radius (rDec)
+			// of the mountain at this point.
 			return hDec * math.Pow((rDec-closestSegDist)/rDec, 2)
 		}
 		return 0
