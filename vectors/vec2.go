@@ -183,6 +183,26 @@ func (v Vec2) Negate() Vec2 {
 	}
 }
 
+// Reflect reflects the vector at the given normal.
+func (v Vec2) Reflect(normal Vec2) Vec2 {
+	return v.Sub(normal.Mul(v.Dot(normal)))
+}
+
+// Normalize returns the normalized vector (with a length/magnitude of 1).
+func (v Vec2) Normalize() Vec2 {
+	x := v.X
+	y := v.Y
+	length := (x * x) + (y * y)
+	if length > 0 {
+		length = 1.0 / math.Sqrt(length)
+		return Vec2{
+			X: v.X * length,
+			Y: v.Y * length,
+		}
+	}
+	return Vec2{}
+}
+
 // Normalize returns the normalized vector (with a length/magnitude of 1).
 func Normalize(vec Vec2) (dest Vec2) {
 	x := vec.X
