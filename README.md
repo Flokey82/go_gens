@@ -34,7 +34,9 @@ This is a very basic raycast implementation using a randomly generated dungeon f
 
 This is a very basic rogue-like game skeleton... Barely functional.
 
-![alt text](https://raw.githubusercontent.com/Flokey82/go_gens/master/gamerogueish/images/rgb.png "rogue-ish")
+![alt text](https://raw.githubusercontent.com/Flokey82/gamerogueish/master/images/rgb.png "rogue-ish")
+
+Now found here: [github.com/Flokey82/gamerogueish](https://gigithub.com/Flokey82/gamerogueish)
 
 ### genarchitecture: Architecture generator
 
