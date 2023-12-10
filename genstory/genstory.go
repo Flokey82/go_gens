@@ -142,7 +142,9 @@ func (g *TextGenerator) GenerateFromConfig(provided []TokenReplacement, config *
 		var missingToken bool
 		for _, token := range tokens {
 			if len(tokenReplacements[token]) < tokenCounts[token] {
-				if isMandatory[token] {
+				// Check if the current token is mandatory or if we don't have any replacements for it.
+				// TODO: Maybe check if the sum of provided tokens and token replacements satisfies the template.
+				if isMandatory[token] || len(tokenRandom[token]) == 0 {
 					missingToken = true
 					break
 				}
