@@ -109,6 +109,19 @@ type Language struct {
 	lastNameConfig  *naming.NameParams
 }
 
+// Clone returns a new language that is a fork of the current language.
+func (l *Language) Clone() *Language {
+	// TODO: Allow slight variations in the language.
+	return &Language{
+		lang:            l.lang.Clone(),
+		wordConfig:      l.wordConfig.Clone(),
+		nameConfig:      l.nameConfig.Clone(),
+		cityConfig:      l.cityConfig.Clone(),
+		firstNameConfig: l.firstNameConfig.Clone(),
+		lastNameConfig:  l.lastNameConfig.Clone(),
+	}
+}
+
 // GetWord returns a random, probably new, word from the language.
 func (l *Language) GetWord(group string) string {
 	return l.lang.GetWord(l.wordConfig, group)
