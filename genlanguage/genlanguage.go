@@ -33,8 +33,7 @@ func GenLanguage(seed int64) *Language {
 	// Then we store all base words that we generate in a dictionary
 	// and we can use that to generate names for cities, people, etc.
 
-	rand.Seed(seed)
-	lang := naming.RandomLanguage(true, true)
+	lang := naming.RandomLanguage(true, true, seed)
 
 	wordConfig := &naming.WordParams{
 		MinSyllables: 1,
@@ -43,11 +42,11 @@ func GenLanguage(seed int64) *Language {
 	}
 
 	nameConfig := &naming.NameParams{
-		MinLength: naming.RandomRange(3, 5),
-		MaxLength: naming.RandomRange(6, 20),
+		MinLength: naming.RandomRange(3, 5, lang.Rnd),
+		MaxLength: naming.RandomRange(6, 20, lang.Rnd),
 		WordParams: &naming.WordParams{
 			MinSyllables: 2,
-			MaxSyllables: naming.RandomRange(2, 7),
+			MaxSyllables: naming.RandomRange(2, 7, lang.Rnd),
 			Structure:    naming.DefaultSyllableStructures,
 		},
 		Joiners: "  -",
@@ -55,11 +54,11 @@ func GenLanguage(seed int64) *Language {
 	}
 
 	cityConfig := &naming.NameParams{
-		MinLength: naming.RandomRange(3, 5),
-		MaxLength: naming.RandomRange(6, 15),
+		MinLength: naming.RandomRange(3, 5, lang.Rnd),
+		MaxLength: naming.RandomRange(6, 15, lang.Rnd),
 		WordParams: &naming.WordParams{
 			MinSyllables: 2,
-			MaxSyllables: naming.RandomRange(3, 7),
+			MaxSyllables: naming.RandomRange(3, 7, lang.Rnd),
 			Structure:    naming.DefaultSyllableStructures,
 		},
 		Joiners: "  -",
@@ -67,11 +66,11 @@ func GenLanguage(seed int64) *Language {
 	}
 
 	firstNameConfig := &naming.NameParams{
-		MinLength: naming.RandomRange(3, 5),
-		MaxLength: naming.RandomRange(6, 15),
+		MinLength: naming.RandomRange(3, 5, lang.Rnd),
+		MaxLength: naming.RandomRange(6, 15, lang.Rnd),
 		WordParams: &naming.WordParams{
 			MinSyllables: 2,
-			MaxSyllables: naming.RandomRange(3, 7),
+			MaxSyllables: naming.RandomRange(3, 7, lang.Rnd),
 			Structure:    naming.DefaultSyllableStructures,
 		},
 		Joiners: "  -",
@@ -79,11 +78,11 @@ func GenLanguage(seed int64) *Language {
 	}
 
 	lastNameConfig := &naming.NameParams{
-		MinLength: naming.RandomRange(3, 5),
-		MaxLength: naming.RandomRange(6, 15),
+		MinLength: naming.RandomRange(3, 5, lang.Rnd),
+		MaxLength: naming.RandomRange(6, 15, lang.Rnd),
 		WordParams: &naming.WordParams{
 			MinSyllables: 2,
-			MaxSyllables: naming.RandomRange(3, 7),
+			MaxSyllables: naming.RandomRange(3, 7, lang.Rnd),
 			Structure:    naming.DefaultSyllableStructures,
 		},
 		Joiners: "  -",
@@ -109,11 +108,11 @@ type Language struct {
 	lastNameConfig  *naming.NameParams
 }
 
-// Clone returns a new language that is a fork of the current language.
-func (l *Language) Clone() *Language {
+// Fork returns a new language that is a fork of the current language.
+func (l *Language) Fork(newSeed int64) *Language {
 	// TODO: Allow slight variations in the language.
 	return &Language{
-		lang:            l.lang.Clone(),
+		lang:            l.lang.Fork(newSeed),
 		wordConfig:      l.wordConfig.Clone(),
 		nameConfig:      l.nameConfig.Clone(),
 		cityConfig:      l.cityConfig.Clone(),

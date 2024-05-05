@@ -44,6 +44,32 @@ func (c *TextConfig) GenerateWithTemplate(provided []TokenReplacement, template 
 	return DefaultTextGenerator.GenerateFromConfig(provided, c, []string{template})
 }
 
+// GetTemplatesWithTokens returns a list of templates that contain all the provided tokens.
+func (c *TextConfig) GetTemplatesWithTokens(tokens []string) []string {
+	var templates []string
+
+Loop:
+	for _, template := range c.Templates {
+		exTokens, err := ExtractTokens(template)
+		if err != nil {
+			continue
+		}
+
+		hasToken := make(map[string]bool)
+		for _, tok := range exTokens {
+			hasToken[tok.Token] = true
+		}
+		for _, token := range tokens {
+			if !hasToken[token] {
+				continue Loop
+			}
+		}
+		templates = append(templates, template)
+	}
+
+	return templates
+}
+
 // TextGenerator is a generator for text using TextConfigs.
 // Using this over the TextConfig methods allows you to use a custom random number generator
 // and to (re-)set the random number generator's seed.
