@@ -295,7 +295,7 @@ var DefaultModifiers = map[string]func(string) string{
 	"capitalize":        genlanguage.Capitalize, // Capitalize the first letter.
 	"upper":             strings.ToUpper,
 	"lower":             strings.ToLower,
-	"adjecive":          genlanguage.GetAdjective,
+	"adjective":         genlanguage.GetAdjective,
 	"nounplural":        genlanguage.GetNounPlural,
 	"past":              genlanguage.GetPastTense,
 	"presentsingular":   genlanguage.GetPresentSingular,
