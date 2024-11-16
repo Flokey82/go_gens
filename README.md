@@ -73,6 +73,10 @@ This package is a modified fork of https://github.com/brad811/go-dungeon/, which
 
 This does now support multi-level dungeon generation with stairs.
 
+### genempire: Empire generator (WIP)
+
+This is a simple generator for empire names (based on genreligion).
+
 ### genfloortxt: Simple 2D text floorplan renderer
 
 This package provides a little demo on how to 'render' walls as unicode characters, imitating the cp437 symbol set.
