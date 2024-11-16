@@ -383,6 +383,9 @@ func TrimVowels(str string, minLength int) string {
 // This takes in account "witch" and "fish" which are
 // irregular.
 func GetNounPlural(noun string) string {
+	if len(noun) > 1 && strings.HasSuffix(noun, "y") && !IsVowel(rune(noun[len(noun)-2])) {
+		return stringSlice(noun, 0, -1) + "ies"
+	}
 	if strings.HasSuffix(noun, "s") || strings.HasSuffix(noun, "x") || strings.HasSuffix(noun, "z") || strings.HasSuffix(noun, "ch") || strings.HasSuffix(noun, "sh") {
 		return noun + "es"
 	}
