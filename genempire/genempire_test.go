@@ -27,9 +27,15 @@ func TestNewGenerator(t *testing.T) {
 			Replacement: lang.GetLastName(),
 		}
 
+		tokenRandom := genstory.TokenReplacement{
+			Token:       TokenRandom,
+			Replacement: lang.MakeName(),
+		}
+
 		availableTokens := []genstory.TokenReplacement{
 			tokenPlace,
 			tokenFoundingFigure,
+			tokenRandom,
 		}
 		// Generate 3 variations of the name.
 		for j := 0; j < 3; j++ {

@@ -67,6 +67,9 @@ func weightedToArray(weighted map[string]int) []string {
 // GenEmpireMethods contains a map of empire name generation
 // methods and their relative chance to be selected.
 var GenEmpireMethods = map[string]int{
+	MethodRandom:                           2,
+	MethodRandomForm:                       3,
+	MethodFormOfRandom:                     1,
 	MethodFormOfPlace:                      3,
 	MethodTheAdjFormOfPlace:                2,
 	MethodPlaceToAdjForm:                   2,
@@ -81,6 +84,11 @@ var GenEmpireMethods = map[string]int{
 }
 
 const (
+	// Random based:
+	MethodRandom       = "[RANDOM]"
+	MethodRandomForm   = "[RANDOM] [FORM]"
+	MethodFormOfRandom = "[FORM] of [RANDOM]"
+
 	// Place based (like capital city, region, etc):
 	MethodFormOfPlace                      = "[FORM] of [PLACE]"
 	MethodTheAdjFormOfPlace                = "The [ADJECTIVE] [FORM] of [PLACE]"
@@ -111,6 +119,7 @@ const (
 	TokenForm           = "[FORM]"
 	TokenFoundingFigure = "[FOUNDING_FIGURE]"
 	TokenSubForm        = "[SUB_FORM]"
+	TokenRandom         = "[RANDOM]"
 	// TokenFaith          = "[FAITH]"
 	// TokenDeity = "[DEITY]"
 	// TokenCulture        = "[CULTURE]"
@@ -121,6 +130,7 @@ var NameConfig = genstory.TextConfig{
 	TokenIsMandatory: map[string]bool{
 		TokenPlace:          true,
 		TokenFoundingFigure: true,
+		TokenRandom:         true,
 		// TokenDeity:          true,
 	},
 	TokenPools: map[string][]string{
@@ -134,12 +144,16 @@ var NameConfig = genstory.TextConfig{
 		TokenForm,
 		TokenFoundingFigure,
 		TokenSubForm,
+		TokenRandom,
 		// TokenFaith,
 		// TokenDeity,
 		// TokenCulture,
 		// TokenLanguage,
 	},
 	Templates: []string{
+		MethodRandom,
+		MethodRandomForm,
+		MethodFormOfRandom,
 		MethodFormOfPlace,
 		MethodTheAdjFormOfPlace,
 		MethodPlaceToAdjForm,
