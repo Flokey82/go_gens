@@ -150,6 +150,18 @@ func Cross3XYZ(v1x, v1y, v1z, v2x, v2y, v2z float64) Vec3 {
 	}
 }
 
+// DistSq3 calculates the squared Euclidean distance between two 3D vectors.
+// It avoids the expensive square root operation, making it ideal for distance comparisons.
+func DistSq3(v1, v2 Vec3) float64 {
+	// 1. Calculate the difference between the vectors on each axis.
+	dx := v2.X - v1.X
+	dy := v2.Y - v1.Y
+	dz := v2.Z - v1.Z
+
+	// 2. Square each difference and return the sum.
+	return dx*dx + dy*dy + dz*dz
+}
+
 // Column-major order
 // 0 3 6
 // 1 4 7

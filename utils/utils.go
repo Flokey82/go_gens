@@ -131,6 +131,34 @@ func MinMax[V Number](values []V) (min, max V) {
 	return
 }
 
+// MinArray returns the minimum value of the given array.
+func MinArray[V Number](values []V) V {
+	if len(values) == 0 {
+		return 0
+	}
+	min := values[0]
+	for _, v := range values {
+		if v < min {
+			min = v
+		}
+	}
+	return min
+}
+
+// MaxArray returns the maximum value of the given array.
+func MaxArray[V Number](values []V) V {
+	if len(values) == 0 {
+		return 0
+	}
+	max := values[0]
+	for _, v := range values {
+		if v > max {
+			max = v
+		}
+	}
+	return max
+}
+
 // Gauss returns a normally distributed random number with the given mean and standard deviation.
 // NOTE: mean: mu, stdDev: sigma
 // See: https://en.wikipedia.org/wiki/Normal_distribution
